@@ -7,8 +7,8 @@
     <title>News & Announcements - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs - Only load on pages that need it -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
@@ -42,7 +42,11 @@
         </div>
 
         <div class="sidebar-footer">
-            <div id="user-status" aria-live="polite">Loading...</div>
+            <div class="sidebar-login-prompt">
+                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
+                    Login / Register
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -55,7 +59,17 @@
 
             <section aria-label="Announcements list">
                 <div id="announcements-container" aria-live="polite">
-                    <p>Loading announcements...</p>
+                    <!-- Loading skeleton -->
+                    <div class="skeleton-container">
+                        <div class="skeleton" style="height: 40px; width: 60%; margin-bottom: 20px;"></div>
+                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: 10px;"></div>
+                        <div class="skeleton" style="height: 20px; width: 90%; margin-bottom: 10px;"></div>
+                        <div class="skeleton" style="height: 20px; width: 80%; margin-bottom: 30px;"></div>
+                        
+                        <div class="skeleton" style="height: 40px; width: 55%; margin-bottom: 20px;"></div>
+                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: 10px;"></div>
+                        <div class="skeleton" style="height: 20px; width: 95%; margin-bottom: 10px;"></div>
+                    </div>
                 </div>
             </section>
         </article>
@@ -64,19 +78,83 @@
     <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
-    </div>
-</footer>
-<!-- Lightbox -->
-<div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <img id="lightbox-img" src="" alt="">
-</div>
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
 
-<script src="firebase-init.js"></script>
-<script src="script.js"></script>
-<script>
-    // Load announcements on page load
-    loadAnnouncements();
-</script>
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="script.js"></script>
+    <script>
+        /**
+         * Firebase Configuration for News Page
+         * Only loads announcements - no auth required
+         */
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
+            authDomain: "fahmid-school.firebaseapp.com",
+            projectId: "fahmid-school",
+            storageBucket: "fahmid-school.firebasestorage.app",
+            messagingSenderId: "48604608508",
+            appId: "1:48604608508:web:5b387a2de260b9851a6479",
+            measurementId: "G-HEC84JXFY2"
+        };
+
+        // Initialize Firebase for news page only
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        /**
+         * Load and display announcements from Firestore
+         * @async
+         */
+        async function loadAnnouncements() {
+            const container = document.getElementById('announcements-container');
+            
+            try {
+                const snapshot = await db.collection('announcements')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                // Clear skeleton
+                container.innerHTML = '';
+
+                if (snapshot.empty) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No announcements yet. Check back soon!</p>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const article = document.createElement('article');
+                    article.className = 'announcement-card';
+                    article.style.cssText = 'background: var(--color-white); padding: var(--space-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--space-xl);';
+                    
+                    const title = document.createElement('h2');
+                    title.textContent = data.title;
+                    title.style.marginTop = '0';
+                    
+                    const content = document.createElement('p');
+                    content.textContent = data.content;
+                    
+                    const date = document.createElement('small');
+                    date.style.cssText = 'color: var(--color-gray-600); display: block; margin-top: var(--space-sm);';
+                    date.textContent = `Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}`;
+                    
+                    article.appendChild(title);
+                    article.appendChild(content);
+                    article.appendChild(date);
+                    container.appendChild(article);
+                });
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Unable to load announcements. Please try again later.</p>';
+            }
+        }
+
+        // Load announcements when page loads
+        document.addEventListener('DOMContentLoaded', loadAnnouncements);
+    </script>
 </body>
 </html>
