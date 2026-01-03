@@ -281,9 +281,9 @@ table th {
 }
 
 /* Responsive - Mobile */
-@media (max-width: 992px) {
+@media (max-width: 1024px) {  /* Changed from 992px */
     .hamburger {
-        display: flex;
+        display: flex !important;  /* Add !important to override any cache */
     }
     .sidebar {
         transform: translateX(-100%);
