@@ -26,7 +26,7 @@ h1, h2, h3 {
     height: 100vh;
     width: 280px;
     background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
-    padding: 80px 20px 40px 20px; /* Increased top padding so logo isn't behind hamburger */
+    padding: 80px 20px 40px 20px; /* Top padding keeps logo clear of hamburger */
     transition: transform 0.4s ease;
     z-index: 1000;
     box-shadow: 8px 0 20px rgba(0,0,0,0.15);
@@ -77,38 +77,38 @@ h1, h2, h3 {
 
 .sidebar-footer {
     flex-shrink: 0;
-    padding-top: 30px;
+    padding-top: 20px;
     margin-top: auto;
 }
 
-/* User Status - Clean glass panel, NO border */
+/* User Status - Compact, clean, NO border */
 #user-status {
     background: rgba(255, 255, 255, 0.25);
     backdrop-filter: blur(12px);
-    border-radius: 25px;
-    padding: 28px 20px;
+    border-radius: 20px;
+    padding: 18px 16px; /* Smaller padding = smaller panel */
     text-align: center;
     color: white;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    /* Removed any border */
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    /* No border at all */
 }
 
 #user-status strong,
 #user-status small {
     display: block;
-    margin: 8px 0;
-    font-size: 1.1rem;
+    margin: 6px 0;
+    font-size: 1rem;
 }
 
 #user-status .btn {
     width: 100%;
     background: #FF5722;
     color: white;
-    margin-top: 15px;
-    padding: 16px;
+    margin-top: 12px;
+    padding: 14px;
     border-radius: 30px;
     font-weight: bold;
-    font-size: 1.1rem;
+    font-size: 1rem;
     transition: all 0.3s;
 }
 
@@ -122,7 +122,7 @@ h1, h2, h3 {
     display: none;
     cursor: pointer;
     position: fixed;
-    top: 20px; /* Matches sidebar top padding */
+    top: 20px;
     left: 20px;
     z-index: 1001;
     width: 50px;
@@ -164,9 +164,9 @@ h1, h2, h3 {
     transition: margin-left 0.4s ease;
 }
 
-/* Hero Section */
+/* Hero Section - Working direct image URL */
 .hero {
-    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://www.instagram.com/p/C7WRZiqI6nO/?img_index=2&igsh=MW5mM3Q1cHBnYm0ybg==') no-repeat center center/cover;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1491841573634-2816611e9089c?ixlib=rb-4.0.3&auto=format&fit=crop&q=80') no-repeat center center/cover;
     color: white;
     text-align: center;
     padding: 140px 20px;
@@ -321,7 +321,7 @@ table th {
     }
     .sidebar {
         transform: translateX(-100%);
-        padding-top: 90px; /* Extra space on mobile when open */
+        padding-top: 90px;
     }
     .sidebar.active {
         transform: translateX(0);
