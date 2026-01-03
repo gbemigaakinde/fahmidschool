@@ -1,14 +1,13 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Print Results JavaScript
- * Phases 4-7 Complete
+ * Print Results JavaScript - FIXED
  * 
  * Handles:
  * - Load pupil information
  * - Display print-formatted results
  * - Grade calculation
  * 
- * @version 2.0.0
+ * @version 2.1.0 - AUTHENTICATION FIX
  * @date 2026-01-03
  */
 
@@ -28,7 +27,7 @@ checkRole('pupil').then(async user => {
 });
 
 // ============================================
-// PUPIL DATA LOADING
+// PUPIL DATA LOADING - FIXED QUERY
 // ============================================
 
 /**
@@ -38,18 +37,11 @@ checkRole('pupil').then(async user => {
  */
 async function loadPupilData(user) {
     try {
-        // Find pupil document
-        let pupilsSnap = await db.collection('pupils')
-            .where('parentEmail', '==', user.email)
-            .get();
+        // FIXED: Query pupil document by UID
+        const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
-        if (pupilsSnap.empty) {
-            pupilsSnap = await db.collection('pupils')
-                .where('email', '==', user.email)
-                .get();
-        }
-
-        if (pupilsSnap.empty) {
+        if (!pupilDoc.exists) {
+            console.error('No pupil profile found for UID:', user.uid);
             window.showToast?.('No pupil profile found', 'danger');
             setTimeout(() => {
                 window.location.href = 'login.html';
@@ -57,9 +49,13 @@ async function loadPupilData(user) {
             return;
         }
 
-        const pupilDoc = pupilsSnap.docs[0];
         const pupilData = pupilDoc.data();
         currentPupilId = pupilDoc.id;
+
+        console.log('✓ Print: Pupil profile loaded:', {
+            uid: currentPupilId,
+            name: pupilData.name
+        });
 
         // Update pupil info
         document.getElementById('print-name').textContent = pupilData.name;
@@ -78,6 +74,10 @@ async function loadPupilData(user) {
     } catch (error) {
         console.error('Error loading pupil data:', error);
         handleError(error, 'Failed to load pupil information');
+        
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 3000);
     }
 }
 
@@ -102,9 +102,13 @@ async function loadPrintResults() {
     `;
 
     try {
+        console.log('Print: Querying results for pupilId:', currentPupilId);
+
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
+
+        console.log('Print: Results found:', resultsSnap.size);
 
         container.innerHTML = '';
 
@@ -233,26 +237,6 @@ function getGrade(score) {
     if (score >= 50) return 'D';
     return 'F';
 }
-
-// ============================================
-// PRINT FUNCTIONALITY
-// ============================================
-
-/**
- * Check if page is ready to print
- * Auto-print after results are loaded (optional)
- */
-window.addEventListener('load', () => {
-    // Optional: Auto-print after a delay
-    // Uncomment the following lines to enable auto-print
-    /*
-    setTimeout(() => {
-        if (currentPupilId && !document.getElementById('print-results-container').querySelector('.skeleton')) {
-            window.print();
-        }
-    }, 2000);
-    */
-});
 
 // ============================================
 // PAGE LOAD
