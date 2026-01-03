@@ -1513,6 +1513,7 @@ table input[type="number"] {
         display: flex;
     }
 
+    /* Main Site Sidebar - Mobile */
     .sidebar {
         position: fixed;
         top: 0;
@@ -1528,6 +1529,27 @@ table input[type="number"] {
     }
 
     .sidebar.active {
+        width: 280px;
+        overflow-y: auto;
+        transform: translateX(0);
+    }
+
+    /* Admin / Portal Sidebar - Mobile */
+    .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 0;
+        overflow: hidden;
+        transform: translateX(-100%);
+        transition: transform var(--transition-slow), width var(--transition-slow);
+        z-index: var(--z-sidebar);
+        background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary-darker) 100%);
+        box-shadow: var(--shadow-2xl);
+    }
+
+    .admin-sidebar.active {
         width: 280px;
         overflow-y: auto;
         transform: translateX(0);
@@ -1554,15 +1576,6 @@ table input[type="number"] {
     .container {
         padding-left: var(--space-md);
         padding-right: var(--space-md);
-    }
-
-    .admin-sidebar {
-        transform: translateX(-100%);
-        transition: transform var(--transition-slow);
-    }
-
-    .admin-sidebar.active {
-        transform: translateX(0);
     }
 
     .admin-main {
