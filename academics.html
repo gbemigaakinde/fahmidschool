@@ -1,63 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Head same as above -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore our comprehensive nursery and primary academic programs designed to nurture young learners.">
     <title>Academics - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-    <div class="container">
-        <div class="logo">Fahmid Nursery & Primary School</div>
-        <div class="mobile-menu">☰</div>
-        <nav>
-            <ul>
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Hamburger Menu (Mobile) -->
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="line1"></span>
+        <span class="line2"></span>
+        <span class="line3"></span>
+    </button>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <div class="logo-text">Fahmid School</div>
+        </div>
+
+        <div class="sidebar-content">
+            <ul role="list">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
+                <li><a href="academics.html" aria-current="page">Academics</a></li>
                 <li><a href="admissions.html">Admissions</a></li>
                 <li><a href="school-life.html">School Life</a></li>
                 <li><a href="gallery.html">Gallery</a></li>
                 <li><a href="news.html">News</a></li>
                 <li><a href="contact.html">Contact</a></li>
             </ul>
-        </nav>
-        <div id="user-status"></div>
-    </div>
-</header>
-
-    <section class="container">
-        <h1>Academics</h1>
-        <p>We offer a balanced curriculum for Nursery and Primary levels, combining play-based learning with structured academics.</p>
-        
-        <h2>Nursery Program</h2>
-        <p>Focus on foundational skills: literacy, numeracy, social interaction, and creative play.</p>
-        
-        <h2>Primary Program</h2>
-        <p>Core subjects including English, Mathematics, Science, Social Studies, Arts, and Physical Education.</p>
-        
-        <div class="grid">
-            <div><img src="https://source.unsplash.com/random/400x300/?classroom" alt="Classroom learning"></div>
-            <div><img src="https://source.unsplash.com/random/400x300/?children-reading" alt="Children reading"></div>
         </div>
-    </section>
+
+        <div class="sidebar-footer">
+            <div id="user-status" aria-live="polite">Loading...</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <article class="container">
+            <header>
+                <h1>Academics</h1>
+                <p class="lead">We offer a balanced curriculum for Nursery and Primary levels, combining play-based learning with structured academics.</p>
+            </header>
+
+            <section aria-labelledby="nursery-heading">
+                <h2 id="nursery-heading">Nursery Program</h2>
+                <p>Focus on foundational skills: literacy, numeracy, social interaction, and creative play.</p>
+            </section>
+
+            <section aria-labelledby="primary-heading">
+                <h2 id="primary-heading">Primary Program</h2>
+                <p>Core subjects including English, Mathematics, Science, Social Studies, Arts, and Physical Education.</p>
+            </section>
+
+            <section aria-labelledby="gallery-heading">
+                <h2 id="gallery-heading" class="visually-hidden">Learning Environments</h2>
+                <div class="grid">
+                    <figure>
+                        <img src="https://source.unsplash.com/random/400x300/?classroom" alt="Students engaged in classroom learning" loading="lazy">
+                        <figcaption>Interactive classroom sessions</figcaption>
+                    </figure>
+                    <figure>
+                        <img src="https://source.unsplash.com/random/400x300/?children-reading" alt="Children reading together" loading="lazy">
+                        <figcaption>Developing literacy skills</figcaption>
+                    </figure>
+                </div>
+            </section>
+        </article>
+    </main>
 
     <!-- Footer -->
-    <!-- Lightbox (add to every page or one base) -->
-<div id="lightbox" class="lightbox">
-    <img id="lightbox-img" src="" alt="Enlarged image">
-</div>
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
 
-<footer>
-    <div class="container">
-        &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <img id="lightbox-img" src="" alt="">
     </div>
-</footer>
-<script src="firebase-init.js"></script>
+
+    <script src="firebase-init.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
