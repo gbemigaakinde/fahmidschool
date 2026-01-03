@@ -118,24 +118,38 @@
             <h1>Manage Pupils</h1>
             <button class="btn" onclick="showPupilForm()">+ Add New Pupil</button>
             <div id="pupil-form" style="display:none; margin-top: var(--space-xl);">
-                <h3>Pupil Information</h3>
-                <form class="admin-form">
-                    <div class="form-group">
-                        <label for="pupil-name">Full Name <span class="required">*</span></label>
-                        <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="pupil-class">Class <span class="required">*</span></label>
-                        <input type="text" id="pupil-class" placeholder="e.g., Primary 2" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="pupil-parent">Parent Email</label>
-                        <input type="email" id="pupil-parent" placeholder="parent@example.com">
-                    </div>
-                    <button type="button" class="btn" onclick="addPupil()">Save Pupil</button>
-                    <button type="button" class="btn" onclick="document.getElementById('pupil-form').style.display='none'" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
-                </form>
-            </div>
+    <h3>Pupil Information</h3>
+    <form id="add-pupil-form" class="admin-form">
+        <div class="form-group">
+            <label for="pupil-name">Full Name <span class="required">*</span></label>
+            <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="pupil-class">Class <span class="required">*</span></label>
+            <input type="text" id="pupil-class" placeholder="e.g., Primary 2" required>
+        </div>
+
+        <div class="form-group">
+            <label for="pupil-parent">Parent Email</label>
+            <input type="email" id="pupil-parent" placeholder="parent@example.com">
+        </div>
+
+        <!-- NEW FIELDS FOR LOGIN -->
+        <div class="form-group">
+            <label for="pupil-email">Pupil Email <span class="required">*</span></label>
+            <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+        </div>
+
+        <div class="form-group">
+            <label for="pupil-password">Temporary Password <span class="required">*</span></label>
+            <input type="password" id="pupil-password" placeholder="Temporary password" required>
+        </div>
+
+        <button type="submit" class="btn">Save Pupil</button>
+        <button type="button" class="btn" onclick="document.getElementById('pupil-form').style.display='none'" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
+    </form>
+</div>
             <div class="table-container">
                 <table id="pupils-table" class="responsive-table">
                     <thead>
