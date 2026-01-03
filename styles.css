@@ -1514,10 +1514,22 @@ table input[type="number"] {
     }
 
     .sidebar {
+        position: fixed;            /* Essential for slide-in */
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 0;                   /* Closed state: zero width */
+        overflow: hidden;           /* Prevents content from showing when closed */
         transform: translateX(-100%);
+        transition: transform var(--transition-slow), width var(--transition-slow);
+        z-index: 1000;
+        background: var(--sidebar-bg, #fff); /* Adjust to your sidebar background */
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow when open */
     }
 
     .sidebar.active {
+        width: 280px;               /* Open state: full mobile width (adjust as needed) */
+        overflow-y: auto;           /* Allows scrolling if content is long */
         transform: translateX(0);
     }
 
