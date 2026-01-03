@@ -31,23 +31,14 @@
     </div>
 </header>
 
-    <section class="container">
-        <h1>News & Announcements</h1>
-        
-        <article>
-            <h2>Term Begins - January 2026</h2>
-            <p>Welcome back to all students! We are excited for a wonderful year ahead.</p>
-            <small>Posted: January 02, 2026</small>
-        </article>
-        
-        <article>
-            <h2>Upcoming Sports Day</h2>
-            <p>Join us for our annual sports day on February 15, 2026.</p>
-            <small>Posted: December 20, 2025</small>
-        </article>
-        
-        <!-- Add more articles -->
-    </section>
+<section class="container">
+    <h1>News & Announcements</h1>
+    <div id="announcements-container"></div>
+</section>
+
+<script>
+    loadAnnouncements();  // From firebase-init.js
+</script>
 
     <!-- Footer -->
     <!-- Lightbox (add to every page or one base) -->
