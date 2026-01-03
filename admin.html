@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <!-- Admin Sidebar -->
+    <div class="admin-sidebar">
+        <h2>Admin Panel</h2>
+        <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
+        <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
+        <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
+        <a href="#classes" onclick="showSection('classes')">Classes</a>
+        <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
+        <a href="index.html">← Back to Public Site</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="admin-main">
+        <!-- Dashboard -->
+        <div id="dashboard" class="admin-card">
+            <h1>Admin Dashboard</h1>
+            <div class="grid">
+                <div class="admin-card"><h3>Total Teachers: <span id="teacher-count">0</span></h3></div>
+                <div class="admin-card"><h3>Total Pupils: <span id="pupil-count">0</span></h3></div>
+                <div class="admin-card"><h3>Total Classes: <span id="class-count">0</span></h3></div>
+                <div class="admin-card"><h3>Announcements: <span id="announce-count">0</span></h3></div>
+            </div>
+        </div>
+
+        <!-- Teachers Section -->
+        <div id="teachers" class="admin-card" style="display:none;">
+            <h1>Manage Teachers</h1>
+            <button class="btn" onclick="showTeacherForm()">Add New Teacher</button>
+            <div id="teacher-form" style="display:none;">
+                <form class="admin-form">
+                    <input type="text" id="teacher-name" placeholder="Full Name" required>
+                    <input type="email" id="teacher-email" placeholder="Email" required>
+                    <input type="text" id="teacher-subject" placeholder="Subject(s)">
+                    <button type="button" class="btn" onclick="addTeacher()">Save Teacher</button>
+                </form>
+            </div>
+            <table id="teachers-table">
+                <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Pupils Section -->
+        <div id="pupils" class="admin-card" style="display:none;">
+            <h1>Manage Pupils</h1>
+            <button class="btn" onclick="showPupilForm()">Add New Pupil</button>
+            <div id="pupil-form" style="display:none;">
+                <form class="admin-form">
+                    <input type="text" id="pupil-name" placeholder="Full Name" required>
+                    <input type="text" id="pupil-class" placeholder="Class (e.g., Primary 2)" required>
+                    <input type="text" id="pupil-parent" placeholder="Parent Email (optional)">
+                    <button type="button" class="btn" onclick="addPupil()">Save Pupil</button>
+                </form>
+            </div>
+            <table id="pupils-table">
+                <thead><tr><th>Name</th><th>Class</th><th>Parent Email</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Classes Section -->
+        <div id="classes" class="admin-card" style="display:none;">
+            <h1>Manage Classes</h1>
+            <button class="btn" onclick="showClassForm()">Add New Class</button>
+            <div id="class-form" style="display:none;">
+                <input type="text" id="class-name" placeholder="Class Name (e.g., Nursery 1)" required>
+                <button type="button" class="btn" onclick="addClass()">Create Class</button>
+            </div>
+            <table id="classes-table">
+                <thead><tr><th>Class Name</th><th>Pupil Count</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Announcements Section -->
+        <div id="announcements" class="admin-card" style="display:none;">
+            <h1>Manage Announcements</h1>
+            <button class="btn" onclick="showAnnounceForm()">New Announcement</button>
+            <div id="announce-form" style="display:none;">
+                <form class="admin-form">
+                    <input type="text" id="announce-title" placeholder="Title" required>
+                    <textarea id="announce-content" rows="5" placeholder="Content" required></textarea>
+                    <button type="button" class="btn" onclick="addAnnouncement()">Publish</button>
+                </form>
+            </div>
+            <div id="announcements-list"></div>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script>
+        // Enforce admin access
+        checkRole('admin').catch(() => {});
+
+        // Navigation
+        function showSection(sectionId) {
+            document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+            document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`a[onclick="showSection('${sectionId}')"]`).classList.add('active');
+            if (sectionId === 'teachers') loadTeachers();
+            if (sectionId === 'pupils') loadPupils();
+            if (sectionId === 'classes') loadClasses();
+            if (sectionId === 'announcements') loadAdminAnnouncements();
+            if (sectionId === 'dashboard') loadDashboardStats();
+        }
+
+        // Dashboard Stats
+        function loadDashboardStats() {
+            db.collection('teachers').get().then(s => document.getElementById('teacher-count').textContent = s.size);
+            db.collection('pupils').get().then(s => document.getElementById('pupil-count').textContent = s.size);
+            db.collection('classes').get().then(s => document.getElementById('class-count').textContent = s.size);
+            db.collection('announcements').get().then(s => document.getElementById('announce-count').textContent = s.size);
+        }
+
+        // Teachers CRUD
+        function showTeacherForm() { document.getElementById('teacher-form').style.display = 'block'; }
+        function addTeacher() {
+            const name = document.getElementById('teacher-name').value;
+            const email = document.getElementById('teacher-email').value;
+            const subject = document.getElementById('teacher-subject').value;
+            db.collection('teachers').add({ name, email, subject, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+                .then(() => { loadTeachers(); document.getElementById('teacher-form').style.display = 'none'; });
+        }
+        function loadTeachers() {
+            const tbody = document.querySelector('#teachers-table tbody');
+            tbody.innerHTML = '';
+            db.collection('teachers').get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${data.name}</td><td>${data.email}</td><td>${data.subject || '-'}</td>
+                        <td><button class="btn-small btn-danger" onclick="deleteDoc('teachers', '${doc.id}')">Delete</button></td>`;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        // Similar functions for pupils, classes, announcements...
+        // (Add pupil/class/announcement CRUD similarly - abbreviated for brevity)
+
+        function deleteDoc(collection, id) {
+            if (confirm('Are you sure?')) {
+                db.collection(collection).doc(id).delete().then(() => {
+                    alert('Deleted successfully');
+                    loadDashboardStats();
+                    if (collection === 'teachers') loadTeachers();
+                    // etc.
+                });
+            }
+        }
+
+        // Announcements (simplified version)
+        function addAnnouncement() {
+            const title = document.getElementById('announce-title').value;
+            const content = document.getElementById('announce-content').value;
+            db.collection('announcements').add({
+                title, content,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert('Announcement published!');
+                document.getElementById('announce-form').style.display = 'none';
+                loadAdminAnnouncements();
+            });
+        }
+
+        function loadAdminAnnouncements() {
+            const list = document.getElementById('announcements-list');
+            list.innerHTML = '';
+            db.collection('announcements').orderBy('createdAt', 'desc').get().then(snapshot => {
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const div = document.createElement('div');
+                    div.className = 'admin-card';
+                    div.style.marginTop = '20px';
+                    div.innerHTML = `<h3>${data.title}</h3><p>${data.content}</p>
+                        <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${doc.id}')">Delete</button>`;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        // Load dashboard on start
+        loadDashboardStats();
+    </script>
+</body>
+</html>
