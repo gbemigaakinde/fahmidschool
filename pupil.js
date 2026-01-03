@@ -1,13 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript - FIXED
+ * Pupil Portal JavaScript - COMPLETE FIX
  * 
- * Handles:
- * - Load pupil profile
- * - Display academic results
- * - Grade calculation
- * 
- * @version 2.1.0 - AUTHENTICATION FIX
+ * @version 3.0.0 - COMPREHENSIVE FIX
  * @date 2026-01-03
  */
 
@@ -24,22 +19,14 @@ let currentClass = '';
 // Enforce pupil access
 checkRole('pupil').then(async user => {
     await loadPupilProfile(user);
-}).catch(() => {
-    // Error handling done in checkRole function
-});
+}).catch(() => {});
 
 // ============================================
-// PUPIL PROFILE - FIXED QUERY
+// PUPIL PROFILE
 // ============================================
 
-/**
- * Load pupil profile from Firestore
- * @async
- * @param {Object} user - Firebase user object
- */
 async function loadPupilProfile(user) {
     try {
-        // FIXED: Query pupil document by UID (document ID matches auth UID)
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
         if (!pupilDoc.exists) {
@@ -53,7 +40,7 @@ async function loadPupilProfile(user) {
 
         const pupilData = pupilDoc.data();
         
-        currentPupilId = pupilDoc.id; // This is the UID
+        currentPupilId = pupilDoc.id;
         currentPupilName = pupilData.name;
         currentClass = pupilData.class || 'Unknown Class';
 
@@ -85,10 +72,6 @@ async function loadPupilProfile(user) {
 // RESULTS DISPLAY
 // ============================================
 
-/**
- * Load and display pupil results
- * @async
- */
 async function loadResults() {
     if (!currentPupilId) {
         console.error('Cannot load results: currentPupilId is null');
@@ -121,7 +104,8 @@ async function loadResults() {
         if (resultsSnap.empty) {
             container.innerHTML = `
                 <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">
-                    📚 No results have been entered yet. Check back later!
+                    📚 No results have been entered yet. Check back later!<br><br>
+                    Your teachers will upload your results soon.
                 </p>
             `;
             return;
@@ -149,7 +133,7 @@ async function loadResults() {
             termSection.className = 'results-term-section';
 
             const termHeading = document.createElement('h3');
-            termHeading.textContent = term;
+            termHeading.textContent = `📖 ${term}`;
             termSection.appendChild(termHeading);
 
             const table = document.createElement('table');
@@ -158,8 +142,8 @@ async function loadResults() {
                 <thead>
                     <tr>
                         <th>Subject</th>
-                        <th>Score</th>
-                        <th>Grade</th>
+                        <th style="text-align: center;">Score</th>
+                        <th style="text-align: center;">Grade</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -181,8 +165,8 @@ async function loadResults() {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${result.subject}</strong></td>
-                    <td>${result.score}/100</td>
-                    <td class="${gradeClass}">${grade}</td>
+                    <td style="text-align: center; font-weight: var(--font-weight-medium);">${result.score}/100</td>
+                    <td style="text-align: center;" class="${gradeClass}">${grade}</td>
                 `;
                 tbody.appendChild(tr);
 
@@ -199,9 +183,9 @@ async function loadResults() {
                 const avgRow = document.createElement('tr');
                 avgRow.style.cssText = 'border-top: 2px solid var(--color-primary); font-weight: var(--font-weight-bold); background: var(--color-gray-50);';
                 avgRow.innerHTML = `
-                    <td><strong>AVERAGE</strong></td>
-                    <td><strong>${average}</strong></td>
-                    <td class="${avgGradeClass}"><strong>${avgGrade}</strong></td>
+                    <td><strong>🎯 AVERAGE</strong></td>
+                    <td style="text-align: center;"><strong>${average}%</strong></td>
+                    <td style="text-align: center;" class="${avgGradeClass}"><strong>${avgGrade}</strong></td>
                 `;
                 tbody.appendChild(avgRow);
             }
@@ -209,6 +193,8 @@ async function loadResults() {
             termSection.appendChild(table);
             container.appendChild(termSection);
         });
+
+        console.log('✓ Results loaded successfully');
     } catch (error) {
         console.error('Error loading results:', error);
         container.innerHTML = `
@@ -223,11 +209,6 @@ async function loadResults() {
 // GRADE CALCULATION
 // ============================================
 
-/**
- * Calculate grade from score
- * @param {number} score - Score out of 100
- * @returns {string} Grade label
- */
 function getGrade(score) {
     if (score >= 90) return 'A+ Excellent';
     if (score >= 80) return 'A Very Good';
@@ -237,11 +218,6 @@ function getGrade(score) {
     return 'F Fail';
 }
 
-/**
- * Get CSS class for grade styling
- * @param {number} score - Score out of 100
- * @returns {string} CSS class name
- */
 function getGradeClass(score) {
     if (score >= 80) return 'grade-excellent';
     if (score >= 70) return 'grade-good';
