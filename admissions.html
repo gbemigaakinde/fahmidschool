@@ -1,68 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Head -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn about the admissions process, requirements, and how to enroll your child at Fahmid School.">
     <title>Admissions - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Header -->
-<header>
-    <div class="container">
-        <div class="logo">Fahmid Nursery & Primary School</div>
-        <div class="mobile-menu">☰</div>
-        <nav>
-            <ul>
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Hamburger Menu (Mobile) -->
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="line1"></span>
+        <span class="line2"></span>
+        <span class="line3"></span>
+    </button>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <div class="logo-text">Fahmid School</div>
+        </div>
+
+        <div class="sidebar-content">
+            <ul role="list">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="admissions.html" aria-current="page">Admissions</a></li>
                 <li><a href="school-life.html">School Life</a></li>
                 <li><a href="gallery.html">Gallery</a></li>
                 <li><a href="news.html">News</a></li>
                 <li><a href="contact.html">Contact</a></li>
             </ul>
-        </nav>
-        <div id="user-status"></div>
-    </div>
-</header>
+        </div>
 
-    <section class="container">
-        <h1>Admissions</h1>
-        <p>We welcome new students throughout the year. Contact us for availability.</p>
-        
-        <h2>Process</h2>
-        <ol>
-            <li>Submit inquiry form</li>
-            <li>School tour and assessment</li>
-            <li>Registration and fee payment</li>
-        </ol>
-        
-        <h2>Requirements</h2>
-        <ul>
-            <li>Birth certificate</li>
-            <li>Previous school records (if applicable)</li>
-            <li>Passport photos</li>
-        </ul>
-        
-        <a href="contact.html" class="btn">Inquire Now</a>
-    </section>
+        <div class="sidebar-footer">
+            <div id="user-status" aria-live="polite">Loading...</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <article class="container">
+            <header>
+                <h1>Admissions</h1>
+                <p class="lead">We welcome new students throughout the year. Contact us for availability.</p>
+            </header>
+
+            <section aria-labelledby="process-heading">
+                <h2 id="process-heading">Admissions Process</h2>
+                <ol>
+                    <li>Submit inquiry form</li>
+                    <li>School tour and assessment</li>
+                    <li>Registration and fee payment</li>
+                </ol>
+            </section>
+
+            <section aria-labelledby="requirements-heading">
+                <h2 id="requirements-heading">Requirements</h2>
+                <ul>
+                    <li>Birth certificate</li>
+                    <li>Previous school records (if applicable)</li>
+                    <li>Passport photos</li>
+                </ul>
+            </section>
+
+            <div class="cta-section">
+                <a href="contact.html" class="btn">Inquire Now</a>
+            </div>
+        </article>
+    </main>
 
     <!-- Footer -->
-    <!-- Lightbox (add to every page or one base) -->
-<div id="lightbox" class="lightbox">
-    <img id="lightbox-img" src="" alt="Enlarged image">
-</div>
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
 
-<footer>
-    <div class="container">
-        &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <img id="lightbox-img" src="" alt="">
     </div>
-</footer>
-<script src="firebase-init.js"></script>
+
+    <script src="firebase-init.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
