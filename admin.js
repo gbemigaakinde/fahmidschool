@@ -237,46 +237,51 @@ function showPupilForm() {
  * @async
  */
 async function addPupil() {
-    const name = document.getElementById('pupil-name')?.value.trim();
-    const pupilClass = document.getElementById('pupil-class')?.value.trim();
-    const parentEmail = document.getElementById('pupil-parent')?.value.trim();
+    const name = document.getElementById('pupil-name').value.trim();
+    const pupilClass = document.getElementById('pupil-class').value.trim();
+    const parentEmail = document.getElementById('pupil-parent').value.trim();
+    const email = document.getElementById('pupil-email').value.trim();
+    const tempPassword = document.getElementById('pupil-password').value;
 
-    if (!name || !pupilClass) {
-        window.showToast?.('Name and class are required', 'warning');
+    if (!name || !pupilClass || !email || !tempPassword) {
+        alert('Please fill in all required fields.');
         return;
     }
 
-    // Validate parent email if provided
-    if (parentEmail) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(parentEmail)) {
-            window.showToast?.('Please enter a valid parent email address', 'warning');
-            return;
-        }
-    }
-
     try {
-        await db.collection('pupils').add({
-            name,
+        // 1. Create Firebase Auth account
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
+        const uid = userCredential.user.uid;
+
+        // 2. Save pupil profile to Firestore
+        await firebase.firestore().collection('users').doc(uid).set({
+            name: name,
             class: pupilClass,
-            parentEmail: parentEmail || null,
+            role: 'pupil',
+            email: email,
+            parentEmail: parentEmail || '',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        window.showToast?.('Pupil added successfully', 'success');
-        
+        // 3. Force password reset email
+        await firebase.auth().sendPasswordResetEmail(email);
+
+        alert(`Pupil added! A password reset email has been sent to ${email}.`);
+
         // Reset form
         document.getElementById('pupil-form').style.display = 'none';
         document.getElementById('pupil-name').value = '';
         document.getElementById('pupil-class').value = '';
         document.getElementById('pupil-parent').value = '';
-        
-        // Reload data
-        loadPupils();
-        loadDashboardStats();
+        document.getElementById('pupil-email').value = '';
+        document.getElementById('pupil-password').value = '';
+
+        // Optional: reload pupils table
+        loadPupilsTable();
+
     } catch (error) {
         console.error('Error adding pupil:', error);
-        handleError(error, 'Failed to add pupil');
+        alert(`Error: ${error.message}`);
     }
 }
 
