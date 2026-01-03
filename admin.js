@@ -225,12 +225,14 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     e.preventDefault();
 
     const name = document.getElementById('pupil-name').value.trim();
+    const admissionNo = document.getElementById('pupil-admission').value.trim();
+    const gender = document.getElementById('pupil-gender').value;
     const pupilClass = document.getElementById('pupil-class').value.trim();
     const parentEmail = document.getElementById('pupil-parent').value.trim();
     const email = document.getElementById('pupil-email').value.trim();
     const tempPassword = document.getElementById('pupil-password').value;
 
-    if (!name || !pupilClass || !email || !tempPassword) {
+    if (!name || !gender || !pupilClass || !email || !tempPassword) {
         window.showToast?.('All required fields must be filled', 'warning');
         return;
     }
@@ -251,6 +253,8 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
         await db.collection('pupils').doc(uid).set({
             name,
+            admissionNo: admissionNo || '',
+            gender,
             email,
             class: pupilClass,
             parentEmail: parentEmail || '',
