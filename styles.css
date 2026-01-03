@@ -266,3 +266,91 @@ footer {
     padding: 80px 20px;
     min-height: 70vh;
 }
+/* Admin Portal Styles */
+.admin-sidebar {
+    width: 250px;
+    background: #1976D2;
+    color: white;
+    position: fixed;
+    height: 100%;
+    overflow-y: auto;
+    padding-top: 20px;
+}
+
+.admin-sidebar h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+}
+
+.admin-sidebar a {
+    display: block;
+    color: white;
+    padding: 15px 20px;
+    text-decoration: none;
+}
+
+.admin-sidebar a:hover, .admin-sidebar a.active {
+    background: #1565C0;
+}
+
+.admin-main {
+    margin-left: 250px;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.admin-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+table th, table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+table th {
+    background: #f0f0f0;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    margin: 0 5px;
+}
+
+.btn-danger {
+    background: #f44336;
+}
+
+.btn-danger:hover {
+    background: #d32f2f;
+}
+
+form.admin-form {
+    display: grid;
+    gap: 15px;
+    max-width: 600px;
+}
+
+@media (max-width: 992px) {
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    .admin-main {
+        margin-left: 0;
+    }
+}
