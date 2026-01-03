@@ -25,23 +25,32 @@ h1, h2, h3 {
     left: 0;
     height: 100%;
     width: 280px;
-    background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%); /* Vibrant blue gradient */
+    min-height: 100vh; /* Ensures it fills screen on short content */
+    background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
     padding: 40px 20px;
     transition: transform 0.4s ease;
     z-index: 1000;
     box-shadow: 8px 0 20px rgba(0,0,0,0.15);
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-header {
     text-align: center;
     margin-bottom: 60px;
+    flex-shrink: 0;
 }
 
 .logo-text {
     font-size: 2.2rem;
     font-weight: bold;
     color: white;
+}
+
+.sidebar nav {
+    flex-grow: 1; /* Takes available space */
+    padding-bottom: 200px; /* Large safe space for user-status - NO OVERLAP */
 }
 
 .sidebar nav ul {
@@ -233,44 +242,47 @@ footer {
     box-shadow: 0 0 50px rgba(255,255,255,0.5);
 }
 
-/* User Status (in sidebar) - Fixed positioning & better spacing */
+/* User Status - Clean Footer Panel in Sidebar */
 #user-status {
     position: absolute;
-    bottom: 40px;
-    left: 40px;
-    right: 40px;
+    bottom: 20px;
+    left: 30px;
+    right: 30px;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
     text-align: center;
     color: white;
     font-size: 1.1rem;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 15px;
-    backdrop-filter: blur(5px);
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-top: 2px solid rgba(255,255,255,0.4);
 }
 
-#user-status .btn {
+#user-status a.btn,
+#user-status button.btn {
     background: #FF5722;
     color: white;
-    margin-top: 10px;
-    padding: 12px 25px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px;
     border-radius: 30px;
     font-weight: bold;
+    font-size: 1.1rem;
 }
 
-#user-status .btn:hover {
+#user-status a.btn:hover,
+#user-status button.btn:hover {
     background: #E64A19;
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
-/* When logged in, show welcome message nicely */
-#user-status span {
+#user-status strong, #user-status small {
     display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
+    margin: 6px 0;
 }
 
-/* Auth & Portal Styles (kept and enhanced) */
+/* Auth & Portal Styles */
 .auth-container {
     max-width: 450px;
     margin: 80px auto;
@@ -302,9 +314,9 @@ table th {
 }
 
 /* Responsive - Mobile */
-@media (max-width: 1024px) {  /* Changed from 992px */
+@media (max-width: 1024px) {
     .hamburger {
-        display: flex !important;  /* Add !important to override any cache */
+        display: flex !important;
     }
     .sidebar {
         transform: translateX(-100%);
