@@ -1,4 +1,4 @@
-/* Global Styles - Minimalist, calm palette for nursery/primary school */
+/* Modern Vibrant Nursery & Primary School Design */
 * {
     margin: 0;
     padding: 0;
@@ -6,349 +6,302 @@
 }
 
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: 'Open Sans', sans-serif;
     line-height: 1.6;
     color: #333;
-    background-color: #f9fcfd;
-}
-
-.container {
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px 0;
-}
-
-header {
-    background-color: #2196F3; /* Calm blue */
-    color: white;
-    padding: 15px 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    font-size: 1.8rem;
-    font-weight: bold;
-}
-
-nav ul {
-    list-style: none;
-    display: flex;
-}
-
-nav ul li {
-    margin-left: 20px;
-}
-
-nav ul li a {
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-nav ul li a:hover {
-    text-decoration: underline;
-}
-
-.mobile-menu {
-    display: none;
-    cursor: pointer;
-    font-size: 1.5rem;
-}
-
-main {
-    min-height: 70vh;
-}
-
-section {
-    padding: 40px 0;
+    background-color: #f0f8ff; /* Light sky blue background */
 }
 
 h1, h2, h3 {
-    color: #1976D2;
+    font-family: 'Comic Neue', cursive;
+    color: #0066cc; /* Deep playful blue */
     margin-bottom: 20px;
 }
 
+/* Sidebar Navigation */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 280px;
+    background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%); /* Vibrant blue gradient */
+    padding: 40px 20px;
+    transition: transform 0.4s ease;
+    z-index: 1000;
+    box-shadow: 8px 0 20px rgba(0,0,0,0.15);
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.logo-text {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.sidebar nav ul {
+    list-style: none;
+}
+
+.sidebar nav ul li {
+    margin: 18px 0;
+}
+
+.sidebar nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 1.3rem;
+    padding: 15px 25px;
+    display: block;
+    border-radius: 15px;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.sidebar nav ul li a:hover {
+    background: rgba(255,255,255,0.25);
+    transform: translateX(10px);
+}
+
+/* Hamburger Menu (Mobile) */
+.hamburger {
+    display: none;
+    cursor: pointer;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    width: 50px;
+    height: 50px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    padding: 12px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.hamburger div {
+    width: 28px;
+    height: 4px;
+    background: #0066cc;
+    margin: 4px 0;
+    transition: all 0.4s ease;
+    border-radius: 4px;
+}
+
+/* Hamburger to X Animation */
+.hamburger.active .line1 {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+.hamburger.active .line2 {
+    opacity: 0;
+}
+.hamburger.active .line3 {
+    transform: rotate(-45deg) translate(8px, -8px);
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 280px;
+    padding: 40px;
+    min-height: 100vh;
+    transition: margin-left 0.4s ease;
+}
+
+/* Hero Section */
 .hero {
-    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://source.unsplash.com/random/1600x900/?school-children-happy') no-repeat center center/cover;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://source.unsplash.com/random/1600x900/?happy-african-children-school-uniform') no-repeat center center/cover;
     color: white;
     text-align: center;
-    padding: 100px 20px;
+    padding: 140px 20px;
+    border-radius: 25px;
+    margin-bottom: 50px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
 .hero h1 {
-    font-size: 3rem;
+    font-size: 4rem;
     color: white;
 }
 
+/* Buttons */
 .btn {
     display: inline-block;
-    background: #4CAF50; /* Soft green */
-    color: white;
-    padding: 10px 20px;
+    background: #FFDD00; /* Sunny yellow */
+    color: #333;
+    padding: 15px 35px;
     text-decoration: none;
-    border-radius: 5px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1.1rem;
     margin-top: 20px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    transition: all 0.3s;
 }
 
 .btn:hover {
-    background: #388E3C;
+    background: #FFC107;
+    transform: translateY(-5px) scale(1.05);
 }
 
+/* Grid & Cards */
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 40px;
 }
 
+.card, .admin-card, .auth-container {
+    background: white;
+    padding: 35px;
+    border-radius: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.card:hover, .admin-card:hover {
+    transform: translateY(-10px);
+}
+
+/* Gallery */
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
 }
 
 .gallery-grid img {
     width: 100%;
-    height: 200px;
+    height: 250px;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: 15px;
     cursor: pointer;
-    transition: transform 0.3s;
+    transition: transform 0.4s, box-shadow 0.4s;
 }
 
 .gallery-grid img:hover {
-    transform: scale(1.05);
+    transform: scale(1.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
-form {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
+/* Forms */
 form input, form textarea {
     width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 2px solid #ddd;
+    border-radius: 15px;
+    font-size: 1rem;
 }
 
+/* Footer */
 footer {
-    background: #2196F3;
+    background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
     color: white;
     text-align: center;
-    padding: 20px 0;
-    margin-top: 40px;
+    padding: 40px 20px;
+    margin-top: 80px;
 }
 
-/* Lightbox for Gallery */
+/* Lightbox */
 .lightbox {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.9);
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
     justify-content: center;
     align-items: center;
-    z-index: 200;
-}
-
-.lightbox img {
-    max-width: 90%;
-    max-height: 90%;
+    z-index: 2000;
 }
 
 .lightbox.active {
     display: flex;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    nav ul {
-        display: none;
-        flex-direction: column;
-        background: #1976D2;
-        position: absolute;
-        top: 60px;
-        right: 0;
-        width: 200px;
-    }
-
-    nav ul.active {
-        display: flex;
-    }
-
-    nav ul li {
-        margin: 15px 0;
-        text-align: center;
-    }
-
-    .mobile-menu {
-        display: block;
-    }
-
-    .hero h1 {
-        font-size: 2.2rem;
-    }
+.lightbox img {
+    max-width: 95%;
+    max-height: 95%;
+    border-radius: 15px;
+    box-shadow: 0 0 50px rgba(255,255,255,0.5);
 }
-/* Auth Modal / User Status */
+
+/* User Status (in sidebar) */
 #user-status {
-    margin-left: 20px;
+    position: absolute;
+    bottom: 40px;
+    left: 20px;
+    right: 20px;
+    text-align: center;
+    color: white;
+    font-size: 1.1rem;
 }
 
 #user-status .btn {
     background: #FF5722;
-    padding: 8px 16px;
-    font-size: 0.9rem;
+    margin-top: 15px;
 }
 
-#user-status .btn:hover {
-    background: #E64A19;
-}
-
-/* Login Page Specific */
+/* Auth & Portal Styles (kept and enhanced) */
 .auth-container {
-    max-width: 400px;
-    margin: 60px auto;
-    padding: 30px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    text-align: center;
+    max-width: 450px;
+    margin: 80px auto;
 }
 
-.auth-container h2 {
-    margin-bottom: 20px;
-    color: #1976D2;
-}
-
-.auth-container input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.auth-container button {
-    width: 100%;
-    padding: 12px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-}
-
-.auth-container button:hover {
-    background: #388E3C;
-}
-
-.toggle-link {
-    margin-top: 20px;
-    display: block;
-    color: #1976D2;
-}
-
-.portal-welcome {
-    text-align: center;
-    padding: 80px 20px;
-    min-height: 70vh;
-}
-/* Admin Portal Styles */
 .admin-sidebar {
-    width: 250px;
-    background: #1976D2;
-    color: white;
-    position: fixed;
-    height: 100%;
-    overflow-y: auto;
-    padding-top: 20px;
-}
-
-.admin-sidebar h2 {
-    text-align: center;
-    margin-bottom: 30px;
-    color: white;
-}
-
-.admin-sidebar a {
-    display: block;
-    color: white;
-    padding: 15px 20px;
-    text-decoration: none;
-}
-
-.admin-sidebar a:hover, .admin-sidebar a.active {
-    background: #1565C0;
+    width: 280px;
+    background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
 }
 
 .admin-main {
-    margin-left: 250px;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-.admin-card {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    margin-bottom: 30px;
+    margin-left: 280px;
+    padding: 40px;
 }
 
 table {
     width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
+    border-collapse: separate;
+    border-spacing: 0 10px;
 }
 
 table th, table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
+    padding: 18px;
+    background: #f8fbff;
 }
 
 table th {
-    background: #f0f0f0;
+    background: #E3F2FD;
 }
 
-.btn-small {
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    margin: 0 5px;
-}
-
-.btn-danger {
-    background: #f44336;
-}
-
-.btn-danger:hover {
-    background: #d32f2f;
-}
-
-form.admin-form {
-    display: grid;
-    gap: 15px;
-    max-width: 600px;
-}
-
+/* Responsive - Mobile */
 @media (max-width: 992px) {
+    .hamburger {
+        display: flex;
+    }
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-left: 0;
+        padding: 80px 20px 40px;
+    }
+    .hero h1 {
+        font-size: 2.8rem;
+    }
     .admin-sidebar {
         width: 100%;
-        height: auto;
         position: relative;
+        height: auto;
     }
     .admin-main {
         margin-left: 0;
