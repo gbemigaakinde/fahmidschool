@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Results - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @media print {
+            body { margin: 0; padding: 20px; font-size: 12pt; }
+            .no-print { display: none; }
+            table { page-break-inside: avoid; }
+        }
+        .result-sheet {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 3px double #1976D2;
+            padding: 40px;
+            background: white;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .school-header h1 {
+            color: #1976D2;
+            font-size: 28pt;
+        }
+        .pupil-info {
+            margin: 30px 0;
+            font-size: 14pt;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #333;
+            padding: 12px;
+            text-align: left;
+        }
+        .results-table th {
+            background: #E3F2FD;
+        }
+    </style>
+</head>
+<body>
+    <div class="result-sheet">
+        <div class="school-header">
+            <h1>Fahmid Nursery & Primary School</h1>
+            <p><strong>Academic Report Card</strong></p>
+            <p>Session: 2025/2026</p>
+        </div>
+
+        <div class="pupil-info" id="pupil-info">
+            <p><strong>Name:</strong> <span id="print-name">Loading...</span></p>
+            <p><strong>Class:</strong> <span id="print-class">Loading...</span></p>
+        </div>
+
+        <div id="print-results-container">
+            <p>Loading results...</p>
+        </div>
+
+        <div style="margin-top:60px; text-align:center;">
+            <p>___________________________</p>
+            <p><strong>Class Teacher's Signature</strong></p>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin:40px;" class="no-print">
+        <button class="btn" onclick="window.print()">🖨️ Print This Page</button>
+        <button class="btn" onclick="window.location.href='pupil.html'" style="background:#666; margin-left:10px;">← Back to Portal</button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-init.js"></script>
+    <script>
+        // Same authentication and data loading logic as pupil.html
+        let currentPupilId = null;
+
+        checkRole('pupil').then(async user => {
+            const pupilsSnap = await db.collection('pupils').where('parentEmail', '==', user.email).orWhere('email', '==', user.email).get();
+            if (pupilsSnap.empty) {
+                alert('No pupil profile found.');
+                window.location.href = 'login.html';
+                return;
+            }
+            const pupilDoc = pupilsSnap.docs[0];
+            const pupilData = pupilDoc.data();
+            currentPupilId = pupilDoc.id;
+
+            document.getElementById('print-name').textContent = pupilData.name;
+            document.getElementById('print-class').textContent = pupilData.class || 'N/A';
+
+            loadPrintResults();
+        });
+
+        async function loadPrintResults() {
+            const resultsSnap = await db.collection('results').where('pupilId', '==', currentPupilId).get();
+            if (resultsSnap.empty) {
+                document.getElementById('print-results-container').innerHTML = '<p>No results available yet.</p>';
+                return;
+            }
+
+            const terms = {};
+            resultsSnap.forEach(doc => {
+                const r = doc.data();
+                if (!terms[r.term]) terms[r.term] = [];
+                terms[r.term].push(r);
+            });
+
+            let html = '';
+            for (const term in terms) {
+                html += `<h2 style="text-align:center; color:#1976D2;">${term}</h2>`;
+                html += `<table class="results-table"><thead><tr><th>Subject</th><th>Score</th><th>Grade</th></tr></thead><tbody>`;
+                terms[term].forEach(r => {
+                    html += `<tr><td>${r.subject}</td><td>${r.score}/100</td><td>${getGrade(r.score)}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+
+            document.getElementById('print-results-container').innerHTML = html;
+        }
+
+        function getGrade(score) {
+            if (score >= 90) return 'A+';
+            if (score >= 80) return 'A';
+            if (score >= 70) return 'B';
+            if (score >= 60) return 'C';
+            if (score >= 50) return 'D';
+            return 'F';
+        }
+    </script>
+</body>
+</html>
