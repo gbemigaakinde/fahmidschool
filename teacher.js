@@ -1,8 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - COMPLETE FIX
+ * Teacher Portal JavaScript - ORDERBY FIX
  * 
- * @version 3.0.0 - COMPREHENSIVE FIX
+ * @version 3.1.0 - REMOVED ORDERBY DEPENDENCY
  * @date 2026-01-03
  */
 
@@ -87,30 +87,34 @@ async function loadTeacherData() {
 }
 
 // ============================================
-// DASHBOARD STATISTICS
+// DASHBOARD STATISTICS - FIXED
 // ============================================
 
 async function loadTeacherDashboard() {
     try {
+        // Get classes count
         const classesSnap = await db.collection('classes').get();
-        document.getElementById('my-class-count').textContent = classesSnap.size;
+        const classCount = classesSnap.size;
+        document.getElementById('my-class-count').textContent = classCount;
 
-        let totalPupils = 0;
-        for (let doc of classesSnap.docs) {
-            const pupilsSnap = await db.collection('pupils')
-                .where('class', '==', doc.data().name)
-                .get();
-            totalPupils += pupilsSnap.size;
-        }
-        document.getElementById('my-pupil-count').textContent = totalPupils;
+        // Get total pupils count across all classes
+        const pupilsSnap = await db.collection('pupils').get();
+        document.getElementById('my-pupil-count').textContent = pupilsSnap.size;
+
+        console.log('✓ Dashboard stats loaded:', {
+            classes: classCount,
+            pupils: pupilsSnap.size
+        });
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
+        document.getElementById('my-class-count').textContent = '0';
+        document.getElementById('my-pupil-count').textContent = '0';
         handleError(error, 'Failed to load dashboard statistics');
     }
 }
 
 // ============================================
-// MY CLASSES
+// MY CLASSES - FIXED
 // ============================================
 
 async function loadClassesForTeacher() {
@@ -120,14 +124,28 @@ async function loadClassesForTeacher() {
     selector.innerHTML = '<option value="">-- Select a Class --</option>';
 
     try {
-        const snapshot = await db.collection('classes').orderBy('name').get();
+        // Removed .orderBy() - sort in JavaScript instead
+        const snapshot = await db.collection('classes').get();
         
+        // Sort classes by name in JavaScript
+        const classes = [];
         snapshot.forEach(doc => {
+            classes.push({
+                id: doc.id,
+                name: doc.data().name
+            });
+        });
+        
+        classes.sort((a, b) => a.name.localeCompare(b.name));
+        
+        classes.forEach(classItem => {
             const opt = document.createElement('option');
-            opt.value = `${doc.id}|${doc.data().name}`;
-            opt.textContent = doc.data().name;
+            opt.value = `${classItem.id}|${classItem.name}`;
+            opt.textContent = classItem.name;
             selector.appendChild(opt);
         });
+
+        console.log('✓ Loaded', classes.length, 'classes');
     } catch (error) {
         console.error('Error loading classes:', error);
         handleError(error, 'Failed to load classes');
@@ -154,20 +172,27 @@ async function loadPupilsInClass() {
 
         console.log('Loading pupils for class:', className);
 
+        // Removed .orderBy() - sort in JavaScript instead
         const pupilsSnap = await db.collection('pupils')
             .where('class', '==', className)
-            .orderBy('name')
             .get();
 
         tbody.innerHTML = '';
 
         if (pupilsSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No pupils in this class</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No pupils in this class yet</td></tr>';
             return;
         }
 
+        // Sort pupils by name in JavaScript
+        const pupils = [];
         pupilsSnap.forEach(doc => {
-            const data = doc.data();
+            pupils.push(doc.data());
+        });
+        
+        pupils.sort((a, b) => a.name.localeCompare(b.name));
+
+        pupils.forEach(data => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td data-label="Pupil Name">${data.name}</td>
@@ -176,7 +201,7 @@ async function loadPupilsInClass() {
             tbody.appendChild(tr);
         });
 
-        console.log('✓ Loaded', pupilsSnap.size, 'pupils');
+        console.log('✓ Loaded', pupils.length, 'pupils');
     } catch (error) {
         console.error('Error loading pupils:', error);
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading pupils. Please try again.</td></tr>';
@@ -185,7 +210,7 @@ async function loadPupilsInClass() {
 }
 
 // ============================================
-// RESULTS ENTRY
+// RESULTS ENTRY - FIXED
 // ============================================
 
 async function loadClassesForResults() {
@@ -195,14 +220,28 @@ async function loadClassesForResults() {
     selector.innerHTML = '<option value="">-- Select Class --</option>';
 
     try {
-        const snapshot = await db.collection('classes').orderBy('name').get();
+        // Removed .orderBy() - sort in JavaScript instead
+        const snapshot = await db.collection('classes').get();
         
+        // Sort classes by name in JavaScript
+        const classes = [];
         snapshot.forEach(doc => {
+            classes.push({
+                id: doc.id,
+                name: doc.data().name
+            });
+        });
+        
+        classes.sort((a, b) => a.name.localeCompare(b.name));
+        
+        classes.forEach(classItem => {
             const opt = document.createElement('option');
-            opt.value = `${doc.id}|${doc.data().name}`;
-            opt.textContent = doc.data().name;
+            opt.value = `${classItem.id}|${classItem.name}`;
+            opt.textContent = classItem.name;
             selector.appendChild(opt);
         });
+
+        console.log('✓ Loaded classes for results');
     } catch (error) {
         console.error('Error loading classes for results:', error);
         handleError(error, 'Failed to load classes');
@@ -213,16 +252,16 @@ async function loadSubjectsForResults() {
     const selector = document.getElementById('result-subject');
     if (!selector) return;
 
-    // Store current selection
     const currentValue = selector.value;
     
     selector.innerHTML = '<option value="">-- Select Subject --</option>';
 
     try {
-        const snapshot = await db.collection('subjects').orderBy('name').get();
+        // Removed .orderBy() - sort in JavaScript instead
+        const snapshot = await db.collection('subjects').get();
         
         if (snapshot.empty) {
-            // Fallback to default subjects if none in database
+            // Fallback to default subjects
             const defaultSubjects = ['English', 'Mathematics', 'Science', 'Social Studies', 'Arts', 'Physical Education'];
             defaultSubjects.forEach(subject => {
                 const opt = document.createElement('option');
@@ -230,16 +269,26 @@ async function loadSubjectsForResults() {
                 opt.textContent = subject;
                 selector.appendChild(opt);
             });
+            console.log('✓ Using default subjects');
         } else {
+            // Sort subjects by name in JavaScript
+            const subjects = [];
             snapshot.forEach(doc => {
+                subjects.push(doc.data().name);
+            });
+            
+            subjects.sort((a, b) => a.localeCompare(b));
+            
+            subjects.forEach(subjectName => {
                 const opt = document.createElement('option');
-                opt.value = doc.data().name;
-                opt.textContent = doc.data().name;
+                opt.value = subjectName;
+                opt.textContent = subjectName;
                 selector.appendChild(opt);
             });
+            
+            console.log('✓ Loaded', subjects.length, 'subjects');
         }
 
-        // Restore previous selection if it exists
         if (currentValue) {
             selector.value = currentValue;
         }
@@ -285,18 +334,29 @@ async function loadClassForResults() {
     try {
         console.log('Loading class for results:', { classId, className, term, subject });
 
+        // Removed .orderBy() - sort in JavaScript instead
         const pupilsSnap = await db.collection('pupils')
             .where('class', '==', className)
-            .orderBy('name')
             .get();
 
         if (pupilsSnap.empty) {
-            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in this class</p>';
+            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in this class yet</p>';
             if (saveBtn) saveBtn.style.display = 'none';
             return;
         }
 
         console.log('✓ Found', pupilsSnap.size, 'pupils');
+
+        // Sort pupils by name in JavaScript
+        const pupils = [];
+        pupilsSnap.forEach(pupilDoc => {
+            pupils.push({
+                id: pupilDoc.id,
+                data: pupilDoc.data()
+            });
+        });
+        
+        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
 
         let tableHTML = `
             <table class="responsive-table">
@@ -310,9 +370,9 @@ async function loadClassForResults() {
                 <tbody>
         `;
 
-        for (let pupilDoc of pupilsSnap.docs) {
-            const pupil = pupilDoc.data();
-            const pupilId = pupilDoc.id;
+        for (let pupilItem of pupils) {
+            const pupil = pupilItem.data;
+            const pupilId = pupilItem.id;
 
             // Check existing result
             const existingSnap = await db.collection('results')
@@ -372,7 +432,6 @@ async function saveAllResults() {
         return;
     }
 
-    // Show loading state
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.classList.add('loading');
@@ -418,7 +477,6 @@ async function saveAllResults() {
         
         window.showToast?.(`✓ ${updatedCount} result(s) saved successfully`, 'success');
         
-        // Reload the results table
         await loadClassForResults();
     } catch (error) {
         console.error('Error saving results:', error);
