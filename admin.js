@@ -1,16 +1,15 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript
- * Phases 4-7 Complete
+ * Admin Portal JavaScript - FIXED
  * 
  * Handles:
  * - Dashboard statistics
- * - Teacher management (CRUD)
- * - Pupil management (CRUD)
+ * - Teacher management (CRUD) with Auth
+ * - Pupil management (CRUD) with Auth
  * - Class management (CRUD)
  * - Announcements (CRUD)
  * 
- * @version 2.1.0
+ * @version 2.2.0 - AUTHENTICATION FIX
  * @date 2026-01-03
  */
 
@@ -19,6 +18,19 @@
 // ============================================
 // INITIALIZATION
 // ============================================
+
+// Create secondary Firebase app for user creation (prevents admin logout)
+let secondaryApp;
+let secondaryAuth;
+
+try {
+    secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+    secondaryAuth = secondaryApp.auth();
+} catch (error) {
+    console.warn('Secondary app already exists or error:', error);
+    secondaryApp = firebase.app('Secondary');
+    secondaryAuth = secondaryApp.auth();
+}
 
 // Enforce admin access
 checkRole('admin').catch(() => {
@@ -35,23 +47,16 @@ document.getElementById('admin-logout')?.addEventListener('click', (e) => {
 // NAVIGATION
 // ============================================
 
-/**
- * Show specific admin section
- * @param {string} sectionId - Section ID to display
- */
 function showSection(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.admin-card').forEach(card => {
         card.style.display = 'none';
     });
     
-    // Show selected section
     const section = document.getElementById(sectionId);
     if (section) {
         section.style.display = 'block';
     }
     
-    // Update active nav link
     document.querySelectorAll('.admin-sidebar a').forEach(a => {
         a.classList.remove('active');
     });
@@ -60,7 +65,6 @@ function showSection(sectionId) {
         activeLink.classList.add('active');
     }
     
-    // Load section-specific data
     switch(sectionId) {
         case 'dashboard':
             loadDashboardStats();
@@ -79,7 +83,6 @@ function showSection(sectionId) {
             break;
     }
     
-    // Close mobile sidebar if open
     const sidebar = document.getElementById('admin-sidebar');
     const hamburger = document.getElementById('hamburger');
     if (sidebar && sidebar.classList.contains('active')) {
@@ -94,10 +97,6 @@ function showSection(sectionId) {
 // DASHBOARD STATISTICS
 // ============================================
 
-/**
- * Load dashboard statistics
- * @async
- */
 async function loadDashboardStats() {
     try {
         const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
@@ -118,7 +117,7 @@ async function loadDashboardStats() {
 }
 
 // ============================================
-// TEACHERS CRUD - WITH AUTH + TEMP PASSWORD
+// TEACHERS CRUD - FIXED AUTHENTICATION
 // ============================================
 
 function showTeacherForm() {
@@ -134,7 +133,6 @@ function cancelTeacherForm() {
     document.getElementById('add-teacher-form').reset();
 }
 
-// Attach submit handler when DOM is ready
 document.getElementById('add-teacher-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -148,32 +146,37 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
         return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         window.showToast?.('Please enter a valid email address', 'warning');
         return;
     }
 
-    // Basic password validation
     if (tempPassword.length < 6) {
         window.showToast?.('Password must be at least 6 characters', 'warning');
         return;
     }
 
+    // Show loading
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
+
     try {
-        // 1. Create Firebase Auth user
-        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
+        // Use SECONDARY auth instance to create user (keeps admin logged in)
+        const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
         const uid = userCredential.user.uid;
 
-        // 2. Save role to 'users'
+        console.log('✓ Teacher auth created with UID:', uid);
+
+        // Save role to 'users' collection
         await db.collection('users').doc(uid).set({
             email,
             role: 'teacher',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Save teacher profile to 'teachers'
+        // Save teacher profile to 'teachers' collection with same UID
         await db.collection('teachers').doc(uid).set({
             name,
             email,
@@ -181,33 +184,35 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 4. Send password reset email
-        await firebase.auth().sendPasswordResetEmail(email);
+        // Sign out the new user from secondary auth
+        await secondaryAuth.signOut();
 
-        window.showToast?.(`Teacher "${name}" added successfully! Password reset email sent to ${email}. They must reset before logging in.`, 'success');
+        // Send password reset email using PRIMARY auth
+        await auth.sendPasswordResetEmail(email);
 
-        // Reset and hide form
+        window.showToast?.(`Teacher "${name}" added! Password reset email sent to ${email}.`, 'success', 5000);
+
         cancelTeacherForm();
-
-        // Reload data
         loadTeachers();
         loadDashboardStats();
 
     } catch (error) {
         console.error('Error adding teacher:', error);
+        
         if (error.code === 'auth/email-already-in-use') {
             window.showToast?.('This email is already registered.', 'danger');
         } else if (error.code === 'auth/weak-password') {
-            window.showToast?.('Password is too weak.', 'danger');
+            window.showToast?.('Password is too weak. Must be at least 6 characters.', 'danger');
         } else {
             window.showToast?.(`Error: ${error.message}`, 'danger');
         }
+    } finally {
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Teacher';
     }
 });
 
-/**
- * Load teachers from 'teachers' collection
- */
 async function loadTeachers() {
     const tbody = document.querySelector('#teachers-table tbody');
     if (!tbody) return;
@@ -215,9 +220,7 @@ async function loadTeachers() {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('teachers')
-            .orderBy('name')
-            .get();
+        const snapshot = await db.collection('teachers').orderBy('name').get();
 
         tbody.innerHTML = '';
 
@@ -246,7 +249,7 @@ async function loadTeachers() {
 }
 
 // ============================================
-// PUPILS CRUD - WITH AUTH + TEMP PASSWORD
+// PUPILS CRUD - FIXED AUTHENTICATION
 // ============================================
 
 function showPupilForm() {
@@ -262,7 +265,6 @@ function cancelPupilForm() {
     document.getElementById('add-pupil-form').reset();
 }
 
-// Attach submit handler for pupil form
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -279,29 +281,40 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        window.showToast?.('Please enter a valid email address', 'warning');
+        window.showToast?.('Please enter a valid email address for pupil login', 'warning');
         return;
     }
 
-    // Basic password validation
+    if (parentEmail && !emailRegex.test(parentEmail)) {
+        window.showToast?.('Please enter a valid parent email address', 'warning');
+        return;
+    }
+
     if (tempPassword.length < 6) {
         window.showToast?.('Password must be at least 6 characters', 'warning');
         return;
     }
 
+    // Show loading
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="btn-loading">Creating pupil...</span>';
+
     try {
-        // 1. Create Auth user
-        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
+        // Use SECONDARY auth instance
+        const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
         const uid = userCredential.user.uid;
 
-        // 2. Save role to 'users'
+        console.log('✓ Pupil auth created with UID:', uid);
+
+        // Save role to 'users' collection
         await db.collection('users').doc(uid).set({
             email,
             role: 'pupil',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Save pupil profile to 'pupils'
+        // Save pupil profile to 'pupils' collection with same UID (IMPORTANT!)
         await db.collection('pupils').doc(uid).set({
             name,
             email,
@@ -310,10 +323,13 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 4. Send password reset email
-        await firebase.auth().sendPasswordResetEmail(email);
+        // Sign out from secondary auth
+        await secondaryAuth.signOut();
 
-        window.showToast?.(`Pupil "${name}" added! Password reset email sent to ${email}. They must reset before logging in.`, 'success');
+        // Send password reset email
+        await auth.sendPasswordResetEmail(email);
+
+        window.showToast?.(`Pupil "${name}" added! Password reset email sent to ${email}.`, 'success', 5000);
 
         cancelPupilForm();
         loadPupils();
@@ -321,6 +337,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
     } catch (error) {
         console.error('Error adding pupil:', error);
+        
         if (error.code === 'auth/email-already-in-use') {
             window.showToast?.('This email is already in use.', 'danger');
         } else if (error.code === 'auth/weak-password') {
@@ -328,12 +345,13 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         } else {
             window.showToast?.(`Error: ${error.message}`, 'danger');
         }
+    } finally {
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Pupil';
     }
 });
 
-/**
- * Load pupils from 'pupils' collection
- */
 async function loadPupils() {
     const tbody = document.querySelector('#pupils-table tbody');
     if (!tbody) return;
@@ -341,9 +359,7 @@ async function loadPupils() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('pupils')
-            .orderBy('name')
-            .get();
+        const snapshot = await db.collection('pupils').orderBy('name').get();
 
         tbody.innerHTML = '';
 
@@ -372,21 +388,24 @@ async function loadPupils() {
     }
 }
 
-// Generic delete function for users (teachers/pupils)
+// ============================================
+// DELETE USER (TEACHERS/PUPILS)
+// ============================================
+
 async function deleteUser(collection, uid) {
     if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
 
     try {
-        // Delete profile from 'teachers' or 'pupils'
+        // Delete profile from collection
         await db.collection(collection).doc(uid).delete();
 
         // Delete role from 'users'
         await db.collection('users').doc(uid).delete();
 
-        // Note: To fully delete Firebase Auth user, implement a Cloud Function triggered on this delete
-        window.showToast?.('User deleted', 'success');
+        // Note: Firebase Auth user deletion requires Admin SDK or Cloud Function
+        // For now, we just delete Firestore data
+        window.showToast?.('User profile deleted. Note: Auth account still exists but cannot access portal.', 'success', 5000);
         
-        // Reload relevant sections
         if (collection === 'teachers') {
             loadTeachers();
         } else if (collection === 'pupils') {
@@ -403,9 +422,6 @@ async function deleteUser(collection, uid) {
 // CLASSES CRUD
 // ============================================
 
-/**
- * Show class form
- */
 function showClassForm() {
     const form = document.getElementById('class-form');
     if (form) {
@@ -414,10 +430,6 @@ function showClassForm() {
     }
 }
 
-/**
- * Add new class to Firestore
- * @async
- */
 async function addClass() {
     const className = document.getElementById('class-name')?.value.trim();
 
@@ -427,7 +439,6 @@ async function addClass() {
     }
 
     try {
-        // Check if class already exists
         const existingSnap = await db.collection('classes').where('name', '==', className).get();
         
         if (!existingSnap.empty) {
@@ -442,11 +453,9 @@ async function addClass() {
 
         window.showToast?.('Class created successfully', 'success');
         
-        // Reset form
         document.getElementById('class-form').style.display = 'none';
         document.getElementById('class-name').value = '';
         
-        // Reload data
         loadClasses();
         loadDashboardStats();
     } catch (error) {
@@ -455,10 +464,6 @@ async function addClass() {
     }
 }
 
-/**
- * Load classes list from Firestore
- * @async
- */
 async function loadClasses() {
     const tbody = document.querySelector('#classes-table tbody');
     if (!tbody) return;
@@ -478,7 +483,6 @@ async function loadClasses() {
         for (let doc of snapshot.docs) {
             const classData = doc.data();
             
-            // Count pupils in this class (from 'pupils')
             const pupilsSnap = await db.collection('pupils')
                 .where('class', '==', classData.name)
                 .get();
@@ -503,9 +507,6 @@ async function loadClasses() {
 // ANNOUNCEMENTS CRUD
 // ============================================
 
-/**
- * Show announcement form
- */
 function showAnnounceForm() {
     const form = document.getElementById('announce-form');
     if (form) {
@@ -514,10 +515,6 @@ function showAnnounceForm() {
     }
 }
 
-/**
- * Add new announcement to Firestore
- * @async
- */
 async function addAnnouncement() {
     const title = document.getElementById('announce-title')?.value.trim();
     const content = document.getElementById('announce-content')?.value.trim();
@@ -536,12 +533,10 @@ async function addAnnouncement() {
 
         window.showToast?.('Announcement published successfully', 'success');
         
-        // Reset form
         document.getElementById('announce-form').style.display = 'none';
         document.getElementById('announce-title').value = '';
         document.getElementById('announce-content').value = '';
         
-        // Reload data
         loadAdminAnnouncements();
         loadDashboardStats();
     } catch (error) {
@@ -550,10 +545,6 @@ async function addAnnouncement() {
     }
 }
 
-/**
- * Load announcements list for admin
- * @async
- */
 async function loadAdminAnnouncements() {
     const list = document.getElementById('announcements-list');
     if (!list) return;
@@ -594,15 +585,9 @@ async function loadAdminAnnouncements() {
 }
 
 // ============================================
-// GENERIC DELETE FUNCTION
+// GENERIC DELETE
 // ============================================
 
-/**
- * Delete document from Firestore collection
- * @async
- * @param {string} collectionName - Firestore collection name
- * @param {string} docId - Document ID to delete
- */
 async function deleteDoc(collectionName, docId) {
     if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
         return;
@@ -613,7 +598,6 @@ async function deleteDoc(collectionName, docId) {
         
         window.showToast?.('Item deleted successfully', 'success');
         
-        // Reload appropriate section
         loadDashboardStats();
         
         switch(collectionName) {
@@ -634,8 +618,7 @@ async function deleteDoc(collectionName, docId) {
 // PAGE LOAD
 // ============================================
 
-// Load dashboard on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardStats();
-    console.log('✓ Admin portal initialized');
+    console.log('✓ Admin portal initialized with secondary auth');
 });
