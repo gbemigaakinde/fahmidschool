@@ -34,6 +34,7 @@ h1, h2, h3 {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    justify-content: space-between; /* Pushes status to bottom */
 }
 
 .sidebar-header {
@@ -50,7 +51,7 @@ h1, h2, h3 {
 
 .sidebar nav {
     flex-grow: 1; /* Takes available space */
-    padding-bottom: 250px !important; /* More space - forces menu up */
+    padding-bottom: 100px !important; /* More space - forces menu up */
 }
 
 .sidebar nav ul {
