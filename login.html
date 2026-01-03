@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Shared Header (updated below) -->
+    <header>
+        <div class="container">
+            <div class="logo">Fahmid Nursery & Primary School</div>
+            <div class="mobile-menu">☰</div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                <li><a href="academics.html">Academics</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="school-life.html">School Life</a></li>
+                <li><a href="gallery.html">Gallery</a></li>
+                <li><a href="news.html">News</a></li>
+                <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </nav>
+            <div id="user-status"></div>
+        </div>
+    </header>
+
+    <div class="auth-container">
+        <h2 id="auth-title">Login</h2>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <div id="role-selection" style="display:none; margin:15px 0;">
+            <label><input type="radio" name="role" value="teacher"> Teacher</label>
+            <label><input type="radio" name="role" value="pupil" checked> Pupil/Parent</label>
+        </div>
+        <button id="auth-btn">Login</button>
+        <a href="#" class="toggle-link" id="toggle-link">Need an account? Register</a>
+        <a href="#" onclick="resetPassword(prompt('Enter your email:'))" style="display:block; margin-top:10px; font-size:0.9rem;">Forgot password?</a>
+    </div>
+
+    <!-- Shared Footer -->
+    <footer>
+        <div class="container">
+            &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+        </div>
+    </footer>
+
+    <script src="firebase-init.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Toggle between Login and Register
+        const title = document.getElementById('auth-title');
+        const btn = document.getElementById('auth-btn');
+        const toggle = document.getElementById('toggle-link');
+        const roleDiv = document.getElementById('role-selection');
+
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (title.textContent === 'Login') {
+                title.textContent = 'Register';
+                btn.textContent = 'Register';
+                toggle.textContent = 'Already have an account? Login';
+                roleDiv.style.display = 'block';
+            } else {
+                title.textContent = 'Login';
+                btn.textContent = 'Login';
+                toggle.textContent = 'Need an account? Register';
+                roleDiv.style.display = 'none';
+            }
+        });
+
+        btn.addEventListener('click', () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            if (title.textContent === 'Login') {
+                login(email, password);
+            } else {
+                const role = document.querySelector('input[name="role"]:checked').value;
+                register(email, password, role);
+            }
+        });
+    </script>
+</body>
+</html>
