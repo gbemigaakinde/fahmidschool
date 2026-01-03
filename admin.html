@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Portal - Fahmid Nursery & Primary School</title>
+    <title>Admin Portal - Fahmid School</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,59 +11,52 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Skip to main content -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
-    <button class="hamburger hamburger-portal" id="hamburger" aria-label="Toggle admin menu" aria-expanded="false">
+    <button class="hamburger hamburger-portal" id="hamburger" aria-label="Toggle admin menu">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Admin Sidebar -->
-    <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
+    <nav class="admin-sidebar" id="admin-sidebar">
         <h2>Admin Panel</h2>
         <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
         <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
         <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
         <a href="#classes" onclick="showSection('classes')">Classes</a>
+        <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
         <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
         <hr style="margin: var(--space-lg) 0; border: none; border-top: 1px solid rgba(255,255,255,0.2);">
         <a href="index.html">← Back to Public Site</a>
-        <a href="#" id="admin-logout" style="color: var(--color-danger); margin-top: var(--space-sm);">Logout</a>
+        <a href="#" id="admin-logout" style="color: var(--color-danger);">Logout</a>
     </nav>
 
-    <!-- Main Content -->
     <main class="admin-main" id="main-content">
         <!-- Dashboard -->
         <div id="dashboard" class="admin-card">
             <h1>Admin Dashboard</h1>
             <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Welcome to the school management system</p>
-            <div class="grid">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <div class="admin-card stat-card">
                     <h3>Total Teachers</h3>
-                    <div class="stat-number" id="teacher-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="teacher-count">0</div>
                 </div>
                 <div class="admin-card stat-card">
                     <h3>Total Pupils</h3>
-                    <div class="stat-number" id="pupil-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="pupil-count">0</div>
                 </div>
                 <div class="admin-card stat-card">
                     <h3>Total Classes</h3>
-                    <div class="stat-number" id="class-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="class-count">0</div>
+                </div>
+                <div class="admin-card stat-card">
+                    <h3>Total Subjects</h3>
+                    <div class="stat-number" id="subject-count">0</div>
                 </div>
                 <div class="admin-card stat-card">
                     <h3>Announcements</h3>
-                    <div class="stat-number" id="announce-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="announce-count">0</div>
                 </div>
             </div>
         </div>
@@ -78,19 +71,19 @@
                 <form id="add-teacher-form" class="admin-form">
                     <div class="form-group">
                         <label for="teacher-name">Full Name <span class="required">*</span></label>
-                        <input type="text" id="teacher-name" placeholder="Enter teacher's full name" required>
+                        <input type="text" id="teacher-name" required>
                     </div>
                     <div class="form-group">
-                        <label for="teacher-email">Email (Login) <span class="required">*</span></label>
-                        <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
+                        <label for="teacher-email">Email <span class="required">*</span></label>
+                        <input type="email" id="teacher-email" required>
                     </div>
                     <div class="form-group">
                         <label for="teacher-subject">Subject(s)</label>
-                        <input type="text" id="teacher-subject" placeholder="e.g., Mathematics, English">
+                        <input type="text" id="teacher-subject">
                     </div>
                     <div class="form-group">
-                        <label for="teacher-password">Temporary Password <span class="required">*</span></label>
-                        <input type="password" id="teacher-password" placeholder="Temporary login password" required minlength="6">
+                        <label for="teacher-password">Password <span class="required">*</span></label>
+                        <input type="password" id="teacher-password" required minlength="6">
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn">Save Teacher</button>
@@ -110,12 +103,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td colspan="4" style="text-align: center;">
-                                <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                                <div class="skeleton" style="height: 20px;"></div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="4" style="text-align: center;">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -131,7 +119,7 @@
                 <form id="add-pupil-form" class="admin-form">
                     <div class="form-group">
                         <label for="pupil-name">Full Name <span class="required">*</span></label>
-                        <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
+                        <input type="text" id="pupil-name" required>
                     </div>
                     <div class="form-group">
                         <label for="pupil-class">Class <span class="required">*</span></label>
@@ -139,15 +127,15 @@
                     </div>
                     <div class="form-group">
                         <label for="pupil-parent">Parent Email</label>
-                        <input type="email" id="pupil-parent" placeholder="parent@example.com">
+                        <input type="email" id="pupil-parent">
                     </div>
                     <div class="form-group">
-                        <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
-                        <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+                        <label for="pupil-email">Pupil Email <span class="required">*</span></label>
+                        <input type="email" id="pupil-email" required>
                     </div>
                     <div class="form-group">
-                        <label for="pupil-password">Temporary Password <span class="required">*</span></label>
-                        <input type="password" id="pupil-password" placeholder="Temporary login password" required minlength="6">
+                        <label for="pupil-password">Password <span class="required">*</span></label>
+                        <input type="password" id="pupil-password" required minlength="6">
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn">Save Pupil</button>
@@ -163,17 +151,12 @@
                             <th>Name</th>
                             <th>Class</th>
                             <th>Parent Email</th>
-                            <th>Email (Login)</th>
+                            <th>Email</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td colspan="5" style="text-align: center;">
-                                <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                                <div class="skeleton" style="height: 20px;"></div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -188,7 +171,7 @@
                 <h3>Create New Class</h3>
                 <div class="form-group">
                     <label for="class-name">Class Name <span class="required">*</span></label>
-                    <input type="text" id="class-name" placeholder="e.g., Nursery 1, Primary 3" required>
+                    <input type="text" id="class-name" placeholder="e.g., Primary 3" required>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn" onclick="addClass()">Create Class</button>
@@ -206,12 +189,39 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr><td colspan="3" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Subjects Section (NEW) -->
+        <div id="subjects" class="admin-card" style="display:none;">
+            <h1>Manage Subjects</h1>
+            <button class="btn" onclick="showSubjectForm()">+ Add New Subject</button>
+
+            <div id="subject-form" style="display:none; margin-top: var(--space-xl);">
+                <h3>Add New Subject</h3>
+                <div class="form-group">
+                    <label for="subject-name">Subject Name <span class="required">*</span></label>
+                    <input type="text" id="subject-name" placeholder="e.g., Mathematics" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="addSubject()">Add Subject</button>
+                    <button type="button" class="btn" onclick="document.getElementById('subject-form').style.display='none'" style="background: var(--color-gray-600);">Cancel</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="subjects-table" class="responsive-table">
+                    <thead>
                         <tr>
-                            <td colspan="3" style="text-align: center;">
-                                <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                                <div class="skeleton" style="height: 20px;"></div>
-                            </td>
+                            <th>Subject Name</th>
+                            <th>Actions</th>
                         </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="2" style="text-align: center;">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -227,11 +237,11 @@
                 <form id="add-announcement-form" class="admin-form">
                     <div class="form-group">
                         <label for="announce-title">Title <span class="required">*</span></label>
-                        <input type="text" id="announce-title" placeholder="Announcement title" required>
+                        <input type="text" id="announce-title" required>
                     </div>
                     <div class="form-group">
                         <label for="announce-content">Content <span class="required">*</span></label>
-                        <textarea id="announce-content" rows="6" placeholder="Write your announcement here..." required></textarea>
+                        <textarea id="announce-content" rows="6" required></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn" onclick="addAnnouncement()">Publish</button>
@@ -240,18 +250,11 @@
                 </form>
             </div>
 
-            <div id="announcements-list" style="margin-top: var(--space-xl);">
-                <div class="skeleton-container">
-                    <div class="skeleton" style="height: 30px; width: 60%; margin-bottom: var(--space-md);"></div>
-                    <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                    <div class="skeleton" style="height: 20px; width: 90%;"></div>
-                </div>
-            </div>
+            <div id="announcements-list" style="margin-top: var(--space-xl);"></div>
         </div>
     </main>
 
-    <!-- Toast Container -->
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div id="toast-container"></div>
 
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
@@ -270,64 +273,11 @@
             color: var(--color-white);
             font-size: var(--font-size-base);
             margin-bottom: var(--space-sm);
-            opacity: 0.9;
         }
         
         .stat-number {
             font-size: var(--font-size-3xl);
             font-weight: var(--font-weight-bold);
-            margin-top: var(--space-sm);
-        }
-
-        .table-container {
-            margin-top: var(--space-xl);
-            overflow-x: auto;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
-        .hamburger-portal {
-            display: none;
-        }
-
-        @media (max-width: 1024px) {
-            .hamburger-portal {
-                display: flex;
-                background: var(--color-primary);
-            }
-
-            .hamburger-portal span {
-                background: var(--color-white);
-            }
-
-            .admin-sidebar {
-                transform: translateX(-100%);
-                transition: transform var(--transition-slow);
-            }
-
-            .admin-sidebar.active {
-                transform: translateX(0);
-            }
-
-            .admin-main {
-                margin-left: 0;
-            }
-
-            .form-actions {
-                flex-direction: column;
-            }
-
-            .form-actions button {
-                width: 100%;
-            }
-        }
-
-        .required {
-            color: var(--color-danger);
         }
     </style>
 </body>
