@@ -69,121 +69,133 @@
         </div>
 
         <!-- Teachers Section -->
-<div id="teachers" class="admin-card" style="display:none;">
-    <h1>Manage Teachers</h1>
-    <button class="btn" onclick="showTeacherForm()">+ Add New Teacher</button>
-    <div id="teacher-form" style="display:none; margin-top: var(--space-xl);">
-        <h3>Teacher Information</h3>
-        <form id="add-teacher-form" class="admin-form">
-            <div class="form-group">
-                <label for="teacher-name">Full Name <span class="required">*</span></label>
-                <input type="text" id="teacher-name" placeholder="Enter teacher's full name" required>
-            </div>
-            <div class="form-group">
-                <label for="teacher-email">Email (Login) <span class="required">*</span></label>
-                <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
-            </div>
-            <div class="form-group">
-                <label for="teacher-subject">Subject(s)</label>
-                <input type="text" id="teacher-subject" placeholder="e.g., Mathematics, English">
-            </div>
-            <div class="form-group">
-                <label for="teacher-password">Temporary Password <span class="required">*</span></label>
-                <input type="password" id="teacher-password" placeholder="Temporary login password" required>
-            </div>
-            <button type="submit" class="btn">Save Teacher</button>
-            <button type="button" class="btn" onclick="cancelTeacherForm()" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
-        </form>
-    </div>
-    <div class="table-container">
-        <table id="teachers-table" class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Subject</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4" style="text-align: center;">
-                        <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                        <div class="skeleton" style="height: 20px;"></div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        <div id="teachers" class="admin-card" style="display:none;">
+            <h1>Manage Teachers</h1>
+            <button class="btn" onclick="showTeacherForm()">+ Add New Teacher</button>
 
-<!-- Pupils Section (updated form ID and button type) -->
-<div id="pupils" class="admin-card" style="display:none;">
-    <h1>Manage Pupils</h1>
-    <button class="btn" onclick="showPupilForm()">+ Add New Pupil</button>
-    <div id="pupil-form" style="display:none; margin-top: var(--space-xl);">
-        <h3>Pupil Information</h3>
-        <form id="add-pupil-form" class="admin-form">
-            <div class="form-group">
-                <label for="pupil-name">Full Name <span class="required">*</span></label>
-                <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
+            <div id="teacher-form" style="display:none; margin-top: var(--space-xl);">
+                <h3>Add New Teacher</h3>
+                <form id="add-teacher-form" class="admin-form">
+                    <div class="form-group">
+                        <label for="teacher-name">Full Name <span class="required">*</span></label>
+                        <input type="text" id="teacher-name" placeholder="Enter teacher's full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-email">Email (Login) <span class="required">*</span></label>
+                        <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-subject">Subject(s)</label>
+                        <input type="text" id="teacher-subject" placeholder="e.g., Mathematics, English">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher-password">Temporary Password <span class="required">*</span></label>
+                        <input type="password" id="teacher-password" placeholder="Temporary login password" required minlength="6">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Save Teacher</button>
+                        <button type="button" class="btn" onclick="cancelTeacherForm()" style="background: var(--color-gray-600);">Cancel</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="pupil-class">Class <span class="required">*</span></label>
-                <input type="text" id="pupil-class" placeholder="e.g., Primary 2" required>
+
+            <div class="table-container">
+                <table id="teachers-table" class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Subject</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="text-align: center;">
+                                <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
+                                <div class="skeleton" style="height: 20px;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div class="form-group">
-                <label for="pupil-parent">Parent Email</label>
-                <input type="email" id="pupil-parent" placeholder="parent@example.com">
+        </div>
+
+        <!-- Pupils Section -->
+        <div id="pupils" class="admin-card" style="display:none;">
+            <h1>Manage Pupils</h1>
+            <button class="btn" onclick="showPupilForm()">+ Add New Pupil</button>
+
+            <div id="pupil-form" style="display:none; margin-top: var(--space-xl);">
+                <h3>Add New Pupil</h3>
+                <form id="add-pupil-form" class="admin-form">
+                    <div class="form-group">
+                        <label for="pupil-name">Full Name <span class="required">*</span></label>
+                        <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pupil-class">Class <span class="required">*</span></label>
+                        <input type="text" id="pupil-class" placeholder="e.g., Primary 2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pupil-parent">Parent Email</label>
+                        <input type="email" id="pupil-parent" placeholder="parent@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
+                        <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pupil-password">Temporary Password <span class="required">*</span></label>
+                        <input type="password" id="pupil-password" placeholder="Temporary login password" required minlength="6">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Save Pupil</button>
+                        <button type="button" class="btn" onclick="cancelPupilForm()" style="background: var(--color-gray-600);">Cancel</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
-                <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+
+            <div class="table-container">
+                <table id="pupils-table" class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Parent Email</th>
+                            <th>Email (Login)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" style="text-align: center;">
+                                <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
+                                <div class="skeleton" style="height: 20px;"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div class="form-group">
-                <label for="pupil-password">Temporary Password <span class="required">*</span></label>
-                <input type="password" id="pupil-password" placeholder="Temporary login password" required>
-            </div>
-            <button type="submit" class="btn">Save Pupil</button>
-            <button type="button" class="btn" onclick="cancelPupilForm()" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
-        </form>
-    </div>
-    <div class="table-container">
-        <table id="pupils-table" class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Class</th>
-                    <th>Parent Email</th>
-                    <th>Email (Login)</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="5" style="text-align: center;">
-                        <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
-                        <div class="skeleton" style="height: 20px;"></div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        </div>
 
         <!-- Classes Section -->
         <div id="classes" class="admin-card" style="display:none;">
             <h1>Manage Classes</h1>
             <button class="btn" onclick="showClassForm()">+ Add New Class</button>
+
             <div id="class-form" style="display:none; margin-top: var(--space-xl);">
-                <h3>Class Information</h3>
+                <h3>Create New Class</h3>
                 <div class="form-group">
                     <label for="class-name">Class Name <span class="required">*</span></label>
                     <input type="text" id="class-name" placeholder="e.g., Nursery 1, Primary 3" required>
                 </div>
-                <button type="button" class="btn" onclick="addClass()">Create Class</button>
-                <button type="button" class="btn" onclick="document.getElementById('class-form').style.display='none'" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="addClass()">Create Class</button>
+                    <button type="button" class="btn" onclick="document.getElementById('class-form').style.display='none'" style="background: var(--color-gray-600);">Cancel</button>
+                </div>
             </div>
+
             <div class="table-container">
                 <table id="classes-table" class="responsive-table">
                     <thead>
@@ -209,23 +221,27 @@
         <div id="announcements" class="admin-card" style="display:none;">
             <h1>Manage Announcements</h1>
             <button class="btn" onclick="showAnnounceForm()">+ New Announcement</button>
+
             <div id="announce-form" style="display:none; margin-top: var(--space-xl);">
                 <h3>Create Announcement</h3>
-                <form class="admin-form">
+                <form id="add-announcement-form" class="admin-form">
                     <div class="form-group">
                         <label for="announce-title">Title <span class="required">*</span></label>
                         <input type="text" id="announce-title" placeholder="Announcement title" required>
                     </div>
                     <div class="form-group">
                         <label for="announce-content">Content <span class="required">*</span></label>
-                        <textarea id="announce-content" rows="5" placeholder="Announcement content..." required></textarea>
+                        <textarea id="announce-content" rows="6" placeholder="Write your announcement here..." required></textarea>
                     </div>
-                    <button type="button" class="btn" onclick="addAnnouncement()">Publish</button>
-                    <button type="button" class="btn" onclick="document.getElementById('announce-form').style.display='none'" style="background: var(--color-gray-600); margin-left: var(--space-sm);">Cancel</button>
+                    <div class="form-actions">
+                        <button type="button" class="btn" onclick="addAnnouncement()">Publish</button>
+                        <button type="button" class="btn" onclick="document.getElementById('announce-form').style.display='none'" style="background: var(--color-gray-600);">Cancel</button>
+                    </div>
                 </form>
             </div>
-            <div id="announcements-list">
-                <div class="skeleton-container" style="margin-top: var(--space-xl);">
+
+            <div id="announcements-list" style="margin-top: var(--space-xl);">
+                <div class="skeleton-container">
                     <div class="skeleton" style="height: 30px; width: 60%; margin-bottom: var(--space-md);"></div>
                     <div class="skeleton" style="height: 20px; margin-bottom: var(--space-sm);"></div>
                     <div class="skeleton" style="height: 20px; width: 90%;"></div>
@@ -247,6 +263,7 @@
             background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
             color: var(--color-white);
             padding: var(--space-xl);
+            border-radius: var(--border-radius-lg);
         }
         
         .stat-card h3 {
@@ -265,6 +282,12 @@
         .table-container {
             margin-top: var(--space-xl);
             overflow-x: auto;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
         }
 
         .hamburger-portal {
@@ -292,6 +315,14 @@
 
             .admin-main {
                 margin-left: 0;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions button {
+                width: 100%;
             }
         }
 
