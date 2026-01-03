@@ -11,22 +11,22 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Skip to main content -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger hamburger-portal" id="hamburger" aria-label="Toggle teacher menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Teacher Sidebar -->
     <nav class="admin-sidebar" id="teacher-sidebar" aria-label="Teacher navigation">
         <h2>Teacher Portal</h2>
         <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
         <a href="#my-classes" onclick="showSection('my-classes')">My Classes</a>
         <a href="#enter-results" onclick="showSection('enter-results')">Enter Results</a>
+        <a href="#attendance" onclick="showSection('attendance')">Attendance</a>
+        <a href="#traits-skills" onclick="showSection('traits-skills')">Traits & Skills</a>
+        <a href="#remarks" onclick="showSection('remarks')">Remarks</a>
         <hr style="margin: var(--space-lg) 0; border: none; border-top: 1px solid rgba(255,255,255,0.2);">
         <a href="index.html">← Back to Public Site</a>
         <a href="#" id="teacher-logout" style="color: var(--color-danger); margin-top: var(--space-sm);">Logout</a>
@@ -35,24 +35,19 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="admin-main" id="main-content">
         <!-- Dashboard -->
         <div id="dashboard" class="admin-card">
             <h1>Welcome, Teacher</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Manage your classes and enter pupil results</p>
+            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Manage your classes and enter pupil reports</p>
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
                 <div class="admin-card stat-card" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
                     <h3>My Classes</h3>
-                    <div class="stat-number" id="my-class-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="my-class-count">0</div>
                 </div>
                 <div class="admin-card stat-card" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
                     <h3>Pupils Assigned</h3>
-                    <div class="stat-number" id="my-pupil-count">
-                        <div class="skeleton" style="height: 40px; width: 60px; margin: var(--space-sm) auto;"></div>
-                    </div>
+                    <div class="stat-number" id="my-pupil-count">0</div>
                 </div>
             </div>
         </div>
@@ -71,12 +66,13 @@
                     <thead>
                         <tr>
                             <th>Pupil Name</th>
-                            <th>Parent Email</th>
+                            <th>Gender</th>
+                            <th>Admission No</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td colspan="2" style="text-align: center; color: var(--color-gray-600);">
+                            <td colspan="3" style="text-align: center; color: var(--color-gray-600);">
                                 Select a class to view pupils
                             </td>
                         </tr>
@@ -87,8 +83,8 @@
 
         <!-- Enter Results -->
         <div id="enter-results" class="admin-card" style="display:none;">
-            <h1>Enter Results</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Select class, term, and subject to enter pupil scores</p>
+            <h1>Enter Academic Results</h1>
+            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Select class, term, and subject to enter CA and Exam scores</p>
             
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
                 <div class="form-group">
@@ -108,12 +104,7 @@
                 <div class="form-group">
                     <label for="result-subject">Subject <span class="required">*</span></label>
                     <select id="result-subject" onchange="loadClassForResults()">
-                        <option value="English">English</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="Science">Science</option>
-                        <option value="Social Studies">Social Studies</option>
-                        <option value="Arts">Arts</option>
-                        <option value="Physical Education">Physical Education</option>
+                        <option value="">-- Select Subject --</option>
                     </select>
                 </div>
             </div>
@@ -124,9 +115,295 @@
                 <span class="btn-loading" style="display:none;">Saving...</span>
             </button>
         </div>
+
+        <!-- Attendance -->
+        <div id="attendance" class="admin-card" style="display:none;">
+            <h1>Mark Attendance</h1>
+            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Enter attendance records for pupils</p>
+            
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                <div class="form-group">
+                    <label for="attendance-class">Class <span class="required">*</span></label>
+                    <select id="attendance-class" onchange="loadAttendanceForm()">
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="attendance-term">Term <span class="required">*</span></label>
+                    <select id="attendance-term" onchange="loadAttendanceForm()">
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term">Third Term</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="attendance-form-container"></div>
+            <button class="btn" onclick="saveAllAttendance()" style="margin-top: var(--space-xl); display:none;" id="save-attendance-btn">
+                <span class="btn-text">💾 Save All Attendance</span>
+            </button>
+        </div>
+
+        <!-- Traits & Skills -->
+        <div id="traits-skills" class="admin-card" style="display:none;">
+            <h1>Behavioral Traits & Psychomotor Skills</h1>
+            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Assess pupils' behavioral traits and psychomotor skills</p>
+            
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                <div class="form-group">
+                    <label for="traits-class">Class <span class="required">*</span></label>
+                    <select id="traits-class" onchange="loadTraitsForm()">
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="traits-term">Term <span class="required">*</span></label>
+                    <select id="traits-term" onchange="loadTraitsForm()">
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term">Third Term</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="traits-pupil">Pupil <span class="required">*</span></label>
+                    <select id="traits-pupil" onchange="loadTraitsData()">
+                        <option value="">-- Select Pupil --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="traits-form-container" style="display:none;">
+                <h3>Behavioral & Affective Traits</h3>
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                    <div class="form-group">
+                        <label for="trait-punctuality">Punctuality</label>
+                        <select id="trait-punctuality">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-neatness">Neatness</label>
+                        <select id="trait-neatness">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-politeness">Politeness</label>
+                        <select id="trait-politeness">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-honesty">Honesty</label>
+                        <select id="trait-honesty">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-obedience">Obedience</label>
+                        <select id="trait-obedience">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-cooperation">Cooperation</label>
+                        <select id="trait-cooperation">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-attentiveness">Attentiveness</label>
+                        <select id="trait-attentiveness">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-leadership">Leadership</label>
+                        <select id="trait-leadership">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-selfcontrol">Self Control</label>
+                        <select id="trait-selfcontrol">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="trait-creativity">Creativity</label>
+                        <select id="trait-creativity">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: var(--space-2xl);">Psychomotor Skills</h3>
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                    <div class="form-group">
+                        <label for="skill-handwriting">Handwriting</label>
+                        <select id="skill-handwriting">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skill-drawing">Drawing</label>
+                        <select id="skill-drawing">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skill-sports">Sports</label>
+                        <select id="skill-sports">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skill-craft">Craft Work</label>
+                        <select id="skill-craft">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skill-verbal">Verbal Fluency</label>
+                        <select id="skill-verbal">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="skill-coordination">Coordination</label>
+                        <select id="skill-coordination">
+                            <option value="">-</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Good">Good</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Poor">Poor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="saveTraitsAndSkills()">
+                    <span>💾 Save Traits & Skills</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Remarks -->
+        <div id="remarks" class="admin-card" style="display:none;">
+            <h1>Teacher's Remarks</h1>
+            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Write remarks for pupils' report cards</p>
+            
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                <div class="form-group">
+                    <label for="remarks-class">Class <span class="required">*</span></label>
+                    <select id="remarks-class" onchange="loadRemarksForm()">
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remarks-term">Term <span class="required">*</span></label>
+                    <select id="remarks-term" onchange="loadRemarksForm()">
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term">Third Term</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="remarks-pupil">Pupil <span class="required">*</span></label>
+                    <select id="remarks-pupil" onchange="loadRemarksData()">
+                        <option value="">-- Select Pupil --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="remarks-form-container" style="display:none;">
+                <div class="form-group">
+                    <label for="teacher-remark">Teacher's Remark</label>
+                    <textarea id="teacher-remark" rows="4" placeholder="Write your remark about the pupil's performance..."></textarea>
+                </div>
+
+                <button class="btn" onclick="saveRemarks()">
+                    <span>💾 Save Remark</span>
+                </button>
+            </div>
+        </div>
     </main>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="firebase-init.js"></script>
@@ -187,17 +464,6 @@
 
         .required {
             color: var(--color-danger);
-        }
-
-        /* Results entry table specific styles */
-        #results-entry-table-container table input[type="number"] {
-            max-width: 100px;
-            text-align: center;
-        }
-
-        #results-entry-table-container table td:nth-child(3) {
-            font-weight: var(--font-weight-medium);
-            color: var(--color-primary-dark);
         }
     </style>
 </body>
