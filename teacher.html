@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Portal - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <!-- Teacher Sidebar -->
+    <div class="admin-sidebar">
+        <h2>Teacher Portal</h2>
+        <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
+        <a href="#my-classes" onclick="showSection('my-classes')">My Classes</a>
+        <a href="#enter-results" onclick="showSection('enter-results')">Enter Results</a>
+        <a href="index.html">← Back to Public Site</a>
+        <div style="padding:20px; color:#ddd; font-size:0.9rem;" id="teacher-info"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="admin-main">
+        <!-- Dashboard -->
+        <div id="dashboard" class="admin-card">
+            <h1>Welcome, Teacher</h1>
+            <p>Use the menu to view your classes or enter pupil results.</p>
+            <div class="grid">
+                <div class="admin-card"><h3>My Classes: <span id="my-class-count">0</span></h3></div>
+                <div class="admin-card"><h3>Pupils Assigned: <span id="my-pupil-count">0</span></h3></div>
+            </div>
+        </div>
+
+        <!-- My Classes -->
+        <div id="my-classes" class="admin-card" style="display:none;">
+            <h1>My Classes</h1>
+            <select id="class-selector" onchange="loadPupilsInClass()">
+                <option value="">-- Select a Class --</option>
+            </select>
+            <table id="pupils-in-class-table" style="margin-top:20px;">
+                <thead><tr><th>Pupil Name</th><th>Parent Email</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Enter Results -->
+        <div id="enter-results" class="admin-card" style="display:none;">
+            <h1>Enter Results</h1>
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                <select id="result-class" onchange="loadClassForResults()">
+                    <option value="">-- Select Class --</option>
+                </select>
+                <select id="result-term">
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term">Third Term</option>
+                </select>
+                <select id="result-subject">
+                    <option value="English">English</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="Social Studies">Social Studies</option>
+                    <option value="Add More">Add More Subject...</option>
+                </select>
+            </div>
+
+            <div id="results-entry-table-container" style="margin-top:30px;"></div>
+            <button class="btn" onclick="saveAllResults()" style="margin-top:20px; display:none;" id="save-results-btn">Save All Results</button>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script>
+        // Enforce teacher access
+        let currentUser = null;
+        let currentTeacherId = null;
+
+        checkRole('teacher').then(user => {
+            currentUser = user;
+            document.getElementById('teacher-info').innerHTML = `Logged in as:<br>${user.email}`;
+            loadTeacherData();
+        }).catch(() => {});
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+            document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`a[onclick="showSection('${sectionId}')"]`).classList.add('active');
+
+            if (sectionId === 'dashboard') loadTeacherDashboard();
+            if (sectionId === 'my-classes') loadClassesForTeacher();
+            if (sectionId === 'enter-results') loadClassesForResults();
+        }
+
+        async function loadTeacherData() {
+            loadTeacherDashboard();
+            loadClassesForTeacher();
+            loadClassesForResults();
+        }
+
+        async function loadTeacherDashboard() {
+            const classesSnap = await db.collection('classes').get();
+            document.getElementById('my-class-count').textContent = classesSnap.size;
+
+            let totalPupils = 0;
+            for (let doc of classesSnap.docs) {
+                const pupilsSnap = await db.collection('pupils').where('class', '==', doc.data().name).get();
+                totalPupils += pupilsSnap.size;
+            }
+            document.getElementById('my-pupil-count').textContent = totalPupils;
+        }
+
+        // Load classes (assuming all classes are visible to teachers for simplicity)
+        async function loadClassesForTeacher() {
+            const selector = document.getElementById('class-selector');
+            selector.innerHTML = '<option value="">-- Select a Class --</option>';
+            const snapshot = await db.collection('classes').get();
+            snapshot.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.id;
+                opt.textContent = doc.data().name;
+                selector.appendChild(opt);
+            });
+        }
+
+        async function loadPupilsInClass() {
+            const classId = document.getElementById('class-selector').value;
+            const tbody = document.querySelector('#pupils-in-class-table tbody');
+            tbody.innerHTML = '';
+            if (!classId) return;
+
+            const classDoc = await db.collection('classes').doc(classId).get();
+            const className = classDoc.data().name;
+
+            const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
+            pupilsSnap.forEach(doc => {
+                const data = doc.data();
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${data.name}</td><td>${data.parentEmail || '-'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Results Entry
+        async function loadClassesForResults() {
+            const selector = document.getElementById('result-class');
+            selector.innerHTML = '<option value="">-- Select Class --</option>';
+            const snapshot = await db.collection('classes').get();
+            snapshot.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.id + '|' + doc.data().name;
+                opt.textContent = doc.data().name;
+                selector.appendChild(opt);
+            });
+        }
+
+        async function loadClassForResults() {
+            const selected = document.getElementById('result-class').value;
+            if (!selected) {
+                document.getElementById('results-entry-table-container').innerHTML = '';
+                return;
+            }
+            const [classId, className] = selected.split('|');
+
+            const term = document.getElementById('result-term').value || 'First Term';
+            const subject = document.getElementById('result-subject').value;
+
+            const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
+
+            let tableHTML = `
+                <table>
+                    <thead><tr><th>Pupil Name</th><th>Score (0-100)</th><th>Current</th></tr></thead>
+                    <tbody>
+            `;
+
+            for (let pupilDoc of pupilsSnap.docs) {
+                const pupil = pupilDoc.data();
+                const pupilId = pupilDoc.id;
+
+                // Check existing result
+                const existingSnap = await db.collection('results')
+                    .where('pupilId', '==', pupilId)
+                    .where('classId', '==', classId)
+                    .where('term', '==', term)
+                    .where('subject', '==', subject)
+                    .limit(1).get();
+
+                let currentScore = '';
+                if (!existingSnap.empty) {
+                    currentScore = existingSnap.docs[0].data().score;
+                }
+
+                tableHTML += `
+                    <tr>
+                        <td>${pupil.name}</td>
+                        <td><input type="number" min="0" max="100" data-pupil="${pupilId}" data-class="${classId}" value="${currentScore}"></td>
+                        <td>${currentScore || '-'}</td>
+                    </tr>
+                `;
+            }
+
+            tableHTML += `</tbody></table>`;
+            document.getElementById('results-entry-table-container').innerHTML = tableHTML;
+            document.getElementById('save-results-btn').style.display = 'block';
+        }
+
+        function saveAllResults() {
+            const inputs = document.querySelectorAll('#results-entry-table-container input');
+            const term = document.getElementById('result-term').value;
+            const subject = document.getElementById('result-subject').value;
+            const classId = document.getElementById('result-class').value.split('|')[0];
+
+            const batch = db.batch();
+
+            inputs.forEach(input => {
+                const score = parseInt(input.value);
+                if (isNaN(score)) return;
+
+                const pupilId = input.dataset.pupil;
+
+                // Use a deterministic doc ID or query and update
+                const resultRef = db.collection('results').doc(`${pupilId}_${classId}_${term}_${subject}`);
+
+                batch.set(resultRef, {
+                    pupilId,
+                    classId,
+                    term,
+                    subject,
+                    score,
+                    teacherId: currentUser.uid,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            });
+
+            batch.commit().then(() => {
+                alert('All results saved successfully!');
+                loadClassForResults(); // Refresh
+            }).catch(err => alert('Error saving: ' + err.message));
+        }
+
+        // Initial load
+        showSection('dashboard');
+    </script>
+</body>
+</html>
