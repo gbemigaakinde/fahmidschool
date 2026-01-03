@@ -30,23 +30,25 @@
 
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
-    <script>
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                db.collection('users').doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        const role = doc.data().role;
-                        document.getElementById('role-message').innerHTML = `
-                            <strong>${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard</strong><br>
-                            Your personalized portal will be available in the next phases.<br><br>
-                            Role: ${role}
-                        `;
+   <script>
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    const role = doc.data().role;
+                    if (role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else if (role === 'teacher') {
+                        alert('Teacher portal coming soon!');
+                    } else {
+                        alert('Pupil portal coming soon!');
                     }
-                });
-            } else {
-                window.location.href = 'login.html';
-            }
-        });
-    </script>
+                }
+            });
+        } else {
+            window.location.href = 'login.html';
+        }
+    });
+</script>
 </body>
 </html>
