@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">Fahmid Nursery & Primary School</div>
+            <div id="user-status"></div>
+        </div>
+    </header>
+
+    <div class="portal-welcome">
+        <h1>Welcome to Your Portal</h1>
+        <p id="role-message">Loading your dashboard...</p>
+    </div>
+
+    <footer>
+        <div class="container">
+            &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+        </div>
+    </footer>
+
+    <script src="firebase-init.js"></script>
+    <script src="script.js"></script>
+    <script>
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                db.collection('users').doc(user.uid).get().then(doc => {
+                    if (doc.exists) {
+                        const role = doc.data().role;
+                        document.getElementById('role-message').innerHTML = `
+                            <strong>${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard</strong><br>
+                            Your personalized portal will be available in the next phases.<br><br>
+                            Role: ${role}
+                        `;
+                    }
+                });
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>
