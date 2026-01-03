@@ -5,47 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="logo">Fahmid Nursery & Primary School</div>
-            <div id="user-status"></div>
-        </div>
-    </header>
-
-    <div class="portal-welcome">
-        <h1>Welcome to Your Portal</h1>
-        <p id="role-message">Loading your dashboard...</p>
+    <!-- Loading Overlay -->
+    <div class="portal-loading" id="portal-loading">
+        <div class="loading-spinner"></div>
+        <p>Loading your dashboard...</p>
     </div>
 
-    <footer>
-        <div class="container">
-            &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+    <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--color-gray-100);">
+        <div class="portal-welcome">
+            <div class="logo-text" style="font-size: var(--font-size-3xl); color: var(--color-primary-dark); margin-bottom: var(--space-xl);">
+                Fahmid School
+            </div>
+            <h1>Welcome to Your Portal</h1>
+            <p id="role-message">Redirecting to your dashboard...</p>
+            
+            <!-- Progress indicator -->
+            <div style="width: 200px; height: 4px; background: var(--color-gray-300); border-radius: var(--radius-lg); margin: var(--space-xl) auto; overflow: hidden;">
+                <div style="height: 100%; background: var(--color-primary); width: 0%; animation: progressBar 2s ease-in-out infinite;"></div>
+            </div>
         </div>
-    </footer>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
-   <script>
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            db.collection('users').doc(user.uid).get().then(doc => {
-                if (doc.exists) {
-                    const role = doc.data().role;
-                    if (role === 'admin') window.location.href = 'admin.html';
-                    else if (role === 'teacher') window.location.href = 'teacher.html';
-                    else if (role === 'pupil') window.location.href = 'pupil.html';
-                    else window.location.href = 'index.html';
+    <script>
+        /**
+         * Portal Redirect Logic
+         * Determines user role and redirects to appropriate dashboard
+         */
+        auth.onAuthStateChanged(async (user) => {
+            const roleMessage = document.getElementById('role-message');
+            
+            if (user) {
+                try {
+                    roleMessage.textContent = 'Checking your access level...';
+                    
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    
+                    if (doc.exists) {
+                        const role = doc.data().role;
+                        roleMessage.textContent = `Welcome! Redirecting to ${role} portal...`;
+                        
+                        // Small delay for better UX
+                        setTimeout(() => {
+                            if (role === 'admin') {
+                                window.location.href = 'admin.html';
+                            } else if (role === 'teacher') {
+                                window.location.href = 'teacher.html';
+                            } else if (role === 'pupil') {
+                                window.location.href = 'pupil.html';
+                            } else {
+                                throw new Error('Unknown role');
+                            }
+                        }, 800);
+                    } else {
+                        throw new Error('User profile not found');
+                    }
+                } catch (error) {
+                    console.error('Portal redirect error:', error);
+                    roleMessage.textContent = 'Error loading your profile';
+                    
+                    if (window.showToast) {
+                        window.showToast('Unable to load your profile. Please contact support.', 'danger');
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 3000);
                 }
-            }).catch(() => window.location.href = 'login.html');
-        } else {
-            window.location.href = 'login.html';
+            } else {
+                roleMessage.textContent = 'Please log in to continue';
+                
+                if (window.showToast) {
+                    window.showToast('Please log in to access your portal', 'warning');
+                }
+                
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            }
+        });
+    </script>
+
+    <style>
+        /* Portal-specific loading styles */
+        .portal-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(10px);
         }
-    });
-</script>
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--color-gray-300);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .portal-loading p {
+            margin-top: var(--space-lg);
+            color: var(--color-gray-700);
+            font-size: var(--font-size-lg);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes progressBar {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .portal-welcome {
+            text-align: center;
+            padding: var(--space-3xl);
+            background: var(--color-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            max-width: 600px;
+            margin: var(--space-xl);
+        }
+
+        .portal-welcome h1 {
+            margin-bottom: var(--space-md);
+        }
+
+        .portal-welcome p {
+            color: var(--color-gray-600);
+            font-size: var(--font-size-lg);
+        }
+    </style>
 </body>
 </html>
