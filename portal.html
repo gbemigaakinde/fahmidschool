@@ -39,11 +39,15 @@
                     if (role === 'admin') {
                         window.location.href = 'admin.html';
                     } else if (role === 'teacher') {
-                        alert('Teacher portal coming soon!');
+                        window.location.href = 'teacher.html';
                     } else {
-                        alert('Pupil portal coming soon!');
+                        alert('Pupil portal coming in next phase!');
+                        // window.location.href = 'pupil.html'; // Future
                     }
                 }
+            }).catch(err => {
+                console.error(err);
+                window.location.href = 'login.html';
             });
         } else {
             window.location.href = 'login.html';
