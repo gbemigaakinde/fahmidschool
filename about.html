@@ -13,8 +13,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Shared Header -->
-    <header>
     <!-- Hamburger Menu (Mobile) -->
 <div class="hamburger" id="hamburger">
     <div class="line1"></div>
@@ -41,7 +39,6 @@
     </nav>
     <div id="user-status">Loading...</div>
 </div>
-</header>
 <!-- Main Content -->
 <div class="main-content">
     <section class="container">
@@ -71,15 +68,16 @@
         &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
     </div>
 </footer>
-<script>
+
+<script src="firebase-init.js"></script>
+    <script src="script.js"></script>
+    
+    <script>
 // Hamburger toggle
 document.getElementById('hamburger').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('active');
     document.getElementById('hamburger').classList.toggle('active');
 });
 </script>
-
-<script src="firebase-init.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>
