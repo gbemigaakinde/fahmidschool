@@ -1,8 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - COMPLETE FIXED VERSION
+ * Admin Portal JavaScript - DASHBOARD LOADING FIXED
  * 
- * @version 3.0.0
+ * @version 3.1.0
  * @date 2026-01-03
  */
 
@@ -24,7 +24,16 @@ try {
     secondaryAuth = secondaryApp.auth();
 }
 
-checkRole('admin').catch(() => {});
+// Enforce admin access and load dashboard
+checkRole('admin').then(() => {
+    console.log('✓ Admin access granted');
+    // Wait a bit for DOM to be ready
+    setTimeout(() => {
+        loadDashboardStats();
+    }, 500);
+}).catch((error) => {
+    console.error('Admin access check failed:', error);
+});
 
 document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -85,10 +94,21 @@ function showSection(sectionId) {
 }
 
 // ============================================
-// DASHBOARD STATISTICS
+// DASHBOARD STATISTICS - FIXED
 // ============================================
 
 async function loadDashboardStats() {
+    console.log('Loading dashboard stats...');
+    
+    // Set loading state
+    const counters = ['teacher-count', 'pupil-count', 'class-count', 'subject-count', 'announce-count'];
+    counters.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.innerHTML = '<div style="width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>';
+        }
+    });
+
     try {
         const [teachersSnap, pupilsSnap, classesSnap, subjectsSnap, announcementsSnap] = await Promise.all([
             db.collection('teachers').get(),
@@ -98,15 +118,59 @@ async function loadDashboardStats() {
             db.collection('announcements').get()
         ]);
 
-        document.getElementById('teacher-count').textContent = teachersSnap.size;
-        document.getElementById('pupil-count').textContent = pupilsSnap.size;
-        document.getElementById('class-count').textContent = classesSnap.size;
-        document.getElementById('subject-count').textContent = subjectsSnap.size;
-        document.getElementById('announce-count').textContent = announcementsSnap.size;
+        // Update counts with animation
+        const teacherCount = teachersSnap.size;
+        const pupilCount = pupilsSnap.size;
+        const classCount = classesSnap.size;
+        const subjectCount = subjectsSnap.size;
+        const announceCount = announcementsSnap.size;
+
+        console.log('Stats loaded:', {
+            teachers: teacherCount,
+            pupils: pupilCount,
+            classes: classCount,
+            subjects: subjectCount,
+            announcements: announceCount
+        });
+
+        // Animate counters
+        animateCounter('teacher-count', teacherCount);
+        animateCounter('pupil-count', pupilCount);
+        animateCounter('class-count', classCount);
+        animateCounter('subject-count', subjectCount);
+        animateCounter('announce-count', announceCount);
+
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
+        counters.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = '?';
+            }
+        });
         handleError(error, 'Failed to load dashboard statistics');
     }
+}
+
+function animateCounter(elementId, targetValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    let currentValue = 0;
+    const duration = 800; // milliseconds
+    const steps = 30;
+    const increment = targetValue / steps;
+    const stepDuration = duration / steps;
+
+    const timer = setInterval(() => {
+        currentValue += increment;
+        if (currentValue >= targetValue) {
+            element.textContent = targetValue;
+            clearInterval(timer);
+        } else {
+            element.textContent = Math.floor(currentValue);
+        }
+    }, stepDuration);
 }
 
 // ============================================
@@ -627,7 +691,6 @@ async function deleteDoc(collectionName, docId) {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadDashboardStats();
+    console.log('✓ Admin portal DOM loaded');
     showSection('dashboard');
-    console.log('✓ Admin portal initialized');
 });
