@@ -97,3 +97,52 @@ function resetPassword(email) {
         .then(() => alert('Password reset email sent!'))
         .catch(err => alert('Error: ' + err.message));
 }
+// Role check utility
+function checkRole(requiredRole) {
+    return new Promise((resolve, reject) => {
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'login.html';
+                reject('No user');
+                return;
+            }
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists && doc.data().role === requiredRole) {
+                    resolve(user);
+                } else {
+                    alert('Access denied. Admins only.');
+                    window.location.href = 'index.html';
+                    reject('Insufficient permissions');
+                }
+            });
+        });
+    });
+}
+
+// Load announcements to public news page (used later)
+function loadAnnouncements() {
+    const container = document.getElementById('announcements-container');
+    if (!container) return;
+    container.innerHTML = '<h2>Loading announcements...</h2>';
+    
+    db.collection('announcements')
+        .orderBy('createdAt', 'desc')
+        .get()
+        .then(snapshot => {
+            container.innerHTML = '';
+            if (snapshot.empty) {
+                container.innerHTML = '<p>No announcements yet.</p>';
+                return;
+            }
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const article = document.createElement('article');
+                article.innerHTML = `
+                    <h2>${data.title}</h2>
+                    <p>${data.content}</p>
+                    <small>Posted: ${new Date(data.createdAt.toDate()).toLocaleDateString()}</small>
+                `;
+                container.appendChild(article);
+            });
+        });
+}
