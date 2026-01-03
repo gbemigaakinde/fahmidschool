@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
+        
+        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -13,25 +15,35 @@
 <body>
     <!-- Shared Header -->
     <header>
-    <div class="container">
-        <div class="logo">Fahmid Nursery & Primary School</div>
-        <div class="mobile-menu">☰</div>
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
-        </nav>
-        <div id="user-status"></div>
-    </div>
-</header>
+    <!-- Hamburger Menu (Mobile) -->
+<div class="hamburger" id="hamburger">
+    <div class="line1"></div>
+    <div class="line2"></div>
+    <div class="line3"></div>
+</div>
 
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo-text">Fahmid School</div>
+    </div>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="academics.html">Academics</a></li>
+            <li><a href="admissions.html">Admissions</a></li>
+            <li><a href="school-life.html">School Life</a></li>
+            <li><a href="gallery.html">Gallery</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </nav>
+    <div id="user-status">Loading...</div>
+</div>
+</header>
+<!-- Main Content -->
+<div class="main-content">
     <section class="container">
         <h1>About Us</h1>
         <p>Fahmid Nursery and Primary School is dedicated to providing high-quality early childhood and primary education in a supportive and stimulating environment.</p>
@@ -47,7 +59,7 @@
         
         <img src="https://source.unsplash.com/random/800x400/?school-building" alt="School building" style="width:100%; border-radius:8px; margin-top:20px;">
     </section>
-
+</div>
     <!-- Shared Footer -->
     <!-- Lightbox (add to every page or one base) -->
 <div id="lightbox" class="lightbox">
@@ -59,6 +71,14 @@
         &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
     </div>
 </footer>
+<script>
+// Hamburger toggle
+document.getElementById('hamburger').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.getElementById('hamburger').classList.toggle('active');
+});
+</script>
+
 <script src="firebase-init.js"></script>
     <script src="script.js"></script>
 </body>
