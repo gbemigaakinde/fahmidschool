@@ -1,8 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - DASHBOARD LOADING FIXED
+ * Admin Portal JavaScript - COMPLETE FIX
  * 
- * @version 3.1.0
+ * @version 3.0.0 - COMPREHENSIVE FIX
  * @date 2026-01-03
  */
 
@@ -12,6 +12,7 @@
 // INITIALIZATION
 // ============================================
 
+// Create secondary Firebase app for user creation
 let secondaryApp;
 let secondaryAuth;
 
@@ -24,17 +25,10 @@ try {
     secondaryAuth = secondaryApp.auth();
 }
 
-// Enforce admin access and load dashboard
-checkRole('admin').then(() => {
-    console.log('✓ Admin access granted');
-    // Wait a bit for DOM to be ready
-    setTimeout(() => {
-        loadDashboardStats();
-    }, 500);
-}).catch((error) => {
-    console.error('Admin access check failed:', error);
-});
+// Enforce admin access
+checkRole('admin').catch(() => {});
 
+// Setup logout button
 document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     e.preventDefault();
     logout();
@@ -94,83 +88,26 @@ function showSection(sectionId) {
 }
 
 // ============================================
-// DASHBOARD STATISTICS - FIXED
+// DASHBOARD STATISTICS
 // ============================================
 
 async function loadDashboardStats() {
-    console.log('Loading dashboard stats...');
-    
-    // Set loading state
-    const counters = ['teacher-count', 'pupil-count', 'class-count', 'subject-count', 'announce-count'];
-    counters.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.innerHTML = '<div style="width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>';
-        }
-    });
-
     try {
-        const [teachersSnap, pupilsSnap, classesSnap, subjectsSnap, announcementsSnap] = await Promise.all([
+        const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
             db.collection('teachers').get(),
             db.collection('pupils').get(),
             db.collection('classes').get(),
-            db.collection('subjects').get(),
             db.collection('announcements').get()
         ]);
 
-        // Update counts with animation
-        const teacherCount = teachersSnap.size;
-        const pupilCount = pupilsSnap.size;
-        const classCount = classesSnap.size;
-        const subjectCount = subjectsSnap.size;
-        const announceCount = announcementsSnap.size;
-
-        console.log('Stats loaded:', {
-            teachers: teacherCount,
-            pupils: pupilCount,
-            classes: classCount,
-            subjects: subjectCount,
-            announcements: announceCount
-        });
-
-        // Animate counters
-        animateCounter('teacher-count', teacherCount);
-        animateCounter('pupil-count', pupilCount);
-        animateCounter('class-count', classCount);
-        animateCounter('subject-count', subjectCount);
-        animateCounter('announce-count', announceCount);
-
+        document.getElementById('teacher-count').textContent = teachersSnap.size;
+        document.getElementById('pupil-count').textContent = pupilsSnap.size;
+        document.getElementById('class-count').textContent = classesSnap.size;
+        document.getElementById('announce-count').textContent = announcementsSnap.size;
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        counters.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = '?';
-            }
-        });
         handleError(error, 'Failed to load dashboard statistics');
     }
-}
-
-function animateCounter(elementId, targetValue) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    let currentValue = 0;
-    const duration = 800; // milliseconds
-    const steps = 30;
-    const increment = targetValue / steps;
-    const stepDuration = duration / steps;
-
-    const timer = setInterval(() => {
-        currentValue += increment;
-        if (currentValue >= targetValue) {
-            element.textContent = targetValue;
-            clearInterval(timer);
-        } else {
-            element.textContent = Math.floor(currentValue);
-        }
-    }, stepDuration);
 }
 
 // ============================================
@@ -227,7 +164,7 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
         await secondaryAuth.signOut();
         await auth.sendPasswordResetEmail(email);
 
-        window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 5000);
+        window.showToast?.(`Teacher "${name}" added! Password reset email sent to ${email}.`, 'success', 5000);
 
         cancelTeacherForm();
         loadTeachers();
@@ -338,7 +275,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         await secondaryAuth.signOut();
         await auth.sendPasswordResetEmail(email);
 
-        window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 5000);
+        window.showToast?.(`Pupil "${name}" added! Password reset email sent to ${email}.`, 'success', 5000);
 
         cancelPupilForm();
         loadPupils();
@@ -399,13 +336,13 @@ async function loadPupils() {
 // ============================================
 
 async function deleteUser(collection, uid) {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
 
     try {
         await db.collection(collection).doc(uid).delete();
         await db.collection('users').doc(uid).delete();
 
-        window.showToast?.('User deleted successfully', 'success');
+        window.showToast?.('User profile deleted successfully.', 'success');
         
         if (collection === 'teachers') {
             loadTeachers();
@@ -424,8 +361,11 @@ async function deleteUser(collection, uid) {
 // ============================================
 
 function showClassForm() {
-    document.getElementById('class-form').style.display = 'block';
-    document.getElementById('class-name')?.focus();
+    const form = document.getElementById('class-form');
+    if (form) {
+        form.style.display = 'block';
+        document.getElementById('class-name')?.focus();
+    }
 }
 
 async function addClass() {
@@ -502,12 +442,15 @@ async function loadClasses() {
 }
 
 // ============================================
-// SUBJECTS CRUD
+// SUBJECTS MANAGEMENT (NEW)
 // ============================================
 
 function showSubjectForm() {
-    document.getElementById('subject-form').style.display = 'block';
-    document.getElementById('subject-name')?.focus();
+    const form = document.getElementById('subject-form');
+    if (form) {
+        form.style.display = 'block';
+        document.getElementById('subject-name')?.focus();
+    }
 }
 
 async function addSubject() {
@@ -531,16 +474,15 @@ async function addSubject() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        window.showToast?.('Subject added successfully', 'success');
+        window.showToast?.('Subject created successfully', 'success');
         
         document.getElementById('subject-form').style.display = 'none';
         document.getElementById('subject-name').value = '';
         
         loadSubjects();
-        loadDashboardStats();
     } catch (error) {
         console.error('Error adding subject:', error);
-        handleError(error, 'Failed to add subject');
+        handleError(error, 'Failed to create subject');
     }
 }
 
@@ -561,10 +503,11 @@ async function loadSubjects() {
         }
 
         snapshot.forEach(doc => {
-            const data = doc.data();
+            const subjectData = doc.data();
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Subject Name">${data.name}</td>
+                <td data-label="Subject Name">${subjectData.name}</td>
                 <td data-label="Actions">
                     <button class="btn-small btn-danger" onclick="deleteDoc('subjects', '${doc.id}')">Delete</button>
                 </td>
@@ -582,8 +525,11 @@ async function loadSubjects() {
 // ============================================
 
 function showAnnounceForm() {
-    document.getElementById('announce-form').style.display = 'block';
-    document.getElementById('announce-title')?.focus();
+    const form = document.getElementById('announce-form');
+    if (form) {
+        form.style.display = 'block';
+        document.getElementById('announce-title')?.focus();
+    }
 }
 
 async function addAnnouncement() {
@@ -620,7 +566,7 @@ async function loadAdminAnnouncements() {
     const list = document.getElementById('announcements-list');
     if (!list) return;
 
-    list.innerHTML = '<div class="skeleton-container"><div class="skeleton" style="height: 30px;"></div></div>';
+    list.innerHTML = '<div class="skeleton-container"><div class="skeleton" style="height: 30px; margin-bottom: var(--space-md);"></div></div>';
 
     try {
         const snapshot = await db.collection('announcements')
@@ -642,7 +588,7 @@ async function loadAdminAnnouncements() {
             div.innerHTML = `
                 <h3 style="margin-top: 0;">${data.title}</h3>
                 <p>${data.content}</p>
-                <small style="color: var(--color-gray-600);">Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString() : 'Just now'}</small>
+                <small style="color: var(--color-gray-600);">Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}</small>
                 <div style="margin-top: var(--space-md);">
                     <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${doc.id}')">Delete</button>
                 </div>
@@ -660,7 +606,9 @@ async function loadAdminAnnouncements() {
 // ============================================
 
 async function deleteDoc(collectionName, docId) {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+        return;
+    }
 
     try {
         await db.collection(collectionName).doc(docId).delete();
@@ -691,6 +639,6 @@ async function deleteDoc(collectionName, docId) {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('✓ Admin portal DOM loaded');
-    showSection('dashboard');
+    loadDashboardStats();
+    console.log('✓ Admin portal initialized');
 });
