@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Results - Fahmid Nursery & Primary School</title>
+    <title>Termly Report Card - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,208 +11,336 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <style>
-        /* Print-specific styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            background: var(--color-white);
+            background: #f5f5f5;
+            font-family: 'Open Sans', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
         }
 
         .report-card-container {
             max-width: 210mm;
-            margin: 0 auto;
-            padding: var(--space-xl);
-            background: var(--color-white);
+            margin: 10mm auto;
+            padding: 0;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
+        .report-page {
+            padding: 15mm;
+            background: white;
+        }
+
+        /* Header Section */
         .report-header {
             text-align: center;
-            padding: var(--space-2xl);
-            border-bottom: 4px solid var(--color-primary);
-            margin-bottom: var(--space-2xl);
+            border: 2px solid #333;
+            padding: 8mm 5mm;
+            margin-bottom: 5mm;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
         }
 
-        .report-header .school-logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto var(--space-md);
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-            border-radius: var(--radius-full);
+        .school-logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 3mm;
+            background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: var(--font-size-2xl);
-            color: var(--color-white);
-            font-weight: var(--font-weight-bold);
+            font-size: 24pt;
+            color: white;
+            font-weight: bold;
         }
 
         .report-header h1 {
-            margin: 0 0 var(--space-sm) 0;
-            color: var(--color-primary-dark);
-            font-size: var(--font-size-2xl);
+            font-size: 16pt;
+            color: #1565C0;
+            margin-bottom: 2mm;
+            font-weight: bold;
         }
 
         .report-header .subtitle {
-            color: var(--color-gray-600);
-            font-size: var(--font-size-lg);
-            margin: 0;
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 2mm;
         }
 
-        .student-info {
+        .report-header .report-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #333;
+            margin-top: 2mm;
+            text-transform: uppercase;
+        }
+
+        /* Student Bio Data */
+        .bio-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
+        }
+
+        .bio-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: var(--space-lg);
-            padding: var(--space-xl);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-2xl);
-            border-left: 4px solid var(--color-success);
+            font-size: 10pt;
         }
 
-        .info-item {
+        .bio-item {
+            padding: 2mm 3mm;
+            border-bottom: 1px solid #ddd;
+            border-right: 1px solid #ddd;
             display: flex;
-            flex-direction: column;
         }
 
-        .info-label {
-            font-size: var(--font-size-sm);
-            color: var(--color-gray-600);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: var(--space-xs);
-            font-weight: var(--font-weight-medium);
+        .bio-item:nth-child(2n) {
+            border-right: none;
         }
 
-        .info-value {
-            font-size: var(--font-size-lg);
-            color: var(--color-gray-800);
-            font-weight: var(--font-weight-bold);
-        }
-
-        .term-heading {
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-            color: var(--color-white);
-            padding: var(--space-md) var(--space-lg);
-            border-radius: var(--radius-md);
-            margin: var(--space-2xl) 0 var(--space-lg) 0;
-            font-size: var(--font-size-xl);
-            text-align: center;
-        }
-
-        .results-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-bottom: var(--space-2xl);
-            box-shadow: var(--shadow-md);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-        }
-
-        .results-table thead {
-            background: var(--color-primary-dark);
-            color: var(--color-white);
-        }
-
-        .results-table th {
-            padding: var(--space-md);
-            text-align: left;
-            font-weight: var(--font-weight-bold);
-            font-size: var(--font-size-base);
-        }
-
-        .results-table td {
-            padding: var(--space-md);
-            border-bottom: 1px solid var(--color-gray-200);
-            background: var(--color-white);
-        }
-
-        .results-table tbody tr:hover {
-            background: var(--color-gray-50);
-        }
-
-        .results-table tbody tr:last-child td {
+        .bio-item:nth-last-child(-n+2) {
             border-bottom: none;
         }
 
-        .results-table .summary-row {
-            background: var(--color-gray-100);
-            font-weight: var(--font-weight-bold);
-            border-top: 2px solid var(--color-gray-700);
+        .bio-label {
+            font-weight: bold;
+            min-width: 80px;
+            color: #333;
         }
 
-        .grade-excellent {
-            color: var(--color-success);
-            font-weight: var(--font-weight-bold);
+        .bio-value {
+            color: #000;
+            flex: 1;
         }
 
-        .grade-good {
-            color: #2196F3;
-            font-weight: var(--font-weight-bold);
+        /* Attendance Section */
+        .attendance-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
         }
 
-        .grade-fair {
-            color: var(--color-warning);
-            font-weight: var(--font-weight-bold);
+        .section-title {
+            background: #1565C0;
+            color: white;
+            padding: 2mm 3mm;
+            font-weight: bold;
+            font-size: 10pt;
         }
 
-        .grade-fail {
-            color: var(--color-danger);
-            font-weight: var(--font-weight-bold);
+        .attendance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            font-size: 10pt;
         }
 
+        .attendance-item {
+            padding: 2mm 3mm;
+            border-right: 1px solid #ddd;
+            text-align: center;
+        }
+
+        .attendance-item:last-child {
+            border-right: none;
+        }
+
+        .attendance-label {
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 1mm;
+        }
+
+        .attendance-value {
+            font-weight: bold;
+            font-size: 14pt;
+            color: #1565C0;
+        }
+
+        /* Academic Performance Table */
+        .academic-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
+        }
+
+        .academic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+
+        .academic-table th {
+            background: #1565C0;
+            color: white;
+            padding: 2mm;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #333;
+            font-size: 8pt;
+        }
+
+        .academic-table td {
+            padding: 2mm;
+            border: 1px solid #999;
+            text-align: center;
+        }
+
+        .academic-table td:first-child {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .academic-table .grade-A1 { color: #2e7d32; font-weight: bold; }
+        .academic-table .grade-B2, .academic-table .grade-B3 { color: #1976d2; font-weight: bold; }
+        .academic-table .grade-C4, .academic-table .grade-C5, .academic-table .grade-C6 { color: #f57c00; font-weight: bold; }
+        .academic-table .grade-D7, .academic-table .grade-D8 { color: #d32f2f; font-weight: bold; }
+        .academic-table .grade-F9 { color: #c62828; font-weight: bold; }
+
+        .summary-row {
+            background: #e3f2fd;
+            font-weight: bold;
+        }
+
+        /* Behavioral/Affective Section */
+        .traits-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
+        }
+
+        .traits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .trait-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            padding: 1.5mm 3mm;
+            border-bottom: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+            font-size: 9pt;
+        }
+
+        .trait-item:nth-child(2n) {
+            border-right: none;
+        }
+
+        .trait-label {
+            font-weight: 500;
+        }
+
+        .trait-value {
+            text-align: center;
+            font-weight: bold;
+            color: #1565C0;
+        }
+
+        /* Psychomotor Section */
+        .psychomotor-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
+        }
+
+        /* Remarks Section */
+        .remarks-section {
+            border: 1px solid #333;
+            margin-bottom: 3mm;
+        }
+
+        .remark-box {
+            padding: 3mm;
+            border-bottom: 1px solid #ddd;
+            font-size: 10pt;
+        }
+
+        .remark-box:last-child {
+            border-bottom: none;
+        }
+
+        .remark-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 2mm;
+            display: block;
+        }
+
+        .remark-text {
+            min-height: 15mm;
+            color: #000;
+            font-style: italic;
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            margin-top: 2mm;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 10mm;
+            padding-top: 2mm;
+            font-size: 9pt;
+        }
+
+        /* Grading Key */
+        .grading-key {
+            border: 1px solid #333;
+            padding: 3mm;
+            font-size: 8pt;
+            margin-bottom: 3mm;
+        }
+
+        .grading-key-title {
+            font-weight: bold;
+            margin-bottom: 2mm;
+            color: #333;
+        }
+
+        .grading-key-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2mm;
+        }
+
+        .grading-key-item {
+            padding: 1mm;
+        }
+
+        /* Print Actions */
         .print-actions {
             text-align: center;
-            margin: var(--space-2xl) 0;
-            padding: var(--space-xl);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
+            margin: 5mm 0;
+            padding: 5mm;
+            background: #f8f9fa;
         }
 
-        .grading-scale {
-            margin-top: var(--space-2xl);
-            padding: var(--space-xl);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
-            border-left: 4px solid var(--color-primary);
+        .print-actions button,
+        .print-actions a {
+            margin: 0 2mm;
         }
 
-        .grading-scale h3 {
-            margin-top: 0;
-            color: var(--color-primary-dark);
-        }
-
-        .grading-scale table {
-            width: 100%;
-            margin-top: var(--space-md);
-        }
-
-        .grading-scale td {
-            padding: var(--space-sm);
-            border-bottom: 1px solid var(--color-gray-300);
-        }
-
-        .grading-scale td:first-child {
-            font-weight: var(--font-weight-bold);
-            width: 40%;
-        }
-
-        .report-footer {
-            margin-top: var(--space-3xl);
-            padding-top: var(--space-xl);
-            border-top: 2px solid var(--color-gray-300);
-            text-align: center;
-            color: var(--color-gray-600);
-        }
-
-        /* Print-specific styles */
+        /* Print Styles */
         @media print {
             body {
+                background: white;
                 margin: 0;
                 padding: 0;
             }
 
             .report-card-container {
                 max-width: 100%;
-                padding: 0;
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .report-page {
+                padding: 10mm;
             }
 
             .print-actions,
@@ -220,21 +348,31 @@
                 display: none !important;
             }
 
-            .results-table {
-                page-break-inside: avoid;
-            }
-
-            .term-heading {
-                page-break-after: avoid;
-            }
-
             @page {
-                margin: 2cm;
+                size: A4;
+                margin: 10mm;
             }
         }
 
         @media (max-width: 768px) {
-            .student-info {
+            .report-card-container {
+                margin: 0;
+            }
+
+            .report-page {
+                padding: 5mm;
+            }
+
+            .bio-grid,
+            .traits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .attendance-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .signature-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -242,90 +380,221 @@
 </head>
 <body>
     <div class="report-card-container">
-        <!-- Report Header -->
-        <div class="report-header">
-            <div class="school-logo">FS</div>
-            <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
-            <p class="subtitle">Academic Progress Report</p>
-        </div>
-
-        <!-- Student Information -->
-        <div class="student-info">
-            <div class="info-item">
-                <span class="info-label">Student Name</span>
-                <span class="info-value" id="print-name">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Class</span>
-                <span class="info-value" id="print-class">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Report Date</span>
-                <span class="info-value" id="print-date">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Academic Year</span>
-                <span class="info-value">2025/2026</span>
-            </div>
-        </div>
-
         <!-- Print Actions -->
         <div class="print-actions no-print">
-            <button class="btn" onclick="window.print()" style="margin-right: var(--space-md);">
-                🖨️ Print This Report
+            <button class="btn" onclick="window.print()">
+                🖨️ Print Report Card
             </button>
             <a href="pupil.html" class="btn" style="background: var(--color-gray-600);">
                 ← Back to Portal
             </a>
         </div>
 
-        <!-- Results Container -->
-        <div id="print-results-container">
-            <div class="skeleton-container">
-                <div class="skeleton" style="height: 40px; margin-bottom: var(--space-lg);"></div>
-                <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
-                <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
+        <!-- Report Card Page -->
+        <div class="report-page">
+            <!-- Header -->
+            <div class="report-header">
+                <div class="school-logo">FS</div>
+                <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
+                <div class="subtitle">Building Bright Futures Through Quality Education</div>
+                <div class="report-title" id="report-title">Termly Report Card</div>
             </div>
-        </div>
 
-        <!-- Grading Scale -->
-        <div class="grading-scale">
-            <h3>📊 Grading Scale</h3>
-            <table>
-                <tr>
-                    <td>90 - 100</td>
-                    <td class="grade-excellent">A+ (Excellent)</td>
-                </tr>
-                <tr>
-                    <td>80 - 89</td>
-                    <td class="grade-excellent">A (Very Good)</td>
-                </tr>
-                <tr>
-                    <td>70 - 79</td>
-                    <td class="grade-good">B (Good)</td>
-                </tr>
-                <tr>
-                    <td>60 - 69</td>
-                    <td class="grade-fair">C (Fair)</td>
-                </tr>
-                <tr>
-                    <td>50 - 59</td>
-                    <td class="grade-fair">D (Pass)</td>
-                </tr>
-                <tr>
-                    <td>0 - 49</td>
-                    <td class="grade-fail">F (Fail)</td>
-                </tr>
-            </table>
-        </div>
+            <!-- Student Bio Data -->
+            <div class="bio-section">
+                <div class="bio-grid">
+                    <div class="bio-item">
+                        <span class="bio-label">Student Name:</span>
+                        <span class="bio-value" id="student-name">Loading...</span>
+                    </div>
+                    <div class="bio-item">
+                        <span class="bio-label">Admission No:</span>
+                        <span class="bio-value" id="admission-no">-</span>
+                    </div>
+                    <div class="bio-item">
+                        <span class="bio-label">Class:</span>
+                        <span class="bio-value" id="student-class">Loading...</span>
+                    </div>
+                    <div class="bio-item">
+                        <span class="bio-label">Gender:</span>
+                        <span class="bio-value" id="student-gender">-</span>
+                    </div>
+                    <div class="bio-item">
+                        <span class="bio-label">Term:</span>
+                        <span class="bio-value" id="current-term">Loading...</span>
+                    </div>
+                    <div class="bio-item">
+                        <span class="bio-label">Session:</span>
+                        <span class="bio-value">2025/2026</span>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Report Footer -->
-        <div class="report-footer">
-            <p><strong>Fahmid Nursery & Primary School</strong></p>
-            <p>Building Bright Futures Through Quality Education</p>
-            <p style="margin-top: var(--space-md); font-size: var(--font-size-sm);">
-                This is an official academic record. For inquiries, please contact the school administration.
-            </p>
+            <!-- Attendance Record -->
+            <div class="attendance-section">
+                <div class="section-title">ATTENDANCE RECORD</div>
+                <div class="attendance-grid">
+                    <div class="attendance-item">
+                        <div class="attendance-label">Times School Opened</div>
+                        <div class="attendance-value" id="times-opened">-</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">Times Present</div>
+                        <div class="attendance-value" id="times-present">-</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">Times Absent</div>
+                        <div class="attendance-value" id="times-absent">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Academic Performance -->
+            <div class="academic-section">
+                <div class="section-title">ACADEMIC PERFORMANCE</div>
+                <table class="academic-table">
+                    <thead>
+                        <tr>
+                            <th>SUBJECT</th>
+                            <th>CA<br>(40)</th>
+                            <th>EXAM<br>(60)</th>
+                            <th>TOTAL<br>(100)</th>
+                            <th>GRADE</th>
+                            <th>REMARK</th>
+                        </tr>
+                    </thead>
+                    <tbody id="academic-tbody">
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 5mm;">Loading results...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Grading Key -->
+            <div class="grading-key">
+                <div class="grading-key-title">GRADING SYSTEM:</div>
+                <div class="grading-key-grid">
+                    <div class="grading-key-item">A1 (75-100%) Excellent</div>
+                    <div class="grading-key-item">B2 (70-74%) Very Good</div>
+                    <div class="grading-key-item">B3 (65-69%) Good</div>
+                    <div class="grading-key-item">C4 (60-64%) Credit</div>
+                    <div class="grading-key-item">C5 (55-59%) Credit</div>
+                    <div class="grading-key-item">C6 (50-54%) Credit</div>
+                    <div class="grading-key-item">D7 (45-49%) Pass</div>
+                    <div class="grading-key-item">D8 (40-44%) Pass</div>
+                    <div class="grading-key-item">F9 (0-39%) Fail</div>
+                </div>
+            </div>
+
+            <!-- Behavioral/Affective Traits -->
+            <div class="traits-section">
+                <div class="section-title">BEHAVIORAL & AFFECTIVE TRAITS</div>
+                <div class="traits-grid">
+                    <div class="trait-item">
+                        <span class="trait-label">Punctuality:</span>
+                        <span class="trait-value" id="trait-punctuality">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Neatness:</span>
+                        <span class="trait-value" id="trait-neatness">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Politeness:</span>
+                        <span class="trait-value" id="trait-politeness">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Honesty:</span>
+                        <span class="trait-value" id="trait-honesty">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Obedience:</span>
+                        <span class="trait-value" id="trait-obedience">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Cooperation:</span>
+                        <span class="trait-value" id="trait-cooperation">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Attentiveness:</span>
+                        <span class="trait-value" id="trait-attentiveness">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Leadership:</span>
+                        <span class="trait-value" id="trait-leadership">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Self Control:</span>
+                        <span class="trait-value" id="trait-selfcontrol">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Creativity:</span>
+                        <span class="trait-value" id="trait-creativity">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Psychomotor Skills -->
+            <div class="psychomotor-section">
+                <div class="section-title">PSYCHOMOTOR SKILLS</div>
+                <div class="traits-grid">
+                    <div class="trait-item">
+                        <span class="trait-label">Handwriting:</span>
+                        <span class="trait-value" id="skill-handwriting">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Drawing:</span>
+                        <span class="trait-value" id="skill-drawing">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Sports:</span>
+                        <span class="trait-value" id="skill-sports">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Craft Work:</span>
+                        <span class="trait-value" id="skill-craft">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Verbal Fluency:</span>
+                        <span class="trait-value" id="skill-verbal">-</span>
+                    </div>
+                    <div class="trait-item">
+                        <span class="trait-label">Coordination:</span>
+                        <span class="trait-value" id="skill-coordination">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remarks and Signatures -->
+            <div class="remarks-section">
+                <div class="section-title">REMARKS</div>
+                <div class="remark-box">
+                    <span class="remark-label">Class Teacher's Remark:</span>
+                    <div class="remark-text" id="teacher-remark">-</div>
+                </div>
+                <div class="remark-box">
+                    <span class="remark-label">Head Teacher's Remark:</span>
+                    <div class="remark-text" id="head-remark">-</div>
+                </div>
+                <div class="remark-box">
+                    <div class="signature-grid">
+                        <div class="signature-box">
+                            <div class="signature-line">
+                                Class Teacher's Signature & Date
+                            </div>
+                        </div>
+                        <div class="signature-box">
+                            <div class="signature-line">
+                                Head Teacher's Signature & Date
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 5mm; font-weight: bold;">
+                        <span style="margin-right: 10mm;">Resumption Date:</span>
+                        <span id="resumption-date">-</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
