@@ -6,32 +6,42 @@
     <title>Home - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
         
+        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+        
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Shared Header here -->
-    <header>
-    <div class="container">
-        <div class="logo">Fahmid Nursery & Primary School</div>
-        <div class="mobile-menu">☰</div>
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
-        </nav>
-        <div id="user-status"></div>
-    </div>
-</header>
+    <!-- Hamburger Menu (Mobile) -->
+<div class="hamburger" id="hamburger">
+    <div class="line1"></div>
+    <div class="line2"></div>
+    <div class="line3"></div>
+</div>
 
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo-text">Fahmid School</div>
+    </div>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="academics.html">Academics</a></li>
+            <li><a href="admissions.html">Admissions</a></li>
+            <li><a href="school-life.html">School Life</a></li>
+            <li><a href="gallery.html">Gallery</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </nav>
+    <div id="user-status">Loading...</div>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
     <div class="hero">
         <h1>Welcome to Fahmid Nursery & Primary School</h1>
         <p>Nurturing Young Minds for a Bright Future</p>
@@ -55,7 +65,7 @@
             </div>
         </div>
     </section>
-
+</div>
     <!-- Shared Footer here -->
     <!-- Lightbox (add to every page or one base) -->
 <div id="lightbox" class="lightbox">
@@ -69,5 +79,13 @@
 </footer>
 <script src="firebase-init.js"></script>
     <script src="script.js"></script>
+    <script>
+// Hamburger toggle
+document.getElementById('hamburger').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.getElementById('hamburger').classList.toggle('active');
+});
+</script>
+
 </body>
 </html>
