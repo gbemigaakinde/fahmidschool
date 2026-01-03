@@ -116,14 +116,13 @@ async function loadDashboardStats() {
         handleError(error, 'Failed to load dashboard statistics');
     }
 }
-
-// ============================================
-// TEACHERS CRUD
-// ============================================
-
 /**
  * Show teacher form
  */
+// ============================================
+// TEACHERS CRUD - NOW WITH AUTH + TEMP PASSWORD
+// ============================================
+
 function showTeacherForm() {
     const form = document.getElementById('teacher-form');
     if (form) {
@@ -132,21 +131,26 @@ function showTeacherForm() {
     }
 }
 
-/**
- * Add new teacher to Firestore
- * @async
- */
-async function addTeacher() {
-    const name = document.getElementById('teacher-name')?.value.trim();
-    const email = document.getElementById('teacher-email')?.value.trim();
-    const subject = document.getElementById('teacher-subject')?.value.trim();
+function cancelTeacherForm() {
+    document.getElementById('teacher-form').style.display = 'none';
+    document.getElementById('add-teacher-form').reset();
+}
 
-    if (!name || !email) {
-        window.showToast?.('Name and email are required', 'warning');
+// Attach submit handler when DOM is ready
+document.getElementById('add-teacher-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('teacher-name').value.trim();
+    const email = document.getElementById('teacher-email').value.trim();
+    const subject = document.getElementById('teacher-subject').value.trim();
+    const tempPassword = document.getElementById('teacher-password').value;
+
+    if (!name || !email || !tempPassword) {
+        window.showToast?.('All required fields must be filled', 'warning');
         return;
     }
 
-    // Email validation
+    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         window.showToast?.('Please enter a valid email address', 'warning');
@@ -154,33 +158,43 @@ async function addTeacher() {
     }
 
     try {
-        await db.collection('teachers').add({
+        // 1. Create Firebase Auth user
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
+        const uid = userCredential.user.uid;
+
+        // 2. Save teacher profile to Firestore under 'users' collection
+        await db.collection('users').doc(uid).set({
             name,
             email,
             subject: subject || '',
+            role: 'teacher',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        window.showToast?.('Teacher added successfully', 'success');
-        
-        // Reset form
-        document.getElementById('teacher-form').style.display = 'none';
-        document.getElementById('teacher-name').value = '';
-        document.getElementById('teacher-email').value = '';
-        document.getElementById('teacher-subject').value = '';
-        
+        // 3. Send password reset email (so they must change it on first login)
+        await firebase.auth().sendPasswordResetEmail(email);
+
+        window.showToast?.(`Teacher "${name}" added successfully! Password reset email sent.`, 'success');
+
+        // Reset and hide form
+        cancelTeacherForm();
+
         // Reload data
         loadTeachers();
         loadDashboardStats();
+
     } catch (error) {
         console.error('Error adding teacher:', error);
-        handleError(error, 'Failed to add teacher');
+        if (error.code === 'auth/email-already-in-use') {
+            window.showToast?.('This email is already registered.', 'danger');
+        } else {
+            window.showToast?.(`Error: ${error.message}`, 'danger');
+        }
     }
-}
+});
 
 /**
- * Load teachers list from Firestore
- * @async
+ * Load teachers from 'users' collection where role === 'teacher'
  */
 async function loadTeachers() {
     const tbody = document.querySelector('#teachers-table tbody');
@@ -189,10 +203,13 @@ async function loadTeachers() {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('teachers').orderBy('name').get();
-        
+        const snapshot = await db.collection('users')
+            .where('role', '==', 'teacher')
+            .orderBy('name')
+            .get();
+
         tbody.innerHTML = '';
-        
+
         if (snapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers yet</td></tr>';
             return;
@@ -206,24 +223,21 @@ async function loadTeachers() {
                 <td data-label="Email">${data.email}</td>
                 <td data-label="Subject">${data.subject || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('teachers', '${doc.id}')">Delete</button>
+                    <button class="btn-small btn-danger" onclick="deleteUser('${doc.id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (error) {
         console.error('Error loading teachers:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading teachers</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading data</td></tr>';
     }
 }
 
 // ============================================
-// PUPILS CRUD
+// PUPILS CRUD - FIXED & IMPROVED
 // ============================================
 
-/**
- * Show pupil form
- */
 function showPupilForm() {
     const form = document.getElementById('pupil-form');
     if (form) {
@@ -232,11 +246,15 @@ function showPupilForm() {
     }
 }
 
-/**
- * Add new pupil to Firestore
- * @async
- */
-async function addPupil() {
+function cancelPupilForm() {
+    document.getElementById('pupil-form').style.display = 'none';
+    document.getElementById('add-pupil-form').reset();
+}
+
+// Attach submit handler for pupil form
+document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
     const name = document.getElementById('pupil-name').value.trim();
     const pupilClass = document.getElementById('pupil-class').value.trim();
     const parentEmail = document.getElementById('pupil-parent').value.trim();
@@ -244,64 +262,69 @@ async function addPupil() {
     const tempPassword = document.getElementById('pupil-password').value;
 
     if (!name || !pupilClass || !email || !tempPassword) {
-        alert('Please fill in all required fields.');
+        window.showToast?.('All required fields must be filled', 'warning');
+        return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        window.showToast?.('Please enter a valid email address', 'warning');
         return;
     }
 
     try {
-        // 1. Create Firebase Auth account
+        // 1. Create Auth user
         const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
         const uid = userCredential.user.uid;
 
-        // 2. Save pupil profile to Firestore
-        await firebase.firestore().collection('users').doc(uid).set({
-            name: name,
+        // 2. Save pupil data
+        await db.collection('users').doc(uid).set({
+            name,
+            email,
             class: pupilClass,
-            role: 'pupil',
-            email: email,
             parentEmail: parentEmail || '',
+            role: 'pupil',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Force password reset email
+        // 3. Send password reset email
         await firebase.auth().sendPasswordResetEmail(email);
 
-        alert(`Pupil added! A password reset email has been sent to ${email}.`);
+        window.showToast?.(`Pupil "${name}" added! Login credentials sent to ${email}`, 'success');
 
-        // Reset form
-        document.getElementById('pupil-form').style.display = 'none';
-        document.getElementById('pupil-name').value = '';
-        document.getElementById('pupil-class').value = '';
-        document.getElementById('pupil-parent').value = '';
-        document.getElementById('pupil-email').value = '';
-        document.getElementById('pupil-password').value = '';
-
-        // Optional: reload pupils table
-        loadPupilsTable();
+        cancelPupilForm();
+        loadPupils();
+        loadDashboardStats();
 
     } catch (error) {
         console.error('Error adding pupil:', error);
-        alert(`Error: ${error.message}`);
+        if (error.code === 'auth/email-already-in-use') {
+            window.showToast?.('This email is already in use.', 'danger');
+        } else {
+            window.showToast?.(`Error: ${error.message}`, 'danger');
+        }
     }
-}
+});
 
 /**
- * Load pupils list from Firestore
- * @async
+ * Load pupils from 'users' collection where role === 'pupil'
  */
 async function loadPupils() {
     const tbody = document.querySelector('#pupils-table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('pupils').orderBy('name').get();
-        
+        const snapshot = await db.collection('users')
+            .where('role', '==', 'pupil')
+            .orderBy('name')
+            .get();
+
         tbody.innerHTML = '';
-        
+
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No pupils yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils yet</td></tr>';
             return;
         }
 
@@ -310,20 +333,40 @@ async function loadPupils() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td data-label="Name">${data.name}</td>
-                <td data-label="Class">${data.class}</td>
+                <td data-label="Class">${data.class || '-'}</td>
                 <td data-label="Parent Email">${data.parentEmail || '-'}</td>
+                <td data-label="Email">${data.email}</td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('pupils', '${doc.id}')">Delete</button>
+                    <button class="btn-small btn-danger" onclick="deleteUser('${doc.id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (error) {
         console.error('Error loading pupils:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading pupils</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading data</td></tr>';
     }
 }
 
+// Optional: Generic delete function for users
+async function deleteUser(uid) {
+    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+
+    try {
+        // Delete Auth user (requires Firebase Admin SDK on server - or reauthenticate)
+        // For client-side, you can only delete if current user, so we just delete Firestore doc
+        await db.collection('users').doc(uid).delete();
+
+        // Note: To fully delete Auth user, use Cloud Function triggered on Firestore delete
+        window.showToast?.('User profile deleted', 'success');
+        loadTeachers();
+        loadPupils();
+        loadDashboardStats();
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        window.showToast?.('Error deleting user profile', 'danger');
+    }
+}
 // ============================================
 // CLASSES CRUD
 // ============================================
