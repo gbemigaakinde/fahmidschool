@@ -7,9 +7,6 @@
     <title>Contact Us - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Skip to main content link -->
@@ -42,7 +39,11 @@
         </div>
 
         <div class="sidebar-footer">
-            <div id="user-status" aria-live="polite">Loading...</div>
+            <div class="sidebar-login-prompt">
+                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
+                    Login / Register
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -56,20 +57,29 @@
 
             <section aria-labelledby="contact-form-heading">
                 <h2 id="contact-form-heading">Send Us a Message</h2>
-                <form action="https://formspree.io/f/your-email" method="POST" class="contact-form">
+                <form id="contact-form" action="https://formspree.io/f/your-email" method="POST" class="contact-form" novalidate>
                     <div class="form-group">
-                        <label for="name">Your Name</label>
-                        <input type="text" id="name" name="name" required>
+                        <label for="name">Your Name <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" required aria-required="true">
+                        <span class="error-message" id="name-error">Please enter your name</span>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="email">Your Email</label>
-                        <input type="email" id="email" name="email" required>
+                        <label for="email">Your Email <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" required aria-required="true">
+                        <span class="error-message" id="email-error">Please enter a valid email address</span>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="message">Your Message</label>
-                        <textarea id="message" name="message" rows="6" required></textarea>
+                        <label for="message">Your Message <span class="required">*</span></label>
+                        <textarea id="message" name="message" rows="6" required aria-required="true"></textarea>
+                        <span class="error-message" id="message-error">Please enter your message</span>
                     </div>
-                    <button type="submit" class="btn">Send Message</button>
+                    
+                    <button type="submit" class="btn" id="submit-btn">
+                        <span class="btn-text">Send Message</span>
+                        <span class="btn-loading" style="display:none;">Sending...</span>
+                    </button>
                 </form>
             </section>
 
@@ -103,12 +113,163 @@
         </div>
     </footer>
 
-    <!-- Lightbox -->
-    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-        <img id="lightbox-img" src="" alt="">
-    </div>
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="firebase-init.js"></script>
     <script src="script.js"></script>
+    <script>
+        /**
+         * Contact Form Validation and Submission
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('contact-form');
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
+            const messageInput = document.getElementById('message');
+            const submitBtn = document.getElementById('submit-btn');
+
+            /**
+             * Validate email format
+             * @param {string} email - Email address to validate
+             * @returns {boolean} True if valid email format
+             */
+            function isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+
+            /**
+             * Show validation error for a field
+             * @param {HTMLElement} input - Input element
+             * @param {HTMLElement} errorElement - Error message element
+             */
+            function showError(input, errorElement) {
+                input.classList.add('error');
+                input.classList.remove('success');
+                errorElement.classList.add('visible');
+                input.setAttribute('aria-invalid', 'true');
+            }
+
+            /**
+             * Show validation success for a field
+             * @param {HTMLElement} input - Input element
+             * @param {HTMLElement} errorElement - Error message element
+             */
+            function showSuccess(input, errorElement) {
+                input.classList.remove('error');
+                input.classList.add('success');
+                errorElement.classList.remove('visible');
+                input.setAttribute('aria-invalid', 'false');
+            }
+
+            /**
+             * Validate individual field
+             * @param {HTMLElement} input - Input element to validate
+             * @returns {boolean} True if field is valid
+             */
+            function validateField(input) {
+                const errorElement = document.getElementById(`${input.id}-error`);
+                const value = input.value.trim();
+
+                if (!value) {
+                    showError(input, errorElement);
+                    return false;
+                }
+
+                if (input.type === 'email' && !isValidEmail(value)) {
+                    showError(input, errorElement);
+                    return false;
+                }
+
+                showSuccess(input, errorElement);
+                return true;
+            }
+
+            // Real-time validation on blur
+            nameInput.addEventListener('blur', () => validateField(nameInput));
+            emailInput.addEventListener('blur', () => validateField(emailInput));
+            messageInput.addEventListener('blur', () => validateField(messageInput));
+
+            // Clear error on input
+            [nameInput, emailInput, messageInput].forEach(input => {
+                input.addEventListener('input', () => {
+                    if (input.classList.contains('error')) {
+                        const errorElement = document.getElementById(`${input.id}-error`);
+                        input.classList.remove('error');
+                        errorElement.classList.remove('visible');
+                    }
+                });
+            });
+
+            /**
+             * Handle form submission
+             * @param {Event} e - Submit event
+             */
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                // Validate all fields
+                const isNameValid = validateField(nameInput);
+                const isEmailValid = validateField(emailInput);
+                const isMessageValid = validateField(messageInput);
+
+                if (!isNameValid || !isEmailValid || !isMessageValid) {
+                    if (window.showToast) {
+                        window.showToast('Please fill in all required fields correctly', 'warning');
+                    }
+                    // Focus first invalid field
+                    if (!isNameValid) nameInput.focus();
+                    else if (!isEmailValid) emailInput.focus();
+                    else if (!isMessageValid) messageInput.focus();
+                    return;
+                }
+
+                // Show loading state
+                submitBtn.disabled = true;
+                submitBtn.classList.add('loading');
+                submitBtn.querySelector('.btn-text').style.display = 'none';
+                submitBtn.querySelector('.btn-loading').style.display = 'inline';
+
+                try {
+                    // Submit form using Fetch API
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        // Success
+                        if (window.showToast) {
+                            window.showToast('Message sent successfully! We\'ll get back to you soon.', 'success');
+                        } else {
+                            alert('Message sent successfully!');
+                        }
+                        form.reset();
+                        [nameInput, emailInput, messageInput].forEach(input => {
+                            input.classList.remove('success');
+                        });
+                    } else {
+                        throw new Error('Form submission failed');
+                    }
+                } catch (error) {
+                    console.error('Form submission error:', error);
+                    if (window.showToast) {
+                        window.showToast('Failed to send message. Please try again or email us directly.', 'danger');
+                    } else {
+                        alert('Failed to send message. Please try again.');
+                    }
+                } finally {
+                    // Reset button state
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                    submitBtn.querySelector('.btn-text').style.display = 'inline';
+                    submitBtn.querySelector('.btn-loading').style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
