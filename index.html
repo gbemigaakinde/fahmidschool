@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
+        
+        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Shared Header here -->
@@ -24,6 +28,7 @@
                 <li><a href="contact.html">Contact</a></li>
             </ul>
         </nav>
+        <div id="user-status"></div>
     </div>
 </header>
 
@@ -62,6 +67,7 @@
         &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
     </div>
 </footer>
+<script src="firebase-init.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
