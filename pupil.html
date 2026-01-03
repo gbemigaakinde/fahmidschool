@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pupil Portal - Fahmid Nursery & Primary School</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <!-- Pupil Header -->
+    <header style="background:#4CAF50; padding:20px; text-align:center; color:white;">
+        <h1>Pupil Portal</h1>
+        <p id="pupil-welcome">Welcome back!</p>
+        <div id="user-status" style="margin-top:10px;"></div>
+    </header>
+
+    <div class="container" style="padding:40px 20px; max-width:1000px;">
+        <div class="admin-card"> <!-- Reusing admin-card class for consistency -->
+            <h2 style="text-align:center; color:#1976D2;">My Academic Results</h2>
+            <p style="text-align:center;">View your performance across all terms and subjects.</p>
+
+            <div style="text-align:center; margin:20px 0;">
+                <button class="btn" onclick="window.location.href='print-results.html'">🖨️ View & Print Results</button>
+            </div>
+
+            <div id="results-container">
+                <p>Loading your results...</p>
+            </div>
+        </div>
+
+        <div style="text-align:center; margin-top:40px;">
+            <a href="index.html" class="btn" style="background:#666;">← Back to School Website</a>
+        </div>
+    </div>
+
+    <script src="firebase-init.js"></script>
+    <script>
+        let currentPupilId = null;
+        let currentPupilName = '';
+        let currentClass = '';
+
+        // Enforce pupil access
+        checkRole('pupil').then(async user => {
+            // Find pupil document by matching email or parent email (simplified: assume pupil user email matches parentEmail in pupils collection)
+            const pupilsSnap = await db.collection('pupils').where('parentEmail', '==', user.email).get();
+            if (pupilsSnap.empty) {
+                // Fallback: try direct email match
+                const altSnap = await db.collection('pupils').where('email', '==', user.email).get();
+                if (altSnap.empty) {
+                    alert('No pupil profile found for this account.');
+                    window.location.href = 'login.html';
+                    return;
+                } else {
+                    loadPupilData(altSnap.docs[0]);
+                }
+            } else {
+                loadPupilData(pupilsSnap.docs[0]);
+            }
+        }).catch(() => {});
+
+        async function loadPupilData(pupilDoc) {
+            const pupilData = pupilDoc.data();
+            currentPupilId = pupilDoc.id;
+            currentPupilName = pupilData.name;
+            currentClass = pupilData.class || 'Unknown Class';
+
+            document.getElementById('pupil-welcome').innerHTML = `Hello, <strong>${currentPupilName}</strong>!<br>Class: ${currentClass}`;
+            document.getElementById('user-status').innerHTML = `<button class="btn" onclick="logout()">Logout</button>`;
+
+            loadResults();
+        }
+
+        async function loadResults() {
+            if (!currentPupilId) return;
+
+            const container = document.getElementById('results-container');
+            container.innerHTML = '<p>Loading results...</p>';
+
+            const resultsSnap = await db.collection('results')
+                .where('pupilId', '==', currentPupilId)
+                .get();
+
+            if (resultsSnap.empty) {
+                container.innerHTML = '<p style="text-align:center; color:#666;">No results have been entered yet. Check back later!</p>';
+                return;
+            }
+
+            // Group by term
+            const terms = {};
+            resultsSnap.forEach(doc => {
+                const r = doc.data();
+                if (!terms[r.term]) terms[r.term] = [];
+                terms[r.term].push(r);
+            });
+
+            let html = '';
+            for (const term in terms) {
+                html += `<h3 style="color:#1976D2; border-bottom:2px solid #4CAF50; padding-bottom:8px;">${term}</h3>`;
+                html += `<table style="width:100%; margin:20px 0;"><thead><tr><th>Subject</th><th>Score</th><th>Grade</th></tr></thead><tbody>`;
+
+                terms[term].forEach(r => {
+                    const grade = getGrade(r.score);
+                    html += `<tr><td><strong>${r.subject}</strong></td><td>${r.score}/100</td><td>${grade}</td></tr>`;
+                });
+
+                html += `</tbody></table>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function getGrade(score) {
+            if (score >= 90) return 'A+ Excellent';
+            if (score >= 80) return 'A Very Good';
+            if (score >= 70) return 'B Good';
+            if (score >= 60) return 'C Fair';
+            if (score >= 50) return 'D Pass';
+            return 'F Fail';
+        }
+    </script>
+</body>
+</html>
