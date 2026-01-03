@@ -1,14 +1,13 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript
- * Phases 4-7 Complete
+ * Pupil Portal JavaScript - FIXED
  * 
  * Handles:
  * - Load pupil profile
  * - Display academic results
  * - Grade calculation
  * 
- * @version 2.0.0
+ * @version 2.1.0 - AUTHENTICATION FIX
  * @date 2026-01-03
  */
 
@@ -30,7 +29,7 @@ checkRole('pupil').then(async user => {
 });
 
 // ============================================
-// PUPIL PROFILE
+// PUPIL PROFILE - FIXED QUERY
 // ============================================
 
 /**
@@ -40,33 +39,29 @@ checkRole('pupil').then(async user => {
  */
 async function loadPupilProfile(user) {
     try {
-        // Find pupil document by matching parent email or email
-        let pupilsSnap = await db.collection('pupils')
-            .where('parentEmail', '==', user.email)
-            .get();
+        // FIXED: Query pupil document by UID (document ID matches auth UID)
+        const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
-        // If not found by parent email, try direct email match
-        if (pupilsSnap.empty) {
-            pupilsSnap = await db.collection('pupils')
-                .where('email', '==', user.email)
-                .get();
-        }
-
-        if (pupilsSnap.empty) {
-            window.showToast?.('No pupil profile found for this account', 'danger');
+        if (!pupilDoc.exists) {
+            console.error('No pupil profile found for UID:', user.uid);
+            window.showToast?.('No pupil profile found for this account. Please contact admin.', 'danger');
             setTimeout(() => {
                 window.location.href = 'login.html';
-            }, 2000);
+            }, 3000);
             return;
         }
 
-        // Get first matching pupil
-        const pupilDoc = pupilsSnap.docs[0];
         const pupilData = pupilDoc.data();
         
-        currentPupilId = pupilDoc.id;
+        currentPupilId = pupilDoc.id; // This is the UID
         currentPupilName = pupilData.name;
         currentClass = pupilData.class || 'Unknown Class';
+
+        console.log('✓ Pupil profile loaded:', {
+            uid: currentPupilId,
+            name: currentPupilName,
+            class: currentClass
+        });
 
         // Update welcome message
         document.getElementById('pupil-welcome').innerHTML = `
@@ -79,6 +74,10 @@ async function loadPupilProfile(user) {
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         handleError(error, 'Failed to load pupil profile');
+        
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 3000);
     }
 }
 
@@ -91,7 +90,10 @@ async function loadPupilProfile(user) {
  * @async
  */
 async function loadResults() {
-    if (!currentPupilId) return;
+    if (!currentPupilId) {
+        console.error('Cannot load results: currentPupilId is null');
+        return;
+    }
 
     const container = document.getElementById('results-container');
     if (!container) return;
@@ -106,16 +108,20 @@ async function loadResults() {
     `;
 
     try {
+        console.log('Querying results for pupilId:', currentPupilId);
+
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
+
+        console.log('Results found:', resultsSnap.size);
 
         container.innerHTML = '';
 
         if (resultsSnap.empty) {
             container.innerHTML = `
                 <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">
-                    No results have been entered yet. Check back later!
+                    📚 No results have been entered yet. Check back later!
                 </p>
             `;
             return;
@@ -131,7 +137,7 @@ async function loadResults() {
             terms[result.term].push(result);
         });
 
-        // Sort terms (First Term, Second Term, Third Term)
+        // Sort terms
         const termOrder = ['First Term', 'Second Term', 'Third Term'];
         const sortedTerms = Object.keys(terms).sort((a, b) => {
             return termOrder.indexOf(a) - termOrder.indexOf(b);
@@ -207,7 +213,7 @@ async function loadResults() {
         console.error('Error loading results:', error);
         container.innerHTML = `
             <p style="text-align:center; color:var(--color-danger); padding: var(--space-2xl);">
-                Error loading results. Please refresh the page.
+                ⚠️ Error loading results. Please refresh the page or contact support.
             </p>
         `;
     }
