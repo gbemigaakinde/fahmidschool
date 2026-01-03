@@ -148,10 +148,225 @@
                 });
             });
         }
+        // ==================== PUPILS CRUD ====================
+        function showPupilForm() { 
+            document.getElementById('pupil-form').style.display = 'block'; 
+        }
 
-        // Similar functions for pupils, classes, announcements...
-        // (Add pupil/class/announcement CRUD similarly - abbreviated for brevity)
+        function addPupil() {
+            const name = document.getElementById('pupil-name').value.trim();
+            const pupilClass = document.getElementById('pupil-class').value.trim();
+            const parentEmail = document.getElementById('pupil-parent').value.trim();
 
+            if (!name || !pupilClass) {
+                alert('Name and Class are required');
+                return;
+            }
+
+            db.collection('pupils').add({
+                name,
+                class: pupilClass,
+                parentEmail: parentEmail || null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert('Pupil added successfully');
+                document.getElementById('pupil-form').style.display = 'none';
+                document.getElementById('pupil-name').value = '';
+                document.getElementById('pupil-class').value = '';
+                document.getElementById('pupil-parent').value = '';
+                loadPupils();
+                loadDashboardStats();
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+
+        function loadPupils() {
+            const tbody = document.querySelector('#pupils-table tbody');
+            tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+            db.collection('pupils').orderBy('name').get()
+                .then(snapshot => {
+                    tbody.innerHTML = '';
+                    if (snapshot.empty) {
+                        tbody.innerHTML = '<tr><td colspan="4">No pupils yet</td></tr>';
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${data.name}</td>
+                            <td>${data.class}</td>
+                            <td>${data.parentEmail || '-'}</td>
+                            <td>
+                                <button class="btn-small btn-danger" onclick="deleteDoc('pupils', '${doc.id}')">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    tbody.innerHTML = '<tr><td colspan="4">Error loading pupils</td></tr>';
+                    console.error(err);
+                });
+        }
+
+        // ==================== CLASSES CRUD ====================
+        function showClassForm() { 
+            document.getElementById('class-form').style.display = 'block'; 
+        }
+
+        function addClass() {
+            const className = document.getElementById('class-name').value.trim();
+
+            if (!className) {
+                alert('Class name is required');
+                return;
+            }
+
+            // Check if class already exists
+            db.collection('classes').where('name', '==', className).get()
+                .then(snapshot => {
+                    if (!snapshot.empty) {
+                        alert('This class already exists');
+                        return;
+                    }
+
+                    db.collection('classes').add({
+                        name: className,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    })
+                    .then(() => {
+                        alert('Class created successfully');
+                        document.getElementById('class-form').style.display = 'none';
+                        document.getElementById('class-name').value = '';
+                        loadClasses();
+                        loadDashboardStats();
+                    });
+                })
+                .catch(err => alert('Error: ' + err.message));
+        }
+
+        function loadClasses() {
+            const tbody = document.querySelector('#classes-table tbody');
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+
+            db.collection('classes').orderBy('name').get()
+                .then(async snapshot => {
+                    tbody.innerHTML = '';
+                    if (snapshot.empty) {
+                        tbody.innerHTML = '<tr><td colspan="3">No classes yet</td></tr>';
+                        return;
+                    }
+
+                    for (let doc of snapshot.docs) {
+                        const classData = doc.data();
+                        // Count pupils in this class
+                        const pupilsSnap = await db.collection('pupils')
+                            .where('class', '==', classData.name).get();
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${classData.name}</td>
+                            <td>${pupilsSnap.size}</td>
+                            <td>
+                                <button class="btn-small btn-danger" onclick="deleteDoc('classes', '${doc.id}')">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                })
+                .catch(err => {
+                    tbody.innerHTML = '<tr><td colspan="3">Error loading classes</td></tr>';
+                    console.error(err);
+                });
+        }
+
+        // ==================== ANNOUNCEMENTS CRUD ====================
+        function showAnnounceForm() { 
+            document.getElementById('announce-form').style.display = 'block'; 
+        }
+
+        function addAnnouncement() {
+            const title = document.getElementById('announce-title').value.trim();
+            const content = document.getElementById('announce-content').value.trim();
+
+            if (!title || !content) {
+                alert('Title and content are required');
+                return;
+            }
+
+            db.collection('announcements').add({
+                title,
+                content,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert('Announcement published successfully');
+                document.getElementById('announce-form').style.display = 'none';
+                document.getElementById('announce-title').value = '';
+                document.getElementById('announce-content').value = '';
+                loadAdminAnnouncements();
+                loadDashboardStats();
+            })
+            .catch(err => alert('Error: ' + err.message));
+        }
+
+        function loadAdminAnnouncements() {
+            const list = document.getElementById('announcements-list');
+            list.innerHTML = '<p>Loading announcements...</p>';
+
+            db.collection('announcements')
+                .orderBy('createdAt', 'desc')
+                .get()
+                .then(snapshot => {
+                    list.innerHTML = '';
+                    if (snapshot.empty) {
+                        list.innerHTML = '<p>No announcements yet.</p>';
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const div = document.createElement('div');
+                        div.className = 'admin-card';
+                        div.style.marginBottom = '20px';
+                        div.innerHTML = `
+                            <h3>${data.title}</h3>
+                            <p>${data.content}</p>
+                            <small>Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString() : 'Just now'}</small>
+                            <div style="margin-top:10px;">
+                                <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${doc.id}')">Delete</button>
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    list.innerHTML = '<p>Error loading announcements</p>';
+                    console.error(err);
+                });
+        }
+
+        // Generic delete function (already used above)
+        function deleteDoc(collectionName, docId) {
+            if (!confirm('Are you sure you want to delete this item? This cannot be undone.')) {
+                return;
+            }
+
+            db.collection(collectionName).doc(docId).delete()
+                .then(() => {
+                    alert('Deleted successfully');
+                    loadDashboardStats();
+
+                    if (collectionName === 'teachers') loadTeachers();
+                    if (collectionName === 'pupils') loadPupils();
+                    if (collectionName === 'classes') loadClasses();
+                    if (collectionName === 'announcements') loadAdminAnnouncements();
+                })
+                .catch(err => alert('Error deleting: ' + err.message));
+        }
+        
         function deleteDoc(collection, id) {
             if (confirm('Are you sure?')) {
                 db.collection(collection).doc(id).delete().then(() => {
