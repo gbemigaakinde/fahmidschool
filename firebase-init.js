@@ -19,36 +19,60 @@ const db = firebase.firestore();
 // Auth state observer - runs on every page load
 auth.onAuthStateChanged(user => {
     const userStatus = document.getElementById('user-status');
+    
+    if (!userStatus) return; // Safety check if element not found
+
     if (user) {
         // User is signed in
         db.collection('users').doc(user.uid).get().then(doc => {
+            let role = 'pupil'; // default
             if (doc.exists) {
-                const role = doc.data().role;
-                if (userStatus) {
-                    userStatus.innerHTML = `
-                        <span>Welcome, ${user.email} (${role})</span>
-                        <button id="logout-btn" class="btn">Logout</button>
-                    `;
-                }
-
-                // Redirect to portal if on public page and trying to access protected area
-                if (window.location.pathname.includes('portal.html')) {
-                    // Future phases will check role here
-                }
+                role = doc.data().role || 'pupil';
             } else {
-                // No role assigned yet (new user) - redirect to login or admin approval
-                createUserRoleDocument(user, 'pupil'); // Default fallback - change as needed
+                // Create default role if missing
+                createUserRoleDocument(user, 'pupil');
             }
+
+            userStatus.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong>Welcome back!</strong><br>
+                    <small>${user.email}</small><br>
+                    <small style="opacity: 0.9;">Role: ${role.charAt(0).toUpperCase() + role.slice(1)}</small>
+                </div>
+                <button id="logout-btn" class="btn" style="width: 100%; padding: 12px; border-radius: 30px;">
+                    Logout
+                </button>
+            `;
+
+            // Attach logout event (after HTML is inserted)
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    auth.signOut().then(() => {
+                        window.location.href = 'index.html';
+                    });
+                });
+            }
+        }).catch(err => {
+            console.error("Error fetching user role:", err);
+            userStatus.innerHTML = `<a href="login.html" class="btn">Login Issue – Retry</a>`;
         });
 
-        document.getElementById('logout-btn')?.addEventListener('click', logout);
     } else {
         // User is signed out
-        if (userStatus) {
-            userStatus.innerHTML = `<a href="login.html" class="btn">Login / Register</a>`;
-        }
-        // If trying to access portal without login
-        if (window.location.pathname.includes('portal.html')) {
+        userStatus.innerHTML = `
+            <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
+                Login / Register
+            </a>
+        `;
+    }
+
+    // Optional: Redirect logic for portal pages
+    if (window.location.pathname.includes('portal.html') || 
+        window.location.pathname.includes('admin.html') || 
+        window.location.pathname.includes('teacher.html') || 
+        window.location.pathname.includes('pupil.html')) {
+        if (!user) {
             window.location.href = 'login.html';
         }
     }
