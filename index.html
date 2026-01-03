@@ -3,33 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Fahmid Nursery & Primary School - Nurturing young minds for a bright future with quality education in a safe and caring environment.">
     <title>Home - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-        
-        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-        
-        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- Hamburger Menu (Mobile) -->
-<div class="hamburger" id="hamburger">
-    <div class="line1"></div>
-    <div class="line2"></div>
-    <div class="line3"></div>
-</div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="line1"></span>
+        <span class="line2"></span>
+        <span class="line3"></span>
+    </button>
 
-<!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <div class="logo-text">Fahmid School</div>
-    </div>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <div class="logo-text">Fahmid School</div>
+        </div>
 
-    <div class="sidebar-content">
-        <nav>
-            <ul>
-                <li><a href="index.html">Home</a></li>
+        <div class="sidebar-content">
+            <ul role="list">
+                <li><a href="index.html" aria-current="page">Home</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="academics.html">Academics</a></li>
                 <li><a href="admissions.html">Admissions</a></li>
@@ -38,60 +39,55 @@
                 <li><a href="news.html">News</a></li>
                 <li><a href="contact.html">Contact</a></li>
             </ul>
-        </nav>
-    </div>
-
-    <div class="sidebar-footer">
-        <div id="user-status">Loading...</div>
-    </div>
-</div>
-
-<!-- Main Content -->
-<div class="main-content">
-    <div class="hero">
-        <h1>Welcome to Fahmid Nursery & Primary School</h1>
-        <p>Nurturing Young Minds for a Bright Future</p>
-        <a href="admissions.html" class="btn">Apply Now</a>
-    </div>
-
-    <section class="container">
-        <h2 style="text-align:center;">Why Choose Us?</h2>
-        <div class="grid">
-            <div>
-                <h3>Quality Education</h3>
-                <p>Holistic curriculum focused on academic excellence and character development.</p>
-            </div>
-            <div>
-                <h3>Safe & Caring Environment</h3>
-                <p>A nurturing space where every child feels valued and secure.</p>
-            </div>
-            <div>
-                <h3>Experienced Teachers</h3>
-                <p>Dedicated staff committed to inspiring lifelong learning.</p>
-            </div>
         </div>
-    </section>
-</div>
-    <!-- Shared Footer here -->
-    <!-- Lightbox (add to every page or one base) -->
-<div id="lightbox" class="lightbox">
-    <img id="lightbox-img" src="" alt="Enlarged image">
-</div>
 
-<footer>
-    <div class="container">
-        &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+        <div class="sidebar-footer">
+            <div id="user-status" aria-live="polite">Loading...</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <!-- Hero Section -->
+        <section class="hero" aria-labelledby="hero-heading">
+            <h1 id="hero-heading">Welcome to Fahmid Nursery & Primary School</h1>
+            <p>Nurturing Young Minds for a Bright Future</p>
+            <a href="admissions.html" class="btn">Apply Now</a>
+        </section>
+
+        <!-- Features Section -->
+        <section class="container" aria-labelledby="features-heading">
+            <h2 id="features-heading" class="section-title">Why Choose Us?</h2>
+            <div class="grid">
+                <article class="card">
+                    <h3>Quality Education</h3>
+                    <p>Holistic curriculum focused on academic excellence and character development.</p>
+                </article>
+                <article class="card">
+                    <h3>Safe & Caring Environment</h3>
+                    <p>A nurturing space where every child feels valued and secure.</p>
+                </article>
+                <article class="card">
+                    <h3>Experienced Teachers</h3>
+                    <p>Dedicated staff committed to inspiring lifelong learning.</p>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <img id="lightbox-img" src="" alt="">
     </div>
-</footer>
-<script src="firebase-init.js"></script>
-    <script src="script.js"></script>
-    <script>
-// Hamburger toggle
-document.getElementById('hamburger').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('active');
-    document.getElementById('hamburger').classList.toggle('active');
-});
-</script>
 
+    <script src="firebase-init.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
