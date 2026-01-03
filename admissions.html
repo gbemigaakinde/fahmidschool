@@ -7,9 +7,6 @@
     <title>Admissions - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Skip to main content link -->
@@ -42,7 +39,11 @@
         </div>
 
         <div class="sidebar-footer">
-            <div id="user-status" aria-live="polite">Loading...</div>
+            <div class="sidebar-login-prompt">
+                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
+                    Login / Register
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -85,12 +86,9 @@
         </div>
     </footer>
 
-    <!-- Lightbox -->
-    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-        <img id="lightbox-img" src="" alt="">
-    </div>
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="firebase-init.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
