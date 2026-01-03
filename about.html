@@ -3,81 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - Fahmid Nursery & Primary School</title>
+    <meta name="description" content="Learn about Fahmid Nursery & Primary School's mission, vision, and commitment to educational excellence.">
+    <title>About Us - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-        
-        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <!-- Hamburger Menu (Mobile) -->
-<div class="hamburger" id="hamburger">
-    <div class="line1"></div>
-    <div class="line2"></div>
-    <div class="line3"></div>
-</div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="line1"></span>
+        <span class="line2"></span>
+        <span class="line3"></span>
+    </button>
 
-<!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <div class="logo-text">Fahmid School</div>
-    </div>
-    <nav>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="about.html">About</a></li>
-            <li><a href="academics.html">Academics</a></li>
-            <li><a href="admissions.html">Admissions</a></li>
-            <li><a href="school-life.html">School Life</a></li>
-            <li><a href="gallery.html">Gallery</a></li>
-            <li><a href="news.html">News</a></li>
-            <li><a href="contact.html">Contact</a></li>
-        </ul>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <div class="logo-text">Fahmid School</div>
+        </div>
+
+        <div class="sidebar-content">
+            <ul role="list">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html" aria-current="page">About</a></li>
+                <li><a href="academics.html">Academics</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="school-life.html">School Life</a></li>
+                <li><a href="gallery.html">Gallery</a></li>
+                <li><a href="news.html">News</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </div>
+
+        <div class="sidebar-footer">
+            <div id="user-status" aria-live="polite">Loading...</div>
+        </div>
     </nav>
-    <div id="user-status">Loading...</div>
-</div>
-<!-- Main Content -->
-<div class="main-content">
-    <section class="container">
-        <h1>About Us</h1>
-        <p>Fahmid Nursery and Primary School is dedicated to providing high-quality early childhood and primary education in a supportive and stimulating environment.</p>
-        
-        <h2>Our Mission</h2>
-        <p>To foster curiosity, creativity, and confidence in every child, preparing them for lifelong success.</p>
-        
-        <h2>Our Vision</h2>
-        <p>A leading institution where children thrive academically, socially, and emotionally.</p>
-        
-        <h2>History</h2>
-        <p>Founded with a commitment to excellence, we have been serving the community by shaping young minds with care and dedication.</p>
-        
-        <img src="https://source.unsplash.com/random/800x400/?school-building" alt="School building" style="width:100%; border-radius:8px; margin-top:20px;">
-    </section>
-</div>
-    <!-- Shared Footer -->
-    <!-- Lightbox (add to every page or one base) -->
-<div id="lightbox" class="lightbox">
-    <img id="lightbox-img" src="" alt="Enlarged image">
-</div>
 
-<footer>
-    <div class="container">
-        &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <article class="container">
+            <header>
+                <h1>About Us</h1>
+                <p class="lead">Fahmid Nursery and Primary School is dedicated to providing high-quality early childhood and primary education in a supportive and stimulating environment.</p>
+            </header>
+
+            <section aria-labelledby="mission-heading">
+                <h2 id="mission-heading">Our Mission</h2>
+                <p>To foster curiosity, creativity, and confidence in every child, preparing them for lifelong success.</p>
+            </section>
+
+            <section aria-labelledby="vision-heading">
+                <h2 id="vision-heading">Our Vision</h2>
+                <p>A leading institution where children thrive academically, socially, and emotionally.</p>
+            </section>
+
+            <section aria-labelledby="history-heading">
+                <h2 id="history-heading">History</h2>
+                <p>Founded with a commitment to excellence, we have been serving the community by shaping young minds with care and dedication.</p>
+                <figure>
+                    <img src="https://source.unsplash.com/random/800x400/?school-building" alt="Fahmid School building exterior" loading="lazy">
+                    <figcaption>Our welcoming school campus</figcaption>
+                </figure>
+            </section>
+        </article>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+        <img id="lightbox-img" src="" alt="">
     </div>
-</footer>
 
-<script src="firebase-init.js"></script>
+    <script src="firebase-init.js"></script>
     <script src="script.js"></script>
-    
-    <script>
-// Hamburger toggle
-document.getElementById('hamburger').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('active');
-    document.getElementById('hamburger').classList.toggle('active');
-});
-</script>
 </body>
 </html>
