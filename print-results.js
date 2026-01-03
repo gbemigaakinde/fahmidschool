@@ -1,27 +1,19 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Print Results JavaScript - FIXED
+ * Print Results JavaScript - Complete Report Card
  * 
- * @version 3.0.0 - COMPREHENSIVE FIX
- * @date 2026-01-03
+ * @version 4.0.0 - FULL NIGERIAN REPORT CARD
+ * @date 2026-01-04
  */
 
 'use strict';
 
-// ============================================
-// INITIALIZATION
-// ============================================
-
 let currentPupilId = null;
+let currentTerm = 'First Term'; // Default term
 
-// Enforce pupil access and load data
 checkRole('pupil').then(async user => {
     await loadPupilData(user);
 }).catch(() => {});
-
-// ============================================
-// PUPIL DATA LOADING
-// ============================================
 
 async function loadPupilData(user) {
     try {
@@ -39,25 +31,23 @@ async function loadPupilData(user) {
         const pupilData = pupilDoc.data();
         currentPupilId = pupilDoc.id;
 
-        console.log('✓ Print: Pupil profile loaded:', {
+        console.log('✓ Pupil profile loaded:', {
             uid: currentPupilId,
             name: pupilData.name
         });
 
-        // Update pupil info
-        document.getElementById('print-name').textContent = pupilData.name;
-        document.getElementById('print-class').textContent = pupilData.class || 'N/A';
+        // Update bio data
+        document.getElementById('student-name').textContent = pupilData.name;
+        document.getElementById('student-class').textContent = pupilData.class || 'N/A';
+        document.getElementById('admission-no').textContent = pupilData.admissionNo || '-';
+        document.getElementById('student-gender').textContent = pupilData.gender || '-';
         
-        // Set current date
-        const today = new Date();
-        document.getElementById('print-date').textContent = today.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        // Set current term (you can make this dynamic later)
+        document.getElementById('current-term').textContent = currentTerm;
+        document.getElementById('report-title').textContent = `${currentTerm} Report Card - 2025/2026 Session`;
 
-        // Load and display results
-        await loadPrintResults();
+        // Load all report data
+        await loadReportData();
     } catch (error) {
         console.error('Error loading pupil data:', error);
         handleError(error, 'Failed to load pupil information');
@@ -68,169 +58,249 @@ async function loadPupilData(user) {
     }
 }
 
+async function loadReportData() {
+    await Promise.all([
+        loadAcademicResults(),
+        loadAttendance(),
+        loadBehavioralTraits(),
+        loadPsychomotorSkills(),
+        loadRemarks()
+    ]);
+}
+
 // ============================================
-// RESULTS DISPLAY
+// ACADEMIC RESULTS
 // ============================================
 
-async function loadPrintResults() {
-    const container = document.getElementById('print-results-container');
-    if (!container) return;
+async function loadAcademicResults() {
+    const tbody = document.getElementById('academic-tbody');
+    if (!tbody) return;
 
-    container.innerHTML = `
-        <div class="skeleton-container">
-            <div class="skeleton" style="height: 40px; margin-bottom: var(--space-lg);"></div>
-            <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
-            <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
-        </div>
-    `;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm;">Loading results...</td></tr>';
 
     try {
-        console.log('Print: Querying results for pupilId:', currentPupilId);
+        console.log('Loading results for:', currentPupilId, currentTerm);
 
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
+            .where('term', '==', currentTerm)
             .get();
 
-        console.log('Print: Results found:', resultsSnap.size);
-
-        container.innerHTML = '';
+        tbody.innerHTML = '';
 
         if (resultsSnap.empty) {
-            container.innerHTML = `
-                <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-xl);">
-                    📚 No results available yet. Results will appear here once your teachers enter them.
-                </p>
-            `;
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm; color: #666;">No results available for this term yet.</td></tr>';
             return;
         }
 
-        // Group by term
-        const terms = {};
+        // Collect results
+        const results = [];
         resultsSnap.forEach(doc => {
-            const result = doc.data();
-            if (!terms[result.term]) {
-                terms[result.term] = [];
-            }
-            terms[result.term].push(result);
+            results.push(doc.data());
         });
 
-        // Sort terms
-        const termOrder = ['First Term', 'Second Term', 'Third Term'];
-        const sortedTerms = Object.keys(terms).sort((a, b) => {
-            return termOrder.indexOf(a) - termOrder.indexOf(b);
-        });
+        // Sort by subject name
+        results.sort((a, b) => a.subject.localeCompare(b.subject));
 
-        // Display each term
-        sortedTerms.forEach(term => {
-            const termHeading = document.createElement('h2');
-            termHeading.className = 'term-heading';
-            termHeading.textContent = `📖 ${term}`;
-            container.appendChild(termHeading);
+        // Calculate totals
+        let totalScore = 0;
+        let subjectCount = 0;
 
-            const table = document.createElement('table');
-            table.className = 'results-table';
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Subject</th>
-                        <th style="width: 30%; text-align: center;">Score</th>
-                        <th style="width: 30%; text-align: center;">Grade</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
+        // Display each subject
+        results.forEach(result => {
+            const ca = result.ca || 0;
+            const exam = result.exam || 0;
+            const total = ca + exam;
+            const grade = getGrade(total);
+            const remark = getSubjectRemark(total);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${result.subject}</td>
+                <td>${ca}</td>
+                <td>${exam}</td>
+                <td><strong>${total}</strong></td>
+                <td class="grade-${grade.replace(/ /g, '')}">${grade}</td>
+                <td style="font-size: 8pt;">${remark}</td>
             `;
+            tbody.appendChild(tr);
 
-            const tbody = table.querySelector('tbody');
-
-            // Sort subjects
-            terms[term].sort((a, b) => a.subject.localeCompare(b.subject));
-
-            // Calculate statistics
-            let totalScore = 0;
-            let subjectCount = 0;
-
-            // Add subject rows
-            terms[term].forEach(result => {
-                const grade = getGrade(result.score);
-                const gradeClass = getGradeClass(result.score);
-                
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${result.subject}</strong></td>
-                    <td style="text-align: center; font-weight: var(--font-weight-bold);">${result.score}/100</td>
-                    <td style="text-align: center;" class="${gradeClass}">${grade}</td>
-                `;
-                tbody.appendChild(tr);
-
-                totalScore += result.score;
-                subjectCount++;
-            });
-
-            // Add summary rows
-            if (subjectCount > 0) {
-                const average = (totalScore / subjectCount).toFixed(1);
-                const avgGrade = getGrade(parseFloat(average));
-                const avgGradeClass = getGradeClass(parseFloat(average));
-
-                // Total row
-                const totalRow = document.createElement('tr');
-                totalRow.className = 'summary-row';
-                totalRow.innerHTML = `
-                    <td><strong>📊 TOTAL</strong></td>
-                    <td style="text-align: center;"><strong>${totalScore}/${subjectCount * 100}</strong></td>
-                    <td style="text-align: center;">-</td>
-                `;
-                tbody.appendChild(totalRow);
-
-                // Average row
-                const avgRow = document.createElement('tr');
-                avgRow.className = 'summary-row';
-                avgRow.style.background = 'var(--color-primary-dark)';
-                avgRow.style.color = 'var(--color-white)';
-                avgRow.innerHTML = `
-                    <td style="color: var(--color-white);"><strong>🎯 AVERAGE</strong></td>
-                    <td style="text-align: center; color: var(--color-white);"><strong>${average}%</strong></td>
-                    <td style="text-align: center; color: var(--color-white);"><strong>${avgGrade}</strong></td>
-                `;
-                tbody.appendChild(avgRow);
-            }
-
-            container.appendChild(table);
+            totalScore += total;
+            subjectCount++;
         });
 
-        console.log('✓ Print results loaded successfully');
+        // Add summary rows
+        if (subjectCount > 0) {
+            const average = (totalScore / subjectCount).toFixed(1);
+            const overallGrade = getGrade(parseFloat(average));
+
+            // Total row
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'summary-row';
+            totalRow.innerHTML = `
+                <td colspan="3" style="text-align: right;"><strong>TOTAL SCORE OBTAINED:</strong></td>
+                <td colspan="3"><strong>${totalScore} / ${subjectCount * 100}</strong></td>
+            `;
+            tbody.appendChild(totalRow);
+
+            // Average row
+            const avgRow = document.createElement('tr');
+            avgRow.className = 'summary-row';
+            avgRow.innerHTML = `
+                <td colspan="3" style="text-align: right;"><strong>AVERAGE SCORE:</strong></td>
+                <td colspan="3"><strong>${average}%</strong></td>
+            `;
+            tbody.appendChild(avgRow);
+
+            // Overall grade row
+            const gradeRow = document.createElement('tr');
+            gradeRow.className = 'summary-row';
+            gradeRow.innerHTML = `
+                <td colspan="3" style="text-align: right;"><strong>OVERALL GRADE:</strong></td>
+                <td colspan="3" class="grade-${overallGrade.replace(/ /g, '')}"><strong>${overallGrade}</strong></td>
+            `;
+            tbody.appendChild(gradeRow);
+        }
+
+        console.log('✓ Academic results loaded');
     } catch (error) {
-        console.error('Error loading print results:', error);
-        container.innerHTML = `
-            <p style="text-align:center; color:var(--color-danger); padding: var(--space-xl);">
-                ⚠️ Error loading results. Please try again or contact support.
-            </p>
-        `;
+        console.error('Error loading academic results:', error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm; color: #d32f2f;">Error loading results.</td></tr>';
     }
 }
 
 // ============================================
-// GRADE CALCULATION
+// ATTENDANCE
+// ============================================
+
+async function loadAttendance() {
+    try {
+        const attendanceDoc = await db.collection('attendance')
+            .doc(`${currentPupilId}_${currentTerm}`)
+            .get();
+
+        if (attendanceDoc.exists) {
+            const data = attendanceDoc.data();
+            document.getElementById('times-opened').textContent = data.timesOpened || '-';
+            document.getElementById('times-present').textContent = data.timesPresent || '-';
+            document.getElementById('times-absent').textContent = data.timesAbsent || '-';
+        } else {
+            // Default values if no attendance record
+            document.getElementById('times-opened').textContent = '-';
+            document.getElementById('times-present').textContent = '-';
+            document.getElementById('times-absent').textContent = '-';
+        }
+
+        console.log('✓ Attendance loaded');
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+    }
+}
+
+// ============================================
+// BEHAVIORAL TRAITS
+// ============================================
+
+async function loadBehavioralTraits() {
+    try {
+        const traitsDoc = await db.collection('behavioral_traits')
+            .doc(`${currentPupilId}_${currentTerm}`)
+            .get();
+
+        if (traitsDoc.exists) {
+            const data = traitsDoc.data();
+            document.getElementById('trait-punctuality').textContent = data.punctuality || '-';
+            document.getElementById('trait-neatness').textContent = data.neatness || '-';
+            document.getElementById('trait-politeness').textContent = data.politeness || '-';
+            document.getElementById('trait-honesty').textContent = data.honesty || '-';
+            document.getElementById('trait-obedience').textContent = data.obedience || '-';
+            document.getElementById('trait-cooperation').textContent = data.cooperation || '-';
+            document.getElementById('trait-attentiveness').textContent = data.attentiveness || '-';
+            document.getElementById('trait-leadership').textContent = data.leadership || '-';
+            document.getElementById('trait-selfcontrol').textContent = data.selfcontrol || '-';
+            document.getElementById('trait-creativity').textContent = data.creativity || '-';
+        }
+
+        console.log('✓ Behavioral traits loaded');
+    } catch (error) {
+        console.error('Error loading behavioral traits:', error);
+    }
+}
+
+// ============================================
+// PSYCHOMOTOR SKILLS
+// ============================================
+
+async function loadPsychomotorSkills() {
+    try {
+        const skillsDoc = await db.collection('psychomotor_skills')
+            .doc(`${currentPupilId}_${currentTerm}`)
+            .get();
+
+        if (skillsDoc.exists) {
+            const data = skillsDoc.data();
+            document.getElementById('skill-handwriting').textContent = data.handwriting || '-';
+            document.getElementById('skill-drawing').textContent = data.drawing || '-';
+            document.getElementById('skill-sports').textContent = data.sports || '-';
+            document.getElementById('skill-craft').textContent = data.craft || '-';
+            document.getElementById('skill-verbal').textContent = data.verbal || '-';
+            document.getElementById('skill-coordination').textContent = data.coordination || '-';
+        }
+
+        console.log('✓ Psychomotor skills loaded');
+    } catch (error) {
+        console.error('Error loading psychomotor skills:', error);
+    }
+}
+
+// ============================================
+// REMARKS
+// ============================================
+
+async function loadRemarks() {
+    try {
+        const remarksDoc = await db.collection('remarks')
+            .doc(`${currentPupilId}_${currentTerm}`)
+            .get();
+
+        if (remarksDoc.exists) {
+            const data = remarksDoc.data();
+            document.getElementById('teacher-remark').textContent = data.teacherRemark || '-';
+            document.getElementById('head-remark').textContent = data.headRemark || '-';
+            document.getElementById('resumption-date').textContent = data.resumptionDate || '-';
+        }
+
+        console.log('✓ Remarks loaded');
+    } catch (error) {
+        console.error('Error loading remarks:', error);
+    }
+}
+
+// ============================================
+// GRADING FUNCTIONS
 // ============================================
 
 function getGrade(score) {
-    if (score >= 90) return 'A+ Excellent';
-    if (score >= 80) return 'A Very Good';
-    if (score >= 70) return 'B Good';
-    if (score >= 60) return 'C Fair';
-    if (score >= 50) return 'D Pass';
-    return 'F Fail';
+    if (score >= 75) return 'A1';
+    if (score >= 70) return 'B2';
+    if (score >= 65) return 'B3';
+    if (score >= 60) return 'C4';
+    if (score >= 55) return 'C5';
+    if (score >= 50) return 'C6';
+    if (score >= 45) return 'D7';
+    if (score >= 40) return 'D8';
+    return 'F9';
 }
 
-function getGradeClass(score) {
-    if (score >= 80) return 'grade-excellent';
-    if (score >= 70) return 'grade-good';
-    if (score >= 50) return 'grade-fair';
-    return 'grade-fail';
+function getSubjectRemark(score) {
+    if (score >= 75) return 'Excellent';
+    if (score >= 70) return 'Very Good';
+    if (score >= 65) return 'Good';
+    if (score >= 60) return 'Credit';
+    if (score >= 50) return 'Credit';
+    if (score >= 45) return 'Pass';
+    if (score >= 40) return 'Pass';
+    return 'Fail';
 }
-
-// ============================================
-// PAGE LOAD
-// ============================================
 
 console.log('✓ Print results page initialized');
