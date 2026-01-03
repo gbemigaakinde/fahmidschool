@@ -2,12 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript - FIXED
  * 
- * Handles:
- * - Load pupil information
- * - Display print-formatted results
- * - Grade calculation
- * 
- * @version 2.1.0 - AUTHENTICATION FIX
+ * @version 3.0.0 - COMPREHENSIVE FIX
  * @date 2026-01-03
  */
 
@@ -22,22 +17,14 @@ let currentPupilId = null;
 // Enforce pupil access and load data
 checkRole('pupil').then(async user => {
     await loadPupilData(user);
-}).catch(() => {
-    // Error handling done in checkRole function
-});
+}).catch(() => {});
 
 // ============================================
-// PUPIL DATA LOADING - FIXED QUERY
+// PUPIL DATA LOADING
 // ============================================
 
-/**
- * Load pupil data and results
- * @async
- * @param {Object} user - Firebase user object
- */
 async function loadPupilData(user) {
     try {
-        // FIXED: Query pupil document by UID
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
         if (!pupilDoc.exists) {
@@ -85,10 +72,6 @@ async function loadPupilData(user) {
 // RESULTS DISPLAY
 // ============================================
 
-/**
- * Load and display results in print format
- * @async
- */
 async function loadPrintResults() {
     const container = document.getElementById('print-results-container');
     if (!container) return;
@@ -115,7 +98,7 @@ async function loadPrintResults() {
         if (resultsSnap.empty) {
             container.innerHTML = `
                 <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-xl);">
-                    No results available yet.
+                    📚 No results available yet. Results will appear here once your teachers enter them.
                 </p>
             `;
             return;
@@ -141,7 +124,7 @@ async function loadPrintResults() {
         sortedTerms.forEach(term => {
             const termHeading = document.createElement('h2');
             termHeading.className = 'term-heading';
-            termHeading.textContent = term;
+            termHeading.textContent = `📖 ${term}`;
             container.appendChild(termHeading);
 
             const table = document.createElement('table');
@@ -150,8 +133,8 @@ async function loadPrintResults() {
                 <thead>
                     <tr>
                         <th style="width: 40%;">Subject</th>
-                        <th style="width: 30%;">Score</th>
-                        <th style="width: 30%;">Grade</th>
+                        <th style="width: 30%; text-align: center;">Score</th>
+                        <th style="width: 30%; text-align: center;">Grade</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -169,12 +152,13 @@ async function loadPrintResults() {
             // Add subject rows
             terms[term].forEach(result => {
                 const grade = getGrade(result.score);
+                const gradeClass = getGradeClass(result.score);
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${result.subject}</strong></td>
-                    <td style="text-align: center;">${result.score}/100</td>
-                    <td style="text-align: center;">${grade}</td>
+                    <td style="text-align: center; font-weight: var(--font-weight-bold);">${result.score}/100</td>
+                    <td style="text-align: center;" class="${gradeClass}">${grade}</td>
                 `;
                 tbody.appendChild(tr);
 
@@ -186,12 +170,13 @@ async function loadPrintResults() {
             if (subjectCount > 0) {
                 const average = (totalScore / subjectCount).toFixed(1);
                 const avgGrade = getGrade(parseFloat(average));
+                const avgGradeClass = getGradeClass(parseFloat(average));
 
                 // Total row
                 const totalRow = document.createElement('tr');
-                totalRow.style.cssText = 'border-top: 2px solid var(--color-gray-700); font-weight: var(--font-weight-bold);';
+                totalRow.className = 'summary-row';
                 totalRow.innerHTML = `
-                    <td><strong>TOTAL</strong></td>
+                    <td><strong>📊 TOTAL</strong></td>
                     <td style="text-align: center;"><strong>${totalScore}/${subjectCount * 100}</strong></td>
                     <td style="text-align: center;">-</td>
                 `;
@@ -199,22 +184,26 @@ async function loadPrintResults() {
 
                 // Average row
                 const avgRow = document.createElement('tr');
-                avgRow.style.cssText = 'font-weight: var(--font-weight-bold); background: var(--color-gray-100);';
+                avgRow.className = 'summary-row';
+                avgRow.style.background = 'var(--color-primary-dark)';
+                avgRow.style.color = 'var(--color-white)';
                 avgRow.innerHTML = `
-                    <td><strong>AVERAGE</strong></td>
-                    <td style="text-align: center;"><strong>${average}%</strong></td>
-                    <td style="text-align: center;"><strong>${avgGrade}</strong></td>
+                    <td style="color: var(--color-white);"><strong>🎯 AVERAGE</strong></td>
+                    <td style="text-align: center; color: var(--color-white);"><strong>${average}%</strong></td>
+                    <td style="text-align: center; color: var(--color-white);"><strong>${avgGrade}</strong></td>
                 `;
                 tbody.appendChild(avgRow);
             }
 
             container.appendChild(table);
         });
+
+        console.log('✓ Print results loaded successfully');
     } catch (error) {
         console.error('Error loading print results:', error);
         container.innerHTML = `
             <p style="text-align:center; color:var(--color-danger); padding: var(--space-xl);">
-                Error loading results. Please try again.
+                ⚠️ Error loading results. Please try again or contact support.
             </p>
         `;
     }
@@ -224,18 +213,20 @@ async function loadPrintResults() {
 // GRADE CALCULATION
 // ============================================
 
-/**
- * Calculate grade from score
- * @param {number} score - Score out of 100
- * @returns {string} Grade label
- */
 function getGrade(score) {
-    if (score >= 90) return 'A+';
-    if (score >= 80) return 'A';
-    if (score >= 70) return 'B';
-    if (score >= 60) return 'C';
-    if (score >= 50) return 'D';
-    return 'F';
+    if (score >= 90) return 'A+ Excellent';
+    if (score >= 80) return 'A Very Good';
+    if (score >= 70) return 'B Good';
+    if (score >= 60) return 'C Fair';
+    if (score >= 50) return 'D Pass';
+    return 'F Fail';
+}
+
+function getGradeClass(score) {
+    if (score >= 80) return 'grade-excellent';
+    if (score >= 70) return 'grade-good';
+    if (score >= 50) return 'grade-fair';
+    return 'grade-fail';
 }
 
 // ============================================
