@@ -50,7 +50,7 @@ h1, h2, h3 {
 
 .sidebar nav {
     flex-grow: 1; /* Takes available space */
-    padding-bottom: 200px; /* Large safe space for user-status - NO OVERLAP */
+    padding-bottom: 250px !important; /* More space - forces menu up */
 }
 
 .sidebar nav ul {
@@ -246,17 +246,15 @@ footer {
 #user-status {
     position: absolute;
     bottom: 20px;
-    left: 30px;
-    right: 30px;
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 20px;
+    left: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(12px);
+    border-radius: 25px;
+    padding: 25px;
     text-align: center;
-    color: white;
-    font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    border-top: 2px solid rgba(255,255,255,0.4);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    border-top: 3px solid rgba(255,255,255,0.5);
 }
 
 #user-status a.btn,
