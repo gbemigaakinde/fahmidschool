@@ -36,19 +36,12 @@
             db.collection('users').doc(user.uid).get().then(doc => {
                 if (doc.exists) {
                     const role = doc.data().role;
-                    if (role === 'admin') {
-                        window.location.href = 'admin.html';
-                    } else if (role === 'teacher') {
-                        window.location.href = 'teacher.html';
-                    } else {
-                        alert('Pupil portal coming in next phase!');
-                        // window.location.href = 'pupil.html'; // Future
-                    }
+                    if (role === 'admin') window.location.href = 'admin.html';
+                    else if (role === 'teacher') window.location.href = 'teacher.html';
+                    else if (role === 'pupil') window.location.href = 'pupil.html';
+                    else window.location.href = 'index.html';
                 }
-            }).catch(err => {
-                console.error(err);
-                window.location.href = 'login.html';
-            });
+            }).catch(() => window.location.href = 'login.html');
         } else {
             window.location.href = 'login.html';
         }
