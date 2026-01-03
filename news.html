@@ -1,57 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Head -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stay updated with the latest news and announcements from Fahmid Nursery & Primary School.">
     <title>News & Announcements - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-        
-        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Header -->
-    <header>
-    <div class="container">
-        <div class="logo">Fahmid Nursery & Primary School</div>
-        <div class="mobile-menu">☰</div>
-        <nav>
-            <ul>
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Hamburger Menu (Mobile) -->
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="line1"></span>
+        <span class="line2"></span>
+        <span class="line3"></span>
+    </button>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-header">
+            <div class="logo-text">Fahmid School</div>
+        </div>
+
+        <div class="sidebar-content">
+            <ul role="list">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="academics.html">Academics</a></li>
                 <li><a href="admissions.html">Admissions</a></li>
                 <li><a href="school-life.html">School Life</a></li>
                 <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
+                <li><a href="news.html" aria-current="page">News</a></li>
                 <li><a href="contact.html">Contact</a></li>
             </ul>
-        </nav>
-        <div id="user-status"></div>
-    </div>
-</header>
+        </div>
 
-<section class="container">
-    <h1>News & Announcements</h1>
-    <div id="announcements-container"></div>
-</section>
+        <div class="sidebar-footer">
+            <div id="user-status" aria-live="polite">Loading...</div>
+        </div>
+    </nav>
 
-<script>
-    loadAnnouncements();  // From firebase-init.js
-</script>
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+        <article class="container">
+            <header>
+                <h1>News & Announcements</h1>
+            </header>
+
+            <section aria-label="Announcements list">
+                <div id="announcements-container" aria-live="polite">
+                    <p>Loading announcements...</p>
+                </div>
+            </section>
+        </article>
+    </main>
 
     <!-- Footer -->
-    <!-- Lightbox (add to every page or one base) -->
-<div id="lightbox" class="lightbox">
-    <img id="lightbox-img" src="" alt="Enlarged image">
-</div>
-
-<footer>
-    <div class="container">
-        &copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.
     </div>
 </footer>
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <img id="lightbox-img" src="" alt="">
+</div>
+
 <script src="firebase-init.js"></script>
-    <script src="script.js"></script>
+<script src="script.js"></script>
+<script>
+    // Load announcements on page load
+    loadAnnouncements();
+</script>
 </body>
 </html>
