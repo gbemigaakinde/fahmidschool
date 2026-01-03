@@ -10,7 +10,7 @@
  * - Class management (CRUD)
  * - Announcements (CRUD)
  * 
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-01-03
  */
 
@@ -116,11 +116,9 @@ async function loadDashboardStats() {
         handleError(error, 'Failed to load dashboard statistics');
     }
 }
-/**
- * Show teacher form
- */
+
 // ============================================
-// TEACHERS CRUD - NOW WITH AUTH + TEMP PASSWORD
+// TEACHERS CRUD - WITH AUTH + TEMP PASSWORD
 // ============================================
 
 function showTeacherForm() {
@@ -157,24 +155,36 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
         return;
     }
 
+    // Basic password validation
+    if (tempPassword.length < 6) {
+        window.showToast?.('Password must be at least 6 characters', 'warning');
+        return;
+    }
+
     try {
         // 1. Create Firebase Auth user
         const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
         const uid = userCredential.user.uid;
 
-        // 2. Save teacher profile to Firestore under 'users' collection
+        // 2. Save role to 'users'
         await db.collection('users').doc(uid).set({
-            name,
             email,
-            subject: subject || '',
             role: 'teacher',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Send password reset email (so they must change it on first login)
+        // 3. Save teacher profile to 'teachers'
+        await db.collection('teachers').doc(uid).set({
+            name,
+            email,
+            subject: subject || '',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 4. Send password reset email
         await firebase.auth().sendPasswordResetEmail(email);
 
-        window.showToast?.(`Teacher "${name}" added successfully! Password reset email sent.`, 'success');
+        window.showToast?.(`Teacher "${name}" added successfully! Password reset email sent to ${email}. They must reset before logging in.`, 'success');
 
         // Reset and hide form
         cancelTeacherForm();
@@ -187,6 +197,8 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
         console.error('Error adding teacher:', error);
         if (error.code === 'auth/email-already-in-use') {
             window.showToast?.('This email is already registered.', 'danger');
+        } else if (error.code === 'auth/weak-password') {
+            window.showToast?.('Password is too weak.', 'danger');
         } else {
             window.showToast?.(`Error: ${error.message}`, 'danger');
         }
@@ -194,7 +206,7 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
 });
 
 /**
- * Load teachers from 'users' collection where role === 'teacher'
+ * Load teachers from 'teachers' collection
  */
 async function loadTeachers() {
     const tbody = document.querySelector('#teachers-table tbody');
@@ -203,8 +215,7 @@ async function loadTeachers() {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('users')
-            .where('role', '==', 'teacher')
+        const snapshot = await db.collection('teachers')
             .orderBy('name')
             .get();
 
@@ -223,7 +234,7 @@ async function loadTeachers() {
                 <td data-label="Email">${data.email}</td>
                 <td data-label="Subject">${data.subject || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteUser('${doc.id}')">Delete</button>
+                    <button class="btn-small btn-danger" onclick="deleteUser('teachers', '${doc.id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -235,7 +246,7 @@ async function loadTeachers() {
 }
 
 // ============================================
-// PUPILS CRUD - FIXED & IMPROVED
+// PUPILS CRUD - WITH AUTH + TEMP PASSWORD
 // ============================================
 
 function showPupilForm() {
@@ -272,25 +283,37 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         return;
     }
 
+    // Basic password validation
+    if (tempPassword.length < 6) {
+        window.showToast?.('Password must be at least 6 characters', 'warning');
+        return;
+    }
+
     try {
         // 1. Create Auth user
         const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, tempPassword);
         const uid = userCredential.user.uid;
 
-        // 2. Save pupil data
+        // 2. Save role to 'users'
         await db.collection('users').doc(uid).set({
-            name,
             email,
-            class: pupilClass,
-            parentEmail: parentEmail || '',
             role: 'pupil',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Send password reset email
+        // 3. Save pupil profile to 'pupils'
+        await db.collection('pupils').doc(uid).set({
+            name,
+            email,
+            class: pupilClass,
+            parentEmail: parentEmail || '',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 4. Send password reset email
         await firebase.auth().sendPasswordResetEmail(email);
 
-        window.showToast?.(`Pupil "${name}" added! Login credentials sent to ${email}`, 'success');
+        window.showToast?.(`Pupil "${name}" added! Password reset email sent to ${email}. They must reset before logging in.`, 'success');
 
         cancelPupilForm();
         loadPupils();
@@ -300,6 +323,8 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         console.error('Error adding pupil:', error);
         if (error.code === 'auth/email-already-in-use') {
             window.showToast?.('This email is already in use.', 'danger');
+        } else if (error.code === 'auth/weak-password') {
+            window.showToast?.('Password is too weak.', 'danger');
         } else {
             window.showToast?.(`Error: ${error.message}`, 'danger');
         }
@@ -307,7 +332,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 });
 
 /**
- * Load pupils from 'users' collection where role === 'pupil'
+ * Load pupils from 'pupils' collection
  */
 async function loadPupils() {
     const tbody = document.querySelector('#pupils-table tbody');
@@ -316,8 +341,7 @@ async function loadPupils() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        const snapshot = await db.collection('users')
-            .where('role', '==', 'pupil')
+        const snapshot = await db.collection('pupils')
             .orderBy('name')
             .get();
 
@@ -337,7 +361,7 @@ async function loadPupils() {
                 <td data-label="Parent Email">${data.parentEmail || '-'}</td>
                 <td data-label="Email">${data.email}</td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteUser('${doc.id}')">Delete</button>
+                    <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${doc.id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -348,25 +372,33 @@ async function loadPupils() {
     }
 }
 
-// Optional: Generic delete function for users
-async function deleteUser(uid) {
+// Generic delete function for users (teachers/pupils)
+async function deleteUser(collection, uid) {
     if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
 
     try {
-        // Delete Auth user (requires Firebase Admin SDK on server - or reauthenticate)
-        // For client-side, you can only delete if current user, so we just delete Firestore doc
+        // Delete profile from 'teachers' or 'pupils'
+        await db.collection(collection).doc(uid).delete();
+
+        // Delete role from 'users'
         await db.collection('users').doc(uid).delete();
 
-        // Note: To fully delete Auth user, use Cloud Function triggered on Firestore delete
-        window.showToast?.('User profile deleted', 'success');
-        loadTeachers();
-        loadPupils();
+        // Note: To fully delete Firebase Auth user, implement a Cloud Function triggered on this delete
+        window.showToast?.('User deleted', 'success');
+        
+        // Reload relevant sections
+        if (collection === 'teachers') {
+            loadTeachers();
+        } else if (collection === 'pupils') {
+            loadPupils();
+        }
         loadDashboardStats();
     } catch (error) {
         console.error('Error deleting user:', error);
-        window.showToast?.('Error deleting user profile', 'danger');
+        window.showToast?.('Error deleting user', 'danger');
     }
 }
+
 // ============================================
 // CLASSES CRUD
 // ============================================
@@ -446,9 +478,10 @@ async function loadClasses() {
         for (let doc of snapshot.docs) {
             const classData = doc.data();
             
-            // Count pupils in this class
+            // Count pupils in this class (from 'pupils')
             const pupilsSnap = await db.collection('pupils')
-                .where('class', '==', classData.name).get();
+                .where('class', '==', classData.name)
+                .get();
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -584,12 +617,6 @@ async function deleteDoc(collectionName, docId) {
         loadDashboardStats();
         
         switch(collectionName) {
-            case 'teachers':
-                loadTeachers();
-                break;
-            case 'pupils':
-                loadPupils();
-                break;
             case 'classes':
                 loadClasses();
                 break;
@@ -607,7 +634,7 @@ async function deleteDoc(collectionName, docId) {
 // PAGE LOAD
 // ============================================
 
-// Load dashboard stats on page load
+// Load dashboard on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardStats();
     console.log('✓ Admin portal initialized');
