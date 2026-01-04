@@ -417,7 +417,7 @@ small { font-size: var(--text-sm); }
 .main-content {
     margin-left: var(--sidebar-width);
     min-height: 100vh;
-    padding: 0;                      /* Remove all padding */
+    padding: 0;                     
     transition: margin-left var(--duration-medium) var(--ease-in-out);
 }
 
@@ -430,11 +430,12 @@ small { font-size: var(--text-sm); }
     height: 100vh;
     min-height: 600px;
     margin: 0;
+    margin-left: calc(-1 * var(--sidebar-width));
+    margin-right: calc(-1 * var(--space-6));
     padding: 0;
     overflow: hidden;
     color: var(--color-white);
     text-align: center;
-    margin-left: calc(-1 * var(--sidebar-width));
 }
 
 /* Full-width slideshow background */
