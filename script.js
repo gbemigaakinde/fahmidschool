@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Main JavaScript File - Phases 4-7 Complete + Enhancements (Fixed)
- * 
+ * Main JavaScript File – Phases 4–7 Complete + Enhancements
+ *
  * Handles:
  * - Hamburger menu toggle (public, admin, teacher portals)
  * - Gallery lightbox
@@ -10,53 +10,67 @@
  * - Testimonials carousel (manual + auto)
  * - Keyboard navigation & accessibility
  * - Global error handling
- * 
- * @version 2.2.0
+ *
+ * @version 2.3.0
  * @date 2026-01-04
  */
 
 'use strict';
 
-// ============================================
-// HAMBURGER MENU FUNCTIONALITY (All Portals)
-// ============================================
+/* =====================================================
+   HAMBURGER MENU FUNCTIONALITY (ALL PORTALS)
+===================================================== */
 
 function initHamburgerMenu() {
     const hamburger = document.getElementById('hamburger');
-    const sidebar = document.getElementById('sidebar') || 
-                    document.getElementById('admin-sidebar') || 
-                    document.getElementById('teacher-sidebar');
-    
+    const sidebar =
+        document.getElementById('sidebar') ||
+        document.getElementById('admin-sidebar') ||
+        document.getElementById('teacher-sidebar');
+
     if (!hamburger || !sidebar) return;
 
-    function toggleSidebar() {
+    function toggleSidebar(forceClose = false) {
+        if (forceClose) {
+            hamburger.classList.remove('active');
+            sidebar.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            return;
+        }
+
         hamburger.classList.toggle('active');
         sidebar.classList.toggle('active');
-        const isExpanded = sidebar.classList.contains('active');
-        hamburger.setAttribute('aria-expanded', isExpanded);
-        document.body.style.overflow = isExpanded ? 'hidden' : '';
+
+        const expanded = sidebar.classList.contains('active');
+        hamburger.setAttribute('aria-expanded', expanded);
+        document.body.style.overflow = expanded ? 'hidden' : '';
     }
 
-    hamburger.addEventListener('click', (e) => {
+    hamburger.addEventListener('click', e => {
         e.stopPropagation();
         toggleSidebar();
     });
 
-    document.addEventListener('click', (e) => {
-        if (!sidebar.contains(e.target) && !hamburger.contains(e.target) && sidebar.classList.contains('active')) {
-            toggleSidebar();
+    document.addEventListener('click', e => {
+        if (
+            sidebar.classList.contains('active') &&
+            !sidebar.contains(e.target) &&
+            !hamburger.contains(e.target)
+        ) {
+            toggleSidebar(true);
         }
     });
 
     sidebar.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
-            if (window.innerWidth <= 1024 && sidebar.classList.contains('active')) toggleSidebar();
+            if (window.innerWidth <= 1024) toggleSidebar(true);
         });
     });
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && sidebar.classList.contains('active')) {
-            toggleSidebar();
+            toggleSidebar(true);
             hamburger.focus();
         }
     });
@@ -65,20 +79,22 @@ function initHamburgerMenu() {
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (window.innerWidth > 1024 && sidebar.classList.contains('active')) toggleSidebar();
+            if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+                toggleSidebar(true);
+            }
         }, 250);
     });
 }
 
-// ============================================
-// GALLERY LIGHTBOX
-// ============================================
+/* =====================================================
+   GALLERY LIGHTBOX
+===================================================== */
 
 function initGalleryLightbox() {
     const galleryItems = document.querySelectorAll('.gallery-item');
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
-    const lightboxClose = document.querySelector('.lightbox-close');
+    const closeBtn = document.querySelector('.lightbox-close');
 
     if (!galleryItems.length || !lightbox || !lightboxImg) return;
 
@@ -100,62 +116,64 @@ function initGalleryLightbox() {
         const img = item.querySelector('img');
         if (!img) return;
 
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute(
+            'aria-label',
+            `View larger image: ${img.alt || 'Gallery image'}`
+        );
+        item.style.cursor = 'pointer';
+
         item.addEventListener('click', () => openLightbox(img.src, img.alt));
-        item.addEventListener('keydown', (e) => {
+        item.addEventListener('keydown', e => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 openLightbox(img.src, img.alt);
             }
         });
-        item.style.cursor = 'pointer';
-        item.setAttribute('tabindex', '0');
-        item.setAttribute('role', 'button');
-        item.setAttribute('aria-label', `View larger image: ${img.alt || 'Gallery image'}`);
     });
 
     lightbox.addEventListener('click', closeLightbox);
+    closeBtn?.addEventListener('click', e => {
+        e.stopPropagation();
+        closeLightbox();
+    });
 
-    if (lightboxClose) {
-        lightboxClose.addEventListener('click', (e) => {
-            e.stopPropagation();
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && lightbox.classList.contains('active')) {
             closeLightbox();
-        });
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
+        }
     });
 }
 
-// ============================================
-// SMOOTH SCROLL FOR ANCHOR LINKS
-// ============================================
+/* =====================================================
+   SMOOTH SCROLLING
+===================================================== */
 
 function initSmoothScroll() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
+        anchor.addEventListener('click', function (e) {
             const href = this.getAttribute('href');
-            if (href === '#' || href.startsWith('#/')) return;
+            if (!href || href === '#' || href.startsWith('#/')) return;
 
-            const targetId = href.substring(1);
-            const targetElement = document.getElementById(targetId);
+            const target = document.getElementById(href.substring(1));
+            if (!target) return;
 
-            if (targetElement) {
-                e.preventDefault();
-                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                if (history.pushState) history.pushState(null, null, href);
-                targetElement.focus({ preventScroll: true });
-            }
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (history.pushState) history.pushState(null, '', href);
+            target.focus({ preventScroll: true });
         });
     });
 }
 
-// ============================================
-// TOAST NOTIFICATIONS
-// ============================================
+/* =====================================================
+   TOAST NOTIFICATIONS
+===================================================== */
 
-window.showToast = function(message, type = 'info', duration = 3000) {
+window.showToast = function (message, type = 'info', duration = 3000) {
     let container = document.getElementById('toast-container');
+
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
@@ -168,19 +186,23 @@ window.showToast = function(message, type = 'info', duration = 3000) {
     toast.className = `toast toast-${type}`;
     toast.setAttribute('role', 'alert');
 
-    const icon = { success: '✓', danger: '✕', warning: '⚠', info: 'ℹ' }[type] || '';
-    if (icon) {
-        const iconSpan = document.createElement('span');
-        iconSpan.textContent = icon + ' ';
-        iconSpan.style.fontSize = '1.2em';
-        toast.appendChild(iconSpan);
+    const icons = {
+        success: '✓',
+        danger: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+
+    if (icons[type]) {
+        const icon = document.createElement('span');
+        icon.textContent = icons[type] + ' ';
+        icon.style.fontSize = '1.2em';
+        toast.appendChild(icon);
     }
 
-    const messageSpan = document.createElement('span');
-    messageSpan.textContent = message;
-    toast.appendChild(messageSpan);
-
+    toast.appendChild(document.createTextNode(message));
     container.appendChild(toast);
+
     requestAnimationFrame(() => toast.classList.add('show'));
 
     setTimeout(() => {
@@ -189,70 +211,72 @@ window.showToast = function(message, type = 'info', duration = 3000) {
     }, duration);
 };
 
-// ============================================
-// GLOBAL ERROR HANDLING
-// ============================================
+/* =====================================================
+   GLOBAL ERROR HANDLING
+===================================================== */
 
-window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-    if (window.showToast && !event.message.includes('Script error')) {
-        showToast('An unexpected error occurred. Please try refreshing the page.', 'danger', 6000);
+window.addEventListener('error', e => {
+    console.error('Global error:', e.error);
+    if (window.showToast && !String(e.message).includes('Script error')) {
+        showToast('An unexpected error occurred. Please refresh the page.', 'danger', 6000);
     }
 });
 
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-    if (window.showToast) showToast('Something went wrong. Please try again.', 'danger', 5000);
+window.addEventListener('unhandledrejection', e => {
+    console.error('Unhandled promise rejection:', e.reason);
+    window.showToast?.('Something went wrong. Please try again.', 'danger', 5000);
 });
 
-// ============================================
-// ACCESSIBILITY: Keyboard Focus Indicator
-// ============================================
+/* =====================================================
+   ACCESSIBILITY: KEYBOARD NAVIGATION
+===================================================== */
 
-document.body.addEventListener('keydown', (e) => {
+document.body.addEventListener('keydown', e => {
     if (e.key === 'Tab') document.body.classList.add('keyboard-nav');
 });
-document.body.addEventListener('mousedown', () => document.body.classList.remove('keyboard-nav'));
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
+document.body.addEventListener('mousedown', () => {
+    document.body.classList.remove('keyboard-nav');
+});
 
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
+/* =====================================================
+   UTILITY FUNCTIONS
+===================================================== */
+
+function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(null, args), delay);
     };
 }
 
-function throttle(func, limit) {
-    let inThrottle;
-    return function(...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+function throttle(fn, limit) {
+    let locked = false;
+    return (...args) => {
+        if (!locked) {
+            fn.apply(null, args);
+            locked = true;
+            setTimeout(() => (locked = false), limit);
         }
     };
 }
 
 function announceToScreenReader(message, priority = 'polite') {
-    const announcement = document.createElement('div');
-    announcement.setAttribute('role', 'status');
-    announcement.setAttribute('aria-live', priority);
-    announcement.setAttribute('aria-atomic', 'true');
-    announcement.className = 'visually-hidden';
-    announcement.textContent = message;
-    document.body.appendChild(announcement);
-    setTimeout(() => announcement.remove(), 1000);
+    const el = document.createElement('div');
+    el.className = 'visually-hidden';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', priority);
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
 }
 
 window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
-// ============================================
-// TESTIMONIALS CAROUSEL (Vanilla JS)
-// ============================================
+/* =====================================================
+   TESTIMONIALS CAROUSEL
+===================================================== */
 
 function initTestimonialsCarousel() {
     document.querySelectorAll('[data-carousel]').forEach(carousel => {
@@ -260,38 +284,37 @@ function initTestimonialsCarousel() {
         const slides = Array.from(track?.children || []);
         const prevBtn = carousel.querySelector('.prev');
         const nextBtn = carousel.querySelector('.next');
-        const dotsContainer = carousel.querySelector('.carousel-dots');
+        const dotsWrap = carousel.querySelector('.carousel-dots');
 
-        if (!track || !prevBtn || !nextBtn || !dotsContainer || !slides.length) return;
+        if (!track || !slides.length || !prevBtn || !nextBtn || !dotsWrap) return;
 
-        let current = 0;
+        let index = 0;
         let interval;
 
-        slides.forEach((_, index) => {
+        dotsWrap.innerHTML = '';
+        slides.forEach((_, i) => {
             const dot = document.createElement('button');
-            if (index === 0) dot.classList.add('active');
-            dotsContainer.appendChild(dot);
-            dot.addEventListener('click', () => {
-                goToSlide(index);
-                resetAutoPlay();
-            });
+            dot.className = i === 0 ? 'active' : '';
+            dot.addEventListener('click', () => goTo(i, true));
+            dotsWrap.appendChild(dot);
         });
 
-        const dots = Array.from(dotsContainer.children);
+        const dots = [...dotsWrap.children];
 
-        function goToSlide(index) {
-            current = index;
-            track.style.transform = `translateX(-${current * 100}%)`;
+        function goTo(i, reset = false) {
+            index = i;
+            track.style.transform = `translateX(-${i * 100}%)`;
             dots.forEach(d => d.classList.remove('active'));
-            dots[current].classList.add('active');
+            dots[i].classList.add('active');
+            if (reset) resetAutoPlay();
         }
 
         function next() {
-            goToSlide((current + 1) % slides.length);
+            goTo((index + 1) % slides.length);
         }
 
         function prev() {
-            goToSlide((current - 1 + slides.length) % slides.length);
+            goTo((index - 1 + slides.length) % slides.length);
         }
 
         function startAutoPlay() {
@@ -303,16 +326,16 @@ function initTestimonialsCarousel() {
             startAutoPlay();
         }
 
-        nextBtn.addEventListener('click', () => { next(); resetAutoPlay(); });
-        prevBtn.addEventListener('click', () => { prev(); resetAutoPlay(); });
+        nextBtn.addEventListener('click', () => goTo((index + 1) % slides.length, true));
+        prevBtn.addEventListener('click', () => goTo((index - 1 + slides.length) % slides.length, true));
 
         startAutoPlay();
     });
 }
 
-// ============================================
-// INITIALIZATION
-// ============================================
+/* =====================================================
+   INITIALIZATION
+===================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     initHamburgerMenu();
@@ -320,5 +343,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initSmoothScroll();
     initTestimonialsCarousel();
 
-    console.log('✓ Fahmid School website initialized successfully (v2.2.0 - Carousel Enhanced)');
+    console.log('✓ Fahmid School website initialized successfully (v2.3.0)');
 });
