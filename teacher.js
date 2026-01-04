@@ -49,23 +49,15 @@ const sectionLoaders = {
 };
 
 function showSection(sectionId) {
-    document.querySelectorAll('.admin-card').forEach(card => {
-        card.style.display = 'none';
-    });
-
+    document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
     const section = document.getElementById(sectionId);
     if (section) section.style.display = 'block';
 
     document.querySelectorAll('.admin-sidebar a').forEach(link => {
-        link.classList.toggle(
-            'active',
-            link.getAttribute('onclick')?.includes(`'${sectionId}'`)
-        );
+        link.classList.toggle('active', link.getAttribute('onclick')?.includes(`'${sectionId}'`));
     });
 
-    if (typeof sectionLoaders[sectionId] === 'function') {
-        sectionLoaders[sectionId]();
-    }
+    if (typeof sectionLoaders[sectionId] === 'function') sectionLoaders[sectionId]();
 
     const sidebar = document.getElementById('teacher-sidebar');
     const hamburger = document.getElementById('hamburger');
@@ -145,21 +137,17 @@ async function loadPupilsInClass() {
     tbody.innerHTML = '';
 
     if (!selection) {
-        tbody.innerHTML =
-            '<tr><td colspan="3" style="text-align:center;">Select a class</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Select a class</td></tr>';
         return;
     }
 
     const [, className] = selection.split('|');
 
     try {
-        const snap = await db.collection('pupils')
-            .where('class', '==', className)
-            .get();
+        const snap = await db.collection('pupils').where('class', '==', className).get();
 
         if (snap.empty) {
-            tbody.innerHTML =
-                '<tr><td colspan="3" style="text-align:center;">No pupils found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No pupils found</td></tr>';
             return;
         }
 
@@ -235,9 +223,9 @@ function populateClassSelector(id) {
     });
 }
 
-// ============================================
-// ATTENDANCE - FIXED
-// ============================================
+/* =========================
+   ATTENDANCE
+========================= */
 
 async function loadClassesForAttendance() {
     const selector = document.getElementById('attendance-class');
@@ -247,18 +235,13 @@ async function loadClassesForAttendance() {
 
     try {
         const snapshot = await db.collection('classes').get();
-        
-        const classes = [];
-        snapshot.forEach(doc => {
-            classes.push({ id: doc.id, name: doc.data().name });
-        });
-        
+        const classes = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
         classes.sort((a, b) => a.name.localeCompare(b.name));
-        
-        classes.forEach(classItem => {
+
+        classes.forEach(cls => {
             const opt = document.createElement('option');
-            opt.value = `${classItem.id}|${classItem.name}`;
-            opt.textContent = classItem.name;
+            opt.value = `${cls.id}|${cls.name}`;
+            opt.textContent = cls.name;
             selector.appendChild(opt);
         });
     } catch (error) {
@@ -281,7 +264,6 @@ async function loadAttendanceForm() {
     }
 
     const term = document.getElementById('attendance-term')?.value;
-
     if (!term) {
         container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">Please select term</p>';
         if (saveBtn) saveBtn.style.display = 'none';
@@ -289,137 +271,54 @@ async function loadAttendanceForm() {
     }
 
     container.innerHTML = '<div class="skeleton-container"><div class="skeleton" style="height: 40px;"></div></div>';
-
-    const [classId, className] = selected.split('|');
+    const [, className] = selected.split('|');
 
     try {
-        const pupilsSnap = await db.collection('pupils')
-            .where('class', '==', className)
-            .get();
-
+        const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
         if (pupilsSnap.empty) {
             container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in this class</p>';
             if (saveBtn) saveBtn.style.display = 'none';
             return;
         }
 
-        // Get ALL attendance records for this term ONCE
-        const pupilIds = [];
-        pupilsSnap.forEach(doc => pupilIds.push(doc.id));
-
-        // Firestore limitation: 'in' queries limited to 10 items
-        // So we batch if needed
+        const pupilIds = pupilsSnap.docs.map(doc => doc.id);
         const attendanceMap = {};
-        
-        if (pupilIds.length <= 10) {
-            const attendanceSnap = await db.collection('attendance')
-                .where(firebase.firestore.FieldPath.documentId(), 'in', 
-                    pupilIds.map(id => `${id}_${term}`))
-                .get();
-            
-            attendanceSnap.forEach(doc => {
-                const data = doc.data();
-                attendanceMap[data.pupilId] = data;
-            });
-        } else {
-            // For >10 pupils, use Promise.all
-            const chunks = [];
-            for (let i = 0; i < pupilIds.length; i += 10) {
-                chunks.push(pupilIds.slice(i, i + 10));
-            }
-            
-            const results = await Promise.all(
-                chunks.map(chunk => 
-                    db.collection('attendance')
-                        .where(firebase.firestore.FieldPath.documentId(), 'in', 
-                            chunk.map(id => `${id}_${term}`))
-                        .get()
-                )
-            );
-            
-            results.forEach(snap => {
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    attendanceMap[data.pupilId] = data;
-                });
-            });
-        }
 
-        const pupils = [];
-        pupilsSnap.forEach(pupilDoc => {
-            pupils.push({ id: pupilDoc.id, data: pupilDoc.data() });
-        });
-        
-        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
+        const chunks = [];
+        for (let i = 0; i < pupilIds.length; i += 10) chunks.push(pupilIds.slice(i, i + 10));
 
-        let tableHTML = `
-            <table class="responsive-table">
-                <thead>
-                    <tr>
-                        <th>Pupil Name</th>
-                        <th>Times Opened</th>
-                        <th>Times Present</th>
-                        <th>Times Absent</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+        const results = await Promise.all(chunks.map(chunk => 
+            db.collection('attendance')
+                .where(firebase.firestore.FieldPath.documentId(), 'in', chunk.map(id => `${id}_${term}`))
+                .get()
+        ));
+
+        results.forEach(snap => snap.forEach(doc => {
+            const data = doc.data();
+            attendanceMap[data.pupilId] = data;
+        }));
+
+        const pupils = pupilsSnap.docs.map(d => ({ id: d.id, data: d.data() })).sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+        let tableHTML = `<table class="responsive-table"><thead><tr>
+            <th>Pupil Name</th><th>Times Opened</th><th>Times Present</th><th>Times Absent</th>
+        </tr></thead><tbody>`;
 
         pupils.forEach(pupilItem => {
             const pupil = pupilItem.data;
             const pupilId = pupilItem.id;
-
-            // Lookup from map (instant)
             const attendance = attendanceMap[pupilId] || {};
-            const timesOpened = attendance.timesOpened || '';
-            const timesPresent = attendance.timesPresent || '';
-            const timesAbsent = attendance.timesAbsent || '';
-
-            tableHTML += `
-                <tr>
-                    <td data-label="Pupil Name"><strong>${pupil.name}</strong></td>
-                    <td data-label="Times Opened">
-                        <input 
-                            type="number" 
-                            min="0" 
-                            data-pupil="${pupilId}" 
-                            data-field="timesOpened"
-                            value="${timesOpened}"
-                            placeholder="0"
-                            style="width: 80px;"
-                        >
-                    </td>
-                    <td data-label="Times Present">
-                        <input 
-                            type="number" 
-                            min="0" 
-                            data-pupil="${pupilId}" 
-                            data-field="timesPresent"
-                            value="${timesPresent}"
-                            placeholder="0"
-                            style="width: 80px;"
-                        >
-                    </td>
-                    <td data-label="Times Absent">
-                        <input 
-                            type="number" 
-                            min="0" 
-                            data-pupil="${pupilId}" 
-                            data-field="timesAbsent"
-                            value="${timesAbsent}"
-                            placeholder="0"
-                            style="width: 80px;"
-                        >
-                    </td>
-                </tr>
-            `;
+            tableHTML += `<tr>
+                <td data-label="Pupil Name"><strong>${pupil.name}</strong></td>
+                <td data-label="Times Opened"><input type="number" min="0" data-pupil="${pupilId}" data-field="timesOpened" value="${attendance.timesOpened || ''}" placeholder="0" style="width:80px;"></td>
+                <td data-label="Times Present"><input type="number" min="0" data-pupil="${pupilId}" data-field="timesPresent" value="${attendance.timesPresent || ''}" placeholder="0" style="width:80px;"></td>
+                <td data-label="Times Absent"><input type="number" min="0" data-pupil="${pupilId}" data-field="timesAbsent" value="${attendance.timesAbsent || ''}" placeholder="0" style="width:80px;"></td>
+            </tr>`;
         });
 
-        tableHTML += `</tbody></table>`;
+        tableHTML += '</tbody></table>';
         container.innerHTML = tableHTML;
-        
         if (saveBtn) saveBtn.style.display = 'block';
-        
         console.log('✓ Attendance form loaded successfully');
     } catch (error) {
         console.error('Error loading attendance form:', error);
@@ -442,37 +341,23 @@ async function saveAllAttendance() {
 
     try {
         const pupilData = {};
-
         inputs.forEach(input => {
             const pupilId = input.dataset.pupil;
             const field = input.dataset.field;
             const value = parseInt(input.value) || 0;
 
-            if (!pupilData[pupilId]) {
-                pupilData[pupilId] = {};
-            }
-
+            if (!pupilData[pupilId]) pupilData[pupilId] = {};
             pupilData[pupilId][field] = value;
         });
 
         for (const [pupilId, data] of Object.entries(pupilData)) {
             const attendanceRef = db.collection('attendance').doc(`${pupilId}_${term}`);
-
-            batch.set(attendanceRef, {
-                pupilId,
-                term,
-                ...data,
-                teacherId: currentUser?.uid || 'unknown',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
+            batch.set(attendanceRef, { pupilId, term, ...data, teacherId: currentUser?.uid || 'unknown', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
             updatedCount++;
         }
 
         await batch.commit();
-        
         window.showToast?.(`✓ Attendance saved for ${updatedCount} pupil(s)`, 'success');
-        
         console.log('✓ Attendance saved successfully');
     } catch (error) {
         console.error('Error saving attendance:', error);
@@ -480,30 +365,22 @@ async function saveAllAttendance() {
     }
 }
 
-// ============================================
-// TRAITS & SKILLS - FIXED
-// ============================================
+/* =========================
+   TRAITS & SKILLS
+========================= */
 
 async function loadClassesForTraits() {
     const selector = document.getElementById('traits-class');
     if (!selector) return;
-    
     selector.innerHTML = '<option value="">-- Select Class --</option>';
-    
+
     try {
         const snapshot = await db.collection('classes').get();
-        
-        const classes = [];
-        snapshot.forEach(doc => {  // ← Fixed: removed extra space
-            classes.push({ id: doc.id, name: doc.data().name });
-        });
-        
-        classes.sort((a, b) => a.name.localeCompare(b.name));
-        
-        classes.forEach(classItem => {
+        const classes = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })).sort((a, b) => a.name.localeCompare(b.name));
+        classes.forEach(cls => {
             const opt = document.createElement('option');
-            opt.value = `${classItem.id}|${classItem.name}`;
-            opt.textContent = classItem.name;
+            opt.value = `${cls.id}|${cls.name}`;
+            opt.textContent = cls.name;
             selector.appendChild(opt);
         });
     } catch (error) {
@@ -516,37 +393,23 @@ async function loadTraitsForm() {
     const selected = document.getElementById('traits-class')?.value;
     const pupilSelector = document.getElementById('traits-pupil');
     const container = document.getElementById('traits-form-container');
-
     if (!pupilSelector) return;
 
     pupilSelector.innerHTML = '<option value="">-- Select Pupil --</option>';
+    if (!selected) return showTraitSection(false);
 
-    if (!selected) {
-        if (container) container.style.display = 'none';
-        return;
-    }
-
-    const [classId, className] = selected.split('|');
+    const [, className] = selected.split('|');
 
     try {
-        const pupilsSnap = await db.collection('pupils')
-            .where('class', '==', className)
-            .get();
-
-        const pupils = [];
-        pupilsSnap.forEach(doc => {
-            pupils.push({ id: doc.id, data: doc.data() });
-        });
-        
-        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
-
+        const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
+        const pupils = pupilsSnap.docs.map(doc => ({ id: doc.id, data: doc.data() })).sort((a, b) => a.data.name.localeCompare(b.data.name));
         pupils.forEach(pupil => {
             const opt = document.createElement('option');
             opt.value = pupil.id;
             opt.textContent = pupil.data.name;
             pupilSelector.appendChild(opt);
         });
-        
+        showTraitSection(true);
         console.log('✓ Traits form pupils loaded');
     } catch (error) {
         console.error('Error loading pupils for traits:', error);
@@ -558,82 +421,25 @@ async function loadTraitsData() {
     const pupilId = document.getElementById('traits-pupil')?.value;
     const term = document.getElementById('traits-term')?.value;
     const container = document.getElementById('traits-form-container');
+    if (!container || !pupilId || !term) return showTraitSection(false);
 
-    if (!container) return;
-
-    if (!pupilId || !term) {
-        container.style.display = 'none';
-        return;
-    }
+    showTraitSection(true);
 
     container.style.display = 'block';
+    const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
+    const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
 
     try {
-        // Load behavioral traits
-        try {
-            const traitsDoc = await db.collection('behavioral_traits')
-                .doc(`${pupilId}_${term}`)
-                .get();
+        const traitsDoc = await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).get();
+        traitFields.forEach(f => document.getElementById(`trait-${f}`).value = traitsDoc.exists ? traitsDoc.data()[f] || '' : '');
 
-            if (traitsDoc.exists) {
-                const data = traitsDoc.data();
-                document.getElementById('trait-punctuality').value = data.punctuality || '';
-                document.getElementById('trait-neatness').value = data.neatness || '';
-                document.getElementById('trait-politeness').value = data.politeness || '';
-                document.getElementById('trait-honesty').value = data.honesty || '';
-                document.getElementById('trait-obedience').value = data.obedience || '';
-                document.getElementById('trait-cooperation').value = data.cooperation || '';
-                document.getElementById('trait-attentiveness').value = data.attentiveness || '';
-                document.getElementById('trait-leadership').value = data.leadership || '';
-                document.getElementById('trait-selfcontrol').value = data.selfcontrol || '';
-                document.getElementById('trait-creativity').value = data.creativity || '';
-            } else {
-                // Reset form
-                ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 
-                 'attentiveness', 'leadership', 'selfcontrol', 'creativity'].forEach(trait => {
-                    document.getElementById(`trait-${trait}`).value = '';
-                });
-            }
-        } catch (error) {
-            console.warn('Error loading behavioral traits:', error);
-            // Reset form on error
-            ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 
-             'attentiveness', 'leadership', 'selfcontrol', 'creativity'].forEach(trait => {
-                document.getElementById(`trait-${trait}`).value = '';
-            });
-        }
+        const skillsDoc = await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).get();
+        skillFields.forEach(f => document.getElementById(`skill-${f}`).value = skillsDoc.exists ? skillsDoc.data()[f] || '' : '');
 
-        // Load psychomotor skills
-        try {
-            const skillsDoc = await db.collection('psychomotor_skills')
-                .doc(`${pupilId}_${term}`)
-                .get();
-
-            if (skillsDoc.exists) {
-                const data = skillsDoc.data();
-                document.getElementById('skill-handwriting').value = data.handwriting || '';
-                document.getElementById('skill-drawing').value = data.drawing || '';
-                document.getElementById('skill-sports').value = data.sports || '';
-                document.getElementById('skill-craft').value = data.craft || '';
-                document.getElementById('skill-verbal').value = data.verbal || '';
-                document.getElementById('skill-coordination').value = data.coordination || '';
-            } else {
-                // Reset form
-                ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'].forEach(skill => {
-                    document.getElementById(`skill-${skill}`).value = '';
-                });
-            }
-        } catch (error) {
-            console.warn('Error loading psychomotor skills:', error);
-            // Reset form on error
-            ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'].forEach(skill => {
-                document.getElementById(`skill-${skill}`).value = '';
-            });
-        }
-        
         console.log('✓ Traits data loaded successfully');
     } catch (error) {
         console.error('Error loading traits data:', error);
+        traitFields.concat(skillFields).forEach(f => document.getElementById(f.startsWith('trait-') ? `trait-${f}` : `skill-${f}`).value = '');
         handleError(error, 'Failed to load traits data');
     }
 }
@@ -641,14 +447,9 @@ async function loadTraitsData() {
 async function saveTraitsAndSkills() {
     const pupilId = document.getElementById('traits-pupil')?.value;
     const term = document.getElementById('traits-term')?.value;
-
-    if (!pupilId || !term) {
-        window.showToast?.('Please select class, term, and pupil', 'warning');
-        return;
-    }
+    if (!pupilId || !term) return window.showToast?.('Please select class, term, and pupil', 'warning');
 
     try {
-        // Save behavioral traits
         const traitsData = {
             pupilId,
             term,
@@ -665,10 +466,8 @@ async function saveTraitsAndSkills() {
             teacherId: currentUser?.uid || 'unknown',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-
         await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).set(traitsData, { merge: true });
 
-        // Save psychomotor skills
         const skillsData = {
             pupilId,
             term,
@@ -680,12 +479,11 @@ async function saveTraitsAndSkills() {
             coordination: document.getElementById('skill-coordination').value,
             teacherId: currentUser?.uid || 'unknown',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
 
+        };
         await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).set(skillsData, { merge: true });
 
         window.showToast?.('✓ Traits and skills saved successfully', 'success');
-        
         console.log('✓ Traits and skills saved');
     } catch (error) {
         console.error('Error saving traits and skills:', error);
@@ -693,30 +491,28 @@ async function saveTraitsAndSkills() {
     }
 }
 
-// ============================================
-// REMARKS - FIXED
-// ============================================
+function showTraitSection(show = true) {
+    const container = document.getElementById('traits-form-container');
+    if (!container) return;
+    container.classList.toggle('is-hidden', !show);
+}
+
+/* =========================
+   REMARKS
+========================= */
 
 async function loadClassesForRemarks() {
     const selector = document.getElementById('remarks-class');
     if (!selector) return;
-
     selector.innerHTML = '<option value="">-- Select Class --</option>';
 
     try {
         const snapshot = await db.collection('classes').get();
-        
-        const classes = [];
-        snapshot.forEach(doc => {
-            classes.push({ id: doc.id, name: doc.data().name });
-        });
-        
-        classes.sort((a, b) => a.name.localeCompare(b.name));
-        
-        classes.forEach(classItem => {
+        const classes = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })).sort((a, b) => a.name.localeCompare(b.name));
+        classes.forEach(cls => {
             const opt = document.createElement('option');
-            opt.value = `${classItem.id}|${classItem.name}`;
-            opt.textContent = classItem.name;
+            opt.value = `${cls.id}|${cls.name}`;
+            opt.textContent = cls.name;
             selector.appendChild(opt);
         });
     } catch (error) {
@@ -729,37 +525,22 @@ async function loadRemarksForm() {
     const selected = document.getElementById('remarks-class')?.value;
     const pupilSelector = document.getElementById('remarks-pupil');
     const container = document.getElementById('remarks-form-container');
-
     if (!pupilSelector) return;
 
     pupilSelector.innerHTML = '<option value="">-- Select Pupil --</option>';
+    if (!selected) return container && (container.style.display = 'none');
 
-    if (!selected) {
-        if (container) container.style.display = 'none';
-        return;
-    }
-
-    const [classId, className] = selected.split('|');
+    const [, className] = selected.split('|');
 
     try {
-        const pupilsSnap = await db.collection('pupils')
-            .where('class', '==', className)
-            .get();
-
-        const pupils = [];
-        pupilsSnap.forEach(doc => {
-            pupils.push({ id: doc.id, data: doc.data() });
-        });
-        
-        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
-
+        const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
+        const pupils = pupilsSnap.docs.map(doc => ({ id: doc.id, data: doc.data() })).sort((a, b) => a.data.name.localeCompare(b.data.name));
         pupils.forEach(pupil => {
             const opt = document.createElement('option');
             opt.value = pupil.id;
             opt.textContent = pupil.data.name;
             pupilSelector.appendChild(opt);
         });
-        
         console.log('✓ Remarks form pupils loaded');
     } catch (error) {
         console.error('Error loading pupils for remarks:', error);
@@ -771,28 +552,14 @@ async function loadRemarksData() {
     const pupilId = document.getElementById('remarks-pupil')?.value;
     const term = document.getElementById('remarks-term')?.value;
     const container = document.getElementById('remarks-form-container');
-
     if (!container) return;
 
-    if (!pupilId || !term) {
-        container.style.display = 'none';
-        return;
-    }
-
+    if (!pupilId || !term) return container.style.display = 'none';
     container.style.display = 'block';
 
     try {
-        const remarksDoc = await db.collection('remarks')
-            .doc(`${pupilId}_${term}`)
-            .get();
-
-        if (remarksDoc.exists) {
-            const data = remarksDoc.data();
-            document.getElementById('teacher-remark').value = data.teacherRemark || '';
-        } else {
-            document.getElementById('teacher-remark').value = '';
-        }
-        
+        const remarksDoc = await db.collection('remarks').doc(`${pupilId}_${term}`).get();
+        document.getElementById('teacher-remark').value = remarksDoc.exists ? remarksDoc.data().teacherRemark || '' : '';
         console.log('✓ Remarks data loaded successfully');
     } catch (error) {
         console.error('Error loading remarks data:', error);
@@ -806,15 +573,8 @@ async function saveRemarks() {
     const term = document.getElementById('remarks-term')?.value;
     const teacherRemark = document.getElementById('teacher-remark')?.value.trim();
 
-    if (!pupilId || !term) {
-        window.showToast?.('Please select class, term, and pupil', 'warning');
-        return;
-    }
-
-    if (!teacherRemark) {
-        window.showToast?.('Please enter a remark', 'warning');
-        return;
-    }
+    if (!pupilId || !term) return window.showToast?.('Please select class, term, and pupil', 'warning');
+    if (!teacherRemark) return window.showToast?.('Please enter a remark', 'warning');
 
     try {
         await db.collection('remarks').doc(`${pupilId}_${term}`).set({
@@ -826,7 +586,6 @@ async function saveRemarks() {
         }, { merge: true });
 
         window.showToast?.('✓ Remark saved successfully', 'success');
-        
         console.log('✓ Remark saved successfully');
     } catch (error) {
         console.error('Error saving remarks:', error);
@@ -834,9 +593,9 @@ async function saveRemarks() {
     }
 }
 
-// ============================================
-// PAGE LOAD
-// ============================================
+/* =========================
+   PAGE LOAD
+========================= */
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('✓ Teacher JS loaded');
