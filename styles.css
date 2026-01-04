@@ -947,7 +947,7 @@ tbody tr:last-child td {
     overflow: hidden;
 }
 
-.section-title {
+.attendance-section-title {
     background: var(--color-primary);
     color: var(--color-white);
     padding: var(--space-3) var(--space-4);
@@ -1897,65 +1897,72 @@ address strong {
 }
 
 /* ============================================
-   FEATURE CARDS - FIXED (ADD BACKGROUNDS)
+   FEATURE CARDS - FIXED (NO MORE GREY GRADIENTS!)
+   DELETE OLD CODE FROM LINE 1544 AND REPLACE WITH THIS
    ============================================ */
 
-/* Make sure feature cards have proper structure */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-8);
+    margin-bottom: var(--space-16);
+}
+
 .features-grid .feature-card {
     overflow: hidden;
     position: relative;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
     background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xs);
 }
 
 .features-grid .feature-card:hover {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
     box-shadow: var(--shadow-xl);
+    border-color: var(--color-gray-300);
 }
 
-/* Give card-image actual backgrounds - beautiful gradients as placeholders */
+/* FIXED: card-image now shows real photos without grey filter */
 .card-image {
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     height: 200px;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-8)) var(--space-6) calc(-1 * var(--space-8));
-    transition: filter 0.5s ease, transform 0.5s ease;
-    filter: grayscale(100%) brightness(0.8);
+    transition: transform 0.5s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle overlay for better text contrast if needed */
+.card-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .feature-card:hover .card-image {
-    filter: grayscale(0%) brightness(1);
-    transform: scale(1.05);
+    transform: scale(1.08);
 }
 
-/* Assign unique gradient to each feature card */
-.features-grid .feature-card:nth-child(1) .card-image {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.feature-card:hover .card-image::after {
+    opacity: 1;
 }
 
-.features-grid .feature-card:nth-child(2) .card-image {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.features-grid .feature-card:nth-child(3) .card-image {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.features-grid .feature-card:nth-child(4) .card-image {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.features-grid .feature-card:nth-child(5) .card-image {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-}
-
-.features-grid .feature-card:nth-child(6) .card-image {
-    background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
-}
+/* 
+   IMAGE UPLOAD INSTRUCTIONS:
+   Upload 6 photos (600x400px, <150KB each, JPG format) to images/features/
+   Name them: feature-1.jpg, feature-2.jpg, feature-3.jpg, feature-4.jpg, feature-5.jpg, feature-6.jpg
+*/
 
 /* ============================================
-   PROGRAM CARDS - FIXED (REMOVE FIXED BACKGROUND)
+   PROGRAM CARDS - FIXED (REAL PHOTOS AS BACKGROUNDS!)
    ============================================ */
 
 .programs-section {
@@ -1966,80 +1973,64 @@ address strong {
     padding: var(--space-20) 0;
 }
 
-/* CRITICAL FIX: Remove background-attachment: fixed */
 .program-card {
-    /* REMOVED: background-attachment: fixed; */
-    background: linear-gradient(135deg, 
-        rgba(0, 178, 255, 0.95) 0%, 
-        rgba(0, 144, 204, 0.95) 100%
-    );
-    background-size: cover; /* Changed from fixed to cover */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     color: white;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
     padding: var(--space-16);
     border-radius: var(--radius-xl);
     position: relative;
     overflow: hidden;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     box-shadow: var(--shadow-lg);
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
-/* Add decorative floating element */
+/* Dark overlay for text readability */
 .program-card::before {
     content: '';
     position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, 
-        rgba(255, 255, 255, 0.15) 0%, 
-        transparent 60%
+    inset: 0;
+    background: linear-gradient(to bottom, 
+        rgba(0, 0, 0, 0.3) 0%, 
+        rgba(0, 0, 0, 0.7) 100%
     );
-    animation: float 20s infinite ease-in-out;
-    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.3s ease;
 }
 
-@keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    33% { transform: translate(-20px, -20px) rotate(120deg); }
-    66% { transform: translate(20px, 10px) rotate(240deg); }
+.program-card:hover::before {
+    opacity: 0.9;
 }
 
 .program-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 60px rgba(0, 178, 255, 0.4);
+    transform: translateY(-8px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-/* Differentiate nursery vs primary */
-.program-card.nursery {
-    background: linear-gradient(135deg, 
-        rgba(255, 107, 107, 0.95) 0%, 
-        rgba(255, 159, 64, 0.95) 100%
-    );
-}
-
-.program-card.primary {
-    background: linear-gradient(135deg, 
-        rgba(0, 178, 255, 0.95) 0%, 
-        rgba(0, 144, 204, 0.95) 100%
-    );
+/* Ensure text stays above overlay */
+.program-card > * {
+    position: relative;
+    z-index: 1;
 }
 
 .program-card h3 {
     color: white;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
     margin-bottom: var(--space-4);
-    position: relative;
-    z-index: 1;
+    font-size: var(--text-3xl);
 }
 
 .program-card p {
     color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    position: relative;
-    z-index: 1;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
     line-height: 1.7;
+    margin-bottom: var(--space-4);
+    max-width: none;
 }
 
 .program-card .text-link {
@@ -2049,19 +2040,15 @@ address strong {
     display: inline-block;
     margin-top: var(--space-4);
     transition: transform 0.2s ease, text-shadow 0.2s ease;
-    position: relative;
-    z-index: 1;
 }
 
 .program-card .text-link:hover {
     transform: translateX(8px);
-    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 
-
-
 /* ============================================
-   TESTIMONIALS - ENSURE PROPER STYLING
+   TESTIMONIALS - FIXED (PERFECT CENTERING!)
    ============================================ */
 
 .testimonials-section {
@@ -2085,13 +2072,19 @@ address strong {
 .carousel-track {
     display: flex;
     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    align-items: stretch;
 }
 
+/* FIXED: Perfect centering for testimonials */
 .testimonial {
     min-width: 100%;
     text-align: center;
     padding: var(--space-8) var(--space-6);
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .testimonial .quote {
@@ -2100,6 +2093,8 @@ address strong {
     margin-bottom: var(--space-6);
     color: var(--color-gray-800);
     line-height: 1.6;
+    max-width: 800px;
+    text-align: center;
 }
 
 .testimonial .author {
@@ -2179,7 +2174,7 @@ address strong {
 }
 
 /* ============================================
-   GALLERY TEASER - ENSURE SMOOTH ANIMATION
+   GALLERY TEASER - FIXED (SMOOTH INFINITE SCROLL!)
    ============================================ */
 
 .gallery-teaser {
@@ -2197,8 +2192,10 @@ address strong {
     border-radius: var(--radius-xl);
 }
 
+/* FIXED: Exact width calculation for seamless loop */
 .gallery-track {
     display: flex;
+    width: 200%;
     animation: galleryScroll 40s linear infinite;
     will-change: transform;
 }
@@ -2209,25 +2206,27 @@ address strong {
 
 .gallery-track img {
     height: 280px;
+    width: auto;
     object-fit: cover;
-    flex: 0 0 25%;
+    flex: 0 0 16.666%;
     border-right: 2px solid white;
-    transition: filter 0.3s ease;
+    transition: filter 0.3s ease, transform 0.3s ease;
 }
 
 .gallery-track img:hover {
     filter: brightness(1.1);
+    transform: scale(1.05);
+    z-index: 1;
 }
 
+/* FIXED: Seamless infinite scroll animation */
 @keyframes galleryScroll {
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
 }
 
-
-
 /* ============================================
-   CTA SECTION - FINAL TOUCHES
+   CTA SECTION
    ============================================ */
 
 .cta-section {
@@ -2254,33 +2253,39 @@ address strong {
 }
 
 /* ============================================
-   RESPONSIVE ADJUSTMENTS
+   RESPONSIVE ADJUSTMENTS FOR NEW SECTIONS
    ============================================ */
 
 @media (max-width: 768px) {
+    /* Feature Cards - Mobile */
     .card-image {
         height: 150px;
     }
 
+    /* Program Cards - Mobile */
     .program-card {
         padding: var(--space-8);
+        min-height: 300px;
     }
 
+    /* Testimonials - Mobile */
     .carousel-btn {
         width: 40px;
         height: 40px;
         font-size: var(--text-base);
     }
 
-    .gallery-track img {
-        height: 200px;
-        flex: 0 0 50%;
-    }
-
     .testimonial .quote {
         font-size: var(--text-lg);
     }
-    
+
+    /* Gallery - Mobile */
+    .gallery-track img {
+        height: 200px;
+        flex: 0 0 33.333%;
+    }
+
+    /* CTA - Mobile */
     .cta-section .btn {
         width: 100%;
         margin: var(--space-3) 0;
@@ -2289,6 +2294,6 @@ address strong {
 
 @media (max-width: 480px) {
     .gallery-track img {
-        flex: 0 0 100%;
+        flex: 0 0 50%;
     }
 }
