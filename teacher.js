@@ -322,6 +322,7 @@ async function loadClassForResults() {
     const [classId, className] = selected.split('|');
 
     try {
+        // Get pupils
         const pupilsSnap = await db.collection('pupils')
             .where('class', '==', className)
             .get();
@@ -331,6 +332,23 @@ async function loadClassForResults() {
             if (saveBtn) saveBtn.style.display = 'none';
             return;
         }
+
+        // Get ALL results for this class/term/subject ONCE
+        const resultsSnap = await db.collection('results')
+            .where('classId', '==', classId)
+            .where('term', '==', term)
+            .where('subject', '==', subject)
+            .get();
+
+        // Create lookup map: pupilId → {ca, exam}
+        const resultsMap = {};
+        resultsSnap.forEach(doc => {
+            const data = doc.data();
+            resultsMap[data.pupilId] = {
+                ca: data.ca || '',
+                exam: data.exam || ''
+            };
+        });
 
         const pupils = [];
         pupilsSnap.forEach(pupilDoc => {
@@ -353,24 +371,14 @@ async function loadClassForResults() {
                 <tbody>
         `;
 
-        for (let pupilItem of pupils) {
+        pupils.forEach(pupilItem => {
             const pupil = pupilItem.data;
             const pupilId = pupilItem.id;
 
-            const existingSnap = await db.collection('results')
-                .where('pupilId', '==', pupilId)
-                .where('classId', '==', classId)
-                .where('term', '==', term)
-                .where('subject', '==', subject)
-                .limit(1).get();
-
-            let currentCA = '';
-            let currentExam = '';
-            if (!existingSnap.empty) {
-                const result = existingSnap.docs[0].data();
-                currentCA = result.ca || '';
-                currentExam = result.exam || '';
-            }
+            // Lookup from map (instant)
+            const result = resultsMap[pupilId] || { ca: '', exam: '' };
+            const currentCA = result.ca;
+            const currentExam = result.exam;
 
             const total = (parseInt(currentCA) || 0) + (parseInt(currentExam) || 0);
             const grade = total > 0 ? getGrade(total) : '-';
@@ -410,7 +418,7 @@ async function loadClassForResults() {
                     <td data-label="Grade" id="grade-${pupilId}">${grade}</td>
                 </tr>
             `;
-        }
+        });
 
         tableHTML += `</tbody></table>`;
         container.innerHTML = tableHTML;
