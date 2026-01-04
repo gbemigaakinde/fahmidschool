@@ -1,9 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - COMPLETE REPORT CARD SYSTEM
- * Part 1: Core Functions, Results, and Attendance
+ * Teacher Portal JavaScript - FIXED VERSION
  * 
- * @version 5.0.0 - FULL NIGERIAN REPORT CARD
+ * @version 5.1.0 - BUG FIXES
  * @date 2026-01-04
  */
 
@@ -90,20 +89,42 @@ async function loadTeacherData() {
 }
 
 // ============================================
-// DASHBOARD
+// DASHBOARD - FIXED
 // ============================================
 
 async function loadTeacherDashboard() {
     try {
+        const classCountElem = document.getElementById('my-class-count');
+        const pupilCountElem = document.getElementById('my-pupil-count');
+        
+        if (!classCountElem || !pupilCountElem) {
+            console.warn('Dashboard elements not found');
+            return;
+        }
+
+        // Set loading state
+        classCountElem.textContent = '...';
+        pupilCountElem.textContent = '...';
+
         const classesSnap = await db.collection('classes').get();
-        document.getElementById('my-class-count').textContent = classesSnap.size;
+        classCountElem.textContent = classesSnap.size;
 
         const pupilsSnap = await db.collection('pupils').get();
-        document.getElementById('my-pupil-count').textContent = pupilsSnap.size;
+        pupilCountElem.textContent = pupilsSnap.size;
+
+        console.log('✓ Dashboard stats loaded:', {
+            classes: classesSnap.size,
+            pupils: pupilsSnap.size
+        });
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        document.getElementById('my-class-count').textContent = '0';
-        document.getElementById('my-pupil-count').textContent = '0';
+        
+        const classCountElem = document.getElementById('my-class-count');
+        const pupilCountElem = document.getElementById('my-pupil-count');
+        
+        if (classCountElem) classCountElem.textContent = '0';
+        if (pupilCountElem) pupilCountElem.textContent = '0';
+        
         handleError(error, 'Failed to load dashboard statistics');
     }
 }
@@ -193,7 +214,7 @@ async function loadPupilsInClass() {
 }
 
 // ============================================
-// RESULTS ENTRY (UPDATED FOR CA + EXAM)
+// RESULTS ENTRY
 // ============================================
 
 async function loadClassesForResults() {
@@ -522,7 +543,7 @@ async function saveAllResults() {
 }
 
 // ============================================
-// ATTENDANCE
+// ATTENDANCE - FIXED
 // ============================================
 
 async function loadClassesForAttendance() {
@@ -549,6 +570,7 @@ async function loadClassesForAttendance() {
         });
     } catch (error) {
         console.error('Error loading classes for attendance:', error);
+        handleError(error, 'Failed to load classes');
     }
 }
 
@@ -612,19 +634,23 @@ async function loadAttendanceForm() {
             const pupil = pupilItem.data;
             const pupilId = pupilItem.id;
 
-            const attendanceDoc = await db.collection('attendance')
-                .doc(`${pupilId}_${term}`)
-                .get();
-
             let timesOpened = '';
             let timesPresent = '';
             let timesAbsent = '';
 
-            if (attendanceDoc.exists) {
-                const data = attendanceDoc.data();
-                timesOpened = data.timesOpened || '';
-                timesPresent = data.timesPresent || '';
-                timesAbsent = data.timesAbsent || '';
+            try {
+                const attendanceDoc = await db.collection('attendance')
+                    .doc(`${pupilId}_${term}`)
+                    .get();
+
+                if (attendanceDoc.exists) {
+                    const data = attendanceDoc.data();
+                    timesOpened = data.timesOpened || '';
+                    timesPresent = data.timesPresent || '';
+                    timesAbsent = data.timesAbsent || '';
+                }
+            } catch (error) {
+                console.warn('Error loading attendance for pupil:', pupilId, error);
             }
 
             tableHTML += `
@@ -671,9 +697,12 @@ async function loadAttendanceForm() {
         container.innerHTML = tableHTML;
         
         if (saveBtn) saveBtn.style.display = 'block';
+        
+        console.log('✓ Attendance form loaded successfully');
     } catch (error) {
         console.error('Error loading attendance form:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading form</p>';
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading form. Please check Firestore rules.</p>';
+        handleError(error, 'Failed to load attendance form');
     }
 }
 
@@ -711,6 +740,7 @@ async function saveAllAttendance() {
                 pupilId,
                 term,
                 ...data,
+                teacherId: currentUser?.uid || 'unknown',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
@@ -720,27 +750,29 @@ async function saveAllAttendance() {
         await batch.commit();
         
         window.showToast?.(`✓ Attendance saved for ${updatedCount} pupil(s)`, 'success');
+        
+        console.log('✓ Attendance saved successfully');
     } catch (error) {
         console.error('Error saving attendance:', error);
-        handleError(error, 'Failed to save attendance');
+        handleError(error, 'Failed to save attendance. Check Firestore rules.');
     }
 }
 
 // ============================================
-// TRAITS & SKILLS
+// TRAITS & SKILLS - FIXED
 // ============================================
 
 async function loadClassesForTraits() {
     const selector = document.getElementById('traits-class');
     if (!selector) return;
-
+    
     selector.innerHTML = '<option value="">-- Select Class --</option>';
-
+    
     try {
         const snapshot = await db.collection('classes').get();
         
         const classes = [];
-        snapshot.forEach(doc => {
+        snapshot.forEach(doc => {  // ← Fixed: removed extra space
             classes.push({ id: doc.id, name: doc.data().name });
         });
         
@@ -754,6 +786,7 @@ async function loadClassesForTraits() {
         });
     } catch (error) {
         console.error('Error loading classes for traits:', error);
+        handleError(error, 'Failed to load classes');
     }
 }
 
@@ -791,8 +824,11 @@ async function loadTraitsForm() {
             opt.textContent = pupil.data.name;
             pupilSelector.appendChild(opt);
         });
+        
+        console.log('✓ Traits form pupils loaded');
     } catch (error) {
         console.error('Error loading pupils for traits:', error);
+        handleError(error, 'Failed to load pupils');
     }
 }
 
@@ -812,24 +848,33 @@ async function loadTraitsData() {
 
     try {
         // Load behavioral traits
-        const traitsDoc = await db.collection('behavioral_traits')
-            .doc(`${pupilId}_${term}`)
-            .get();
+        try {
+            const traitsDoc = await db.collection('behavioral_traits')
+                .doc(`${pupilId}_${term}`)
+                .get();
 
-        if (traitsDoc.exists) {
-            const data = traitsDoc.data();
-            document.getElementById('trait-punctuality').value = data.punctuality || '';
-            document.getElementById('trait-neatness').value = data.neatness || '';
-            document.getElementById('trait-politeness').value = data.politeness || '';
-            document.getElementById('trait-honesty').value = data.honesty || '';
-            document.getElementById('trait-obedience').value = data.obedience || '';
-            document.getElementById('trait-cooperation').value = data.cooperation || '';
-            document.getElementById('trait-attentiveness').value = data.attentiveness || '';
-            document.getElementById('trait-leadership').value = data.leadership || '';
-            document.getElementById('trait-selfcontrol').value = data.selfcontrol || '';
-            document.getElementById('trait-creativity').value = data.creativity || '';
-        } else {
-            // Reset form
+            if (traitsDoc.exists) {
+                const data = traitsDoc.data();
+                document.getElementById('trait-punctuality').value = data.punctuality || '';
+                document.getElementById('trait-neatness').value = data.neatness || '';
+                document.getElementById('trait-politeness').value = data.politeness || '';
+                document.getElementById('trait-honesty').value = data.honesty || '';
+                document.getElementById('trait-obedience').value = data.obedience || '';
+                document.getElementById('trait-cooperation').value = data.cooperation || '';
+                document.getElementById('trait-attentiveness').value = data.attentiveness || '';
+                document.getElementById('trait-leadership').value = data.leadership || '';
+                document.getElementById('trait-selfcontrol').value = data.selfcontrol || '';
+                document.getElementById('trait-creativity').value = data.creativity || '';
+            } else {
+                // Reset form
+                ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 
+                 'attentiveness', 'leadership', 'selfcontrol', 'creativity'].forEach(trait => {
+                    document.getElementById(`trait-${trait}`).value = '';
+                });
+            }
+        } catch (error) {
+            console.warn('Error loading behavioral traits:', error);
+            // Reset form on error
             ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 
              'attentiveness', 'leadership', 'selfcontrol', 'creativity'].forEach(trait => {
                 document.getElementById(`trait-${trait}`).value = '';
@@ -837,26 +882,37 @@ async function loadTraitsData() {
         }
 
         // Load psychomotor skills
-        const skillsDoc = await db.collection('psychomotor_skills')
-            .doc(`${pupilId}_${term}`)
-            .get();
+        try {
+            const skillsDoc = await db.collection('psychomotor_skills')
+                .doc(`${pupilId}_${term}`)
+                .get();
 
-        if (skillsDoc.exists) {
-            const data = skillsDoc.data();
-            document.getElementById('skill-handwriting').value = data.handwriting || '';
-            document.getElementById('skill-drawing').value = data.drawing || '';
-            document.getElementById('skill-sports').value = data.sports || '';
-            document.getElementById('skill-craft').value = data.craft || '';
-            document.getElementById('skill-verbal').value = data.verbal || '';
-            document.getElementById('skill-coordination').value = data.coordination || '';
-        } else {
-            // Reset form
+            if (skillsDoc.exists) {
+                const data = skillsDoc.data();
+                document.getElementById('skill-handwriting').value = data.handwriting || '';
+                document.getElementById('skill-drawing').value = data.drawing || '';
+                document.getElementById('skill-sports').value = data.sports || '';
+                document.getElementById('skill-craft').value = data.craft || '';
+                document.getElementById('skill-verbal').value = data.verbal || '';
+                document.getElementById('skill-coordination').value = data.coordination || '';
+            } else {
+                // Reset form
+                ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'].forEach(skill => {
+                    document.getElementById(`skill-${skill}`).value = '';
+                });
+            }
+        } catch (error) {
+            console.warn('Error loading psychomotor skills:', error);
+            // Reset form on error
             ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'].forEach(skill => {
                 document.getElementById(`skill-${skill}`).value = '';
             });
         }
+        
+        console.log('✓ Traits data loaded successfully');
     } catch (error) {
         console.error('Error loading traits data:', error);
+        handleError(error, 'Failed to load traits data');
     }
 }
 
@@ -884,6 +940,7 @@ async function saveTraitsAndSkills() {
             leadership: document.getElementById('trait-leadership').value,
             selfcontrol: document.getElementById('trait-selfcontrol').value,
             creativity: document.getElementById('trait-creativity').value,
+            teacherId: currentUser?.uid || 'unknown',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -899,20 +956,23 @@ async function saveTraitsAndSkills() {
             craft: document.getElementById('skill-craft').value,
             verbal: document.getElementById('skill-verbal').value,
             coordination: document.getElementById('skill-coordination').value,
+            teacherId: currentUser?.uid || 'unknown',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).set(skillsData, { merge: true });
 
         window.showToast?.('✓ Traits and skills saved successfully', 'success');
+        
+        console.log('✓ Traits and skills saved');
     } catch (error) {
         console.error('Error saving traits and skills:', error);
-        handleError(error, 'Failed to save traits and skills');
+        handleError(error, 'Failed to save traits and skills. Check Firestore rules.');
     }
 }
 
 // ============================================
-// REMARKS
+// REMARKS - FIXED
 // ============================================
 
 async function loadClassesForRemarks() {
@@ -939,6 +999,7 @@ async function loadClassesForRemarks() {
         });
     } catch (error) {
         console.error('Error loading classes for remarks:', error);
+        handleError(error, 'Failed to load classes');
     }
 }
 
@@ -976,8 +1037,11 @@ async function loadRemarksForm() {
             opt.textContent = pupil.data.name;
             pupilSelector.appendChild(opt);
         });
+        
+        console.log('✓ Remarks form pupils loaded');
     } catch (error) {
         console.error('Error loading pupils for remarks:', error);
+        handleError(error, 'Failed to load pupils');
     }
 }
 
@@ -1006,8 +1070,12 @@ async function loadRemarksData() {
         } else {
             document.getElementById('teacher-remark').value = '';
         }
+        
+        console.log('✓ Remarks data loaded successfully');
     } catch (error) {
         console.error('Error loading remarks data:', error);
+        document.getElementById('teacher-remark').value = '';
+        handleError(error, 'Failed to load remarks data');
     }
 }
 
@@ -1036,9 +1104,11 @@ async function saveRemarks() {
         }, { merge: true });
 
         window.showToast?.('✓ Remark saved successfully', 'success');
+        
+        console.log('✓ Remark saved successfully');
     } catch (error) {
         console.error('Error saving remarks:', error);
-        handleError(error, 'Failed to save remark');
+        handleError(error, 'Failed to save remark. Check Firestore rules.');
     }
 }
 
