@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - ORDERBY FIX
+ * Admin Portal JavaScript - FULLY UPDATED WITH TEACHER ASSIGNMENT
  * 
- * @version 3.1.0 - REMOVED ORDERBY DEPENDENCY
- * @date 2026-01-03
+ * @version 4.0.0
+ * @date 2026-01-04
  */
 
 'use strict';
@@ -45,6 +45,7 @@ function showSection(sectionId) {
         activeLink.classList.add('active');
     }
     
+    // Load data for the new section
     switch(sectionId) {
         case 'dashboard':
             loadDashboardStats();
@@ -61,18 +62,24 @@ function showSection(sectionId) {
         case 'subjects':
             loadSubjects();
             break;
+        case 'assign-teachers':
+            loadTeacherAssignments();
+            break;
         case 'announcements':
             loadAdminAnnouncements();
             break;
     }
     
+    // Close mobile sidebar after navigation
     const sidebar = document.getElementById('admin-sidebar');
     const hamburger = document.getElementById('hamburger');
     if (sidebar && sidebar.classList.contains('active')) {
         sidebar.classList.remove('active');
         if (hamburger) {
             hamburger.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
         }
+        document.body.style.overflow = '';
     }
 }
 
@@ -94,6 +101,10 @@ async function loadDashboardStats() {
         handleError(error, 'Failed to load dashboard statistics');
     }
 }
+
+/* ========================================
+   TEACHERS MANAGEMENT
+   ======================================== */
 
 function showTeacherForm() {
     const form = document.getElementById('teacher-form');
@@ -145,7 +156,7 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
         await secondaryAuth.signOut();
         await auth.sendPasswordResetEmail(email);
 
-        window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 5000);
+        window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 6000);
 
         cancelTeacherForm();
         loadTeachers();
@@ -153,12 +164,7 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
 
     } catch (error) {
         console.error('Error adding teacher:', error);
-        
-        if (error.code === 'auth/email-already-in-use') {
-            window.showToast?.('This email is already registered.', 'danger');
-        } else {
-            window.showToast?.(`Error: ${error.message}`, 'danger');
-        }
+        handleError(error, 'Failed to add teacher');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Save Teacher';
@@ -169,33 +175,31 @@ async function loadTeachers() {
     const tbody = document.querySelector('#teachers-table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading teachers...</td></tr>';
 
     try {
-        // Removed .orderBy() - sort in JavaScript
         const snapshot = await db.collection('teachers').get();
 
         tbody.innerHTML = '';
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet</td></tr>';
             return;
         }
 
-        // Sort by name in JavaScript
         const teachers = [];
         snapshot.forEach(doc => {
-            teachers.push({ id: doc.id, data: doc.data() });
+            teachers.push({ id: doc.id, ...doc.data() });
         });
-        teachers.sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+        teachers.sort((a, b) => a.name.localeCompare(b.name));
 
         teachers.forEach(teacher => {
-            const data = teacher.data;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Name">${data.name}</td>
-                <td data-label="Email">${data.email}</td>
-                <td data-label="Subject">${data.subject || '-'}</td>
+                <td data-label="Name">${teacher.name}</td>
+                <td data-label="Email">${teacher.email}</td>
+                <td data-label="Subject">${teacher.subject || '-'}</td>
                 <td data-label="Actions">
                     <button class="btn-small btn-danger" onclick="deleteUser('teachers', '${teacher.id}')">Delete</button>
                 </td>
@@ -204,9 +208,13 @@ async function loadTeachers() {
         });
     } catch (error) {
         console.error('Error loading teachers:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Failed to load teachers</td></tr>';
     }
 }
+
+/* ========================================
+   PUPILS MANAGEMENT (unchanged except minor cleanup)
+   ======================================== */
 
 function showPupilForm() {
     const form = document.getElementById('pupil-form');
@@ -264,7 +272,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         await secondaryAuth.signOut();
         await auth.sendPasswordResetEmail(email);
 
-        window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 5000);
+        window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 6000);
 
         cancelPupilForm();
         loadPupils();
@@ -272,12 +280,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
     } catch (error) {
         console.error('Error adding pupil:', error);
-        
-        if (error.code === 'auth/email-already-in-use') {
-            window.showToast?.('This email is already in use.', 'danger');
-        } else {
-            window.showToast?.(`Error: ${error.message}`, 'danger');
-        }
+        handleError(error, 'Failed to add pupil');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Save Pupil';
@@ -288,34 +291,32 @@ async function loadPupils() {
     const tbody = document.querySelector('#pupils-table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading pupils...</td></tr>';
 
     try {
-        // Removed .orderBy() - sort in JavaScript
         const snapshot = await db.collection('pupils').get();
 
         tbody.innerHTML = '';
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet</td></tr>';
             return;
         }
 
-        // Sort by name in JavaScript
         const pupils = [];
         snapshot.forEach(doc => {
-            pupils.push({ id: doc.id, data: doc.data() });
+            pupils.push({ id: doc.id, ...doc.data() });
         });
-        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+        pupils.sort((a, b) => a.name.localeCompare(b.name));
 
         pupils.forEach(pupil => {
-            const data = pupil.data;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Name">${data.name}</td>
-                <td data-label="Class">${data.class || '-'}</td>
-                <td data-label="Parent Email">${data.parentEmail || '-'}</td>
-                <td data-label="Email">${data.email}</td>
+                <td data-label="Name">${pupil.name}</td>
+                <td data-label="Class">${pupil.class || '-'}</td>
+                <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
+                <td data-label="Email">${pupil.email}</td>
                 <td data-label="Actions">
                     <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
                 </td>
@@ -324,30 +325,13 @@ async function loadPupils() {
         });
     } catch (error) {
         console.error('Error loading pupils:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Failed to load pupils</td></tr>';
     }
 }
 
-async function deleteUser(collection, uid) {
-    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
-
-    try {
-        await db.collection(collection).doc(uid).delete();
-        await db.collection('users').doc(uid).delete();
-
-        window.showToast?.('User profile deleted successfully.', 'success');
-        
-        if (collection === 'teachers') {
-            loadTeachers();
-        } else if (collection === 'pupils') {
-            loadPupils();
-        }
-        loadDashboardStats();
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        window.showToast?.('Error deleting user', 'danger');
-    }
-}
+/* ========================================
+   CLASSES MANAGEMENT (minor cleanup)
+   ======================================== */
 
 function showClassForm() {
     const form = document.getElementById('class-form');
@@ -395,59 +379,59 @@ async function loadClasses() {
     const tbody = document.querySelector('#classes-table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" class="table-loading">Loading classes...</td></tr>';
 
     try {
-        // Get all classes
         const classesSnap = await db.collection('classes').get();
-        
-        // ✅ Get ALL pupils ONCE (not in loop)
         const pupilsSnap = await db.collection('pupils').get();
-        
-        // Create lookup map: className → pupil count
+
         const pupilCountMap = {};
         pupilsSnap.forEach(pupilDoc => {
             const className = pupilDoc.data().class;
-            pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
+            if (className) {
+                pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
+            }
         });
-        
+
         tbody.innerHTML = '';
-        
+
         if (classesSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet</td></tr>';
             return;
         }
 
-        // Sort classes
         const classes = [];
         classesSnap.forEach(doc => {
-            const classData = doc.data();
+            const data = doc.data();
             classes.push({
                 id: doc.id,
-                name: classData.name,
-                pupilCount: pupilCountMap[classData.name] || 0
+                name: data.name,
+                pupilCount: pupilCountMap[data.name] || 0
             });
         });
-        
+
         classes.sort((a, b) => a.name.localeCompare(b.name));
 
-        // Render table
-        classes.forEach(classItem => {
+        classes.forEach(cls => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Class Name">${classItem.name}</td>
-                <td data-label="Pupil Count">${classItem.pupilCount}</td>
+                <td data-label="Class Name">${cls.name}</td>
+                <td data-label="Pupil Count">${cls.pupilCount}</td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('classes', '${classItem.id}')">Delete</button>
+                    <button class="btn-small btn-danger" onclick="deleteDoc('classes', '${cls.id}')">Delete</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (error) {
         console.error('Error loading classes:', error);
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading classes</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Failed to load classes</td></tr>';
     }
 }
+
+/* ========================================
+   SUBJECTS MANAGEMENT (unchanged)
+   ======================================== */
 
 function showSubjectForm() {
     const form = document.getElementById('subject-form');
@@ -494,30 +478,29 @@ async function loadSubjects() {
     const tbody = document.querySelector('#subjects-table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="2" class="table-loading">Loading subjects...</td></tr>';
 
     try {
-        // Removed .orderBy() - sort in JavaScript
         const snapshot = await db.collection('subjects').get();
         
         tbody.innerHTML = '';
         
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects created yet</td></tr>';
             return;
         }
 
-        // Sort by name in JavaScript
         const subjects = [];
         snapshot.forEach(doc => {
-            subjects.push({ id: doc.id, data: doc.data() });
+            subjects.push({ id: doc.id, name: doc.data().name });
         });
-        subjects.sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+        subjects.sort((a, b) => a.name.localeCompare(b.name));
 
         subjects.forEach(subject => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Subject Name">${subject.data.name}</td>
+                <td data-label="Subject Name">${subject.name}</td>
                 <td data-label="Actions">
                     <button class="btn-small btn-danger" onclick="deleteDoc('subjects', '${subject.id}')">Delete</button>
                 </td>
@@ -526,9 +509,123 @@ async function loadSubjects() {
         });
     } catch (error) {
         console.error('Error loading subjects:', error);
-        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading subjects</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Failed to load subjects</td></tr>';
     }
 }
+
+/* ========================================
+   NEW: TEACHER TO CLASS ASSIGNMENT
+   ======================================== */
+
+async function loadTeacherAssignments() {
+    const teacherSelect = document.getElementById('assign-teacher');
+    const classSelect = document.getElementById('assign-class');
+    const tbody = document.getElementById('assignments-table')?.querySelector('tbody');
+
+    if (!teacherSelect || !classSelect || !tbody) return;
+
+    try {
+        // Load teachers
+        const teachersSnap = await db.collection('teachers').get();
+        teacherSelect.innerHTML = '<option value="">-- Select Teacher --</option>';
+        const teachers = [];
+        teachersSnap.forEach(doc => {
+            const data = doc.data();
+            teachers.push({ uid: doc.id, name: data.name, email: data.email });
+        });
+        teachers.sort((a, b) => a.name.localeCompare(b.name));
+        teachers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.uid;
+            opt.textContent = `${t.name} (${t.email})`;
+            teacherSelect.appendChild(opt);
+        });
+
+        // Load classes
+        const classesSnap = await db.collection('classes').get();
+        classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+        const classes = [];
+        classesSnap.forEach(doc => {
+            const data = doc.data();
+            classes.push({ id: doc.id, name: data.name, teacherId: data.teacherId || null });
+        });
+        classes.sort((a, b) => a.name.localeCompare(b.name));
+        classes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            classSelect.appendChild(opt);
+        });
+
+        // Load current assignments table
+        tbody.innerHTML = '';
+        if (classes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes available</td></tr>';
+            return;
+        }
+
+        classes.forEach(cls => {
+            const assignedTeacher = teachers.find(t => t.uid === cls.teacherId);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Class">${cls.name}</td>
+                <td data-label="Assigned Teacher">${assignedTeacher ? assignedTeacher.name : '<em>None</em>'}</td>
+                <td data-label="Actions">
+                    ${cls.teacherId ? `<button class="btn-small btn-danger" onclick="unassignTeacher('${cls.id}')">Remove</button>` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error('Error loading assignments:', error);
+        window.showToast?.('Failed to load assignment data', 'danger');
+    }
+}
+
+async function assignTeacherToClass() {
+    const teacherUid = document.getElementById('assign-teacher')?.value;
+    const classId = document.getElementById('assign-class')?.value;
+
+    if (!teacherUid || !classId) {
+        window.showToast?.('Please select both a teacher and a class', 'warning');
+        return;
+    }
+
+    try {
+        await db.collection('classes').doc(classId).update({
+            teacherId: teacherUid,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.showToast?.('Teacher assigned successfully!', 'success');
+        loadTeacherAssignments(); // Refresh table
+    } catch (error) {
+        console.error('Error assigning teacher:', error);
+        handleError(error, 'Failed to assign teacher');
+    }
+}
+
+async function unassignTeacher(classId) {
+    if (!confirm('Remove teacher assignment from this class?')) return;
+
+    try {
+        await db.collection('classes').doc(classId).update({
+            teacherId: firebase.firestore.FieldValue.delete(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.showToast?.('Teacher unassigned', 'success');
+        loadTeacherAssignments();
+    } catch (error) {
+        console.error('Error unassigning teacher:', error);
+        handleError(error, 'Failed to remove assignment');
+    }
+}
+
+/* ========================================
+   ANNOUNCEMENTS (unchanged)
+   ======================================== */
 
 function showAnnounceForm() {
     const form = document.getElementById('announce-form');
@@ -572,10 +669,9 @@ async function loadAdminAnnouncements() {
     const list = document.getElementById('announcements-list');
     if (!list) return;
 
-    list.innerHTML = '<div class="skeleton-container"><div class="skeleton" style="height: 30px; margin-bottom: var(--space-md);"></div></div>';
+    list.innerHTML = '<div class="skeleton-container"><div class="skeleton"></div><div class="skeleton"></div></div>';
 
     try {
-        // Get all announcements and sort in JavaScript
         const snapshot = await db.collection('announcements').get();
 
         list.innerHTML = '';
@@ -587,27 +683,25 @@ async function loadAdminAnnouncements() {
 
         const announcements = [];
         snapshot.forEach(doc => {
-            announcements.push({ id: doc.id, data: doc.data() });
+            announcements.push({ id: doc.id, ...doc.data() });
         });
 
-        // Sort by createdAt in JavaScript
         announcements.sort((a, b) => {
-            const aTime = a.data.createdAt?.toMillis() || 0;
-            const bTime = b.data.createdAt?.toMillis() || 0;
+            const aTime = a.createdAt?.toMillis() || 0;
+            const bTime = b.createdAt?.toMillis() || 0;
             return bTime - aTime;
         });
 
-        announcements.forEach(announcement => {
-            const data = announcement.data;
+        announcements.forEach(ann => {
             const div = document.createElement('div');
             div.className = 'admin-card';
-            div.style.marginBottom = '20px';
+            div.style.marginBottom = 'var(--space-8)';
             div.innerHTML = `
-                <h3 style="margin-top: 0;">${data.title}</h3>
-                <p>${data.content}</p>
-                <small style="color: var(--color-gray-600);">Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}</small>
-                <div style="margin-top: var(--space-md);">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${announcement.id}')">Delete</button>
+                <h3 style="margin-top:0;">${ann.title}</h3>
+                <p>${ann.content}</p>
+                <small style="color:var(--color-gray-600);">Posted: ${ann.createdAt ? new Date(ann.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}</small>
+                <div style="margin-top:var(--space-4);">
+                    <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${ann.id}')">Delete</button>
                 </div>
             `;
             list.appendChild(div);
@@ -618,10 +712,31 @@ async function loadAdminAnnouncements() {
     }
 }
 
-async function deleteDoc(collectionName, docId) {
-    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-        return;
+/* ========================================
+   DELETE HELPERS
+   ======================================== */
+
+async function deleteUser(collection, uid) {
+    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+
+    try {
+        await db.collection(collection).doc(uid).delete();
+        await db.collection('users').doc(uid).delete();
+
+        window.showToast?.('User deleted successfully', 'success');
+        
+        if (collection === 'teachers') loadTeachers();
+        if (collection === 'pupils') loadPupils();
+        
+        loadDashboardStats();
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        handleError(error, 'Failed to delete user');
     }
+}
+
+async function deleteDoc(collectionName, docId) {
+    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
 
     try {
         await db.collection(collectionName).doc(docId).delete();
@@ -633,6 +748,7 @@ async function deleteDoc(collectionName, docId) {
         switch(collectionName) {
             case 'classes':
                 loadClasses();
+                loadTeacherAssignments(); // Refresh assignments if class deleted
                 break;
             case 'subjects':
                 loadSubjects();
@@ -647,7 +763,11 @@ async function deleteDoc(collectionName, docId) {
     }
 }
 
+/* ========================================
+   INITIAL LOAD
+   ======================================== */
+
 document.addEventListener('DOMContentLoaded', () => {
-    loadDashboardStats();
-    console.log('✓ Admin portal initialized');
+    showSection('dashboard'); // Default to dashboard
+    console.log('✓ Admin portal initialized (v4.0.0)');
 });
