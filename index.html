@@ -3,110 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Fahmid Nursery & Primary School - Nurturing young minds for a bright future with quality education in a safe and caring environment.">
+    <meta name="description" content="Fahmid Nursery and Primary School offers quality nursery and primary education in a safe, caring, and structured learning environment.">
     <title>Home - Fahmid Nursery & Primary School</title>
+
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <!-- Skip to main content link for accessibility -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Sidebar Navigation -->
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
+<!-- Hamburger Menu -->
+<button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+    <span class="line1"></span>
+    <span class="line2"></span>
+    <span class="line3"></span>
+</button>
 
-        <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html" aria-current="page">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
-        </div>
+<!-- Sidebar Navigation -->
+<nav class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+        <div class="logo-text">Fahmid School</div>
+    </div>
 
-        <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
-        </div>
-    </nav>
+    <div class="sidebar-content">
+        <ul role="list">
+            <li><a href="index.html" aria-current="page">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="academics.html">Academics</a></li>
+            <li><a href="admissions.html">Admissions</a></li>
+            <li><a href="school-life.html">School Life</a></li>
+            <li><a href="gallery.html">Gallery</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </div>
 
-<!-- HERO SECTION WITH YOUR PUPIL PHOTOS SLIDESHOW -->
+    <div class="sidebar-footer">
+        <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+            Login / Register
+        </a>
+    </div>
+</nav>
+
+<!-- HERO SECTION -->
 <section class="hero">
     <div class="hero-slideshow">
-        <!-- Your 10 images (IMG_4611 to IMG_4620) -->
         <img src="images/pupils/IMG_4611.jpeg" alt="Happy pupils at Fahmid School">
-        <img src="images/pupils/IMG_4612.jpeg" alt="Pupils learning and smiling">
-        <img src="images/pupils/IMG_4618.jpeg" alt="Children in classroom activities">
+        <img src="images/pupils/IMG_4612.jpeg" alt="Pupils learning together">
+        <img src="images/pupils/IMG_4618.jpeg" alt="Classroom activities">
         <img src="images/pupils/IMG_4614.jpeg" alt="Playtime with friends">
-        <img src="images/pupils/IMG_4615.jpeg" alt="Nursery children having fun">
+        <img src="images/pupils/IMG_4615.jpeg" alt="Nursery children learning">
         <img src="images/pupils/IMG_4622.jpeg" alt="Group learning session">
-        <img src="images/pupils/IMG_4617.jpeg" alt="Excited pupils outdoors">
-        <img src="images/pupils/IMG_4613.jpeg" alt="Reading and storytelling time">
-        <img src="images/pupils/IMG_4619.jpeg" alt="Diverse group of happy kids">
-        <img src="images/pupils/IMG_4620.jpeg" alt="Celebrating at Fahmid School">
-
-        <!-- Duplicate the first for seamless infinite loop -->
+        <img src="images/pupils/IMG_4617.jpeg" alt="Outdoor school activities">
+        <img src="images/pupils/IMG_4613.jpeg" alt="Storytelling session">
+        <img src="images/pupils/IMG_4619.jpeg" alt="Pupils working together">
+        <img src="images/pupils/IMG_4620.jpeg" alt="Celebration at school">
         <img src="images/pupils/IMG_4611.jpeg" alt="Happy pupils at Fahmid School">
     </div>
 
-    <!-- Hero text overlay (keep your existing text) -->
     <div class="hero-content">
-        <h1 id="hero-heading">Fahmid Nursery and Primary School</h1>
-        <p class="lead">Nurturing young minds with love, care, and excellence</p>
-        <a href="admissions.html" class="btn">Apply Now</a>
+        <h1>Fahmid Nursery and Primary School</h1>
+        <p class="lead">
+            Building strong academic foundations and positive values in a safe, caring, and structured learning environment.
+        </p>
+        <p>
+            From Nursery to Primary Six, we provide quality education that supports intellectual, social, and moral development.
+        </p>
+        <a href="admissions.html" class="btn">Apply for Admission</a>
     </div>
 </section>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content"> 
+<!-- MAIN CONTENT -->
+<main id="main-content" class="main-content">
 
-        <!-- Features Section -->
-        <section class="container" aria-labelledby="features-heading">
-            <h2 id="features-heading" class="section-title">Why Choose Us?</h2>
-            <div class="grid">
-                <article class="card">
-                    <h3>Quality Education</h3>
-                    <p>Holistic curriculum focused on academic excellence and character development.</p>
-                </article>
-                <article class="card">
-                    <h3>Safe & Caring Environment</h3>
-                    <p>A nurturing space where every child feels valued and secure.</p>
-                </article>
-                <article class="card">
-                    <h3>Experienced Teachers</h3>
-                    <p>Dedicated staff committed to inspiring lifelong learning.</p>
-                </article>
-            </div>
-        </section>
-    </main>
+    <!-- WHY PARENTS CHOOSE FAHMID -->
+    <section class="container section">
+        <h2 class="section-title">Why Parents Choose Fahmid</h2>
 
-    <!-- Footer -->
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+        <div class="grid features-grid">
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Strong Academic Foundation</h3>
+                <p>
+                    We place strong emphasis on literacy, numeracy, and critical thinking skills that prepare pupils for steady academic progress.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Safe and Caring Environment</h3>
+                <p>
+                    Our school provides a structured, secure, and nurturing atmosphere where every child feels protected and supported.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Dedicated Teaching Staff</h3>
+                <p>
+                    Our teachers are experienced, patient, and committed to guiding pupils with care, discipline, and professionalism.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Strong Moral and Social Values</h3>
+                <p>
+                    We promote discipline, respect, responsibility, and good behaviour as essential parts of a child’s education.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Well-Structured School Programme</h3>
+                <p>
+                    Our school activities are carefully planned to balance academic learning with creative and social development.
+                </p>
+            </article>
+
+            <article class="feature-card">
+                <div class="card-image grayscale"></div>
+                <h3>Positive School Community</h3>
+                <p>
+                    We maintain open communication with parents and create a welcoming environment where pupils can grow with confidence.
+                </p>
+            </article>
         </div>
-    </footer>
+    </section>
 
-    <!-- Toast Container -->
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <!-- PROGRAMMES -->
+    <section class="container section programs-section">
+        <h2 class="section-title">Our Programmes</h2>
 
-    <script src="script.js"></script>
+        <div class="grid">
+            <article class="program-card nursery">
+                <h3>Nursery Section</h3>
+                <p>
+                    Our nursery programme focuses on guided play, early literacy, numeracy, and social development in a joyful and supportive learning environment.
+                </p>
+                <a href="academics.html#nursery" class="text-link">Explore Nursery Programme</a>
+            </article>
+
+            <article class="program-card primary">
+                <h3>Primary Section (Primary 1 – Primary 6)</h3>
+                <p>
+                    The primary programme delivers a structured curriculum that builds strong academic skills, confidence, discipline, and independent thinking.
+                </p>
+                <a href="academics.html#primary" class="text-link">Explore Primary Programme</a>
+            </article>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="container section testimonials-section">
+        <h2 class="section-title">What Parents Say</h2>
+
+        <div class="testimonials-carousel">
+            <div class="carousel-track">
+
+                <blockquote class="testimonial">
+                    <p>
+                        “Fahmid Nursery and Primary School has played a major role in improving our child’s confidence and academic performance. The teachers are patient and dedicated.”
+                    </p>
+                    <cite>— Mrs. Adebayo, Parent (Nursery Section)</cite>
+                </blockquote>
+
+                <blockquote class="testimonial">
+                    <p>
+                        “The school environment is well organised and disciplined. We are pleased with the level of attention given to pupils.”
+                    </p>
+                    <cite>— Mr. Okonkwo, Parent (Primary 4)</cite>
+                </blockquote>
+
+                <blockquote class="testimonial">
+                    <p>
+                        “Fahmid School provides a good balance between learning and character development. Communication with parents is also very good.”
+                    </p>
+                    <cite>— Mrs. Bello, Parent (Primary Section)</cite>
+                </blockquote>
+
+                <blockquote class="testimonial">
+                    <p>
+                        “Fahmid Nursery and Primary School has played a major role in improving our child’s confidence and academic performance. The teachers are patient and dedicated.”
+                    </p>
+                    <cite>— Mrs. Adebayo, Parent (Nursery Section)</cite>
+                </blockquote>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- GALLERY TEASER -->
+    <section class="container section gallery-teaser">
+        <h2 class="section-title">Moments from School Life</h2>
+
+        <div class="gallery-carousel">
+            <div class="gallery-track">
+                <img src="images/gallery/1.jpg" alt="Pupils engaged in play activities">
+                <img src="images/gallery/2.jpg" alt="Classroom learning session">
+                <img src="images/gallery/3.jpg" alt="Group learning activity">
+                <img src="images/gallery/4.jpg" alt="Creative class exercise">
+                <img src="images/gallery/5.jpg" alt="Outdoor school activity">
+                <img src="images/gallery/1.jpg" alt="Pupils engaged in play activities">
+            </div>
+        </div>
+
+        <a href="gallery.html" class="btn">View Full Gallery</a>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="container section cta-section">
+        <h2>Join the Fahmid School Community</h2>
+        <p class="lead">
+            Admissions are currently open for the new academic session.
+        </p>
+        <p>
+            Parents who are seeking a caring, disciplined, and academically focused school are encouraged to apply or schedule a visit.
+        </p>
+        <a href="admissions.html" class="btn">Apply for Admission</a>
+        <a href="contact.html" class="btn">Schedule a Visit</a>
+    </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="container">
+        <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+    </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
