@@ -7,10 +7,11 @@
  * - Gallery lightbox
  * - Toast notifications
  * - Smooth scrolling
+ * - Testimonials carousel (manual + auto)
  * - Keyboard navigation & accessibility
  * - Global error handling
  * 
- * @version 2.1.1
+ * @version 2.2.0
  * @date 2026-01-04
  */
 
@@ -31,36 +32,28 @@ function initHamburgerMenu() {
     function toggleSidebar() {
         hamburger.classList.toggle('active');
         sidebar.classList.toggle('active');
-        
         const isExpanded = sidebar.classList.contains('active');
         hamburger.setAttribute('aria-expanded', isExpanded);
-        
         document.body.style.overflow = isExpanded ? 'hidden' : '';
     }
 
-    // Toggle on hamburger click
     hamburger.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleSidebar();
     });
 
-    // Close when clicking outside
     document.addEventListener('click', (e) => {
         if (!sidebar.contains(e.target) && !hamburger.contains(e.target) && sidebar.classList.contains('active')) {
             toggleSidebar();
         }
     });
 
-    // Close when clicking a link inside sidebar (mobile only)
     sidebar.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
-            if (window.innerWidth <= 1024 && sidebar.classList.contains('active')) {
-                toggleSidebar();
-            }
+            if (window.innerWidth <= 1024 && sidebar.classList.contains('active')) toggleSidebar();
         });
     });
 
-    // Close with Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && sidebar.classList.contains('active')) {
             toggleSidebar();
@@ -68,14 +61,11 @@ function initHamburgerMenu() {
         }
     });
 
-    // Reset on resize (desktop view)
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
-                toggleSidebar();
-            }
+            if (window.innerWidth > 1024 && sidebar.classList.contains('active')) toggleSidebar();
         }, 250);
     });
 }
@@ -133,9 +123,7 @@ function initGalleryLightbox() {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && lightbox.classList.contains('active')) {
-            closeLightbox();
-        }
+        if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
     });
 }
 
@@ -154,15 +142,8 @@ function initSmoothScroll() {
 
             if (targetElement) {
                 e.preventDefault();
-                targetElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-
-                if (history.pushState) {
-                    history.pushState(null, null, href);
-                }
-
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (history.pushState) history.pushState(null, null, href);
                 targetElement.focus({ preventScroll: true });
             }
         });
@@ -187,13 +168,7 @@ window.showToast = function(message, type = 'info', duration = 3000) {
     toast.className = `toast toast-${type}`;
     toast.setAttribute('role', 'alert');
 
-    const icon = {
-        success: '✓',
-        danger: '✕',
-        warning: '⚠',
-        info: 'ℹ'
-    }[type] || '';
-
+    const icon = { success: '✓', danger: '✕', warning: '⚠', info: 'ℹ' }[type] || '';
     if (icon) {
         const iconSpan = document.createElement('span');
         iconSpan.textContent = icon + ' ';
@@ -206,7 +181,6 @@ window.showToast = function(message, type = 'info', duration = 3000) {
     toast.appendChild(messageSpan);
 
     container.appendChild(toast);
-
     requestAnimationFrame(() => toast.classList.add('show'));
 
     setTimeout(() => {
@@ -228,9 +202,7 @@ window.addEventListener('error', (event) => {
 
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason);
-    if (window.showToast) {
-        showToast('Something went wrong. Please try again.', 'danger', 5000);
-    }
+    if (window.showToast) showToast('Something went wrong. Please try again.', 'danger', 5000);
 });
 
 // ============================================
@@ -238,14 +210,9 @@ window.addEventListener('unhandledrejection', (event) => {
 // ============================================
 
 document.body.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-        document.body.classList.add('keyboard-nav');
-    }
+    if (e.key === 'Tab') document.body.classList.add('keyboard-nav');
 });
-
-document.body.addEventListener('mousedown', () => {
-    document.body.classList.remove('keyboard-nav');
-});
+document.body.addEventListener('mousedown', () => document.body.classList.remove('keyboard-nav'));
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -284,6 +251,66 @@ function announceToScreenReader(message, priority = 'polite') {
 window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
 // ============================================
+// TESTIMONIALS CAROUSEL (Vanilla JS)
+// ============================================
+
+function initTestimonialsCarousel() {
+    document.querySelectorAll('[data-carousel]').forEach(carousel => {
+        const track = carousel.querySelector('.carousel-track');
+        const slides = Array.from(track?.children || []);
+        const prevBtn = carousel.querySelector('.prev');
+        const nextBtn = carousel.querySelector('.next');
+        const dotsContainer = carousel.querySelector('.carousel-dots');
+
+        if (!track || !prevBtn || !nextBtn || !dotsContainer || !slides.length) return;
+
+        let current = 0;
+        let interval;
+
+        slides.forEach((_, index) => {
+            const dot = document.createElement('button');
+            if (index === 0) dot.classList.add('active');
+            dotsContainer.appendChild(dot);
+            dot.addEventListener('click', () => {
+                goToSlide(index);
+                resetAutoPlay();
+            });
+        });
+
+        const dots = Array.from(dotsContainer.children);
+
+        function goToSlide(index) {
+            current = index;
+            track.style.transform = `translateX(-${current * 100}%)`;
+            dots.forEach(d => d.classList.remove('active'));
+            dots[current].classList.add('active');
+        }
+
+        function next() {
+            goToSlide((current + 1) % slides.length);
+        }
+
+        function prev() {
+            goToSlide((current - 1 + slides.length) % slides.length);
+        }
+
+        function startAutoPlay() {
+            interval = setInterval(next, 6000);
+        }
+
+        function resetAutoPlay() {
+            clearInterval(interval);
+            startAutoPlay();
+        }
+
+        nextBtn.addEventListener('click', () => { next(); resetAutoPlay(); });
+        prevBtn.addEventListener('click', () => { prev(); resetAutoPlay(); });
+
+        startAutoPlay();
+    });
+}
+
+// ============================================
 // INITIALIZATION
 // ============================================
 
@@ -291,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHamburgerMenu();
     initGalleryLightbox();
     initSmoothScroll();
+    initTestimonialsCarousel();
 
-    console.log('✓ Fahmid School website initialized successfully (v2.1.1 - Fixed)');
+    console.log('✓ Fahmid School website initialized successfully (v2.2.0 - Carousel Enhanced)');
 });
