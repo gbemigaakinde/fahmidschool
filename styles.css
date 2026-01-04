@@ -1904,3 +1904,75 @@ address strong {
         scroll-behavior: auto !important;
     }
 }
+
+
+/* Features Cards Hover Creativity */
+.features-grid .feature-card {
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.4s ease;
+}
+.features-grid .feature-card:hover {
+    transform: translateY(-10px);
+}
+.card-image {
+    background-size: cover;
+    background-position: center;
+    height: 200px;
+    transition: filter 0.5s ease;
+}
+.feature-card:hover .card-image {
+    filter: none; /* Remove grayscale */
+}
+
+/* Programs Parallax */
+.program-card {
+    background-attachment: fixed; /* Or scroll for subtle */
+    background-size: cover;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    padding: var(--space-16);
+    border-radius: var(--radius-xl);
+}
+
+/* Testimonial Carousel - Auto left slide */
+.testimonials-carousel {
+    overflow: hidden;
+    max-width: 800px;
+    margin: 0 auto;
+}
+.carousel-track {
+    display: flex;
+    width: calc(100% * 6); /* Adjust based on quote count */
+    animation: carouselSlide 40s linear infinite; /* Slow, readable */
+}
+.testimonial {
+    min-width: 100%;
+    padding: var(--space-8);
+    text-align: center;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+@keyframes carouselSlide {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); } /* Adjust % for seamless */
+}
+
+/* Gallery Carousel - Slow horizontal scroll */
+.gallery-carousel {
+    overflow: hidden;
+}
+.gallery-track {
+    display: flex;
+    animation: galleryScroll 60s linear infinite;
+}
+.gallery-track img {
+    height: 300px;
+    object-fit: cover;
+    flex: 0 0 25%; /* 4 visible at once */
+}
+@keyframes galleryScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } /* With duplicates */
+}
