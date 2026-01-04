@@ -426,17 +426,15 @@ small { font-size: var(--text-sm); }
    ============================================ */
 .hero {
     position: relative;
-    width: 100vw;                    /* Full viewport width – touches left/right edges */
+    width: 100vw;
     height: 100vh;
     min-height: 600px;
     margin: 0;
-    padding: 0;                      /* No padding at all */
+    padding: 0;
     overflow: hidden;
     color: var(--color-white);
     text-align: center;
-    left: 50%;
-    transform: translateX(-50%);     /* Centers it perfectly while using 100vw */
-    margin-left: calc(-50vw + 50%);  /* Alternative reliable full-bleed method */
+    margin-left: calc(-1 * var(--sidebar-width));
 }
 
 /* Full-width slideshow background */
