@@ -618,6 +618,48 @@ async function loadAttendanceForm() {
             return;
         }
 
+        // Get ALL attendance records for this term ONCE
+        const pupilIds = [];
+        pupilsSnap.forEach(doc => pupilIds.push(doc.id));
+
+        // Firestore limitation: 'in' queries limited to 10 items
+        // So we batch if needed
+        const attendanceMap = {};
+        
+        if (pupilIds.length <= 10) {
+            const attendanceSnap = await db.collection('attendance')
+                .where(firebase.firestore.FieldPath.documentId(), 'in', 
+                    pupilIds.map(id => `${id}_${term}`))
+                .get();
+            
+            attendanceSnap.forEach(doc => {
+                const data = doc.data();
+                attendanceMap[data.pupilId] = data;
+            });
+        } else {
+            // For >10 pupils, use Promise.all
+            const chunks = [];
+            for (let i = 0; i < pupilIds.length; i += 10) {
+                chunks.push(pupilIds.slice(i, i + 10));
+            }
+            
+            const results = await Promise.all(
+                chunks.map(chunk => 
+                    db.collection('attendance')
+                        .where(firebase.firestore.FieldPath.documentId(), 'in', 
+                            chunk.map(id => `${id}_${term}`))
+                        .get()
+                )
+            );
+            
+            results.forEach(snap => {
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    attendanceMap[data.pupilId] = data;
+                });
+            });
+        }
+
         const pupils = [];
         pupilsSnap.forEach(pupilDoc => {
             pupils.push({ id: pupilDoc.id, data: pupilDoc.data() });
@@ -638,28 +680,15 @@ async function loadAttendanceForm() {
                 <tbody>
         `;
 
-        for (let pupilItem of pupils) {
+        pupils.forEach(pupilItem => {
             const pupil = pupilItem.data;
             const pupilId = pupilItem.id;
 
-            let timesOpened = '';
-            let timesPresent = '';
-            let timesAbsent = '';
-
-            try {
-                const attendanceDoc = await db.collection('attendance')
-                    .doc(`${pupilId}_${term}`)
-                    .get();
-
-                if (attendanceDoc.exists) {
-                    const data = attendanceDoc.data();
-                    timesOpened = data.timesOpened || '';
-                    timesPresent = data.timesPresent || '';
-                    timesAbsent = data.timesAbsent || '';
-                }
-            } catch (error) {
-                console.warn('Error loading attendance for pupil:', pupilId, error);
-            }
+            // Lookup from map (instant)
+            const attendance = attendanceMap[pupilId] || {};
+            const timesOpened = attendance.timesOpened || '';
+            const timesPresent = attendance.timesPresent || '';
+            const timesAbsent = attendance.timesAbsent || '';
 
             tableHTML += `
                 <tr>
@@ -699,7 +728,7 @@ async function loadAttendanceForm() {
                     </td>
                 </tr>
             `;
-        }
+        });
 
         tableHTML += `</tbody></table>`;
         container.innerHTML = tableHTML;
@@ -709,7 +738,7 @@ async function loadAttendanceForm() {
         console.log('✓ Attendance form loaded successfully');
     } catch (error) {
         console.error('Error loading attendance form:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading form. Please check Firestore rules.</p>';
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading form</p>';
         handleError(error, 'Failed to load attendance form');
     }
 }
