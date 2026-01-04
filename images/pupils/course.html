@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0.1" />
+  <title>Elite Communication Mastery Program | Veritone Services</title>
+  <meta name="description" content="12-Week Transformational Program for Busy Professionals Who Want to Speak with Confidence, Influence, and Executive Presence." />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+
+  <link rel="icon" href="Red and Black Minimalist Studio Logo - 1.png">
+
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #e11d48;
+      --light: #f8fafc;
+      --gray: #64748b;
+      --dark-gray: #1e293b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: var(--primary);
+      background: var(--light);
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Playfair Display', serif;
+      line-height: 1.2;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e293b 100%);
+      color: white;
+      padding: 6rem 0 4rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 150px;
+      background: var(--light);
+      clip-path: ellipse(70% 100% at 50% 100%);
+    }
+
+    .logo {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 1rem;
+      color: white;
+    }
+
+    .tagline {
+      font-size: 1.4rem;
+      opacity: 0.9;
+      max-width: 700px;
+      margin: 0 auto 2rem;
+    }
+
+    .badge {
+      background: var(--accent);
+      color: white;
+      padding: 0.5rem 1.2rem;
+      border-radius: 50px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 2rem;
+    }
+
+    .cta-button {
+      background: var(--accent);
+      color: white;
+      padding: 1rem 2.5rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(225, 29, 72, 0.4);
+    }
+
+    .cta-button:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(225, 29, 72, 0.5);
+    }
+
+    /* Sections */
+    section {
+      padding: 5rem 0;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2.8rem;
+      margin-bottom: 3rem;
+      color: var(--primary);
+    }
+
+    .highlight {
+      color: var(--accent);
+    }
+
+    /* Outcomes */
+    .outcomes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .outcome-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+
+    .outcome-card:hover {
+      transform: translateY(-10px);
+    }
+
+    .outcome-card h3 {
+      margin: 1rem 0;
+      font-size: 1.5rem;
+    }
+
+    /* Week Grid */
+    .weeks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .week {
+      background: white;
+      border-left: 6px solid var(--accent);
+      padding: 1.5rem;
+      border-radius: 0 12px 12px 0;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+      transition: all 0.3s;
+    }
+
+    .week:hover {
+      transform: translateX(10px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+    }
+
+    .week-number {
+      font-weight: 800;
+      color: var(--accent);
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Guarantee */
+    .guarantee {
+      background: linear-gradient(135deg, var(--accent), #be123c);
+      color: white;
+      text-align: center;
+      padding: 4rem 2rem;
+      border-radius: 20px;
+      margin: 5rem 0;
+    }
+
+    .guarantee h2 {
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Footer CTA */
+    .final-cta {
+      background: var(--primary);
+      color: white;
+      text-align: center;
+      padding: 6rem 2rem;
+      color: white;
+    }
+
+    .price {
+      font-size: 4rem;
+      font-weight: 800;
+      margin: 2rem 0;
+      color: var(--accent);
+    }
+
+    .price-note {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 2rem;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--dark-gray);
+      color: #94a3b8;
+      text-align: center;
+      padding: 3rem 0;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .section-title {
+        font-size: 2.2rem;
+      }
+      header {
+        padding: 4rem 0 3rem;
+      }
+      .logo {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="logo">Veritone Services</div>
+      <h1>Elite Communication Mastery Program</h1>
+      <p class="tagline">12-Week Live Cohort for Busy Professionals<br>From Functional Communicator → Influential Leader</p>
+      <div class="badge">Next Cohort Starts January 13th – Only 15 Seats</div>
+      <button class="cta-button" onclick="document.getElementById('enroll').scrollIntoView({behavior: 'smooth'})">
+        Reserve Your Seat Now
+      </button>
+    </div>
+  </header>
+
+  <!-- Hero Outcomes -->
+  <section>
+    <div class="container">
+      <h2 class="section-title">By Week 12, You Will Be Able To:</h2>
+      <div class="outcomes-grid">
+        <div class="outcome-card">
+          <h3>Speak with Unshakable Confidence</h3>
+          <p>In meetings, presentations, negotiations, and media interviews</p>
+        </div>
+        <div class="outcome-card">
+          <h3>Run Meetings People Thank You For</h3>
+          <p>End early, stay on track, and get real decisions made</p>
+        </div>
+        <div class="outcome-card">
+          <h3>Give Feedback That Actually Changes Behavior</h3>
+          <p>Using proven models (SBI, Radical Candor, FBI Stairway)</p>
+        </div>
+        <div class="outcome-card">
+          <h3>Handle Difficult Conversations Without Stress</h3>
+          <p>Conflict, bad news, high-stakes moments – all mastered</p>
+        </div>
+        <div class="outcome-card">
+          <h3>Persuade & Influence at the Highest Level</h3>
+          <p>Cialdini principles + modern ethical persuasion science</p>
+        </div>
+        <div class="outcome-card">
+          <h3>Think & Speak on Your Feet – Flawlessly</h3>
+          <p>No more “um,” freezing, or rambling under pressure</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Program Outline -->
+  <!-- Replace the old dark "12-Week Transformation" section with this one -->
+<section style="background:#0f172a; color:white; padding-bottom:8rem;">
+  <div class="container">
+    <h2 class="section-title" style="color:white;">Full Curriculum – Click Each Week to See Details</h2>
+    
+    <div class="weeks-accordion">
+      <!-- Week 1 -->
+      <details class="week-detail">
+        <summary class="week-summary">
+          <span class="week-number">Week 1</span> Foundations: The Communication Operating System
+        </summary>
+        <div class="week-content">
+          <ul>
+            <li>Diagnostic 5-minute speech + coach feedback</li>
+            <li>The 4 Layers of Communication model</li>
+            <li>Eliminate filler words forever (science + drills)</li>
+            <li>Posture, breath, vocal power foundations</li>
+            <li>60-second introduction round with feedback</li>
+            <li>Workbook Assessment + Daily 5-min audio drills</li>
+          </ul>
+        </div>
+      </details>
+      
+
+
+      <!-- Week 2 -->
+      <details class="week-detail">
+        <summary class="week-summary">
+          <span class="week-number">Week 2</span> Voice Mastery – Sound Like the Leader You Are
+        </summary>
+        <div class="week-content">
+          <ul>
+            <li>4 vocal archetypes + how to switch instantly</li>
+            <li>Volume, pace, pause, intonation mastery</li>
+            <li>10 professional warm-up routines (video + audio)</li>
+            <li>Eliminate uptalk, vocal fry, nasality</li>
+            <li>Assignment: Record “Voice Gym” before/after</li>
+          </ul>
+        </div>
+      </details>
+      
+<!-- Week 3 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 3</span> Structure Mastery: Make Every Message Crystal Clear
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>The Pyramid Principle (Barbara Minto) – think and speak in headlines</li>
+      <li>PREP, STAR-L, AIDA, Problem–Agitation–Solution frameworks</li>
+      <li>How to explain anything complex in under 2 minutes</li>
+      <li>Live “Explain Anything Simply” challenge with timer</li>
+      <li>Assignment: Record a 2-minute complex topic explanation</li>
+      <li>Workbook Assessment + Daily headline-thinking drills</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 4 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 4</span> Storytelling That Moves People
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>7 proven business story structures (Hero’s Journey, Sparkline, Before-After-Bridge, etc.)</li>
+      <li>How to mine your life for powerful, authentic stories</li>
+      <li>Emotional triggers and memory science</li>
+      <li>Craft & deliver your 3-minute Signature Story</li>
+      <li>Recorded assignment + coach written/video feedback</li>
+      <li>Workbook Assessment + Story bank template</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 5 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 5</span> Executive Presence & Non-Verbal Communication
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Power posing, spatial anchoring, micro-expressions</li>
+      <li>Eye-contact rules for online vs in-person</li>
+      <li>Professional gesture palette (do’s & don’ts)</li>
+      <li>Dress, grooming & visual authority</li>
+      <li>Silent 90-second “Presence Only” exercise judged by coach</li>
+      <li>Workbook Assessment + Video analysis checklist</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 6 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 6</span> Powerful Presentations & Deck Design
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Death by PowerPoint autopsy + modern slide principles</li>
+      <li>Guy Kawasaki 10-20-30 rule vs when to break it</li>
+      <li>Design slides that amplify you, not compete</li>
+      <li>Mastering Q&A and handling hostile questions</li>
+      <li>Live 5-minute pitch with your new slide deck (recorded)</li>
+      <li>50+ done-for-you slide templates included</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 7 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 7</span> Difficult Conversations & Conflict Mastery
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>FBI Behavioral Change Stairway model</li>
+      <li>Radical Candor + Situation-Behavior-Impact (SBI) feedback</li>
+      <li>How to deliver bad news without killing the relationship</li>
+      <li>20+ de-escalation phrases that instantly calm people</li>
+      <li>Live role-plays with professional actors (recorded & reviewed)</li>
+      <li>Workbook Assessment + Script library</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 8 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 8</span> Persuasion & Influence Science
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Cialdini’s 7 principles deep dive + recent research updates</li>
+      <li>Framing, priming, reciprocity in real negotiations</li>
+      <li>Ethical manipulation detection training</li>
+      <li>Instant rapport techniques (mirroring, labeling, calibrated questions)</li>
+      <li>Live persuasion/negotiation role-play with coach</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 9 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week 9</span> Meetings & Facilitation Mastery
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>How to run meetings people thank you for (and end early)</li>
+      <li>Agenda design, parking lots, convergence techniques</li>
+      <li>Managing dominators, ghosts, and detractors</li>
+      <li>Best virtual meeting practices (camera, lighting, polls)</li>
+      <li>You facilitate a real 15-minute meeting for a team (hypothetical)</li>
+      <li>Done-for-you agenda & facilitation templates</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 10 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week10</span> Personal Brand & Thought Leadership Communication
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Craft your unforgettable “one-liner” and 30-second elevator pitch</li>
+      <li>LinkedIn, podcast, panel, and media interview mastery</li>
+      <li>Writing emails & memos people actually read and act on</li>
+      <li>Record a 60-second video/audio introduction</li>
+      <li>Personal branding checklist + media kit templates</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 11 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week11</span> Impromptu Speaking & Thinking on Your Feet
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Final “Um & Filler” eradication protocol</li>
+      <li>PREP on steroids – answer any question in <20 seconds</li>
+      <li>Handling hostile questions, curveballs, being put on the spot</li>
+      <li>“Hot Seat” – rapid-fire tough questions from coach</li>
+      <li>Instant structure templates for every scenario</li>
+    </ul>
+  </div>
+</details>
+
+<!-- Week 12 -->
+<details class="week-detail">
+  <summary class="week-summary">
+    <span class="week-number">Week12</span> Integration & Graduation Week
+  </summary>
+  <div class="week-content">
+    <ul>
+      <li>Deliver your final 7-minute keynote speech (topic of your choice)</li>
+      <li>Professional coach written + video feedback</li>
+      <li>Personal 30-day Communication Mastery Plan creation</li>
+      <li>Graduation & certification ceremony</li>
+      <li>Veritone Certified Elite Communicator badge + framed certificate (optional)</li>
+      <li>Lifetime access to yearly “Communication Gym” sessions</li>
+    </ul>
+  </div>
+</details>
+    </div>
+  </div>
+</section>
+
+<style>
+.week-detail { margin-bottom:1rem; background:white; color:#0f172a; border-radius:12px; overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.2); }
+.week-summary { padding:1.5rem; font-size:1.3rem; font-weight:600; cursor:pointer; background:var(--accent); color:white; }
+.week-summary:hover { background:#be123c; }
+.week-content { padding:2rem; line-height:1.8; }
+.week-content ul { margin-left:1.5rem; }
+.week-number { font-weight:800; margin-right:1rem; }
+</style>
+<!-- Place this right after your <h1>Elite Communication Mastery Program</h1> -->
+<div style="text-align:center; margin:2.5rem 0;">
+  <a href="portal/index.html" target="_blank"
+     style="display:inline-block; background:#e11d48; color:white; 
+            font-size:1.8rem; font-weight:800; padding:1.4rem 4rem; 
+            border-radius:60px; text-decoration:none; 
+            box-shadow:0 15px 45px rgba(225,29,72,0.5);">
+     Enrolled? Click Here to Access Your Course
+  </a>
+</div>
+  <!-- Guarantee -->
+  <section>
+    <div class="container">
+      <div class="guarantee">
+        <h2>Ironclad Guarantee</h2>
+        <p style="font-size:1.3rem; max-width:800px; margin:0 auto;">
+          If you do the work and are not at least <strong>2× more confident and effective</strong> in your communication after 12 weeks,<br>we will coach you 1-on-1 for <strong>free</strong> until you are.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta" id="enroll">
+    <div class="container">
+      <h2>Only 15 Seats Per Cohort</h2>
+      <p>Next cohort begins <strong>January 13, 2026</strong></p>
+      <div class="price">$4,997</div>
+      <p class="price-note">or 3 payments of $1,797 • Includes lifetime access + AI speech analysis</p>
+      <button class="cta-button" style="font-size:1.5rem; padding:1.5rem 4rem;">
+        Yes! Reserve My Seat Now
+      </button>
+      <p style="margin-top:2rem; opacity:0.9;">Seats are first-come, first-served. 11 already reserved this week.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 Veritone Services. All rights reserved.<br>
+      <a href="#" style="color:#94a3b8;">Privacy Policy</a> • <a href="#" style="color:#94a3b8;">Terms of Service</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Simple scroll animation
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = 1;
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.outcome-card, .week').forEach(el => {
+      el.style.opacity = 0;
+      el.style.transform = 'translateY(40px)';
+      el.style.transition = 'all 0.8s ease';
+      observer.observe(el);
+    });
+  </script>
+  <!-- Paste this just before the closing </body> tag -->
+<a href="portal/index.html" target="_blank"
+   style="position:fixed; bottom:30px; right:30px; background:#e11d48; color:white; 
+          font-size:1.2rem; font-weight:700; padding:1.2rem 2rem; border-radius:50px; 
+          box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:9999; text-decoration:none;">
+   Member Portal
+</a>
+</body>
+</html>
