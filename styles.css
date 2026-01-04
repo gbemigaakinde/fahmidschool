@@ -464,6 +464,12 @@ small { font-size: var(--text-sm); }
     animation: slideshow 60s infinite linear;
 }
 
+/* Show first image immediately */
+.hero-slideshow img:first-child {
+    opacity: 1;
+    animation-delay: 0s;
+}
+
 /* Animation delays for 10 unique + 1 duplicate */
 .hero-slideshow img:nth-child(1)  { animation-delay: 0s; }
 .hero-slideshow img:nth-child(2)  { animation-delay: 6s; }
