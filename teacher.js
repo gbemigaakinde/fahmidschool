@@ -1,26 +1,42 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript
- *
- * Fully Stabilized Version
- *
- * @version 5.3.0
+ * Teacher Portal JavaScript - FULLY UPDATED WITH ASSIGNMENT FILTERING
+ * 
+ * Key Features:
+ * - Teachers only see data for classes assigned to them (via teacherId in classes collection)
+ * - No more class selectors in any section
+ * - Auto-loads pupils from assigned classes
+ * - Enter Results fully implemented with CA/Exam scores
+ * - Attendance loads existing data
+ * - Remarks saves both Teacher and Headteacher remarks
+ * - Dashboard shows only teacher's classes/pupils
+ * - Caching for performance
+ * - Duplicate listeners removed
+ * 
+ * @version 6.0.0
  * @date 2026-01-04
  */
 
 'use strict';
 
 let currentUser = null;
+let assignedClasses = []; // Cached: [{id, name}]
+let allPupils = [];       // Cached: pupils in assigned classes
+let allSubjects = [];     // Cached subjects
 
 /* =========================
    AUTH INITIALIZATION
 ========================= */
 
 checkRole('teacher')
-    .then(user => {
+    .then(async user => {
         currentUser = user;
         const info = document.getElementById('teacher-info');
         if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
+        
+        await loadAssignedClasses(); // Critical: load teacher's classes first
+        await loadSubjects();       // Load subjects once
+        
         initTeacherPortal();
     })
     .catch(() => {});
@@ -31,27 +47,73 @@ document.getElementById('teacher-logout')?.addEventListener('click', e => {
 });
 
 /* =========================
+   CORE: LOAD ASSIGNED CLASSES & PUPILS
+========================= */
+
+async function loadAssignedClasses() {
+    try {
+        const snap = await db.collection('classes')
+            .where('teacherId', '==', currentUser.uid)
+            .get();
+
+        assignedClasses = snap.docs.map(doc => ({
+            id: doc.id,
+            name: doc.data().name
+        }));
+
+        assignedClasses.sort((a, b) => a.name.localeCompare(b.name));
+
+        if (assignedClasses.length === 0) {
+            window.showToast?.('No classes assigned yet. Contact admin.', 'warning', 8000);
+        }
+
+        // Load all pupils in assigned classes
+        if (assignedClasses.length > 0) {
+            const classNames = assignedClasses.map(c => c.name);
+            const pupilsSnap = await db.collection('pupils')
+                .where('class', 'in', classNames)
+                .get();
+
+            allPupils = pupilsSnap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+            allPupils = [];
+        }
+
+    } catch (err) {
+        console.error('Error loading assigned classes:', err);
+        handleError(err, 'Failed to load your classes');
+        assignedClasses = [];
+        allPupils = [];
+    }
+}
+
+async function loadSubjects() {
+    try {
+        const snap = await db.collection('subjects').get();
+        allSubjects = snap.empty
+            ? ['English', 'Mathematics', 'Science', 'Social Studies']
+            : snap.docs.map(d => d.data().name);
+        allSubjects.sort();
+    } catch (err) {
+        console.error('Error loading subjects:', err);
+        allSubjects = ['English', 'Mathematics', 'Science'];
+    }
+}
+
+/* =========================
    SECTION NAVIGATION
 ========================= */
 
 const sectionLoaders = {
     dashboard: loadTeacherDashboard,
-    'my-classes': () => {
-        loadClassesForTeacher();
-    },
-    'enter-results': () => {
-        populateClassSelector('result-class');
-        loadSubjectsForResults();
-    },
-    attendance: () => {
-        populateClassSelector('attendance-class');
-    },
-    'traits-skills': () => {
-        populateClassSelector('traits-class');
-    },
-    remarks: () => {
-        populateClassSelector('remarks-class');
-    }
+    'my-classes': loadMyClassesSection,
+    'enter-results': loadResultsSection,
+    attendance: loadAttendanceSection,
+    'traits-skills': loadTraitsSection,
+    remarks: loadRemarksSection
 };
 
 function showSection(sectionId) {
@@ -63,8 +125,11 @@ function showSection(sectionId) {
         link.classList.toggle('active', link.dataset.section === sectionId);
     });
 
-    if (typeof sectionLoaders[sectionId] === 'function') sectionLoaders[sectionId]();
+    if (typeof sectionLoaders[sectionId] === 'function') {
+        sectionLoaders[sectionId]();
+    }
 
+    // Close mobile sidebar
     const sidebar = document.getElementById('teacher-sidebar');
     const hamburger = document.getElementById('hamburger');
     if (sidebar?.classList.contains('active')) {
@@ -81,9 +146,9 @@ function showSection(sectionId) {
 
 function initTeacherPortal() {
     showSection('dashboard');
-    console.log('✓ Teacher portal ready');
+    console.log('✓ Teacher portal ready (v6.0.0)');
 
-    // Sidebar link click listener
+    // Only one listener set (duplicate removed)
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
         link.addEventListener('click', e => {
             e.preventDefault();
@@ -98,197 +163,271 @@ function initTeacherPortal() {
 ========================= */
 
 async function loadTeacherDashboard() {
-    try {
-        const classCount = document.getElementById('my-class-count');
-        const pupilCount = document.getElementById('my-pupil-count');
-        if (!classCount || !pupilCount) return;
+    const classCountEl = document.getElementById('my-class-count');
+    const pupilCountEl = document.getElementById('my-pupil-count');
 
-        const [classesSnap, pupilsSnap] = await Promise.all([
-            db.collection('classes').get(),
-            db.collection('pupils').get()
-        ]);
+    if (!classCountEl || !pupilCountEl) return;
 
-        classCount.textContent = classesSnap.size;
-        pupilCount.textContent = pupilsSnap.size;
-    } catch (err) {
-        handleError(err, 'Failed to load dashboard statistics');
-    }
-}
-
-/* =========================
-   HELPER: POPULATE CLASS SELECTORS
-========================= */
-
-async function populateClassSelector(id) {
-    const selector = document.getElementById(id);
-    if (!selector) return;
-    selector.innerHTML = '<option value="">-- Select Class --</option>';
-
-    try {
-        const snap = await db.collection('classes').get();
-        snap.docs
-            .map(d => ({ id: d.id, name: d.data().name }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .forEach(cls => {
-                const opt = document.createElement('option');
-                opt.value = `${cls.id}|${cls.name}`;
-                opt.textContent = cls.name;
-                selector.appendChild(opt);
-            });
-    } catch (err) {
-        handleError(err, 'Failed to load classes');
-    }
+    classCountEl.textContent = assignedClasses.length;
+    pupilCountEl.textContent = allPupils.length;
 }
 
 /* =========================
    MY CLASSES
 ========================= */
 
-async function loadClassesForTeacher() {
-    const selector = document.getElementById('class-selector');
-    if (!selector) return;
-
-    await populateClassSelector('class-selector');
-
-    selector.addEventListener('change', loadPupilsInClass);
-}
-
-async function loadPupilsInClass() {
-    const selection = document.getElementById('class-selector')?.value;
+function loadMyClassesSection() {
     const tbody = document.querySelector('#pupils-in-class-table tbody');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
-    if (!selection) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Select a class</td></tr>';
+    if (assignedClasses.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
         return;
     }
 
-    const [, className] = selection.split('|');
+    if (allPupils.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    allPupils.forEach(pupil => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${pupil.name}</td>
+            <td>${pupil.gender || '-'}</td>
+            <td>${pupil.admissionNo || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+/* =========================
+   ENTER RESULTS (FULLY IMPLEMENTED)
+========================= */
+
+async function loadResultsSection() {
+    const container = document.getElementById('results-entry-table-container');
+    const saveBtn = document.getElementById('save-results-btn');
+    if (!container || !saveBtn) return;
+
+    if (assignedClasses.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No classes assigned</p>';
+        saveBtn.hidden = true;
+        return;
+    }
+
+    if (allPupils.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</p>';
+        saveBtn.hidden = true;
+        return;
+    }
+
+    const termSelect = document.getElementById('result-term');
+    const subjectSelect = document.getElementById('result-subject');
+    if (termSelect && subjectSelect) {
+        termSelect.value = 'First Term'; // default
+        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        allSubjects.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            subjectSelect.appendChild(opt);
+        });
+    }
+
+    await loadResultsTable();
+}
+
+async function loadResultsTable() {
+    const container = document.getElementById('results-entry-table-container');
+    const term = document.getElementById('result-term')?.value;
+    const subject = document.getElementById('result-subject')?.value;
+    const saveBtn = document.getElementById('save-results-btn');
+
+    if (!container || !term || !subject) {
+        container.innerHTML = '';
+        if (saveBtn) saveBtn.hidden = true;
+        return;
+    }
 
     try {
-        const snap = await db.collection('pupils').where('class', '==', className).get();
-        if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No pupils found</td></tr>';
-            return;
+        let html = `<table class="responsive-table">
+            <thead>
+                <tr>
+                    <th>Pupil Name</th>
+                    <th>CA Score (40)</th>
+                    <th>Exam Score (60)</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        for (const pupil of allPupils) {
+            const docId = `${pupil.id}_${term}_${subject}`;
+            const docSnap = await db.collection('results').doc(docId).get();
+            const data = docSnap.exists ? docSnap.data() : {};
+
+            const ca = data.caScore || '';
+            const exam = data.examScore || '';
+            const total = (parseFloat(ca) || 0) + (parseFloat(exam) || 0);
+
+            html += `<tr>
+                <td>${pupil.name}</td>
+                <td><input type="number" min="0" max="40" data-pupil="${pupil.id}" data-field="ca" value="${ca}" style="width:90px;"></td>
+                <td><input type="number" min="0" max="60" data-pupil="${pupil.id}" data-field="exam" value="${exam}" style="width:90px;"></td>
+                <td>${total > 0 ? total : '-'}</td>
+            </tr>`;
         }
 
-        snap.docs
-            .map(d => d.data())
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .forEach(pupil => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${pupil.name}</td>
-                    <td>${pupil.gender || '-'}</td>
-                    <td>${pupil.admissionNo || '-'}</td>
-                `;
-                tbody.appendChild(tr);
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+        if (saveBtn) saveBtn.hidden = false;
+
+        // Auto-recalc total on input
+        container.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => {
+                const row = input.closest('tr');
+                const ca = parseFloat(row.querySelector('[data-field="ca"]').value) || 0;
+                const exam = parseFloat(row.querySelector('[data-field="exam"]').value) || 0;
+                row.querySelector('td:last-child').textContent = ca + exam || '-';
             });
+        });
+
     } catch (err) {
-        handleError(err, 'Failed to load pupils');
+        handleError(err, 'Failed to load results');
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
     }
 }
 
-/* =========================
-   RESULTS ENTRY
-========================= */
+async function saveAllResults() {
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    const term = document.getElementById('result-term')?.value;
+    const subject = document.getElementById('result-subject')?.value;
 
-async function loadSubjectsForResults() {
-    const selector = document.getElementById('result-subject');
-    if (!selector) return;
-    selector.innerHTML = '<option value="">-- Select Subject --</option>';
+    if (!term || !subject) {
+        window.showToast?.('Select term and subject', 'warning');
+        return;
+    }
+
+    const batch = db.batch();
+    let hasChanges = false;
+
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const field = input.dataset.field;
+        const value = parseFloat(input.value) || 0;
+
+        if (value > 0) hasChanges = true;
+
+        const docId = `${pupilId}_${term}_${subject}`;
+        const ref = db.collection('results').doc(docId);
+
+        if (field === 'ca') {
+            batch.set(ref, { caScore: value }, { merge: true });
+        } else {
+            batch.set(ref, { examScore: value }, { merge: true });
+        }
+    });
+
+    if (!hasChanges) {
+        window.showToast?.('No scores entered', 'warning');
+        return;
+    }
 
     try {
-        const snap = await db.collection('subjects').get();
-        const subjects = snap.empty
-            ? ['English', 'Mathematics', 'Science', 'Social Studies']
-            : snap.docs.map(d => d.data().name);
-        subjects.sort().forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            selector.appendChild(opt);
-        });
-    } catch {
-        ['English', 'Mathematics', 'Science'].forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            selector.appendChild(opt);
-        });
+        batch.set(db.collection('results').doc(), { // dummy to force commit if empty
+            dummy: true
+        }, { merge: true });
+
+        await batch.commit();
+        window.showToast?.('✓ All results saved successfully', 'success');
+    } catch (err) {
+        handleError(err, 'Failed to save results');
     }
 }
 
 /* =========================
-   ATTENDANCE
+   ATTENDANCE (NOW LOADS EXISTING DATA)
 ========================= */
 
-async function loadAttendanceForm() {
-    const selected = document.getElementById('attendance-class')?.value;
+async function loadAttendanceSection() {
     const container = document.getElementById('attendance-form-container');
     const saveBtn = document.getElementById('save-attendance-btn');
-    if (!container) return;
+    if (!container || !saveBtn) return;
 
-    if (!selected) {
-        container.innerHTML = '';
-        if (saveBtn) saveBtn.style.display = 'none';
+    const term = document.getElementById('attendance-term')?.value || 'First Term';
+
+    if (assignedClasses.length === 0 || allPupils.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in assigned classes</p>';
+        saveBtn.hidden = true;
         return;
     }
 
-    const [, className] = selected.split('|');
-    const term = document.getElementById('attendance-term')?.value || 'Term1';
-
     try {
-        const pupilsSnap = await db.collection('pupils').where('class', '==', className).get();
-        if (pupilsSnap.empty) {
-            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in this class</p>';
-            if (saveBtn) saveBtn.style.display = 'none';
-            return;
+        let html = `<table class="responsive-table">
+            <thead><tr><th>Pupil Name</th><th>Times Opened</th><th>Times Present</th><th>Times Absent</th></tr></thead>
+            <tbody>`;
+
+        for (const pupil of allPupils) {
+            const docRef = db.collection('attendance').doc(`${pupil.id}_${term}`);
+            const docSnap = await docRef.get();
+            const data = docSnap.exists ? docSnap.data() : {};
+
+            html += `<tr>
+                <td>${pupil.name}</td>
+                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesOpened" value="${data.timesOpened || ''}" style="width:80px;"></td>
+                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesPresent" value="${data.timesPresent || ''}" style="width:80px;"></td>
+                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesAbsent" value="${data.timesAbsent || ''}" style="width:80px;"></td>
+            </tr>`;
         }
 
-        const pupils = pupilsSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name));
-        let html = '<table class="responsive-table"><thead><tr><th>Pupil Name</th><th>Times Opened</th><th>Times Present</th><th>Times Absent</th></tr></thead><tbody>';
-
-        pupils.forEach(p => {
-            html += `<tr>
-                <td>${p.name}</td>
-                <td><input type="number" min="0" data-pupil="${p.id}" data-field="timesOpened" value="" placeholder="0" style="width:80px;"></td>
-                <td><input type="number" min="0" data-pupil="${p.id}" data-field="timesPresent" value="" placeholder="0" style="width:80px;"></td>
-                <td><input type="number" min="0" data-pupil="${p.id}" data-field="timesAbsent" value="" placeholder="0" style="width:80px;"></td>
-            </tr>`;
-        });
-
-        html += '</tbody></table>';
+        html += `</tbody></table>`;
         container.innerHTML = html;
-        if (saveBtn) saveBtn.style.display = 'block';
+        saveBtn.hidden = false;
     } catch (err) {
-        handleError(err, 'Failed to load attendance form');
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading form</p>';
+        handleError(err, 'Failed to load attendance');
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading attendance</p>';
     }
 }
 
 async function saveAllAttendance() {
     const inputs = document.querySelectorAll('#attendance-form-container input[type="number"]');
     const term = document.getElementById('attendance-term')?.value;
-    if (!inputs.length || !term) return window.showToast?.('Please select class and term', 'warning');
+    if (!inputs.length || !term) {
+        window.showToast?.('No data to save', 'warning');
+        return;
+    }
 
     const batch = db.batch();
+    let hasChanges = false;
+
+    const pupilData = {};
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const field = input.dataset.field;
+        const value = parseInt(input.value) || 0;
+        if (value > 0) hasChanges = true;
+
+        if (!pupilData[pupilId]) pupilData[pupilId] = {};
+        pupilData[pupilId][field] = value;
+    });
+
+    if (!hasChanges) {
+        window.showToast?.('No changes to save', 'info');
+        return;
+    }
+
+    for (const [pupilId, data] of Object.entries(pupilData)) {
+        const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
+        batch.set(ref, {
+            pupilId, term, teacherId: currentUser.uid,
+            ...data,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+
     try {
-        const pupilData = {};
-        inputs.forEach(input => {
-            const pupilId = input.dataset.pupil;
-            const field = input.dataset.field;
-            const value = parseInt(input.value) || 0;
-            if (!pupilData[pupilId]) pupilData[pupilId] = {};
-            pupilData[pupilId][field] = value;
-        });
-
-        for (const [pupilId, data] of Object.entries(pupilData)) {
-            const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
-            batch.set(ref, { pupilId, term, teacherId: currentUser?.uid || 'unknown', ...data, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-        }
-
         await batch.commit();
         window.showToast?.('✓ Attendance saved successfully', 'success');
     } catch (err) {
@@ -300,158 +439,194 @@ async function saveAllAttendance() {
    TRAITS & SKILLS
 ========================= */
 
-async function loadTraitsForm() {
-    const selected = document.getElementById('traits-class')?.value;
-    const pupilSelector = document.getElementById('traits-pupil');
-    if (!pupilSelector) return;
-    pupilSelector.innerHTML = '<option value="">-- Select Pupil --</option>';
-    if (!selected) return showTraitSection(false);
+function loadTraitsSection() {
+    const pupilSelect = document.getElementById('traits-pupil');
+    const container = document.getElementById('traits-form-container');
+    if (!pupilSelect || !container) return;
 
-    const [, className] = selected.split('|');
+    pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
 
-    try {
-        const snap = await db.collection('pupils').where('class', '==', className).get();
-        snap.docs.sort((a, b) => a.data().name.localeCompare(b.data().name)).forEach(doc => {
-            const opt = document.createElement('option');
-            opt.value = doc.id;
-            opt.textContent = doc.data().name;
-            pupilSelector.appendChild(opt);
-        });
-        showTraitSection(true);
-    } catch (err) {
-        handleError(err, 'Failed to load pupils for traits');
+    if (allPupils.length === 0) {
+        container.hidden = true;
+        return;
     }
+
+    allPupils.forEach(pupil => {
+        const opt = document.createElement('option');
+        opt.value = pupil.id;
+        opt.textContent = pupil.name;
+        pupilSelect.appendChild(opt);
+    });
+
+    container.hidden = true; // will show when pupil selected
 }
 
 async function loadTraitsData() {
     const pupilId = document.getElementById('traits-pupil')?.value;
     const term = document.getElementById('traits-term')?.value;
-    if (!pupilId || !term) return showTraitSection(false);
+    const container = document.getElementById('traits-form-container');
+    if (!container || !pupilId || !term) {
+        container.hidden = true;
+        return;
+    }
+
+    container.hidden = false;
 
     const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
     const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
 
     try {
-        const traitsDoc = await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).get();
-        traitFields.forEach(f => document.getElementById(`trait-${f}`).value = traitsDoc.exists ? traitsDoc.data()[f] || '' : '');
+        const traitsSnap = await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).get();
+        const traitsData = traitsSnap.exists ? traitsSnap.data() : {};
+        traitFields.forEach(f => {
+            const el = document.getElementById(`trait-${f}`);
+            if (el) el.value = traitsData[f] || '';
+        });
 
-        const skillsDoc = await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).get();
-        skillFields.forEach(f => document.getElementById(`skill-${f}`).value = skillsDoc.exists ? skillsDoc.data()[f] || '' : '');
+        const skillsSnap = await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).get();
+        const skillsData = skillsSnap.exists ? skillsSnap.data() : {};
+        skillFields.forEach(f => {
+            const el = document.getElementById(`skill-${f}`);
+            if (el) el.value = skillsData[f] || '';
+        });
     } catch (err) {
-        handleError(err, 'Failed to load traits and skills');
+        handleError(err, 'Failed to load traits/skills');
     }
 }
 
 async function saveTraitsAndSkills() {
     const pupilId = document.getElementById('traits-pupil')?.value;
     const term = document.getElementById('traits-term')?.value;
-    if (!pupilId || !term) return window.showToast?.('Select pupil and term', 'warning');
+    if (!pupilId || !term) {
+        window.showToast?.('Select pupil and term', 'warning');
+        return;
+    }
 
-    const traitsData = {
-        pupilId, term, teacherId: currentUser?.uid || 'unknown',
-        punctuality: document.getElementById('trait-punctuality').value,
-        neatness: document.getElementById('trait-neatness').value,
-        politeness: document.getElementById('trait-politeness').value,
-        honesty: document.getElementById('trait-honesty').value,
-        obedience: document.getElementById('trait-obedience').value,
-        cooperation: document.getElementById('trait-cooperation').value,
-        attentiveness: document.getElementById('trait-attentiveness').value,
-        leadership: document.getElementById('trait-leadership').value,
-        selfcontrol: document.getElementById('trait-selfcontrol').value,
-        creativity: document.getElementById('trait-creativity').value,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    const skillsData = {
-        pupilId, term, teacherId: currentUser?.uid || 'unknown',
-        handwriting: document.getElementById('skill-handwriting').value,
-        drawing: document.getElementById('skill-drawing').value,
-        sports: document.getElementById('skill-sports').value,
-        craft: document.getElementById('skill-craft').value,
-        verbal: document.getElementById('skill-verbal').value,
-        coordination: document.getElementById('skill-coordination').value,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
+    const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
+
+    const traitsData = { pupilId, term, teacherId: currentUser.uid };
+    traitFields.forEach(f => {
+        traitsData[f] = document.getElementById(`trait-${f}`).value.trim();
+    });
+    traitsData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+    const skillsData = { pupilId, term, teacherId: currentUser.uid };
+    skillFields.forEach(f => {
+        skillsData[f] = document.getElementById(`skill-${f}`).value.trim();
+    });
+    skillsData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 
     try {
         await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).set(traitsData, { merge: true });
         await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).set(skillsData, { merge: true });
-        window.showToast?.('✓ Traits and skills saved', 'success');
+        window.showToast?.('✓ Traits & skills saved', 'success');
     } catch (err) {
-        handleError(err, 'Failed to save traits and skills');
+        handleError(err, 'Failed to save traits & skills');
     }
-}
-
-function showTraitSection(show = true) {
-    const container = document.getElementById('traits-form-container');
-    if (!container) return;
-    container.classList.toggle('is-hidden', !show);
 }
 
 /* =========================
-   REMARKS
+   REMARKS (NOW SAVES HEADTEACHER TOO)
 ========================= */
 
-async function loadRemarksForm() {
-    const selected = document.getElementById('remarks-class')?.value;
-    const pupilSelector = document.getElementById('remarks-pupil');
-    if (!pupilSelector) return;
+function loadRemarksSection() {
+    const pupilSelect = document.getElementById('remarks-pupil');
+    const container = document.getElementById('remarks-form-container');
+    if (!pupilSelect || !container) return;
 
-    pupilSelector.innerHTML = '<option value="">-- Select Pupil --</option>';
-    if (!selected) return;
+    pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
 
-    const [, className] = selected.split('|');
-
-    try {
-        const snap = await db.collection('pupils').where('class', '==', className).get();
-        snap.docs.sort((a, b) => a.data().name.localeCompare(b.data().name)).forEach(doc => {
-            const opt = document.createElement('option');
-            opt.value = doc.id;
-            opt.textContent = doc.data().name;
-            pupilSelector.appendChild(opt);
-        });
-    } catch (err) {
-        handleError(err, 'Failed to load pupils for remarks');
+    if (allPupils.length === 0) {
+        container.hidden = true;
+        return;
     }
+
+    allPupils.forEach(pupil => {
+        const opt = document.createElement('option');
+        opt.value = pupil.id;
+        opt.textContent = pupil.name;
+        pupilSelect.appendChild(opt);
+    });
+
+    container.hidden = true;
 }
 
 async function loadRemarksData() {
     const pupilId = document.getElementById('remarks-pupil')?.value;
     const term = document.getElementById('remarks-term')?.value;
     const container = document.getElementById('remarks-form-container');
-    if (!container || !pupilId || !term) return container.style.display = 'none';
+    if (!container || !pupilId || !term) {
+        container.hidden = true;
+        return;
+    }
 
     try {
-        const doc = await db.collection('remarks').doc(`${pupilId}_${term}`).get();
-        document.getElementById('teacher-remark').value = doc.exists ? doc.data().teacherRemark || '' : '';
-        container.style.display = 'block';
+        const docSnap = await db.collection('remarks').doc(`${pupilId}_${term}`).get();
+        const data = docSnap.exists ? docSnap.data() : {};
+
+        document.getElementById('teacher-remark').value = data.teacherRemark || '';
+        document.getElementById('head-remark').value = data.headRemark || '';
+
+        container.hidden = false;
     } catch (err) {
         handleError(err, 'Failed to load remarks');
+        container.hidden = true;
     }
 }
 
 async function saveRemarks() {
     const pupilId = document.getElementById('remarks-pupil')?.value;
     const term = document.getElementById('remarks-term')?.value;
-    const remark = document.getElementById('teacher-remark')?.value.trim();
-    if (!pupilId || !term) return window.showToast?.('Select pupil and term', 'warning');
-    if (!remark) return window.showToast?.('Enter a remark', 'warning');
+    const teacherRemark = document.getElementById('teacher-remark')?.value.trim();
+    const headRemark = document.getElementById('head-remark')?.value.trim();
+
+    if (!pupilId || !term) {
+        window.showToast?.('Select pupil and term', 'warning');
+        return;
+    }
+
+    if (!teacherRemark && !headRemark) {
+        window.showToast?.('Enter at least one remark', 'warning');
+        return;
+    }
+
+    const data = {
+        pupilId,
+        term,
+        teacherId: currentUser.uid,
+        teacherRemark,
+        headRemark,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
     try {
-        await db.collection('remarks').doc(`${pupilId}_${term}`).set({
-            pupilId, term, teacherRemark: remark,
-            teacherId: currentUser?.uid || 'unknown',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        window.showToast?.('✓ Remark saved', 'success');
+        await db.collection('remarks').doc(`${pupilId}_${term}`).set(data, { merge: true });
+        window.showToast?.('✓ Remarks saved', 'success');
     } catch (err) {
-        handleError(err, 'Failed to save remark');
+        handleError(err, 'Failed to save remarks');
     }
 }
 
 /* =========================
-   PAGE LOAD
+   EVENT LISTENERS FOR DYNAMIC SECTIONS
 ========================= */
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('✓ Teacher JS loaded');
+    // Results: subject/term change → reload table
+    document.getElementById('result-term')?.addEventListener('change', loadResultsTable);
+    document.getElementById('result-subject')?.addEventListener('change', loadResultsTable);
+
+    // Traits: pupil change → load data
+    document.getElementById('traits-pupil')?.addEventListener('change', loadTraitsData);
+    document.getElementById('traits-term')?.addEventListener('change', loadTraitsData);
+
+    // Remarks: pupil/term change → load data
+    document.getElementById('remarks-pupil')?.addEventListener('change', loadRemarksData);
+    document.getElementById('remarks-term')?.addEventListener('change', loadRemarksData);
+
+    // Attendance: term change → reload
+    document.getElementById('attendance-term')?.addEventListener('change', loadAttendanceSection);
+
+    console.log('✓ Teacher portal fully loaded');
 });
