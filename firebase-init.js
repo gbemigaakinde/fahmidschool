@@ -1,16 +1,17 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Authentication
- * Phases 4-7 Complete
+ * Phases 4-7 Complete + Teacher Assignment Support
  * 
  * Handles:
  * - Firebase configuration
  * - Authentication flow
  * - User role management
  * - Error handling
+ * - Helper: get all teachers (for admin assignment UI)
  * 
- * @version 2.0.0
- * @date 2026-01-03
+ * @version 2.1.0
+ * @date 2026-01-04
  */
 
 'use strict';
@@ -95,8 +96,8 @@ async function createUserRoleDocument(user, role = 'pupil') {
             email: user.email,
             role: role,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log(`✓ User role document created: ${role}`);
+        }, { merge: true });
+        console.log(`✓ User role document created/updated: ${role}`);
     } catch (error) {
         console.error('Error creating user role document:', error);
         handleError(error, 'Failed to create user profile');
@@ -275,6 +276,36 @@ async function resetPassword(email) {
         }
     } catch (error) {
         handleError(error, 'Failed to send reset email');
+    }
+}
+
+// ============================================
+// NEW: HELPER TO GET ALL TEACHERS (for admin assignment UI)
+// ============================================
+
+/**
+ * Get list of all teachers with name and UID
+ * @returns {Promise<Array<{uid: string, name: string, email: string}>>}
+ */
+async function getAllTeachers() {
+    try {
+        const snapshot = await db.collection('teachers').get();
+        const teachers = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            teachers.push({
+                uid: doc.id,
+                name: data.name || 'Unnamed Teacher',
+                email: data.email || ''
+            });
+        });
+        // Sort by name
+        teachers.sort((a, b) => a.name.localeCompare(b.name));
+        return teachers;
+    } catch (error) {
+        console.error('Error fetching teachers:', error);
+        handleError(error, 'Failed to load teachers list');
+        return [];
     }
 }
 
