@@ -403,7 +403,7 @@ small { font-size: var(--text-sm); }
 }
 
 /* ============================================
-   HERO SECTION - UPDATED WITH PUPIL SLIDESHOW
+   HERO SECTION - FIXED PUPIL SLIDESHOW (NO FLASHING)
    ============================================ */
 .hero {
     position: relative;
@@ -414,11 +414,10 @@ small { font-size: var(--text-sm); }
     margin-bottom: var(--space-16);
     overflow: hidden;
     box-shadow: var(--shadow-lg);
-    height: 80vh; /* Optional: makes hero taller for better photo impact */
-    min-height: 500px; /* Ensures it's tall enough on small screens */
+    height: 80vh;
+    min-height: 500px;
 }
 
-/* Slideshow container */
 .hero-slideshow {
     position: absolute;
     inset: 0;
@@ -431,11 +430,12 @@ small { font-size: var(--text-sm); }
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center; /* Centers images nicely regardless of size/aspect ratio */
     opacity: 0;
-    animation: slideshow 60s infinite;
+    animation: slideshow 60s infinite linear;
 }
 
-/* Animation delays for your 10 images */
+/* Fixed delays for your 10 images + duplicates */
 .hero-slideshow img:nth-child(1)  { animation-delay: 0s; }
 .hero-slideshow img:nth-child(2)  { animation-delay: 6s; }
 .hero-slideshow img:nth-child(3)  { animation-delay: 12s; }
@@ -446,27 +446,28 @@ small { font-size: var(--text-sm); }
 .hero-slideshow img:nth-child(8)  { animation-delay: 42s; }
 .hero-slideshow img:nth-child(9)  { animation-delay: 48s; }
 .hero-slideshow img:nth-child(10) { animation-delay: 54s; }
-/* Duplicates continue seamlessly */
+.hero-slideshow img:nth-child(11) { animation-delay: 0s; }   /* Duplicate 1 */
+.hero-slideshow img:nth-child(12) { animation-delay: 6s; }   /* Duplicate 2 */
+.hero-slideshow img:nth-child(13) { animation-delay: 12s; }  /* Duplicate 3 */
 
-/* Fade animation */
+/* FIXED KEYFRAMES - Perfect cross-fade, no gaps/flashing */
 @keyframes slideshow {
     0%   { opacity: 0; }
-    8%   { opacity: 1; }
-    25%  { opacity: 1; }
-    33%  { opacity: 0; }
-    100% { opacity: 0; }
+    8.33% { opacity: 1; }   /* Fade in quickly */
+    33.33% { opacity: 1; }  /* Stay fully visible */
+    41.66% { opacity: 0; }  /* Fade out */
+    100% { opacity: 0; }    /* Stay hidden until next cycle */
 }
 
-/* Dark overlay for excellent text readability */
+/* Dark overlay for text readability */
 .hero::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45); /* You can adjust 0.45 → 0.3 (lighter) or 0.6 (darker) */
+    background: rgba(0, 0, 0, 0.45);
     z-index: 1;
 }
 
-/* Hero text content */
 .hero-content {
     position: relative;
     z-index: 2;
@@ -478,8 +479,7 @@ small { font-size: var(--text-sm); }
 .hero h1 {
     color: var(--color-white);
     margin-bottom: var(--space-4);
-    font-size: var(--text-5xl);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); /* Optional: improves readability */
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .hero p {
@@ -490,11 +490,7 @@ small { font-size: var(--text-sm); }
     margin-right: auto;
     font-weight: var(--weight-light);
     opacity: 0.95;
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-}
-
-.hero .btn {
-    text-shadow: none;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* ============================================
