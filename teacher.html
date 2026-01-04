@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Portal - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -14,12 +13,12 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <button class="hamburger hamburger-portal" id="hamburger" aria-label="Toggle teacher menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
+        <span></span>
+        <span></span>
+        <span></span>
     </button>
 
-    <nav class="admin-sidebar" id="teacher-sidebar" aria-label="Teacher navigation">
+    <nav class="admin-sidebar teacher-sidebar" id="teacher-sidebar" aria-label="Teacher navigation">
         <h2>Teacher Portal</h2>
         <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
         <a href="#my-classes" onclick="showSection('my-classes')">My Classes</a>
@@ -27,25 +26,23 @@
         <a href="#attendance" onclick="showSection('attendance')">Attendance</a>
         <a href="#traits-skills" onclick="showSection('traits-skills')">Traits & Skills</a>
         <a href="#remarks" onclick="showSection('remarks')">Remarks</a>
-        <hr style="margin: var(--space-lg) 0; border: none; border-top: 1px solid rgba(255,255,255,0.2);">
+        <hr class="sidebar-divider">
         <a href="index.html">← Back to Public Site</a>
-        <a href="#" id="teacher-logout" style="color: var(--color-danger); margin-top: var(--space-sm);">Logout</a>
-        <div style="padding: var(--space-lg); color: rgba(255,255,255,0.8); font-size: var(--font-size-sm); margin-top: var(--space-xl); border-top: 1px solid rgba(255,255,255,0.1);" id="teacher-info">
-            Loading...
-        </div>
+        <a href="#" id="teacher-logout" class="logout-link">Logout</a>
+        <div class="teacher-info" id="teacher-info">Loading...</div>
     </nav>
 
     <main class="admin-main" id="main-content">
         <!-- Dashboard -->
         <div id="dashboard" class="admin-card">
             <h1>Welcome, Teacher</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Manage your classes and enter pupil reports</p>
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
-                <div class="admin-card stat-card" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+            <p class="section-description">Manage your classes and enter pupil reports</p>
+            <div class="stats-grid">
+                <div class="stat-card stat-card-primary">
                     <h3>My Classes</h3>
                     <div class="stat-number" id="my-class-count">0</div>
                 </div>
-                <div class="admin-card stat-card" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+                <div class="stat-card stat-card-secondary">
                     <h3>Pupils Assigned</h3>
                     <div class="stat-number" id="my-pupil-count">0</div>
                 </div>
@@ -55,14 +52,16 @@
         <!-- My Classes -->
         <div id="my-classes" class="admin-card" style="display:none;">
             <h1>My Classes</h1>
-            <div class="form-group" style="max-width: 400px;">
-                <label for="class-selector">Select a Class</label>
-                <select id="class-selector" onchange="loadPupilsInClass()">
-                    <option value="">-- Select a Class --</option>
-                </select>
+            <div class="form-row">
+                <div class="form-group" style="max-width: 400px;">
+                    <label for="class-selector">Select a Class</label>
+                    <select id="class-selector" onchange="loadPupilsInClass()">
+                        <option value="">-- Select a Class --</option>
+                    </select>
+                </div>
             </div>
             <div class="table-container">
-                <table id="pupils-in-class-table" class="responsive-table" style="margin-top: var(--space-xl);">
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th>Pupil Name</th>
@@ -70,11 +69,9 @@
                             <th>Admission No</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="pupils-in-class-table">
                         <tr>
-                            <td colspan="3" style="text-align: center; color: var(--color-gray-600);">
-                                Select a class to view pupils
-                            </td>
+                            <td colspan="3" class="table-empty">Select a class to view pupils</td>
                         </tr>
                     </tbody>
                 </table>
@@ -84,9 +81,9 @@
         <!-- Enter Results -->
         <div id="enter-results" class="admin-card" style="display:none;">
             <h1>Enter Academic Results</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Select class, term, and subject to enter CA and Exam scores</p>
+            <p class="section-description">Select class, term, and subject to enter CA and Exam scores</p>
             
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+            <div class="form-row form-row-3">
                 <div class="form-group">
                     <label for="result-class">Class <span class="required">*</span></label>
                     <select id="result-class" onchange="loadClassForResults()">
@@ -110,7 +107,7 @@
             </div>
 
             <div id="results-entry-table-container"></div>
-            <button class="btn" onclick="saveAllResults()" style="margin-top: var(--space-xl); display:none;" id="save-results-btn">
+            <button class="btn" onclick="saveAllResults()" style="display:none;" id="save-results-btn">
                 <span class="btn-text">💾 Save All Results</span>
                 <span class="btn-loading" style="display:none;">Saving...</span>
             </button>
@@ -119,9 +116,9 @@
         <!-- Attendance -->
         <div id="attendance" class="admin-card" style="display:none;">
             <h1>Mark Attendance</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Enter attendance records for pupils</p>
+            <p class="section-description">Enter attendance records for pupils</p>
             
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+            <div class="form-row form-row-2">
                 <div class="form-group">
                     <label for="attendance-class">Class <span class="required">*</span></label>
                     <select id="attendance-class" onchange="loadAttendanceForm()">
@@ -139,17 +136,17 @@
             </div>
 
             <div id="attendance-form-container"></div>
-            <button class="btn" onclick="saveAllAttendance()" style="margin-top: var(--space-xl); display:none;" id="save-attendance-btn">
-                <span class="btn-text">💾 Save All Attendance</span>
+            <button class="btn" onclick="saveAllAttendance()" style="display:none;" id="save-attendance-btn">
+                💾 Save All Attendance
             </button>
         </div>
 
         <!-- Traits & Skills -->
         <div id="traits-skills" class="admin-card" style="display:none;">
             <h1>Behavioral Traits & Psychomotor Skills</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Assess pupils' behavioral traits and psychomotor skills</p>
+            <p class="section-description">Assess pupils' behavioral traits and psychomotor skills</p>
             
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+            <div class="form-row form-row-3">
                 <div class="form-group">
                     <label for="traits-class">Class <span class="required">*</span></label>
                     <select id="traits-class" onchange="loadTraitsForm()">
@@ -172,12 +169,12 @@
                 </div>
             </div>
 
-            <div id="traits-form-container" style="display:none;">
+            <div id="traits-form-container" class="traits-form" style="display:none;">
                 <h3>Behavioral & Affective Traits</h3>
-                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                <div class="traits-grid">
                     <div class="form-group">
                         <label for="trait-punctuality">Punctuality</label>
-                        <select id="trait-punctuality">
+                        <select id="trait-punctuality" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -188,7 +185,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-neatness">Neatness</label>
-                        <select id="trait-neatness">
+                        <select id="trait-neatness" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -199,7 +196,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-politeness">Politeness</label>
-                        <select id="trait-politeness">
+                        <select id="trait-politeness" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -210,7 +207,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-honesty">Honesty</label>
-                        <select id="trait-honesty">
+                        <select id="trait-honesty" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -221,7 +218,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-obedience">Obedience</label>
-                        <select id="trait-obedience">
+                        <select id="trait-obedience" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -232,7 +229,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-cooperation">Cooperation</label>
-                        <select id="trait-cooperation">
+                        <select id="trait-cooperation" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -243,7 +240,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-attentiveness">Attentiveness</label>
-                        <select id="trait-attentiveness">
+                        <select id="trait-attentiveness" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -254,7 +251,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-leadership">Leadership</label>
-                        <select id="trait-leadership">
+                        <select id="trait-leadership" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -265,7 +262,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-selfcontrol">Self Control</label>
-                        <select id="trait-selfcontrol">
+                        <select id="trait-selfcontrol" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -276,7 +273,7 @@
                     </div>
                     <div class="form-group">
                         <label for="trait-creativity">Creativity</label>
-                        <select id="trait-creativity">
+                        <select id="trait-creativity" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -287,11 +284,11 @@
                     </div>
                 </div>
 
-                <h3 style="margin-top: var(--space-2xl);">Psychomotor Skills</h3>
-                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+                <h3 class="section-heading-alt">Psychomotor Skills</h3>
+                <div class="traits-grid">
                     <div class="form-group">
                         <label for="skill-handwriting">Handwriting</label>
-                        <select id="skill-handwriting">
+                        <select id="skill-handwriting" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -302,7 +299,7 @@
                     </div>
                     <div class="form-group">
                         <label for="skill-drawing">Drawing</label>
-                        <select id="skill-drawing">
+                        <select id="skill-drawing" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -313,7 +310,7 @@
                     </div>
                     <div class="form-group">
                         <label for="skill-sports">Sports</label>
-                        <select id="skill-sports">
+                        <select id="skill-sports" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -324,7 +321,7 @@
                     </div>
                     <div class="form-group">
                         <label for="skill-craft">Craft Work</label>
-                        <select id="skill-craft">
+                        <select id="skill-craft" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -335,7 +332,7 @@
                     </div>
                     <div class="form-group">
                         <label for="skill-verbal">Verbal Fluency</label>
-                        <select id="skill-verbal">
+                        <select id="skill-verbal" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -346,7 +343,7 @@
                     </div>
                     <div class="form-group">
                         <label for="skill-coordination">Coordination</label>
-                        <select id="skill-coordination">
+                        <select id="skill-coordination" class="trait-select">
                             <option value="">-</option>
                             <option value="Excellent">Excellent</option>
                             <option value="Very Good">Very Good</option>
@@ -358,7 +355,7 @@
                 </div>
 
                 <button class="btn" onclick="saveTraitsAndSkills()">
-                    <span>💾 Save Traits & Skills</span>
+                    💾 Save Traits & Skills
                 </button>
             </div>
         </div>
@@ -366,9 +363,9 @@
         <!-- Remarks -->
         <div id="remarks" class="admin-card" style="display:none;">
             <h1>Teacher's Remarks</h1>
-            <p style="color: var(--color-gray-600); margin-bottom: var(--space-xl);">Write remarks for pupils' report cards</p>
+            <p class="section-description">Write remarks for pupils' report cards</p>
             
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: var(--space-xl);">
+            <div class="form-row form-row-3">
                 <div class="form-group">
                     <label for="remarks-class">Class <span class="required">*</span></label>
                     <select id="remarks-class" onchange="loadRemarksForm()">
@@ -391,22 +388,19 @@
                 </div>
             </div>
 
-           <div id="remarks-form-container" style="display:none;">
-    <div class="form-group">
-        <label for="teacher-remark">Teacher's Remark</label>
-        <textarea id="teacher-remark" rows="4"
-            placeholder="Write your remark about the pupil's performance..."></textarea>
-    </div>
+            <div id="remarks-form-container" class="remarks-form" style="display:none;">
+                <div class="form-group">
+                    <label for="teacher-remark">Teacher's Remark</label>
+                    <textarea id="teacher-remark" rows="4" placeholder="Write your remark about the pupil's performance..."></textarea>
+                </div>
 
-    <div class="form-group">
-        <label for="head-remark">Headteacher's Remark</label>
-        <textarea id="head-remark" rows="4"
-            placeholder="Write the headteacher's remark about the pupil's performance..."></textarea>
-    </div>
-</div>
+                <div class="form-group">
+                    <label for="head-remark">Headteacher's Remark</label>
+                    <textarea id="head-remark" rows="4" placeholder="Write the headteacher's remark about the pupil's performance..."></textarea>
+                </div>
 
                 <button class="btn" onclick="saveRemarks()">
-                    <span>💾 Save Remark</span>
+                    💾 Save Remarks
                 </button>
             </div>
         </div>
@@ -417,62 +411,5 @@
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
     <script src="teacher.js"></script>
-
-    <style>
-        .stat-card {
-            text-align: center;
-            color: var(--color-white);
-            padding: var(--space-xl);
-        }
-        
-        .stat-card h3 {
-            color: var(--color-white);
-            font-size: var(--font-size-base);
-            margin-bottom: var(--space-sm);
-            opacity: 0.9;
-        }
-        
-        .stat-number {
-            font-size: var(--font-size-3xl);
-            font-weight: var(--font-weight-bold);
-            margin-top: var(--space-sm);
-        }
-
-        .table-container {
-            overflow-x: auto;
-        }
-
-        .hamburger-portal {
-            display: none;
-        }
-
-        @media (max-width: 1024px) {
-            .hamburger-portal {
-                display: flex;
-                background: var(--color-success);
-            }
-
-            .hamburger-portal span {
-                background: var(--color-white);
-            }
-
-            .admin-sidebar {
-                transform: translateX(-100%);
-                transition: transform var(--transition-slow);
-            }
-
-            .admin-sidebar.active {
-                transform: translateX(0);
-            }
-
-            .admin-main {
-                margin-left: 0;
-            }
-        }
-
-        .required {
-            color: var(--color-danger);
-        }
-    </style>
 </body>
 </html>
