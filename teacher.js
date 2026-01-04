@@ -1,8 +1,10 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - FIXED VERSION
- * 
- * @version 5.1.0 - BUG FIXES
+ * Teacher Portal JavaScript
+ *
+ * Stabilized and Refactored Version
+ *
+ * @version 5.2.0
  * @date 2026-01-04
  */
 
@@ -10,128 +12,107 @@
 
 let currentUser = null;
 
-checkRole('teacher').then(user => {
-    currentUser = user;
-    document.getElementById('teacher-info').innerHTML = `
-        Logged in as:<br>
-        <strong>${user.email}</strong>
-    `;
-    loadTeacherData();
-}).catch(() => {});
+/* =========================
+   AUTH INITIALIZATION
+========================= */
 
-document.getElementById('teacher-logout')?.addEventListener('click', (e) => {
+checkRole('teacher')
+    .then(user => {
+        currentUser = user;
+        const info = document.getElementById('teacher-info');
+        if (info) {
+            info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
+        }
+        initTeacherPortal();
+    })
+    .catch(() => {});
+
+document.getElementById('teacher-logout')?.addEventListener('click', e => {
     e.preventDefault();
     logout();
 });
 
-// ============================================
-// NAVIGATION
-// ============================================
+/* =========================
+   SECTION NAVIGATION
+========================= */
+
+const sectionLoaders = {
+    dashboard: loadTeacherDashboard,
+    'my-classes': loadClassesForTeacher,
+    'enter-results': () => {
+        loadClassesForResults();
+        loadSubjectsForResults();
+    },
+    attendance: loadClassesForAttendance,
+    'traits-skills': loadClassesForTraits,
+    remarks: loadClassesForRemarks
+};
 
 function showSection(sectionId) {
     document.querySelectorAll('.admin-card').forEach(card => {
         card.style.display = 'none';
     });
-    
+
     const section = document.getElementById(sectionId);
-    if (section) {
-        section.style.display = 'block';
-    }
-    
-    document.querySelectorAll('.admin-sidebar a').forEach(a => {
-        a.classList.remove('active');
+    if (section) section.style.display = 'block';
+
+    document.querySelectorAll('.admin-sidebar a').forEach(link => {
+        link.classList.toggle(
+            'active',
+            link.getAttribute('onclick')?.includes(`'${sectionId}'`)
+        );
     });
-    const activeLink = document.querySelector(`.admin-sidebar a[onclick="showSection('${sectionId}')"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
+
+    if (typeof sectionLoaders[sectionId] === 'function') {
+        sectionLoaders[sectionId]();
     }
-    
-    switch(sectionId) {
-        case 'dashboard':
-            loadTeacherDashboard();
-            break;
-        case 'my-classes':
-            loadClassesForTeacher();
-            break;
-        case 'enter-results':
-            loadClassesForResults();
-            loadSubjectsForResults();
-            break;
-        case 'attendance':
-            loadClassesForAttendance();
-            break;
-        case 'traits-skills':
-            loadClassesForTraits();
-            break;
-        case 'remarks':
-            loadClassesForRemarks();
-            break;
-    }
-    
+
     const sidebar = document.getElementById('teacher-sidebar');
     const hamburger = document.getElementById('hamburger');
-    if (sidebar && sidebar.classList.contains('active')) {
+    if (sidebar?.classList.contains('active')) {
         sidebar.classList.remove('active');
-        if (hamburger) {
-            hamburger.classList.remove('active');
-        }
+        hamburger?.classList.remove('active');
     }
 }
 
-async function loadTeacherData() {
-    await loadTeacherDashboard();
-    await loadClassesForTeacher();
-    await loadClassesForResults();
-    await loadSubjectsForResults();
-    await loadClassesForAttendance();
-    await loadClassesForTraits();
-    await loadClassesForRemarks();
+/* =========================
+   INITIAL BOOTSTRAP
+========================= */
+
+function initTeacherPortal() {
+    showSection('dashboard');
+    console.log('✓ Teacher portal ready');
 }
 
-// ============================================
-// DASHBOARD - FIXED
-// ============================================
+/* =========================
+   DASHBOARD
+========================= */
 
 async function loadTeacherDashboard() {
     try {
-        const classCountElem = document.getElementById('my-class-count');
-        const pupilCountElem = document.getElementById('my-pupil-count');
-        
-        if (!classCountElem || !pupilCountElem) {
-            console.warn('Dashboard elements not found');
-            return;
-        }
+        const classCount = document.getElementById('my-class-count');
+        const pupilCount = document.getElementById('my-pupil-count');
+        if (!classCount || !pupilCount) return;
 
-        // Set loading state
-        classCountElem.textContent = '...';
-        pupilCountElem.textContent = '...';
+        classCount.textContent = '...';
+        pupilCount.textContent = '...';
 
-        const classesSnap = await db.collection('classes').get();
-        classCountElem.textContent = classesSnap.size;
+        const [classesSnap, pupilsSnap] = await Promise.all([
+            db.collection('classes').get(),
+            db.collection('pupils').get()
+        ]);
 
-        const pupilsSnap = await db.collection('pupils').get();
-        pupilCountElem.textContent = pupilsSnap.size;
-
-        console.log('✓ Dashboard stats loaded:', {
-            classes: classesSnap.size,
-            pupils: pupilsSnap.size
-        });
-    } catch (error) {
-        console.error('Error loading dashboard stats:', error);
-        
-        const classCountElem = document.getElementById('my-class-count');
-        const pupilCountElem = document.getElementById('my-pupil-count');
-        
-        if (classCountElem) classCountElem.textContent = '0';
-        if (pupilCountElem) pupilCountElem.textContent = '0';
-        
-        handleError(error, 'Failed to load dashboard statistics');
+        classCount.textContent = classesSnap.size;
+        pupilCount.textContent = pupilsSnap.size;
+    } catch (err) {
+        console.error(err);
+        handleError(err, 'Failed to load dashboard statistics');
     }
 }
 
-// ============================================
-// MY CLASSES
-// ============================================
+/* =========================
+   MY CLASSES
+========================= */
 
 async function loadClassesForTeacher() {
     const selector = document.getElementById('class-selector');
@@ -140,414 +121,118 @@ async function loadClassesForTeacher() {
     selector.innerHTML = '<option value="">-- Select a Class --</option>';
 
     try {
-        const snapshot = await db.collection('classes').get();
-        
-        const classes = [];
-        snapshot.forEach(doc => {
-            classes.push({ id: doc.id, name: doc.data().name });
-        });
-        
-        classes.sort((a, b) => a.name.localeCompare(b.name));
-        
-        classes.forEach(classItem => {
+        const snap = await db.collection('classes').get();
+        const classes = snap.docs
+            .map(d => ({ id: d.id, name: d.data().name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        classes.forEach(cls => {
             const opt = document.createElement('option');
-            opt.value = `${classItem.id}|${classItem.name}`;
-            opt.textContent = classItem.name;
+            opt.value = `${cls.id}|${cls.name}`;
+            opt.textContent = cls.name;
             selector.appendChild(opt);
         });
-    } catch (error) {
-        console.error('Error loading classes:', error);
-        handleError(error, 'Failed to load classes');
+    } catch (err) {
+        handleError(err, 'Failed to load classes');
     }
 }
 
 async function loadPupilsInClass() {
-    const selected = document.getElementById('class-selector')?.value;
+    const selection = document.getElementById('class-selector')?.value;
     const tbody = document.querySelector('#pupils-in-class-table tbody');
-    
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
 
-    if (!selected) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">Select a class to view pupils</td></tr>';
+    if (!selection) {
+        tbody.innerHTML =
+            '<tr><td colspan="3" style="text-align:center;">Select a class</td></tr>';
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>';
+    const [, className] = selection.split('|');
 
     try {
-        const [classId, className] = selected.split('|');
-
-        const pupilsSnap = await db.collection('pupils')
+        const snap = await db.collection('pupils')
             .where('class', '==', className)
             .get();
 
-        tbody.innerHTML = '';
-
-        if (pupilsSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in this class yet</td></tr>';
+        if (snap.empty) {
+            tbody.innerHTML =
+                '<tr><td colspan="3" style="text-align:center;">No pupils found</td></tr>';
             return;
         }
 
-        const pupils = [];
-        pupilsSnap.forEach(doc => {
-            pupils.push(doc.data());
-        });
-        
-        pupils.sort((a, b) => a.name.localeCompare(b.name));
-
-        pupils.forEach(data => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Pupil Name">${data.name}</td>
-                <td data-label="Gender">${data.gender || '-'}</td>
-                <td data-label="Admission No">${data.admissionNo || '-'}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (error) {
-        console.error('Error loading pupils:', error);
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading pupils</td></tr>';
-        handleError(error, 'Failed to load pupils');
+        snap.docs
+            .map(d => d.data())
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .forEach(pupil => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${pupil.name}</td>
+                    <td>${pupil.gender || '-'}</td>
+                    <td>${pupil.admissionNo || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+    } catch (err) {
+        handleError(err, 'Failed to load pupils');
     }
 }
 
-// ============================================
-// RESULTS ENTRY
-// ============================================
+/* =========================
+   RESULTS ENTRY
+========================= */
 
 async function loadClassesForResults() {
-    const selector = document.getElementById('result-class');
-    if (!selector) return;
-
-    selector.innerHTML = '<option value="">-- Select Class --</option>';
-
-    try {
-        const snapshot = await db.collection('classes').get();
-        
-        const classes = [];
-        snapshot.forEach(doc => {
-            classes.push({ id: doc.id, name: doc.data().name });
-        });
-        
-        classes.sort((a, b) => a.name.localeCompare(b.name));
-        
-        classes.forEach(classItem => {
-            const opt = document.createElement('option');
-            opt.value = `${classItem.id}|${classItem.name}`;
-            opt.textContent = classItem.name;
-            selector.appendChild(opt);
-        });
-    } catch (error) {
-        console.error('Error loading classes for results:', error);
-        handleError(error, 'Failed to load classes');
-    }
+    populateClassSelector('result-class');
 }
 
 async function loadSubjectsForResults() {
     const selector = document.getElementById('result-subject');
     if (!selector) return;
 
-    const currentValue = selector.value;
-    
     selector.innerHTML = '<option value="">-- Select Subject --</option>';
 
     try {
-        const snapshot = await db.collection('subjects').get();
-        
-        if (snapshot.empty) {
-            const defaultSubjects = ['English', 'Mathematics', 'Science', 'Social Studies', 'Arts', 'Physical Education'];
-            defaultSubjects.forEach(subject => {
-                const opt = document.createElement('option');
-                opt.value = subject;
-                opt.textContent = subject;
-                selector.appendChild(opt);
-            });
-        } else {
-            const subjects = [];
-            snapshot.forEach(doc => {
-                subjects.push(doc.data().name);
-            });
-            
-            subjects.sort((a, b) => a.localeCompare(b));
-            
-            subjects.forEach(subjectName => {
-                const opt = document.createElement('option');
-                opt.value = subjectName;
-                opt.textContent = subjectName;
-                selector.appendChild(opt);
-            });
-        }
+        const snap = await db.collection('subjects').get();
+        const subjects = snap.empty
+            ? ['English', 'Mathematics', 'Science', 'Social Studies']
+            : snap.docs.map(d => d.data().name);
 
-        if (currentValue) {
-            selector.value = currentValue;
-        }
-    } catch (error) {
-        console.error('Error loading subjects:', error);
-        const defaultSubjects = ['English', 'Mathematics', 'Science', 'Social Studies', 'Arts', 'Physical Education'];
-        defaultSubjects.forEach(subject => {
+        subjects.sort().forEach(name => {
             const opt = document.createElement('option');
-            opt.value = subject;
-            opt.textContent = subject;
+            opt.value = name;
+            opt.textContent = name;
+            selector.appendChild(opt);
+        });
+    } catch {
+        ['English', 'Mathematics', 'Science'].forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
             selector.appendChild(opt);
         });
     }
 }
 
-async function loadClassForResults() {
-    const selected = document.getElementById('result-class')?.value;
-    const container = document.getElementById('results-entry-table-container');
-    const saveBtn = document.getElementById('save-results-btn');
+function populateClassSelector(id) {
+    const selector = document.getElementById(id);
+    if (!selector) return;
 
-    if (!container) return;
+    selector.innerHTML = '<option value="">-- Select Class --</option>';
 
-    if (!selected) {
-        container.innerHTML = '';
-        if (saveBtn) saveBtn.style.display = 'none';
-        return;
-    }
-
-    const term = document.getElementById('result-term')?.value;
-    const subject = document.getElementById('result-subject')?.value;
-
-    if (!term || !subject) {
-        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">Please select term and subject</p>';
-        if (saveBtn) saveBtn.style.display = 'none';
-        return;
-    }
-
-    container.innerHTML = '<div class="skeleton-container"><div class="skeleton" style="height: 40px;"></div></div>';
-
-    const [classId, className] = selected.split('|');
-
-    try {
-        // Get pupils
-        const pupilsSnap = await db.collection('pupils')
-            .where('class', '==', className)
-            .get();
-
-        if (pupilsSnap.empty) {
-            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in this class yet</p>';
-            if (saveBtn) saveBtn.style.display = 'none';
-            return;
-        }
-
-        // Get ALL results for this class/term/subject ONCE
-        const resultsSnap = await db.collection('results')
-            .where('classId', '==', classId)
-            .where('term', '==', term)
-            .where('subject', '==', subject)
-            .get();
-
-        // Create lookup map: pupilId → {ca, exam}
-        const resultsMap = {};
-        resultsSnap.forEach(doc => {
-            const data = doc.data();
-            resultsMap[data.pupilId] = {
-                ca: data.ca || '',
-                exam: data.exam || ''
-            };
-        });
-
-        const pupils = [];
-        pupilsSnap.forEach(pupilDoc => {
-            pupils.push({ id: pupilDoc.id, data: pupilDoc.data() });
-        });
-        
-        pupils.sort((a, b) => a.data.name.localeCompare(b.data.name));
-
-        let tableHTML = `
-            <table class="responsive-table">
-                <thead>
-                    <tr>
-                        <th>Pupil Name</th>
-                        <th>CA (0-40)</th>
-                        <th>Exam (0-60)</th>
-                        <th>Total</th>
-                        <th>Grade</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        pupils.forEach(pupilItem => {
-            const pupil = pupilItem.data;
-            const pupilId = pupilItem.id;
-
-            // Lookup from map (instant)
-            const result = resultsMap[pupilId] || { ca: '', exam: '' };
-            const currentCA = result.ca;
-            const currentExam = result.exam;
-
-            const total = (parseInt(currentCA) || 0) + (parseInt(currentExam) || 0);
-            const grade = total > 0 ? getGrade(total) : '-';
-
-            tableHTML += `
-                <tr>
-                    <td data-label="Pupil Name"><strong>${pupil.name}</strong></td>
-                    <td data-label="CA">
-                        <input 
-                            type="number" 
-                            min="0" 
-                            max="40" 
-                            data-pupil="${pupilId}" 
-                            data-class="${classId}" 
-                            data-type="ca"
-                            value="${currentCA}"
-                            placeholder="CA"
-                            style="width: 80px;"
-                            onchange="calculateTotal(this)"
-                        >
-                    </td>
-                    <td data-label="Exam">
-                        <input 
-                            type="number" 
-                            min="0" 
-                            max="60" 
-                            data-pupil="${pupilId}" 
-                            data-class="${classId}" 
-                            data-type="exam"
-                            value="${currentExam}"
-                            placeholder="Exam"
-                            style="width: 80px;"
-                            onchange="calculateTotal(this)"
-                        >
-                    </td>
-                    <td data-label="Total" id="total-${pupilId}"><strong>${total > 0 ? total : '-'}</strong></td>
-                    <td data-label="Grade" id="grade-${pupilId}">${grade}</td>
-                </tr>
-            `;
-        });
-
-        tableHTML += `</tbody></table>`;
-        container.innerHTML = tableHTML;
-        
-        if (saveBtn) saveBtn.style.display = 'block';
-    } catch (error) {
-        console.error('Error loading class for results:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading pupils</p>';
-        handleError(error, 'Failed to load pupils for results entry');
-    }
-}
-
-function calculateTotal(input) {
-    const pupilId = input.dataset.pupil;
-    const row = input.closest('tr');
-    const caInput = row.querySelector('input[data-type="ca"]');
-    const examInput = row.querySelector('input[data-type="exam"]');
-    
-    const ca = parseInt(caInput.value) || 0;
-    const exam = parseInt(examInput.value) || 0;
-    const total = ca + exam;
-    
-    const totalCell = document.getElementById(`total-${pupilId}`);
-    const gradeCell = document.getElementById(`grade-${pupilId}`);
-    
-    if (totalCell) {
-        totalCell.innerHTML = `<strong>${total}</strong>`;
-    }
-    
-    if (gradeCell) {
-        const grade = getGrade(total);
-        gradeCell.textContent = grade;
-    }
-}
-
-function getGrade(score) {
-    if (score >= 75) return 'A1';
-    if (score >= 70) return 'B2';
-    if (score >= 65) return 'B3';
-    if (score >= 60) return 'C4';
-    if (score >= 55) return 'C5';
-    if (score >= 50) return 'C6';
-    if (score >= 45) return 'D7';
-    if (score >= 40) return 'D8';
-    return 'F9';
-}
-
-async function saveAllResults() {
-    const caInputs = document.querySelectorAll('#results-entry-table-container input[data-type="ca"]');
-    const examInputs = document.querySelectorAll('#results-entry-table-container input[data-type="exam"]');
-    const term = document.getElementById('result-term')?.value;
-    const subject = document.getElementById('result-subject')?.value;
-    const classId = document.getElementById('result-class')?.value.split('|')[0];
-    const saveBtn = document.getElementById('save-results-btn');
-
-    if (!caInputs.length || !term || !subject || !classId) {
-        window.showToast?.('Please select class, term, and subject', 'warning');
-        return;
-    }
-
-    if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.classList.add('loading');
-        saveBtn.querySelector('.btn-text').style.display = 'none';
-        saveBtn.querySelector('.btn-loading').style.display = 'inline';
-    }
-
-    const batch = db.batch();
-    let updatedCount = 0;
-
-    try {
-        for (let i = 0; i < caInputs.length; i++) {
-            const caInput = caInputs[i];
-            const examInput = examInputs[i];
-            
-            const caValue = caInput.value.trim();
-            const examValue = examInput.value.trim();
-            
-            if (!caValue && !examValue) continue;
-
-            const ca = parseInt(caValue) || 0;
-            const exam = parseInt(examValue) || 0;
-
-            if (ca < 0 || ca > 40) {
-                throw new Error(`Invalid CA score: ${ca}. Must be between 0 and 40.`);
-            }
-
-            if (exam < 0 || exam > 60) {
-                throw new Error(`Invalid Exam score: ${exam}. Must be between 0 and 60.`);
-            }
-
-            const pupilId = caInput.dataset.pupil;
-            const resultRef = db.collection('results').doc(`${pupilId}_${classId}_${term}_${subject}`);
-
-            batch.set(resultRef, {
-                pupilId,
-                classId,
-                term,
-                subject,
-                ca,
-                exam,
-                teacherId: currentUser?.uid || 'unknown',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            updatedCount++;
-        }
-
-        if (updatedCount === 0) {
-            window.showToast?.('No scores to save. Please enter at least one score.', 'warning');
-            return;
-        }
-
-        await batch.commit();
-        
-        window.showToast?.(`✓ ${updatedCount} result(s) saved successfully`, 'success');
-        
-        await loadClassForResults();
-    } catch (error) {
-        console.error('Error saving results:', error);
-        handleError(error, 'Failed to save results');
-    } finally {
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.classList.remove('loading');
-            saveBtn.querySelector('.btn-text').style.display = 'inline';
-            saveBtn.querySelector('.btn-loading').style.display = 'none';
-        }
-    }
+    db.collection('classes').get().then(snap => {
+        snap.docs
+            .map(d => ({ id: d.id, name: d.data().name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = `${cls.id}|${cls.name}`;
+                opt.textContent = cls.name;
+                selector.appendChild(opt);
+            });
+    });
 }
 
 // ============================================
@@ -1154,6 +839,5 @@ async function saveRemarks() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    showSection('dashboard');
-    console.log('✓ Teacher portal initialized');
+    console.log('✓ Teacher JS loaded');
 });
