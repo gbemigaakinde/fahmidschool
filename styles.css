@@ -1139,7 +1139,7 @@ tbody tr:last-child td {
 /* Section Description */
 .section-description {
     color: var(--color-gray-600);
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
     font-size: var(--text-base);
 }
 
@@ -1159,7 +1159,7 @@ tbody tr:last-child td {
     background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
 }
 
-/* Form Rows */
+/* Form Rows - Adjusted for removed class selectors */
 .form-row {
     display: grid;
     gap: var(--space-6);
@@ -1170,15 +1170,27 @@ tbody tr:last-child td {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
+/* No longer using form-row-3 since class selectors are removed */
 .form-row-3 {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: none; /* fallback if any remain */
 }
 
-/* Table Empty State */
-.table-empty {
+/* Hide all old class selectors (safety net) */
+#result-class,
+#attendance-class,
+#traits-class,
+#remarks-class,
+#class-selector {
+    display: none !important;
+}
+
+/* Table Empty/Loading State */
+.table-empty,
+.table-loading {
     text-align: center;
     color: var(--color-gray-600);
-    padding: var(--space-8) !important;
+    padding: var(--space-12) !important;
+    font-size: var(--text-lg);
 }
 
 /* Traits Form */
@@ -1191,7 +1203,7 @@ tbody tr:last-child td {
 }
 
 .traits-form h3 {
-    margin-top: var(--space-8);
+    margin-top: var(--space-10);
     margin-bottom: var(--space-6);
     color: var(--color-primary);
     padding-bottom: var(--space-3);
@@ -1258,7 +1270,7 @@ tbody tr:last-child td {
     font-size: var(--text-base);
     line-height: 1.6;
     resize: vertical;
-    min-height: 100px;
+    min-height: 120px;
 }
 
 .remarks-form textarea:focus {
@@ -1268,14 +1280,14 @@ tbody tr:last-child td {
 }
 
 .remarks-form .btn {
-    margin-top: var(--space-6);
+    margin-top: var(--space-8);
     width: 100%;
 }
 
-/* Results Entry Table Customizations */
+/* Results & Attendance Table Inputs */
 #results-entry-table-container table input[type="number"],
 #attendance-form-container table input[type="number"] {
-    width: 80px;
+    width: 90px;
     padding: var(--space-2);
     text-align: center;
     border: 1px solid var(--color-gray-300);
@@ -1290,17 +1302,25 @@ tbody tr:last-child td {
     box-shadow: 0 0 0 2px rgba(0, 178, 255, 0.1);
 }
 
+/* Results Table - Total Column Highlight */
+#results-entry-table-container th:last-child,
+#results-entry-table-container td:last-child {
+    font-weight: var(--weight-bold);
+    color: var(--color-primary);
+    text-align: center;
+}
+
+/* Container margins */
 #results-entry-table-container .table-container,
 #attendance-form-container .table-container {
     margin-top: var(--space-6);
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
 }
 
 /* Mobile Adjustments for Teacher Portal */
 @media (max-width: 768px) {
     .form-row,
-    .form-row-2,
-    .form-row-3 {
+    .form-row-2 {
         grid-template-columns: 1fr;
     }
 
@@ -1317,8 +1337,18 @@ tbody tr:last-child td {
     .remarks-form {
         padding: var(--space-4);
     }
+
+    .section-description {
+        margin-bottom: var(--space-8);
+    }
 }
 
+/* Extra safety: hide any lingering form-row-3 */
+@media (min-width: 769px) {
+    .form-row-3 {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
 /* ============================================
    TOAST NOTIFICATIONS
    ============================================ */
