@@ -128,6 +128,7 @@ html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    height: 100%;                    /* NEW: Ensure html takes full height */
 }
 
 body {
@@ -138,6 +139,24 @@ body {
     color: var(--color-gray-900);
     background: var(--color-white);
     overflow-x: hidden;
+    height: 100%;                    /* NEW: Body fills full height */
+    margin: 0;                       /* Explicitly remove any default margin */
+    padding: 0;                      /* Explicitly remove any default padding */
+}
+
+/* Ensure main content has no extra spacing */
+.main-content {
+    margin: 0;
+    padding: 0;
+}
+
+/* Critical: Prevent hamburger/sidebar from pushing content down */
+.hamburger,
+.sidebar {
+    position: fixed;                 /* Ensures they don't occupy flow space */
+    top: 0;
+    left: 0;
+    z-index: 1000;                   /* Keep them above hero content if needed */
 }
 
 /* ============================================
@@ -412,14 +431,12 @@ small { font-size: var(--text-sm); }
     min-height: 600px;          /* Minimum height for smaller screens */
     color: var(--color-white);
     text-align: center;
-    padding: var(--space-20) var(--space-8);
+    padding: 0 var(--space-8);  /* Remove top/bottom padding — we'll control spacing inside .hero-content */
     overflow: hidden;
-    margin: 0;                  /* Remove all margins */
-    border-radius: 0;           /* Remove rounded corners */
-    box-shadow: none;           /* Remove card shadow */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    /* Removed flex centering — we want top alignment now */
 }
 
 /* Full-width slideshow background */
@@ -441,7 +458,7 @@ small { font-size: var(--text-sm); }
     animation: slideshow 60s infinite linear;
 }
 
-/* Animation delays for 10 images (every 6 seconds) */
+/* Animation delays for 10 unique images + 1 duplicate */
 .hero-slideshow img:nth-child(1)  { animation-delay: 0s; }
 .hero-slideshow img:nth-child(2)  { animation-delay: 6s; }
 .hero-slideshow img:nth-child(3)  { animation-delay: 12s; }
@@ -452,16 +469,14 @@ small { font-size: var(--text-sm); }
 .hero-slideshow img:nth-child(8)  { animation-delay: 42s; }
 .hero-slideshow img:nth-child(9)  { animation-delay: 48s; }
 .hero-slideshow img:nth-child(10) { animation-delay: 54s; }
+.hero-slideshow img:nth-child(11) { animation-delay: 60s; } /* Duplicate of first for seamless loop */
 
-/* Optional: Duplicate the first image to ensure perfect loop (recommended) */
-.hero-slideshow img:nth-child(11) { animation-delay: 60s; } /* Same as first image */
-
-/* Smooth cross-fade: each image visible for 6s with 2s fade in/out */
+/* Smooth cross-fade: ~2s fade in, 2s full, ~2s fade out → total 6s per slide */
 @keyframes slideshow {
     0%    { opacity: 0; }
-    8.33% { opacity: 1; }    /* Fade in over ~2s (8.33% of 60s ≈ 5s, but adjusted below) */
-    25%   { opacity: 1; }    /* Fully visible */
-    33.33%{ opacity: 0; }    /* Fade out over ~2s */
+    8.33% { opacity: 1; }    /* Fade in complete at ~5s */
+    25%   { opacity: 1; }    /* Stay fully visible until 15s */
+    33.33%{ opacity: 0; }    /* Fade out complete at ~20s */
     100%  { opacity: 0; }
 }
 
@@ -474,34 +489,40 @@ small { font-size: var(--text-sm); }
     z-index: 1;
 }
 
-/* Hero text content - centered and on top */
+/* Hero text content — top-aligned, centered horizontally */
 .hero-content {
     position: relative;
     z-index: 2;
     max-width: 900px;
     margin: 0 auto;
-    padding: var(--space-8);
+    padding: var(--space-20) var(--space-8) 0;  /* Top padding for breathing room from very top */
+    text-align: center;
+    
+    /* Stack elements vertically with controlled gaps */
+    display: flex;
+    flex-direction: column;
+    align-items: center;         /* Horizontal centering */
+    gap: var(--space-4);         /* Consistent small gap between h1 and p */
 }
 
 .hero h1 {
     color: var(--color-white);
-    margin-bottom: var(--space-4);
+    margin: 0;                   /* Remove default bottom margin */
     font-size: var(--text-5xl);
     text-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
 }
 
 .hero p {
+    margin: 0 0 var(--space-10); /* Space below p, before button */
     font-size: var(--text-xl);
-    margin-bottom: var(--space-8);
     max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
     font-weight: var(--weight-light);
     opacity: 0.95;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .hero .btn {
+    margin-top: var(--space-6);  /* Extra space before button if needed */
     text-shadow: none;
 }
 
