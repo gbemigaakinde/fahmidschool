@@ -1597,7 +1597,7 @@ address strong {
    ============================================ */
 @media (max-width: 1024px) {
     :root {
-        --sidebar-width: 0px;
+        --sidebar-width: 280px;
     }
 
     .hamburger,
