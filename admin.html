@@ -25,6 +25,7 @@
         <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
         <a href="#classes" onclick="showSection('classes')">Classes</a>
         <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
+        <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
         <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
         <hr class="sidebar-divider">
         <a href="index.html">← Back to Public Site</a>
@@ -236,6 +237,47 @@
                     <tbody id="subjects-table">
                         <tr>
                             <td colspan="2" class="table-loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Assign Teachers Section (NEW) -->
+        <div id="assign-teachers" class="admin-card" style="display:none;">
+            <h1>Assign Teachers to Classes</h1>
+            <p class="section-description">Select a teacher and class to make an assignment. Teachers can be assigned to multiple classes if needed.</p>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="assign-teacher">Select Teacher <span class="required">*</span></label>
+                    <select id="assign-teacher" required>
+                        <option value="">-- Select Teacher --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assign-class">Select Class <span class="required">*</span></label>
+                    <select id="assign-class" required>
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn" onclick="assignTeacherToClass()">Assign Teacher</button>
+
+            <h2>Current Assignments</h2>
+            <div class="table-container">
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>Assigned Teacher</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assignments-table">
+                        <tr>
+                            <td colspan="3" class="table-loading">Loading current assignments...</td>
                         </tr>
                     </tbody>
                 </table>
