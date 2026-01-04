@@ -398,34 +398,40 @@ async function loadClasses() {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading...</td></tr>';
 
     try {
-        // Removed .orderBy() - sort in JavaScript
-        const snapshot = await db.collection('classes').get();
+        // Get all classes
+        const classesSnap = await db.collection('classes').get();
+        
+        // ✅ Get ALL pupils ONCE (not in loop)
+        const pupilsSnap = await db.collection('pupils').get();
+        
+        // Create lookup map: className → pupil count
+        const pupilCountMap = {};
+        pupilsSnap.forEach(pupilDoc => {
+            const className = pupilDoc.data().class;
+            pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
+        });
         
         tbody.innerHTML = '';
         
-        if (snapshot.empty) {
+        if (classesSnap.empty) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes yet</td></tr>';
             return;
         }
 
-        // Sort by name in JavaScript
+        // Sort classes
         const classes = [];
-        for (let doc of snapshot.docs) {
+        classesSnap.forEach(doc => {
             const classData = doc.data();
-            
-            const pupilsSnap = await db.collection('pupils')
-                .where('class', '==', classData.name)
-                .get();
-
             classes.push({
                 id: doc.id,
                 name: classData.name,
-                pupilCount: pupilsSnap.size
+                pupilCount: pupilCountMap[classData.name] || 0
             });
-        }
+        });
         
         classes.sort((a, b) => a.name.localeCompare(b.name));
 
+        // Render table
         classes.forEach(classItem => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
