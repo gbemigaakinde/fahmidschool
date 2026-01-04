@@ -421,12 +421,6 @@ small { font-size: var(--text-sm); }
     transition: margin-left var(--duration-medium) var(--ease-in-out);
 }
 
-/* Ensure hero is not affected by main-content padding/margin */
-.hero {
-    margin-top: 0 !important;
-    margin-left: calc(-1 * var(--sidebar-width)); /* Pull hero back to cover sidebar area */
-    width: calc(100vw + var(--sidebar-width));
-}
 /* ============================================
    HERO SECTION - FULL-SCREEN HEADER (NO CARD STYLE)
    ============================================ */
