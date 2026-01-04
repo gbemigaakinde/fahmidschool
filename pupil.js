@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript - COMPLETE FIX
+ * Pupil Portal JavaScript - FULLY ALIGNED WITH PRINT PAGE
  * 
- * @version 3.0.0 - COMPREHENSIVE FIX
- * @date 2026-01-03
+ * @version 3.2.0
+ * @date 2026-01-05
  */
 
 'use strict';
@@ -69,7 +69,7 @@ async function loadPupilProfile(user) {
 }
 
 // ============================================
-// RESULTS DISPLAY
+// RESULTS DISPLAY - NOW FULLY MATCHES PRINT PAGE
 // ============================================
 
 async function loadResults() {
@@ -83,67 +83,85 @@ async function loadResults() {
 
     container.innerHTML = `
         <div class="skeleton-container">
-            <div class="skeleton" style="height: 40px; width: 50%; margin: var(--space-xl) auto var(--space-lg);"></div>
-            <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
+            <div class="skeleton" style="height: 40px; width: 60%; margin: var(--space-xl) auto;"></div>
+            <div class="skeleton" style="height: 30px; margin: var(--space-lg) 0 var(--space-sm);"></div>
             <div class="skeleton" style="height: 30px; margin-bottom: var(--space-sm);"></div>
             <div class="skeleton" style="height: 30px; margin-bottom: var(--space-lg);"></div>
         </div>
     `;
 
     try {
-        console.log('Querying results for pupilId:', currentPupilId);
+        // Fetch ALL results (since no pupilId field) and filter client-side by doc ID prefix
+        const resultsSnap = await db.collection('results').get();
 
-        const resultsSnap = await db.collection('results')
-            .where('pupilId', '==', currentPupilId)
-            .get();
+        const pupilResults = [];
+        resultsSnap.forEach(doc => {
+            const docId = doc.id;
+            if (docId.startsWith(currentPupilId + '_')) {
+                const data = doc.data();
+                const parts = docId.split('_');
+                if (parts.length >= 3) {
+                    const term = parts[1];
+                    const subject = parts.slice(2).join('_'); // Handle subjects with _
+                    const caScore = data.caScore || 0;
+                    const examScore = data.examScore || 0;
+                    const total = caScore + examScore;
 
-        console.log('Results found:', resultsSnap.size);
+                    pupilResults.push({
+                        term,
+                        subject,
+                        caScore,
+                        examScore,
+                        total
+                    });
+                }
+            }
+        });
+
+        console.log(`Found ${pupilResults.length} result entries for this pupil`);
 
         container.innerHTML = '';
 
-        if (resultsSnap.empty) {
+        if (pupilResults.length === 0) {
             container.innerHTML = `
-                <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">
-                    📚 No results have been entered yet. Check back later!<br><br>
-                    Your teachers will upload your results soon.
+                <p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl); font-size: var(--text-lg);">
+                    📚 No results have been entered yet.<br><br>
+                    Your teachers will upload your scores soon. Check back later!
                 </p>
             `;
             return;
         }
 
-        // Group results by term
+        // Group by term
         const terms = {};
-        resultsSnap.forEach(doc => {
-            const result = doc.data();
-            if (!terms[result.term]) {
-                terms[result.term] = [];
-            }
-            terms[result.term].push(result);
+        pupilResults.forEach(r => {
+            if (!terms[r.term]) terms[r.term] = [];
+            terms[r.term].push(r);
         });
 
-        // Sort terms
         const termOrder = ['First Term', 'Second Term', 'Third Term'];
-        const sortedTerms = Object.keys(terms).sort((a, b) => {
-            return termOrder.indexOf(a) - termOrder.indexOf(b);
-        });
+        const sortedTerms = Object.keys(terms).sort((a, b) => 
+            termOrder.indexOf(a) - termOrder.indexOf(b)
+        );
 
-        // Display results for each term
         sortedTerms.forEach(term => {
             const termSection = document.createElement('div');
             termSection.className = 'results-term-section';
 
-            const termHeading = document.createElement('h3');
-            termHeading.textContent = `📖 ${term}`;
-            termSection.appendChild(termHeading);
+            const heading = document.createElement('h3');
+            heading.textContent = `${term}`;
+            termSection.appendChild(heading);
 
             const table = document.createElement('table');
             table.className = 'results-table';
             table.innerHTML = `
                 <thead>
                     <tr>
-                        <th>Subject</th>
-                        <th style="text-align: center;">Score</th>
-                        <th style="text-align: center;">Grade</th>
+                        <th>SUBJECT</th>
+                        <th>CA (40)</th>
+                        <th>EXAM (60)</th>
+                        <th>TOTAL (100)</th>
+                        <th>GRADE</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -154,38 +172,46 @@ async function loadResults() {
             // Sort subjects alphabetically
             terms[term].sort((a, b) => a.subject.localeCompare(b.subject));
 
-            // Calculate total and average
-            let totalScore = 0;
+            let termTotal = 0;
             let subjectCount = 0;
 
-            terms[term].forEach(result => {
-                const grade = getGrade(result.score);
-                const gradeClass = getGradeClass(result.score);
+            terms[term].forEach(r => {
+                const grade = getGrade(r.total);
+                const gradeClass = 'grade-' + grade;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${result.subject}</strong></td>
-                    <td style="text-align: center; font-weight: var(--font-weight-medium);">${result.score}/100</td>
-                    <td style="text-align: center;" class="${gradeClass}">${grade}</td>
+                    <td><strong>${r.subject}</strong></td>
+                    <td style="text-align:center;">${r.caScore}</td>
+                    <td style="text-align:center;">${r.examScore}</td>
+                    <td style="text-align:center; font-weight:bold;">${r.total}</td>
+                    <td style="text-align:center;" class="${gradeClass}">${grade}</td>
                 `;
                 tbody.appendChild(tr);
 
-                totalScore += result.score;
+                termTotal += r.total;
                 subjectCount++;
             });
 
-            // Add average row
+            // Summary rows
             if (subjectCount > 0) {
-                const average = (totalScore / subjectCount).toFixed(1);
+                const average = (termTotal / subjectCount).toFixed(1);
                 const avgGrade = getGrade(parseFloat(average));
-                const avgGradeClass = getGradeClass(parseFloat(average));
+                const avgGradeClass = 'grade-' + avgGrade;
+
+                const totalRow = document.createElement('tr');
+                totalRow.className = 'summary-row';
+                totalRow.innerHTML = `
+                    <td colspan="3"><strong>TOTAL SCORE</strong></td>
+                    <td colspan="2"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
+                `;
+                tbody.appendChild(totalRow);
 
                 const avgRow = document.createElement('tr');
-                avgRow.style.cssText = 'border-top: 2px solid var(--color-primary); font-weight: var(--font-weight-bold); background: var(--color-gray-50);';
+                avgRow.className = 'summary-row';
                 avgRow.innerHTML = `
-                    <td><strong>🎯 AVERAGE</strong></td>
-                    <td style="text-align: center;"><strong>${average}%</strong></td>
-                    <td style="text-align: center;" class="${avgGradeClass}"><strong>${avgGrade}</strong></td>
+                    <td colspan="3"><strong>AVERAGE</strong></td>
+                    <td colspan="2"><strong>${average}% (${avgGrade})</strong></td>
                 `;
                 tbody.appendChild(avgRow);
             }
@@ -194,39 +220,35 @@ async function loadResults() {
             container.appendChild(termSection);
         });
 
-        console.log('✓ Results loaded successfully');
+        console.log('✓ Results displayed successfully');
     } catch (error) {
         console.error('Error loading results:', error);
         container.innerHTML = `
             <p style="text-align:center; color:var(--color-danger); padding: var(--space-2xl);">
-                ⚠️ Error loading results. Please refresh the page or contact support.
+                ⚠️ Unable to load results. Please try again later.
             </p>
         `;
     }
 }
 
 // ============================================
-// GRADE CALCULATION
+// GRADE CALCULATION - EXACTLY MATCHES PRINT PAGE
 // ============================================
 
 function getGrade(score) {
-    if (score >= 90) return 'A+ Excellent';
-    if (score >= 80) return 'A Very Good';
-    if (score >= 70) return 'B Good';
-    if (score >= 60) return 'C Fair';
-    if (score >= 50) return 'D Pass';
-    return 'F Fail';
-}
-
-function getGradeClass(score) {
-    if (score >= 80) return 'grade-excellent';
-    if (score >= 70) return 'grade-good';
-    if (score >= 50) return 'grade-fair';
-    return 'grade-fail';
+    if (score >= 75) return 'A1';
+    if (score >= 70) return 'B2';
+    if (score >= 65) return 'B3';
+    if (score >= 60) return 'C4';
+    if (score >= 55) return 'C5';
+    if (score >= 50) return 'C6';
+    if (score >= 45) return 'D7';
+    if (score >= 40) return 'D8';
+    return 'F9';
 }
 
 // ============================================
 // PAGE LOAD
 // ============================================
 
-console.log('✓ Pupil portal initialized');
+console.log('✓ Pupil portal initialized (v3.2.0)');
