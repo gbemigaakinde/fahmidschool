@@ -11,8 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        /* Report Card Specific Styles */
         body {
             background: #f5f5f5;
             font-family: 'Open Sans', Arial, sans-serif;
@@ -33,20 +32,20 @@
             background: white;
         }
 
-        /* Header Section */
+        /* Header Section - Using CSS Variables */
         .report-header {
             text-align: center;
-            border: 2px solid #333;
+            border: 2px solid var(--color-gray-900);
             padding: 8mm 5mm;
             margin-bottom: 5mm;
-            background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+            background: linear-gradient(to bottom, var(--color-gray-50) 0%, var(--color-white) 100%);
         }
 
         .school-logo {
             width: 60px;
             height: 60px;
             margin: 0 auto 3mm;
-            background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -58,108 +57,28 @@
 
         .report-header h1 {
             font-size: 16pt;
-            color: #1565C0;
+            color: var(--color-primary-dark);
             margin-bottom: 2mm;
             font-weight: bold;
         }
 
         .report-header .subtitle {
             font-size: 10pt;
-            color: #666;
+            color: var(--color-gray-600);
             margin-bottom: 2mm;
         }
 
         .report-header .report-title {
             font-size: 12pt;
             font-weight: bold;
-            color: #333;
+            color: var(--color-gray-900);
             margin-top: 2mm;
             text-transform: uppercase;
         }
 
-        /* Student Bio Data */
-        .bio-section {
-            border: 1px solid #333;
-            margin-bottom: 3mm;
-        }
-
-        .bio-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            font-size: 10pt;
-        }
-
-        .bio-item {
-            padding: 2mm 3mm;
-            border-bottom: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            display: flex;
-        }
-
-        .bio-item:nth-child(2n) {
-            border-right: none;
-        }
-
-        .bio-item:nth-last-child(-n+2) {
-            border-bottom: none;
-        }
-
-        .bio-label {
-            font-weight: bold;
-            min-width: 80px;
-            color: #333;
-        }
-
-        .bio-value {
-            color: #000;
-            flex: 1;
-        }
-
-        /* Attendance Section */
-        .attendance-section {
-            border: 1px solid #333;
-            margin-bottom: 3mm;
-        }
-
-        .section-title {
-            background: #1565C0;
-            color: white;
-            padding: 2mm 3mm;
-            font-weight: bold;
-            font-size: 10pt;
-        }
-
-        .attendance-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            font-size: 10pt;
-        }
-
-        .attendance-item {
-            padding: 2mm 3mm;
-            border-right: 1px solid #ddd;
-            text-align: center;
-        }
-
-        .attendance-item:last-child {
-            border-right: none;
-        }
-
-        .attendance-label {
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 1mm;
-        }
-
-        .attendance-value {
-            font-weight: bold;
-            font-size: 14pt;
-            color: #1565C0;
-        }
-
-        /* Academic Performance Table */
+        /* Academic Performance Table - Using CSS Variables */
         .academic-section {
-            border: 1px solid #333;
+            border: 1px solid var(--color-gray-900);
             margin-bottom: 3mm;
         }
 
@@ -170,18 +89,18 @@
         }
 
         .academic-table th {
-            background: #1565C0;
-            color: white;
+            background: var(--color-primary);
+            color: var(--color-white);
             padding: 2mm;
             text-align: center;
             font-weight: bold;
-            border: 1px solid #333;
+            border: 1px solid var(--color-gray-900);
             font-size: 8pt;
         }
 
         .academic-table td {
             padding: 2mm;
-            border: 1px solid #999;
+            border: 1px solid var(--color-gray-400);
             text-align: center;
         }
 
@@ -190,126 +109,25 @@
             font-weight: bold;
         }
 
-        .academic-table .grade-A1 { color: #2e7d32; font-weight: bold; }
-        .academic-table .grade-B2, .academic-table .grade-B3 { color: #1976d2; font-weight: bold; }
-        .academic-table .grade-C4, .academic-table .grade-C5, .academic-table .grade-C6 { color: #f57c00; font-weight: bold; }
-        .academic-table .grade-D7, .academic-table .grade-D8 { color: #d32f2f; font-weight: bold; }
-        .academic-table .grade-F9 { color: #c62828; font-weight: bold; }
+        /* Grade Colors - Using CSS Variables */
+        .academic-table .grade-A1 { color: var(--color-success); font-weight: bold; }
+        .academic-table .grade-B2, .academic-table .grade-B3 { color: var(--color-info); font-weight: bold; }
+        .academic-table .grade-C4, .academic-table .grade-C5, .academic-table .grade-C6 { color: var(--color-warning); font-weight: bold; }
+        .academic-table .grade-D7, .academic-table .grade-D8 { color: var(--color-danger); font-weight: bold; }
+        .academic-table .grade-F9 { color: var(--color-accent); font-weight: bold; }
 
         .summary-row {
-            background: #e3f2fd;
+            background: var(--color-gray-100);
             font-weight: bold;
         }
 
-        /* Behavioral/Affective Section */
-        .traits-section {
-            border: 1px solid #333;
-            margin-bottom: 3mm;
-        }
-
-        .traits-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .trait-item {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            padding: 1.5mm 3mm;
-            border-bottom: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            font-size: 9pt;
-        }
-
-        .trait-item:nth-child(2n) {
-            border-right: none;
-        }
-
-        .trait-label {
-            font-weight: 500;
-        }
-
-        .trait-value {
-            text-align: center;
+        /* Section Title - Using CSS Variables */
+        .section-title {
+            background: var(--color-primary);
+            color: var(--color-white);
+            padding: 2mm 3mm;
             font-weight: bold;
-            color: #1565C0;
-        }
-
-        /* Psychomotor Section */
-        .psychomotor-section {
-            border: 1px solid #333;
-            margin-bottom: 3mm;
-        }
-
-        /* Remarks Section */
-        .remarks-section {
-            border: 1px solid #333;
-            margin-bottom: 3mm;
-        }
-
-        .remark-box {
-            padding: 3mm;
-            border-bottom: 1px solid #ddd;
             font-size: 10pt;
-        }
-
-        .remark-box:last-child {
-            border-bottom: none;
-        }
-
-        .remark-label {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 2mm;
-            display: block;
-        }
-
-        .remark-text {
-            min-height: 15mm;
-            color: #000;
-            font-style: italic;
-        }
-
-        .signature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5mm;
-            margin-top: 2mm;
-        }
-
-        .signature-box {
-            text-align: center;
-        }
-
-        .signature-line {
-            border-top: 1px solid #333;
-            margin-top: 10mm;
-            padding-top: 2mm;
-            font-size: 9pt;
-        }
-
-        /* Grading Key */
-        .grading-key {
-            border: 1px solid #333;
-            padding: 3mm;
-            font-size: 8pt;
-            margin-bottom: 3mm;
-        }
-
-        .grading-key-title {
-            font-weight: bold;
-            margin-bottom: 2mm;
-            color: #333;
-        }
-
-        .grading-key-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2mm;
-        }
-
-        .grading-key-item {
-            padding: 1mm;
         }
 
         /* Print Actions */
@@ -317,7 +135,7 @@
             text-align: center;
             margin: 5mm 0;
             padding: 5mm;
-            background: #f8f9fa;
+            background: var(--color-gray-50);
         }
 
         .print-actions button,
@@ -346,6 +164,37 @@
             .print-actions,
             .no-print {
                 display: none !important;
+            }
+
+            /* Optimize colors for printing */
+            .academic-table th {
+                background: var(--color-gray-800) !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .section-title {
+                background: var(--color-gray-800) !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .school-logo {
+                background: var(--color-gray-700) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Prevent page breaks inside sections */
+            .bio-section,
+            .attendance-section,
+            .academic-section,
+            .traits-section,
+            .psychomotor-section,
+            .remarks-section {
+                page-break-inside: avoid;
             }
 
             @page {
