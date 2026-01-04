@@ -1,17 +1,16 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Main JavaScript File - Phases 4-7 Complete + Enhancements
+ * Main JavaScript File - Phases 4-7 Complete + Enhancements (Fixed)
  * 
  * Handles:
  * - Hamburger menu toggle (public, admin, teacher portals)
  * - Gallery lightbox
  * - Toast notifications
  * - Smooth scrolling
- * - Scroll-triggered fade-in animations
  * - Keyboard navigation & accessibility
  * - Global error handling
  * 
- * @version 2.1.0
+ * @version 2.1.1
  * @date 2026-01-04
  */
 
@@ -171,36 +170,6 @@ function initSmoothScroll() {
 }
 
 // ============================================
-// SCROLL-BASED FADE-IN ANIMATIONS
-// ============================================
-
-function initScrollAnimations() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-                observer.unobserve(entry.target); // Animate once
-            }
-        });
-    }, observerOptions);
-
-    document.querySelectorAll('.card, .admin-card, .stat-card, .gallery-item').forEach((el, index) => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = `opacity 0.6s ease ${index * 0.1}s, transform 0.6s ease ${index * 0.1}s`;
-        observer.observe(el);
-    });
-}
-
-// Add this to your CSS for the animation
-// .fade-in { opacity: 1 !important; transform: translateY(0) !important; }
-
-// ============================================
 // TOAST NOTIFICATIONS
 // ============================================
 
@@ -322,7 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initHamburgerMenu();
     initGalleryLightbox();
     initSmoothScroll();
-    initScrollAnimations();
 
-    console.log('✓ Fahmid School website initialized successfully (v2.1.0)');
+    console.log('✓ Fahmid School website initialized successfully (v2.1.1 - Fixed)');
 });
