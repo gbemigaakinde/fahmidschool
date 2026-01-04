@@ -984,7 +984,7 @@ tbody tr:last-child td {
 }
 
 /* ============================================
-   TRAITS & SKILLS SECTIONS
+   TRAITS & SKILLS SECTIONS (UPDATED FOR TRANSITIONS)
    ============================================ */
 .traits-section,
 .psychomotor-section {
@@ -992,13 +992,32 @@ tbody tr:last-child td {
     margin-bottom: var(--space-6);
     border-radius: var(--radius-md);
     overflow: hidden;
+
+    /* New: transition-ready visibility */
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1000px; /* large enough to fit content */
+    transition: opacity var(--duration-medium) var(--ease-in-out),
+                transform var(--duration-medium) var(--ease-in-out),
+                max-height var(--duration-medium) var(--ease-in-out);
 }
 
+.traits-section.is-hidden,
+.psychomotor-section.is-hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    max-height: 0;
+    pointer-events: none; /* prevent interactions while hidden */
+}
+
+/* Grid layout for traits */
 .traits-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2); /* optional: spacing between items */
 }
 
+/* Individual trait items */
 .trait-item {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -1006,6 +1025,7 @@ tbody tr:last-child td {
     border-bottom: 1px solid var(--color-gray-200);
     border-right: 1px solid var(--color-gray-200);
     font-size: var(--text-sm);
+    transition: background var(--duration-fast) var(--ease-out);
 }
 
 .trait-item:nth-child(2n) {
@@ -1017,6 +1037,7 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
+/* Labels and values */
 .trait-label {
     font-weight: var(--weight-medium);
     color: var(--color-gray-700);
