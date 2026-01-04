@@ -72,16 +72,8 @@
 
         <!-- My Classes -->
         <section id="my-classes" class="admin-card" hidden tabindex="-1">
-            <h1>My Classes</h1>
-
-            <div class="form-row">
-                <div class="form-group" style="max-width:400px;">
-                    <label for="class-selector">Select a Class</label>
-                    <select id="class-selector" onchange="loadPupilsInClass()">
-                        <option value="">-- Select a Class --</option>
-                    </select>
-                </div>
-            </div>
+            <h1>My Pupils</h1>
+            <p class="section-description">List of all pupils in your assigned classes</p>
 
             <div class="table-container">
                 <table class="responsive-table">
@@ -94,9 +86,7 @@
                     </thead>
                     <tbody id="pupils-in-class-table">
                         <tr>
-                            <td colspan="3" class="table-empty">
-                                Select a class to view pupils
-                            </td>
+                            <td colspan="3" class="table-loading">Loading pupils...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -106,18 +96,12 @@
         <!-- Enter Results -->
         <section id="enter-results" class="admin-card" hidden tabindex="-1">
             <h1>Enter Academic Results</h1>
-            <p class="section-description">Select class, term, and subject to enter CA and Exam scores</p>
+            <p class="section-description">Enter CA and Exam scores for your pupils</p>
 
-            <div class="form-row form-row-3">
-                <div class="form-group">
-                    <label for="result-class">Class <span class="required">*</span></label>
-                    <select id="result-class" onchange="loadClassForResults()">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
+            <div class="form-row form-row-2">
                 <div class="form-group">
                     <label for="result-term">Term <span class="required">*</span></label>
-                    <select id="result-term" onchange="loadClassForResults()">
+                    <select id="result-term" onchange="loadResultsTable()">
                         <option value="First Term">First Term</option>
                         <option value="Second Term">Second Term</option>
                         <option value="Third Term">Third Term</option>
@@ -125,7 +109,7 @@
                 </div>
                 <div class="form-group">
                     <label for="result-subject">Subject <span class="required">*</span></label>
-                    <select id="result-subject" onchange="loadClassForResults()">
+                    <select id="result-subject" onchange="loadResultsTable()">
                         <option value="">-- Select Subject --</option>
                     </select>
                 </div>
@@ -142,18 +126,12 @@
         <!-- Attendance -->
         <section id="attendance" class="admin-card" hidden tabindex="-1">
             <h1>Mark Attendance</h1>
-            <p class="section-description">Enter attendance records for pupils</p>
+            <p class="section-description">Enter attendance records for your pupils</p>
 
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="attendance-class">Class <span class="required">*</span></label>
-                    <select id="attendance-class" onchange="loadAttendanceForm()">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
+            <div class="form-row">
                 <div class="form-group">
                     <label for="attendance-term">Term <span class="required">*</span></label>
-                    <select id="attendance-term" onchange="loadAttendanceForm()">
+                    <select id="attendance-term" onchange="loadAttendanceSection()">
                         <option value="First Term">First Term</option>
                         <option value="Second Term">Second Term</option>
                         <option value="Third Term">Third Term</option>
@@ -173,16 +151,10 @@
             <h1>Behavioral Traits & Psychomotor Skills</h1>
             <p class="section-description">Assess pupils' behavioral traits and psychomotor skills</p>
 
-            <div class="form-row form-row-3">
-                <div class="form-group">
-                    <label for="traits-class">Class <span class="required">*</span></label>
-                    <select id="traits-class" onchange="loadTraitsForm()">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
+            <div class="form-row form-row-2">
                 <div class="form-group">
                     <label for="traits-term">Term <span class="required">*</span></label>
-                    <select id="traits-term" onchange="loadTraitsForm()">
+                    <select id="traits-term" onchange="loadTraitsData()">
                         <option value="First Term">First Term</option>
                         <option value="Second Term">Second Term</option>
                         <option value="Third Term">Third Term</option>
@@ -197,8 +169,186 @@
             </div>
 
             <div id="traits-form-container" class="traits-form" hidden>
-                <!-- unchanged form fields -->
-                <!-- save button -->
+                <h3>Behavioral Traits</h3>
+                <div class="form-group">
+                    <label for="trait-punctuality">Punctuality</label>
+                    <select id="trait-punctuality" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-neatness">Neatness</label>
+                    <select id="trait-neatness" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-politeness">Politeness</label>
+                    <select id="trait-politeness" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-honesty">Honesty</label>
+                    <select id="trait-honesty" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-obedience">Obedience</label>
+                    <select id="trait-obedience" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-cooperation">Cooperation</label>
+                    <select id="trait-cooperation" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-attentiveness">Attentiveness</label>
+                    <select id="trait-attentiveness" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-leadership">Leadership</label>
+                    <select id="trait-leadership" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-selfcontrol">Self Control</label>
+                    <select id="trait-selfcontrol" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="trait-creativity">Creativity</label>
+                    <select id="trait-creativity" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+
+                <h3 class="section-heading-alt">Psychomotor Skills</h3>
+                <div class="form-group">
+                    <label for="skill-handwriting">Handwriting</label>
+                    <select id="skill-handwriting" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="skill-drawing">Drawing</label>
+                    <select id="skill-drawing" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="skill-sports">Sports</label>
+                    <select id="skill-sports" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="skill-craft">Craft</label>
+                    <select id="skill-craft" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="skill-verbal">Verbal Fluency</label>
+                    <select id="skill-verbal" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="skill-coordination">Coordination</label>
+                    <select id="skill-coordination" class="trait-select">
+                        <option value="">-- Rate 1-5 --</option>
+                        <option value="1">1 (Poor)</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5 (Excellent)</option>
+                    </select>
+                </div>
+
                 <button class="btn" onclick="saveTraitsAndSkills()">
                     💾 Save Traits & Skills
                 </button>
@@ -207,19 +357,13 @@
 
         <!-- Remarks -->
         <section id="remarks" class="admin-card" hidden tabindex="-1">
-            <h1>Teacher's Remarks</h1>
+            <h1>Remarks</h1>
             <p class="section-description">Write remarks for pupils' report cards</p>
 
-            <div class="form-row form-row-3">
-                <div class="form-group">
-                    <label for="remarks-class">Class <span class="required">*</span></label>
-                    <select id="remarks-class" onchange="loadRemarksForm()">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
+            <div class="form-row form-row-2">
                 <div class="form-group">
                     <label for="remarks-term">Term <span class="required">*</span></label>
-                    <select id="remarks-term" onchange="loadRemarksForm()">
+                    <select id="remarks-term" onchange="loadRemarksData()">
                         <option value="First Term">First Term</option>
                         <option value="Second Term">Second Term</option>
                         <option value="Third Term">Third Term</option>
