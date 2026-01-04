@@ -11,12 +11,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <style>
-        /* Report Card Specific Styles */
+        /* Report Card Specific Styles - Optimized for Single-Page Print */
         body {
             background: #f5f5f5;
             font-family: 'Open Sans', Arial, sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
+            font-size: 9pt; /* Reduced base font for compactness */
+            line-height: 1.3; /* Tighter line height */
         }
 
         .report-card-container {
@@ -28,55 +28,135 @@
         }
 
         .report-page {
-            padding: 15mm;
+            padding: 8mm; /* Reduced padding */
             background: white;
         }
 
-        /* Header Section - Using CSS Variables */
+        /* Header Section - Compact */
         .report-header {
             text-align: center;
             border: 2px solid var(--color-gray-900);
-            padding: 8mm 5mm;
-            margin-bottom: 5mm;
+            padding: 4mm 3mm; /* Reduced padding */
+            margin-bottom: 3mm; /* Less margin */
             background: linear-gradient(to bottom, var(--color-gray-50) 0%, var(--color-white) 100%);
         }
 
         .school-logo {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 3mm;
+            width: 50px; /* Smaller logo */
+            height: 50px;
+            margin: 0 auto 2mm; /* Less margin */
             background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24pt;
+            font-size: 20pt; /* Smaller font */
             color: white;
             font-weight: bold;
         }
 
         .report-header h1 {
-            font-size: 16pt;
+            font-size: 14pt; /* Smaller */
             color: var(--color-primary-dark);
-            margin-bottom: 2mm;
+            margin-bottom: 1mm; /* Tight */
             font-weight: bold;
         }
 
         .report-header .subtitle {
-            font-size: 10pt;
+            font-size: 8pt; /* Smaller */
             color: var(--color-gray-600);
-            margin-bottom: 2mm;
+            margin-bottom: 1mm;
         }
 
         .report-header .report-title {
-            font-size: 12pt;
+            font-size: 10pt; /* Smaller */
             font-weight: bold;
             color: var(--color-gray-900);
-            margin-top: 2mm;
+            margin-top: 1mm;
             text-transform: uppercase;
         }
 
-        /* Academic Performance Table - Using CSS Variables */
+        /* Bio Data - More Compact Grid */
+        .bio-section {
+            border: 1px solid var(--color-gray-900);
+            margin-bottom: 3mm;
+        }
+
+        .bio-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 8pt; /* Smaller font */
+        }
+
+        .bio-item {
+            padding: 1mm 2mm; /* Reduced padding */
+            border-bottom: 1px solid var(--color-gray-400);
+            border-right: 1px solid var(--color-gray-400);
+            display: flex;
+        }
+
+        .bio-item:nth-child(2n) {
+            border-right: none;
+        }
+
+        .bio-item:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        .bio-label {
+            font-weight: bold;
+            min-width: 80px; /* Reduced width */
+            color: var(--color-gray-700);
+        }
+
+        .bio-value {
+            color: var(--color-gray-900);
+            flex: 1;
+        }
+
+        /* Attendance - Compact */
+        .attendance-section {
+            border: 1px solid var(--color-gray-900);
+            margin-bottom: 3mm;
+        }
+
+        .section-title {
+            background: var(--color-primary);
+            color: var(--color-white);
+            padding: 1mm 2mm; /* Reduced */
+            font-weight: bold;
+            font-size: 9pt; /* Smaller */
+        }
+
+        .attendance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            font-size: 8pt;
+        }
+
+        .attendance-item {
+            padding: 1mm; /* Reduced */
+            border-right: 1px solid var(--color-gray-400);
+            text-align: center;
+        }
+
+        .attendance-item:last-child {
+            border-right: none;
+        }
+
+        .attendance-label {
+            font-size: 7pt; /* Smaller */
+            color: var(--color-gray-600);
+            margin-bottom: 0.5mm; /* Tight */
+        }
+
+        .attendance-value {
+            font-weight: bold;
+            font-size: 10pt; /* Adjusted */
+            color: var(--color-primary);
+        }
+
+        /* Academic Table - Compact */
         .academic-section {
             border: 1px solid var(--color-gray-900);
             margin-bottom: 3mm;
@@ -85,21 +165,21 @@
         .academic-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9pt;
+            font-size: 8pt; /* Smaller base */
         }
 
         .academic-table th {
             background: var(--color-primary);
             color: var(--color-white);
-            padding: 2mm;
+            padding: 1mm; /* Reduced */
             text-align: center;
             font-weight: bold;
             border: 1px solid var(--color-gray-900);
-            font-size: 8pt;
+            font-size: 7pt; /* Smaller headers */
         }
 
         .academic-table td {
-            padding: 2mm;
+            padding: 1mm; /* Reduced */
             border: 1px solid var(--color-gray-400);
             text-align: center;
         }
@@ -109,28 +189,132 @@
             font-weight: bold;
         }
 
-        /* Grade Colors - Using CSS Variables */
-        .academic-table .grade-A1 { color: var(--color-success); font-weight: bold; }
-        .academic-table .grade-B2, .academic-table .grade-B3 { color: var(--color-info); font-weight: bold; }
-        .academic-table .grade-C4, .academic-table .grade-C5, .academic-table .grade-C6 { color: var(--color-warning); font-weight: bold; }
-        .academic-table .grade-D7, .academic-table .grade-D8 { color: var(--color-danger); font-weight: bold; }
-        .academic-table .grade-F9 { color: var(--color-accent); font-weight: bold; }
+        /* Grade Colors */
+        .grade-A1 { color: #2e7d32; font-weight: bold; }
+        .grade-B2, .grade-B3 { color: #1976d2; font-weight: bold; }
+        .grade-C4, .grade-C5, .grade-C6 { color: #f57c00; font-weight: bold; }
+        .grade-D7, .grade-D8 { color: #d32f2f; font-weight: bold; }
+        .grade-F9 { color: #c62828; font-weight: bold; }
 
         .summary-row {
             background: var(--color-gray-100);
             font-weight: bold;
         }
 
-        /* Section Title - Using CSS Variables */
-        .section-title {
-            background: var(--color-primary);
-            color: var(--color-white);
-            padding: 2mm 3mm;
-            font-weight: bold;
-            font-size: 10pt;
+        /* Grading Key - 3 Columns for Compactness */
+        .grading-key {
+            border: 1px solid var(--color-gray-300);
+            padding: 1mm; /* Reduced */
+            font-size: 7pt; /* Smaller */
+            margin-bottom: 3mm;
+            border-radius: var(--radius-md);
+            background: var(--color-gray-50);
         }
 
-        /* Print Actions */
+        .grading-key-title {
+            font-weight: bold;
+            margin-bottom: 0.5mm; /* Tight */
+            color: var(--color-gray-900);
+        }
+
+        .grading-key-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columns to save space */
+            gap: 0.5mm; /* Tight gap */
+        }
+
+        .grading-key-item {
+            padding: 0.5mm; /* Minimal */
+            font-size: 6pt; /* Even smaller */
+        }
+
+        /* Traits & Skills - Compact Grids */
+        .traits-section,
+        .psychomotor-section {
+            border: 1px solid var(--color-gray-900);
+            margin-bottom: 3mm;
+        }
+
+        .traits-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            font-size: 8pt; /* Smaller */
+        }
+
+        .trait-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            padding: 1mm 2mm; /* Reduced */
+            border-bottom: 1px solid var(--color-gray-400);
+            border-right: 1px solid var(--color-gray-400);
+        }
+
+        .trait-item:nth-child(2n) {
+            border-right: none;
+        }
+
+        .trait-item:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        .trait-label {
+            font-weight: bold;
+            color: var(--color-gray-700);
+        }
+
+        .trait-value {
+            text-align: center;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
+
+        /* Remarks - Compact */
+        .remarks-section {
+            border: 1px solid var(--color-gray-900);
+            margin-bottom: 3mm;
+        }
+
+        .remark-box {
+            padding: 1mm 2mm; /* Reduced */
+            border-bottom: 1px solid var(--color-gray-400);
+            font-size: 8pt;
+        }
+
+        .remark-box:last-child {
+            border-bottom: none;
+        }
+
+        .remark-label {
+            font-weight: bold;
+            color: var(--color-gray-900);
+            margin-bottom: 0.5mm;
+            display: block;
+        }
+
+        .remark-text {
+            min-height: 10mm; /* Reduced height */
+            color: var(--color-gray-700);
+            line-height: 1.3; /* Tighter */
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3mm; /* Reduced gap */
+            margin-top: 2mm;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .signature-line {
+            border-top: 1px solid var(--color-gray-900);
+            margin-top: 5mm; /* Reduced space for signature */
+            padding-top: 1mm;
+            font-size: 7pt;
+        }
+
         .print-actions {
             text-align: center;
             margin: 5mm 0;
@@ -143,7 +327,7 @@
             margin: 0 2mm;
         }
 
-        /* Print Styles */
+        /* Print Styles - Optimized for Single Page */
         @media print {
             body {
                 background: white;
@@ -158,7 +342,7 @@
             }
 
             .report-page {
-                padding: 10mm;
+                padding: 5mm; /* Minimal padding */
             }
 
             .print-actions,
@@ -168,21 +352,21 @@
 
             /* Optimize colors for printing */
             .academic-table th {
-                background: var(--color-gray-800) !important;
+                background: #2196F3 !important;
                 color: white !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
 
             .section-title {
-                background: var(--color-gray-800) !important;
+                background: #2196F3 !important;
                 color: white !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
 
             .school-logo {
-                background: var(--color-gray-700) !important;
+                background: #00B2FF !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -191,15 +375,22 @@
             .bio-section,
             .attendance-section,
             .academic-section,
+            .grading-key,
             .traits-section,
             .psychomotor-section,
             .remarks-section {
                 page-break-inside: avoid;
             }
 
+            /* Allow break after grading key if needed */
+            .grading-key {
+                page-break-after: auto;
+            }
+
+            /* Force single page if possible */
             @page {
                 size: A4;
-                margin: 10mm;
+                margin: 5mm; /* Minimal margins */
             }
         }
 
@@ -438,8 +629,8 @@
                             </div>
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 5mm; font-weight: bold;">
-                        <span style="margin-right: 10mm;">Resumption Date:</span>
+                    <div style="text-align: center; margin-top: 3mm; font-weight: bold; font-size: 9pt;">
+                        <span style="margin-right: 5mm;">Resumption Date:</span>
                         <span id="resumption-date">-</span>
                     </div>
                 </div>
