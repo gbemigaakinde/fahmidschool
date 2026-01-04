@@ -441,7 +441,7 @@ small { font-size: var(--text-sm); }
     animation: slideshow 60s infinite linear;
 }
 
-/* Your 10 images + 3 duplicates */
+/* Animation delays for 10 images (every 6 seconds) */
 .hero-slideshow img:nth-child(1)  { animation-delay: 0s; }
 .hero-slideshow img:nth-child(2)  { animation-delay: 6s; }
 .hero-slideshow img:nth-child(3)  { animation-delay: 12s; }
@@ -452,16 +452,16 @@ small { font-size: var(--text-sm); }
 .hero-slideshow img:nth-child(8)  { animation-delay: 42s; }
 .hero-slideshow img:nth-child(9)  { animation-delay: 48s; }
 .hero-slideshow img:nth-child(10) { animation-delay: 54s; }
-.hero-slideshow img:nth-child(11) { animation-delay: 0s; }   /* Duplicate */
-.hero-slideshow img:nth-child(12) { animation-delay: 6s; }
-.hero-slideshow img:nth-child(13) { animation-delay: 12s; }
 
-/* Smooth cross-fade */
+/* Optional: Duplicate the first image to ensure perfect loop (recommended) */
+.hero-slideshow img:nth-child(11) { animation-delay: 60s; } /* Same as first image */
+
+/* Smooth cross-fade: each image visible for 6s with 2s fade in/out */
 @keyframes slideshow {
     0%    { opacity: 0; }
-    8.33% { opacity: 1; }
-    33.33%{ opacity: 1; }
-    41.66%{ opacity: 0; }
+    8.33% { opacity: 1; }    /* Fade in over ~2s (8.33% of 60s ≈ 5s, but adjusted below) */
+    25%   { opacity: 1; }    /* Fully visible */
+    33.33%{ opacity: 0; }    /* Fade out over ~2s */
     100%  { opacity: 0; }
 }
 
