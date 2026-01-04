@@ -1206,9 +1206,81 @@ transform: translateY(-20px) rotate(5deg);
 }
 }
 /* ============================================
-RESPONSIVE DESIGN
-============================================ */
+   RESPONSIVE DESIGN
+   ============================================ */
 @media (max-width: 1024px) {
-.hamburger {
-display: flex;
+    .hamburger {
+        display: flex;
+    }
+
+    /* Sidebar hidden by default on mobile */
+    .sidebar,
+    .admin-sidebar {
+        transform: translateX(-100%);
+    }
+
+    /* Show sidebar when active class is added */
+    .sidebar.active,
+    .admin-sidebar.active {
+        transform: translateX(0);
+        box-shadow: var(--shadow-2xl);
+    }
+
+    /* Add overlay when sidebar is open */
+    .sidebar.active::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        width: calc(100vw - var(--sidebar-width));
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        animation: fadeIn var(--duration-base);
+    }
+
+    .main-content,
+    .admin-main,
+    .site-footer {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --text-5xl: 2rem;
+        --text-4xl: 1.75rem;
+        --text-3xl: 1.5rem;
+    }
+
+    .container {
+        padding: 0 var(--space-4);
+    }
+
+    .main-content,
+    .admin-main {
+        padding: var(--space-12) var(--space-4);
+    }
+
+    .hero {
+        padding: var(--space-16) var(--space-6);
+    }
+
+    .card,
+    .admin-card {
+        padding: var(--space-6);
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .auth-container {
+        margin: var(--space-8);
+        padding: var(--space-6);
+    }
 }
