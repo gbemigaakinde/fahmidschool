@@ -49,21 +49,29 @@ const sectionLoaders = {
 };
 
 function showSection(sectionId) {
+    // Hide all sections
     document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
+
+    // Show the selected section
     const section = document.getElementById(sectionId);
     if (section) section.style.display = 'block';
 
-    document.querySelectorAll('.admin-sidebar a').forEach(link => {
-        link.classList.toggle('active', link.getAttribute('onclick')?.includes(`'${sectionId}'`));
+    // Update sidebar active class
+    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+        link.classList.toggle('active', link.dataset.section === sectionId);
     });
 
+    // Run the section loader if exists
     if (typeof sectionLoaders[sectionId] === 'function') sectionLoaders[sectionId]();
 
+    // Close sidebar on mobile if open
     const sidebar = document.getElementById('teacher-sidebar');
     const hamburger = document.getElementById('hamburger');
     if (sidebar?.classList.contains('active')) {
         sidebar.classList.remove('active');
         hamburger?.classList.remove('active');
+        hamburger?.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
     }
 }
 
