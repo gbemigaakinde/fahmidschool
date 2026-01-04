@@ -1937,26 +1937,82 @@ address strong {
 
 /* Testimonial Carousel - Auto left slide */
 .testimonials-carousel {
+    position: relative;
     overflow: hidden;
-    max-width: 800px;
-    margin: 0 auto;
+    padding: 3rem;
+    border-radius: 1.5rem;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
 }
+
 .carousel-track {
     display: flex;
-    width: calc(100% * 6); /* Adjust based on quote count */
-    animation: carouselSlide 40s linear infinite; /* Slow, readable */
+    transition: transform 0.8s ease;
 }
+
 .testimonial {
     min-width: 100%;
-    padding: var(--space-8);
     text-align: center;
-    background: var(--color-gray-50);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-md);
+    padding: 0 2rem;
 }
-@keyframes carouselSlide {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); } /* Adjust % for seamless */
+
+.quote {
+    font-size: 1.5rem;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+}
+
+.author {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.meta {
+    color: var(--color-gray-600);
+    font-size: 0.9rem;
+}
+
+/* Controls */
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.9);
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.carousel-btn.prev {
+    left: 1rem;
+}
+
+.carousel-btn.next {
+    right: 1rem;
+}
+
+/* Dots */
+
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.carousel-dots button {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-gray-300);
+}
+
+.carousel-dots button.active {
+    background: var(--color-accent);
 }
 
 /* Gallery Carousel - Slow horizontal scroll */
