@@ -33,7 +33,7 @@
     background: white;
 }
 
-/* Header - Now with real logo and school info */
+/* Header */
 .report-header {
     text-align: center;
     border: 2px solid #000;
@@ -76,7 +76,6 @@
     margin: 0 0 1mm;
 }
 
-/* NEW: School Address & Contact */
 .school-info {
     font-size: 8pt;
     color: var(--color-gray-700);
@@ -125,7 +124,7 @@
     color: #000;
 }
 
-/* Attendance - Much Tighter */
+/* Attendance */
 .attendance-section {
     border: 1px solid #000;
     margin-bottom: 3mm;
@@ -166,7 +165,7 @@
     color: var(--color-primary, #2196F3);
 }
 
-/* Academic Table - Safe from Overflow */
+/* Academic Table */
 .academic-section {
     border: 1px solid #000;
     margin-bottom: 3mm;
@@ -214,7 +213,7 @@
 .grade-D7, .grade-D8 { color: #d32f2f; font-weight: bold; }
 .grade-F9 { color: #c62828; font-weight: bold; }
 
-/* Grading Key - Now in 4 columns for better arrangement */
+/* Grading Key - 4 columns, expands naturally with more items */
 .grading-key {
     border: 1px solid var(--color-gray-300);
     padding: 1mm;
@@ -232,7 +231,7 @@
 
 .grading-key-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);  /* 4 columns as requested */
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.5mm;
 }
 
@@ -241,7 +240,7 @@
     font-size: 6.5pt;
 }
 
-/* Traits & Skills - 3-column layout */
+/* Traits & Psychomotor Skills - 3 columns, expands with more than 9 items */
 .traits-section,
 .psychomotor-section {
     border: 1px solid #000;
@@ -351,14 +350,12 @@
         display: none !important;
     }
 
-    /* Force header background to solid white on print */
     .report-header {
         background: white !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    /* Force colors to print */
     .section-title,
     .academic-table th {
         background: #2196F3 !important;
@@ -379,7 +376,6 @@
         print-color-adjust: exact;
     }
 
-    /* Prevent bad breaks */
     .bio-section,
     .attendance-section,
     .academic-section,
