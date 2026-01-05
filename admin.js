@@ -8,12 +8,20 @@
  * - Fixed all table rendering
  * - Corrected function names (deleteItem)
  * - All event listeners properly attached
+ * - Added missing helper functions (getAllTeachers, handleError)
+ * - Added Firebase initialization
  * 
- * @version 5.0.0 - PRODUCTION READY
+ * @version 5.0.1 - PRODUCTION READY
  * @date 2026-01-05
  */
 
 'use strict';
+
+/* ========================================
+   FIREBASE INITIALIZATION
+======================================== */
+const db = firebase.firestore();
+const auth = firebase.auth();
 
 let secondaryApp;
 let secondaryAuth;
@@ -33,6 +41,67 @@ document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     e.preventDefault();
     logout();
 });
+
+/* ========================================
+   HELPER FUNCTIONS
+======================================== */
+
+/**
+ * Get all teachers from Firestore
+ */
+async function getAllTeachers() {
+    const snapshot = await db.collection('teachers').get();
+    const teachers = [];
+    snapshot.forEach(doc => {
+        teachers.push({
+            uid: doc.id,
+            ...doc.data()
+        });
+    });
+    return teachers.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Handle errors with user-friendly messages
+ */
+function handleError(error, fallbackMessage = 'An error occurred') {
+    console.error('Error details:', error);
+    
+    let userMessage = fallbackMessage;
+    
+    if (error.code) {
+        switch (error.code) {
+            case 'permission-denied':
+                userMessage = 'Permission denied. Check your access rights.';
+                break;
+            case 'not-found':
+                userMessage = 'Resource not found.';
+                break;
+            case 'already-exists':
+                userMessage = 'This item already exists.';
+                break;
+            case 'unauthenticated':
+                userMessage = 'You must be logged in to perform this action.';
+                break;
+            case 'unavailable':
+                userMessage = 'Service temporarily unavailable. Please try again.';
+                break;
+            case 'auth/email-already-in-use':
+                userMessage = 'This email is already registered.';
+                break;
+            case 'auth/invalid-email':
+                userMessage = 'Invalid email address.';
+                break;
+            case 'auth/weak-password':
+                userMessage = 'Password is too weak. Use at least 6 characters.';
+                break;
+            default:
+                userMessage = `${fallbackMessage}: ${error.message || error.code}`;
+        }
+    }
+    
+    window.showToast?.(userMessage, 'danger', 5000);
+}
 
 /* =========================
    SECTION NAVIGATION - FIXED
@@ -854,10 +923,8 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     }
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
-if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
-}
 
     try {
         await db.collection('settings').doc('current').set({
@@ -871,65 +938,69 @@ if (submitBtn) {
     } catch (error) {
         console.error('Error saving settings:', error);
         handleError(error, 'Failed to save settings');
-    } if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Save Settings';
-}
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Settings';
+    }
 });
 
 /* ========================================
-DELETE FUNCTIONS - RENAMED TO deleteItem
+   DELETE FUNCTIONS
 ======================================== */
-async function deleteUser(collection, uid) {
-if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
-try {
-    await db.collection(collection).doc(uid).delete();
-    await db.collection('users').doc(uid).delete();
 
-    window.showToast?.('User deleted successfully', 'success');
-    
-    if (collection === 'teachers') {
-        loadTeachers();
-        loadTeacherAssignments();
-    }
-    if (collection === 'pupils') loadPupils();
-    
-    loadDashboardStats();
-} catch (error) {
-    console.error('Error deleting user:', error);
-    handleError(error, 'Failed to delete user');
-}
-}
-async function deleteItem(collectionName, docId) {
-if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
-try {
-    await db.collection(collectionName).doc(docId).delete();
-    
-    window.showToast?.('Item deleted successfully', 'success');
-    
-    loadDashboardStats();
-    
-    switch(collectionName) {
-        case 'classes':
-            loadClasses();
+async function deleteUser(collection, uid) {
+    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+    try {
+        await db.collection(collection).doc(uid).delete();
+        await db.collection('users').doc(uid).delete();
+
+        window.showToast?.('User deleted successfully', 'success');
+        
+        if (collection === 'teachers') {
+            loadTeachers();
             loadTeacherAssignments();
-            break;
-        case 'subjects':
-            loadSubjects();
-            break;
-        case 'announcements':
-            loadAdminAnnouncements();
-            break;
+        }
+        if (collection === 'pupils') loadPupils();
+        
+        loadDashboardStats();
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        handleError(error, 'Failed to delete user');
     }
-} catch (error) {
-    console.error('Error deleting document:', error);
-    handleError(error, 'Failed to delete item');
 }
+
+async function deleteItem(collectionName, docId) {
+    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) return;
+    try {
+        await db.collection(collectionName).doc(docId).delete();
+        
+        window.showToast?.('Item deleted successfully', 'success');
+        
+        loadDashboardStats();
+        
+        switch(collectionName) {
+            case 'classes':
+                loadClasses();
+                loadTeacherAssignments();
+                break;
+            case 'subjects':
+                loadSubjects();
+                break;
+            case 'announcements':
+                loadAdminAnnouncements();
+                break;
+        }
+    } catch (error) {
+        console.error('Error deleting document:', error);
+        handleError(error, 'Failed to delete item');
+    }
 }
+
 /* ========================================
-INITIALIZATION
+   INITIALIZATION
 ======================================== */
+
 document.addEventListener('DOMContentLoaded', () => {
-showSection('dashboard');
-console.log('✓ Admin portal initialized (v5.0.0 - PRODUCTION READY)');
+    showSection('dashboard');
+    console.log('✓ Admin portal initialized (v5.0.1 - PRODUCTION READY)');
 });
