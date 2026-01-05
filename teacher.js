@@ -1,15 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - FULLY FIXED AND FUNCTIONAL
+ * Teacher Portal JavaScript - CLEAN FIXED VERSION
  * 
- * Key Features:
- * - Teachers only see data for classes assigned to them
- * - Loads existing data for editing
- * - All save buttons properly connected
- * - Fixed initialization sequence
- * - Handles 10+ classes limitation
- * 
- * @version 7.0.0 - COMPLETE FIX
+ * @version 7.1.0 - FULLY CORRECTED
  * @date 2026-01-05
  */
 
@@ -35,7 +28,13 @@ let allSubjects = [];     // Cached subjects
  */
 async function checkRole(requiredRole) {
     return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error('Authentication timeout'));
+        }, 10000);
+
         auth.onAuthStateChanged(async (user) => {
+            clearTimeout(timeoutId);
+            
             if (!user) {
                 window.location.href = 'login.html';
                 reject(new Error('Not authenticated'));
@@ -145,22 +144,78 @@ async function getCurrentSettings() {
 }
 
 /* =========================
-   AUTH INITIALIZATION
+   AUTH INITIALIZATION - SINGLE ENTRY POINT
 ========================= */
 
 checkRole('teacher')
     .then(async user => {
-        currentUser = user;
-        const info = document.getElementById('teacher-info');
-        if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
-        
-        await loadAssignedClasses(); // Critical: load teacher's classes first
-        await loadSubjects();       // Load subjects once
-        
-        initTeacherPortal();
-    })
-    .catch(() => {});
+        try {
+            currentUser = user;
+            const info = document.getElementById('teacher-info');
+            if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
+            
+            console.log('Loading teacher data...');
+            
+            // Load teacher's data sequentially
+            await loadAssignedClasses();
+            await loadSubjects();
+            
+            // Setup event listeners BEFORE showing any section
+            setupAllEventListeners();
+            
+            // Get current settings
+            const settings = await getCurrentSettings();
+            
+            // Set default term in all selects
+            const termSelects = [
+                document.getElementById('result-term'),
+                document.getElementById('attendance-term'),
+                document.getElementById('traits-term'),
+                document.getElementById('remarks-term')
+            ];
 
+            termSelects.forEach(select => {
+                if (select) select.value = settings.term;
+            });
+
+            // Setup sidebar navigation
+            document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+                link.addEventListener('click', e => {
+                    e.preventDefault();
+                    const section = link.dataset.section;
+                    if (section) showSection(section);
+                });
+            });
+
+            // NOW show dashboard
+            showSection('dashboard');
+            
+            console.log('✓ Teacher portal ready (v7.1.0) - Current term:', settings.term);
+            
+        } catch (error) {
+            console.error('Failed to initialize teacher portal:', error);
+            handleError(error, 'Failed to load portal');
+            
+            // Show error message to user
+            document.body.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:center; height:100vh; flex-direction:column; padding:20px; text-align:center;">
+                    <h2 style="color: var(--color-danger);">Failed to Load Portal</h2>
+                    <p>${error.message || 'An unexpected error occurred'}</p>
+                    <p style="color: var(--color-gray-600); margin-top: 10px;">
+                        Error details: ${error.code || 'Unknown error'}
+                    </p>
+                    <button onclick="window.location.reload()" class="btn" style="margin-top: 20px;">Retry</button>
+                    <a href="index.html" style="margin-top:20px;">Go to Home</a>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Authentication failed:', error);
+        // User will be redirected by checkRole function
+    });
+
+// Logout button
 document.getElementById('teacher-logout')?.addEventListener('click', e => {
     e.preventDefault();
     logout();
@@ -171,7 +226,10 @@ document.getElementById('teacher-logout')?.addEventListener('click', e => {
 ======================================== */
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     const tbody = document.querySelector(`#${tbodyId} tbody`);
-    if (!tbody) return;
+    if (!tbody) {
+        console.error(`Tbody not found for table: ${tbodyId}`);
+        return;
+    }
 
     let currentPage = 1;
     const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -243,7 +301,7 @@ async function loadAssignedClasses() {
             return;
         }
 
-        // FIX: Handle 10+ classes by batching queries
+        // Handle 10+ classes by batching queries
         const classNames = assignedClasses.map(c => c.name);
         allPupils = [];
 
@@ -263,6 +321,8 @@ async function loadAssignedClasses() {
         }
 
         allPupils.sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log(`✓ Loaded ${assignedClasses.length} classes with ${allPupils.length} pupils`);
 
     } catch (err) {
         console.error('Error loading assigned classes:', err);
@@ -279,6 +339,8 @@ async function loadSubjects() {
             ? ['English', 'Mathematics', 'Science', 'Social Studies']
             : snap.docs.map(d => d.data().name);
         allSubjects.sort();
+        
+        console.log(`✓ Loaded ${allSubjects.length} subjects`);
     } catch (err) {
         console.error('Error loading subjects:', err);
         allSubjects = ['English', 'Mathematics', 'Science'];
@@ -299,9 +361,15 @@ const sectionLoaders = {
 };
 
 function showSection(sectionId) {
+    console.log('Showing section:', sectionId);
+    
     document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
     const section = document.getElementById(sectionId);
-    if (section) section.style.display = 'block';
+    if (section) {
+        section.style.display = 'block';
+    } else {
+        console.error('Section not found:', sectionId);
+    }
 
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
         link.classList.toggle('active', link.dataset.section === sectionId);
@@ -323,64 +391,11 @@ function showSection(sectionId) {
 }
 
 /* =========================
-   INITIAL BOOTSTRAP
-========================= */
-
-function initTeacherPortal() {
-    // FIX: Set up event listeners FIRST before any section loads
-    setupAllEventListeners();
-    
-    // Then load current settings and show dashboard
-    getCurrentSettings().then(settings => {
-        // Set default term in all term selects
-        const termSelects = [
-            document.getElementById('result-term'),
-            document.getElementById('attendance-term'),
-            document.getElementById('traits-term'),
-            document.getElementById('remarks-term')
-        ];
-
-        termSelects.forEach(select => {
-            if (select) {
-                select.value = settings.term;
-            }
-        });
-
-        // Now show dashboard
-        showSection('dashboard');
-        console.log('✓ Teacher portal ready (v7.0.0) - Current term:', settings.term);
-
-        // Sidebar navigation
-        document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-            link.addEventListener('click', e => {
-                e.preventDefault();
-                const section = link.dataset.section;
-                if (section) showSection(section);
-            });
-        });
-
-    }).catch(error => {
-        console.error('Failed to load current settings:', error);
-        window.showToast?.('Using default term (First Term)', 'warning');
-
-        // Fallback: proceed with default
-        showSection('dashboard');
-        document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-            link.addEventListener('click', e => {
-                e.preventDefault();
-                const section = link.dataset.section;
-                if (section) showSection(section);
-            });
-        });
-    });
-}
-
-/* =========================
-   FIX: SETUP ALL EVENT LISTENERS
+   SETUP ALL EVENT LISTENERS
 ========================= */
 
 function setupAllEventListeners() {
-    // SAVE BUTTON LISTENERS - THIS WAS MISSING!
+    // SAVE BUTTON LISTENERS
     const saveResultsBtn = document.getElementById('save-results-btn');
     if (saveResultsBtn) {
         saveResultsBtn.addEventListener('click', saveAllResults);
@@ -499,7 +514,7 @@ function loadMyClassesSection() {
 }
 
 /* =========================
-   ENTER RESULTS (NOW LOADS EXISTING DATA)
+   ENTER RESULTS
 ========================= */
 
 async function loadResultsSection() {
@@ -554,25 +569,22 @@ async function loadResultsTable() {
     }
 
     try {
-    // FIX: Load existing results from Firestore using batch query (faster!)
-    const resultsMap = {};
-    
-    // Fetch all results for this term and subject in one query
-    const resultsSnapshot = await db.collection('results')
-        .where('term', '==', term)
-        .where('subject', '==', subject)
-        .get();
-    
-    // Map results by pupilId
-    resultsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.pupilId) {
-            resultsMap[data.pupilId] = {
-                ca: data.caScore || 0,
-                exam: data.examScore || 0
-            };
-        }
-    });
+        const resultsMap = {};
+        
+        const resultsSnapshot = await db.collection('results')
+            .where('term', '==', term)
+            .where('subject', '==', subject)
+            .get();
+        
+        resultsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.pupilId) {
+                resultsMap[data.pupilId] = {
+                    ca: data.caScore || 0,
+                    exam: data.examScore || 0
+                };
+            }
+        });
 
         container.innerHTML = `
             <table class="responsive-table" id="results-table">
@@ -614,7 +626,6 @@ async function loadResultsTable() {
 
         if (saveBtn) saveBtn.hidden = false;
 
-        // Update totals when inputs change
         container.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', () => {
                 const row = input.closest('tr');
@@ -689,7 +700,7 @@ async function saveAllResults() {
 }
 
 /* =========================
-   ATTENDANCE (NOW LOADS EXISTING DATA)
+   ATTENDANCE
 ========================= */
 
 async function loadAttendanceSection() {
@@ -707,7 +718,6 @@ async function loadAttendanceSection() {
     }
 
     try {
-        // FIX: Load existing attendance data
         const attendanceMap = {};
         
         for (const pupil of allPupils) {
@@ -785,22 +795,21 @@ async function saveAllAttendance() {
     }
 
     const batch = db.batch();
+    const pupilData = {};
+    
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const field = input.dataset.field;
+        const value = parseInt(input.value) || 0;
 
-const pupilData = {};
-inputs.forEach(input => {
-    const pupilId = input.dataset.pupil;
-    const field = input.dataset.field;
-    const value = parseInt(input.value) || 0;
+        if (!pupilData[pupilId]) pupilData[pupilId] = {};
+        pupilData[pupilId][field] = value;
+    });
 
-    if (!pupilData[pupilId]) pupilData[pupilId] = {};
-    pupilData[pupilId][field] = value;
-});
-
-// Check if we have any data to save (at least one pupil with data)
-if (Object.keys(pupilData).length === 0) {
-    window.showToast?.('No data to save', 'warning');
-    return;
-}
+    if (Object.keys(pupilData).length === 0) {
+        window.showToast?.('No data to save', 'warning');
+        return;
+    }
 
     for (const [pupilId, data] of Object.entries(pupilData)) {
         const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
@@ -842,7 +851,7 @@ function loadTraitsSection() {
         pupilSelect.appendChild(opt);
     });
 
-    container.hidden = true; // will show when pupil selected
+    container.hidden = true;
 }
 
 async function loadTraitsData() {
@@ -992,4 +1001,4 @@ async function saveRemarks() {
     }
 }
 
-console.log('✓ Teacher portal v7.0.0 loaded - ALL FIXES APPLIED');
+console.log('✓ Teacher portal v7.1.0 loaded - CLEAN VERSION');
