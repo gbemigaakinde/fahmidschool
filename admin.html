@@ -26,6 +26,7 @@
         <a href="#classes" onclick="showSection('classes')">Classes</a>
         <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
         <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
+        <a href="#settings" onclick="showSection('settings')">School Settings</a>
         <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
         <hr class="sidebar-divider">
         <a href="index.html">← Back to Public Site</a>
@@ -313,6 +314,41 @@
                 </div>
             </div>
         </div>
+        
+        <div id="settings" class="admin-card" style="display:none;">
+    <h1>School Settings</h1>
+    <p class="section-description">Set the current academic term and session. This will be reflected across teacher and pupil portals.</p>
+
+    <div class="form-section">
+        <form id="settings-form" class="admin-form">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="current-term">Current Term <span class="required">*</span></label>
+                    <select id="current-term" required>
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term">Third Term</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="current-session">Academic Session <span class="required">*</span></label>
+                    <input type="text" id="current-session" placeholder="e.g., 2025/2026" required>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Save Settings</button>
+                <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">Cancel / Refresh</button>
+            </div>
+        </form>
+
+        <div id="settings-status" style="margin-top: var(--space-lg); padding: var(--space-md); background: var(--color-gray-50); border-radius: var(--radius-md);">
+            <strong>Current Settings:</strong><br>
+            <span id="display-term">Loading...</span><br>
+            <span id="display-session">Loading...</span>
+        </div>
+    </div>
+</div>
     </main>
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
