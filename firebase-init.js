@@ -430,6 +430,37 @@ async function loadAnnouncements() {
     }
 }
 
+/**
+ * Get current academic term and session from Firestore
+ * @returns {Promise<{term: string, session: string}>}
+ */
+async function getCurrentSettings() {
+    try {
+        const settingsDoc = await db.collection('settings').doc('current').get();
+        
+        if (settingsDoc.exists) {
+            const data = settingsDoc.data();
+            return {
+                term: data.term || 'First Term',
+                session: data.session || '2025/2026'
+            };
+        } else {
+            // Default if not set
+            return {
+                term: 'First Term',
+                session: '2025/2026'
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching current settings:', error);
+        // Return defaults on error
+        return {
+            term: 'First Term',
+            session: '2025/2026'
+        };
+    }
+}
+
 // ============================================
 // INITIALIZATION LOG
 // ============================================
