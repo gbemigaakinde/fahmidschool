@@ -361,61 +361,95 @@ window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
 function initTestimonialsCarousel() {
     const carousels = document.querySelectorAll('[data-carousel]');
+    
     carousels.forEach(carousel => {
         const track = carousel.querySelector('.carousel-track');
-        const slides = Array.from(track?.children || []);
-        const prevBtn = carousel.querySelector('.prev');
-        const nextBtn = carousel.querySelector('.next');
-        const dotsWrap = carousel.querySelector('.carousel-dots');
+        const slides = Array.from(track.children);
+        const prevBtn = carousel.querySelector('.carousel-btn.prev');
+        const nextBtn = carousel.querySelector('.carousel-btn.next');
+        const dotsContainer = carousel.querySelector('.carousel-dots');
 
-        if (!track || slides.length === 0 || !prevBtn || !nextBtn || !dotsWrap) return;
+        if (slides.length === 0) return;
 
-        let index = 0;
-        let interval;
+        let currentIndex = 0;
+        let autoplayInterval;
 
-        // Generate dots
-        dotsWrap.innerHTML = '';
+        // Create dots
+        dotsContainer.innerHTML = '';
         slides.forEach((_, i) => {
             const dot = document.createElement('button');
-            dot.className = i === 0 ? 'active' : '';
-            dot.addEventListener('click', () => goTo(i, true));
-            dotsWrap.appendChild(dot);
+            dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(i));
+            dotsContainer.appendChild(dot);
         });
-        const dots = [...dotsWrap.children];
+        const dots = dotsContainer.querySelectorAll('button');
 
-        function goTo(i, reset = false) {
-            index = i;
-            track.style.transform = `translateX(-${i * 100}%)`;
-            dots.forEach(d => d.classList.remove('active'));
-            dots[i].classList.add('active');
-            if (reset) resetAutoPlay();
+        function updateDots() {
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentIndex);
+            });
         }
 
-        function next() {
-            goTo((index + 1) % slides.length);
+        function goToSlide(index) {
+            currentIndex = index;
+            track.style.transform = `translateX(-${currentIndex * 100}%)`;
+            updateDots();
+            resetAutoplay();
         }
 
-        function prev() {
-            goTo((index - 1 + slides.length) % slides.length);
+        function nextSlide() {
+            currentIndex = (currentIndex + 1) % slides.length;
+            goToSlide(currentIndex);
         }
 
-        function startAutoPlay() {
-            interval = setInterval(next, 6000);
+        function prevSlide() {
+            currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+            goToSlide(currentIndex);
         }
 
-        function resetAutoPlay() {
-            clearInterval(interval);
-            startAutoPlay();
+        function startAutoplay() {
+            autoplayInterval = setInterval(nextSlide, 6000);
         }
 
-        nextBtn.addEventListener('click', () => goTo((index + 1) % slides.length, true));
-        prevBtn.addEventListener('click', () => goTo((index - 1 + slides.length) % slides.length, true));
+        function resetAutoplay() {
+            clearInterval(autoplayInterval);
+            startAutoplay();
+        }
 
-        startAutoPlay();
+        function stopAutoplay() {
+            clearInterval(autoplayInterval);
+        }
+
+        // Event listeners
+        nextBtn.addEventListener('click', nextSlide);
+        prevBtn.addEventListener('click', prevSlide);
+
+        // Pause on hover
+        carousel.addEventListener('mouseenter', stopAutoplay);
+        carousel.addEventListener('mouseleave', startAutoplay);
+
+        // Touch/swipe support (optional bonus)
+        let touchStartX = 0;
+        carousel.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+        });
+        carousel.addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        });
+
+        // Start autoplay
+        startAutoplay();
     });
 }
 
-window.addEventListener('DOMContentLoaded', initTestimonialsCarousel);
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initTestimonialsCarousel);
 
 /* =====================================================
    INITIALIZATION
