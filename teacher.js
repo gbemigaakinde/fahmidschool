@@ -145,15 +145,50 @@ function showSection(sectionId) {
 ========================= */
 
 function initTeacherPortal() {
-    showSection('dashboard');
-    console.log('✓ Teacher portal ready (v6.0.0)');
+    // First load current settings, then proceed with portal init
+    getCurrentSettings().then(settings => {
+        // Set default term in all term selects
+        const termSelects = [
+            document.getElementById('result-term'),
+            document.getElementById('attendance-term'),
+            document.getElementById('traits-term'),
+            document.getElementById('remarks-term')
+        ];
 
-    // Only one listener set (duplicate removed)
-    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            const section = link.dataset.section;
-            if (section) showSection(section);
+        termSelects.forEach(select => {
+            if (select) {
+                select.value = settings.term;
+            }
+        });
+
+        // Now show dashboard and setup navigation
+        showSection('dashboard');
+        console.log('✓ Teacher portal ready (v6.1.0) - Current term:', settings.term);
+
+        // Sidebar navigation (unchanged)
+        document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                if (section) showSection(section);
+            });
+        });
+
+        // Trigger initial loads that depend on term
+        loadResultsTable();
+        loadAttendanceSection();
+    }).catch(error => {
+        console.error('Failed to load current settings:', error);
+        window.showToast?.('Using default term (First Term)', 'warning');
+
+        // Fallback: proceed with default
+        showSection('dashboard');
+        document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const section = link.dataset.section;
+                if (section) showSection(section);
+            });
         });
     });
 }
@@ -613,20 +648,54 @@ async function saveRemarks() {
 ========================= */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Results: subject/term change → reload table
-    document.getElementById('result-term')?.addEventListener('change', loadResultsTable);
-    document.getElementById('result-subject')?.addEventListener('change', loadResultsTable);
+    // Results: term or subject change → reload table
+    const resultTerm = document.getElementById('result-term');
+    const resultSubject = document.getElementById('result-subject');
+    
+    if (resultTerm) {
+        resultTerm.addEventListener('change', loadResultsTable);
+    }
+    if (resultSubject) {
+        resultSubject.addEventListener('change', loadResultsTable);
+    }
 
-    // Traits: pupil change → load data
-    document.getElementById('traits-pupil')?.addEventListener('change', loadTraitsData);
-    document.getElementById('traits-term')?.addEventListener('change', loadTraitsData);
+    // Traits & Skills: pupil or term change → reload data
+    const traitsPupil = document.getElementById('traits-pupil');
+    const traitsTerm = document.getElementById('traits-term');
+    
+    if (traitsPupil) {
+        traitsPupil.addEventListener('change', loadTraitsData);
+    }
+    if (traitsTerm) {
+        traitsTerm.addEventListener('change', () => {
+            // Only reload if a pupil is already selected
+            if (traitsPupil?.value) {
+                loadTraitsData();
+            }
+        });
+    }
 
-    // Remarks: pupil/term change → load data
-    document.getElementById('remarks-pupil')?.addEventListener('change', loadRemarksData);
-    document.getElementById('remarks-term')?.addEventListener('change', loadRemarksData);
+    // Remarks: pupil or term change → reload data
+    const remarksPupil = document.getElementById('remarks-pupil');
+    const remarksTerm = document.getElementById('remarks-term');
+    
+    if (remarksPupil) {
+        remarksPupil.addEventListener('change', loadRemarksData);
+    }
+    if (remarksTerm) {
+        remarksTerm.addEventListener('change', () => {
+            // Only reload if a pupil is already selected
+            if (remarksPupil?.value) {
+                loadRemarksData();
+            }
+        });
+    }
 
-    // Attendance: term change → reload
-    document.getElementById('attendance-term')?.addEventListener('change', loadAttendanceSection);
+    // Attendance: term change → reload section
+    const attendanceTerm = document.getElementById('attendance-term');
+    if (attendanceTerm) {
+        attendanceTerm.addEventListener('change', loadAttendanceSection);
+    }
 
-    console.log('✓ Teacher portal fully loaded');
+    console.log('✓ Teacher portal event listeners fully updated and loaded');
 });
