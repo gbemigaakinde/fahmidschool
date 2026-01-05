@@ -124,8 +124,9 @@ async function loadAcademicResults() {
 
         // Display each subject
         results.forEach(result => {
-            const ca = result.ca || 0;
-            const exam = result.exam || 0;
+            // FIXED: Use correct field names from Firestore
+            const ca = result.caScore || 0;
+            const exam = result.examScore || 0;
             const total = ca + exam;
             const grade = getGrade(total);
             const remark = getSubjectRemark(total);
@@ -178,7 +179,7 @@ async function loadAcademicResults() {
             tbody.appendChild(gradeRow);
         }
 
-        console.log('✓ Academic results loaded');
+        console.log('✓ Academic results loaded successfully');
     } catch (error) {
         console.error('Error loading academic results:', error);
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm; color: #d32f2f;">Error loading results.</td></tr>';
