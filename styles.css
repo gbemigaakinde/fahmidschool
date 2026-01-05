@@ -1874,8 +1874,8 @@ address strong {
    ============================================ */
 
 .testimonials-section {
-    background: linear-gradient(180deg, 
-        var(--color-white) 0%, 
+    background: linear-gradient(180deg,
+        var(--color-white) 0%,
         var(--color-gray-50) 100%
     );
     padding: var(--space-20) 0;
@@ -1884,31 +1884,34 @@ address strong {
 .testimonials-carousel {
     position: relative;
     overflow: hidden;
-    padding: var(--space-12) var(--space-6);
     border-radius: var(--radius-2xl);
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     box-shadow: var(--shadow-lg);
 }
 
+/* Track */
 .carousel-track {
     display: flex;
     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     align-items: stretch;
+    width: 100%;
 }
 
-/* FIXED: Perfect centering for testimonials */
+/* Testimonial slide */
 .testimonial {
     min-width: 100%;
+    box-sizing: border-box;
     text-align: center;
-    padding: var(--space-8) var(--space-6);
+    padding: var(--space-12) var(--space-6);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
+/* Quote */
 .testimonial .quote {
     font-size: clamp(1.25rem, 3vw, 1.75rem);
     font-style: italic;
@@ -1919,6 +1922,7 @@ address strong {
     text-align: center;
 }
 
+/* Author */
 .testimonial .author {
     font-weight: var(--weight-semibold);
     color: var(--color-primary);
@@ -1926,6 +1930,7 @@ address strong {
     margin-bottom: var(--space-2);
 }
 
+/* Meta */
 .testimonial .meta {
     color: var(--color-gray-600);
     font-size: var(--text-sm);
@@ -1948,7 +1953,7 @@ address strong {
     align-items: center;
     justify-content: center;
     box-shadow: var(--shadow-md);
-    transition: all 0.3s ease;
+    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
     z-index: 10;
 }
 
@@ -1982,7 +1987,7 @@ address strong {
     border: none;
     background: var(--color-gray-300);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease, background 0.3s ease;
     padding: 0;
 }
 
