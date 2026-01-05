@@ -554,22 +554,25 @@ async function loadResultsTable() {
     }
 
     try {
-        // FIX: Load existing results from Firestore
-        const resultsMap = {};
-        
-        // Fetch all existing results for these pupils, term, and subject
-        for (const pupil of allPupils) {
-            const docId = `${pupil.id}_${term}_${subject}`;
-            const resultDoc = await db.collection('results').doc(docId).get();
-            
-            if (resultDoc.exists) {
-                const data = resultDoc.data();
-                resultsMap[pupil.id] = {
-                    ca: data.caScore || 0,
-                    exam: data.examScore || 0
-                };
-            }
+    // FIX: Load existing results from Firestore using batch query (faster!)
+    const resultsMap = {};
+    
+    // Fetch all results for this term and subject in one query
+    const resultsSnapshot = await db.collection('results')
+        .where('term', '==', term)
+        .where('subject', '==', subject)
+        .get();
+    
+    // Map results by pupilId
+    resultsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.pupilId) {
+            resultsMap[data.pupilId] = {
+                ca: data.caScore || 0,
+                exam: data.examScore || 0
+            };
         }
+    });
 
         container.innerHTML = `
             <table class="responsive-table" id="results-table">
@@ -782,23 +785,22 @@ async function saveAllAttendance() {
     }
 
     const batch = db.batch();
-    let hasChanges = false;
 
-    const pupilData = {};
-    inputs.forEach(input => {
-        const pupilId = input.dataset.pupil;
-        const field = input.dataset.field;
-        const value = parseInt(input.value) || 0;
-        if (value > 0) hasChanges = true;
+const pupilData = {};
+inputs.forEach(input => {
+    const pupilId = input.dataset.pupil;
+    const field = input.dataset.field;
+    const value = parseInt(input.value) || 0;
 
-        if (!pupilData[pupilId]) pupilData[pupilId] = {};
-        pupilData[pupilId][field] = value;
-    });
+    if (!pupilData[pupilId]) pupilData[pupilId] = {};
+    pupilData[pupilId][field] = value;
+});
 
-    if (!hasChanges) {
-        window.showToast?.('No changes to save', 'info');
-        return;
-    }
+// Check if we have any data to save (at least one pupil with data)
+if (Object.keys(pupilData).length === 0) {
+    window.showToast?.('No data to save', 'warning');
+    return;
+}
 
     for (const [pupilId, data] of Object.entries(pupilData)) {
         const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
