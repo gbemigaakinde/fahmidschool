@@ -854,8 +854,10 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     }
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
+if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
+}
 
     try {
         await db.collection('settings').doc('current').set({
@@ -869,11 +871,12 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     } catch (error) {
         console.error('Error saving settings:', error);
         handleError(error, 'Failed to save settings');
-    } finally {
-        submitBtn.disabled = false;
-submitBtn.innerHTML = 'Save Settings';
+    } if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Save Settings';
 }
 });
+
 /* ========================================
 DELETE FUNCTIONS - RENAMED TO deleteItem
 ======================================== */
