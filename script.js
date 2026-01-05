@@ -363,6 +363,7 @@ function initTestimonialsCarousel() {
     const carousels = document.querySelectorAll('[data-carousel]');
     
     carousels.forEach(carousel => {
+        const wrapper = carousel.querySelector('.carousel-wrapper');
         const track = carousel.querySelector('.carousel-track');
         const slides = Array.from(track.children);
         const prevBtn = carousel.querySelector('.carousel-btn.prev');
@@ -429,7 +430,7 @@ function initTestimonialsCarousel() {
         carousel.addEventListener('mouseenter', stopAutoplay);
         carousel.addEventListener('mouseleave', startAutoplay);
 
-        // Touch/swipe support (optional bonus)
+        // Touch/swipe support
         let touchStartX = 0;
         carousel.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
