@@ -375,24 +375,20 @@ window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 ===================================================== */
 
 function initTestimonialsCarousel() {
-    document.querySelectorAll('[data-carousel]').forEach(carousel => {
+    const carousels = document.querySelectorAll('[data-carousel]');
+    carousels.forEach(carousel => {
         const track = carousel.querySelector('.carousel-track');
         const slides = Array.from(track?.children || []);
         const prevBtn = carousel.querySelector('.prev');
         const nextBtn = carousel.querySelector('.next');
         const dotsWrap = carousel.querySelector('.carousel-dots');
 
-        if (!track || !slides.length || !prevBtn || !nextBtn || !dotsWrap) return;
+        if (!track || slides.length === 0 || !prevBtn || !nextBtn || !dotsWrap) return;
 
         let index = 0;
         let interval;
 
-        // Lock layout geometry
-        track.style.width = `${slides.length * 100}%`;
-        slides.forEach(slide => {
-            slide.style.width = '100%';
-        });
-
+        // Generate dots
         dotsWrap.innerHTML = '';
         slides.forEach((_, i) => {
             const dot = document.createElement('button');
@@ -400,8 +396,7 @@ function initTestimonialsCarousel() {
             dot.addEventListener('click', () => goTo(i, true));
             dotsWrap.appendChild(dot);
         });
-
-        const dots = Array.from(dotsWrap.children);
+        const dots = [...dotsWrap.children];
 
         function goTo(i, reset = false) {
             index = i;
@@ -420,25 +415,22 @@ function initTestimonialsCarousel() {
         }
 
         function startAutoPlay() {
-            clearInterval(interval);
             interval = setInterval(next, 6000);
         }
 
         function resetAutoPlay() {
+            clearInterval(interval);
             startAutoPlay();
         }
 
-        nextBtn.addEventListener('click', () =>
-            goTo((index + 1) % slides.length, true)
-        );
-
-        prevBtn.addEventListener('click', () =>
-            goTo((index - 1 + slides.length) % slides.length, true)
-        );
+        nextBtn.addEventListener('click', () => goTo((index + 1) % slides.length, true));
+        prevBtn.addEventListener('click', () => goTo((index - 1 + slides.length) % slides.length, true));
 
         startAutoPlay();
     });
 }
+
+window.addEventListener('DOMContentLoaded', initTestimonialsCarousel);
 
 /* =====================================================
    INITIALIZATION
