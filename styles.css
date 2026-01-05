@@ -2348,3 +2348,40 @@ address strong {
         flex: 0 0 50%;
     }
 }
+
+/* ========================================
+   PAGINATION STYLES
+   ======================================== */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: var(--space-xl) 0;
+    gap: var(--space-md);
+}
+
+.pagination button {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: var(--weight-medium);
+    transition: background var(--duration-fast);
+}
+
+.pagination button:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+.pagination button:disabled {
+    background: var(--color-gray-400);
+    cursor: not-allowed;
+}
+
+.pagination .page-info {
+    font-size: var(--text-sm);
+    color: var(--color-gray-700);
+}
