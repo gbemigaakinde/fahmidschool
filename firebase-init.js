@@ -141,15 +141,14 @@ function checkRole(requiredRole) {
                 reject(new Error('No user logged in'));
                 return;
             }
-
             try {
                 const role = await getUserRole(user.uid);
                 
                 if (role === requiredRole) {
-                    console.log(`✓ Access granted: ${requiredRole}`);
+                    console.log(`✓ Access granted: ${requiredRole}`);  // ✅ FIXED
                     resolve(user);
                 } else {
-                    console.warn(`✕ Access denied: Required ${requiredRole}, has ${role}`);
+                    console.warn(`✕ Access denied: Required ${requiredRole}, has ${role}`);  // ✅ FIXED
                     if (window.showToast) {
                         window.showToast('Access denied. You don\'t have permission to view this page.', 'danger');
                     } else {
