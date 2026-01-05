@@ -1995,28 +1995,20 @@ address strong {
     border-radius: var(--radius-xl);
 }
 
-/* Track */
 .gallery-track {
     display: flex;
-    width: max-content;
     will-change: transform;
 }
 
-/* Pause scroll on hover */
-.gallery-carousel:hover .gallery-track {
-    animation-play-state: paused;
-}
-
-/* Images */
 .gallery-track img {
-    height: 350px;            /* taller images for visibility */
-    flex: 0 0 auto;           /* preserve natural width scaling */
-    object-fit: cover;         /* crop slightly to fill container */
-    border-right: 2px solid white;
+    height: 350px; /* slightly bigger for better visibility */
+    width: auto;
+    flex-shrink: 0;
+    object-fit: cover;
+    margin-right: 8px; /* spacing between images */
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
-/* Hover effect */
 .gallery-track img:hover {
     filter: brightness(1.1);
     transform: scale(1.05);
