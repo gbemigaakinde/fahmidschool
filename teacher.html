@@ -76,21 +76,21 @@
             <p class="section-description">List of all pupils in your assigned classes</p>
 
             <div class="table-container">
-                <table class="responsive-table">
-                    <thead>
-                        <tr>
-                            <th>Pupil Name</th>
-                            <th>Gender</th>
-                            <th>Admission No</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pupils-in-class-table">
-                        <tr>
-                            <td colspan="3" class="table-loading">Loading pupils...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+    <table class="responsive-table" id="pupils-in-class-table">  <!-- Move ID here -->
+        <thead>
+            <tr>
+                <th>Pupil Name</th>
+                <th>Gender</th>
+                <th>Admission No</th>
+            </tr>
+        </thead>
+        <tbody>  
+            <tr>
+                <td colspan="3" class="table-loading">Loading pupils...</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
         </section>
 
         <!-- Enter Results -->
