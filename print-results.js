@@ -41,10 +41,26 @@ async function loadPupilData(user) {
         document.getElementById('student-class').textContent = pupilData.class || 'N/A';
         document.getElementById('admission-no').textContent = pupilData.admissionNo || '-';
         document.getElementById('student-gender').textContent = pupilData.gender || '-';
-        
-        // Set current term (you can make this dynamic later)
+
+        // Fetch current settings for default term and session
+        const settings = await getCurrentSettings();
+        currentTerm = settings.term; // Set global currentTerm
+        const currentSession = settings.session;
+
+        // Set term selector to current term
+        const termSelect = document.getElementById('print-term');
+        if (termSelect) {
+            termSelect.value = currentTerm;
+            // Reload data when term changed
+            termSelect.addEventListener('change', (e) => {
+                currentTerm = e.target.value;
+                loadReportData();
+            });
+        }
+
+        // Update report title with term and session
+        document.getElementById('report-title').textContent = `${currentTerm} Report Card - ${currentSession} Session`;
         document.getElementById('current-term').textContent = currentTerm;
-        document.getElementById('report-title').textContent = `${currentTerm} Report Card - 2025/2026 Session`;
 
         // Load all report data
         await loadReportData();
