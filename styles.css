@@ -1999,20 +1999,19 @@ address strong {
 .gallery-track {
     display: flex;
     width: max-content;
-    animation: galleryScroll 40s linear infinite;
     will-change: transform;
 }
 
+/* Pause scroll on hover */
 .gallery-carousel:hover .gallery-track {
     animation-play-state: paused;
 }
 
 /* Images */
 .gallery-track img {
-    height: 280px;
-    width: 280px;
-    object-fit: cover;
-    flex-shrink: 0;
+    height: 350px;            /* taller images for visibility */
+    flex: 0 0 auto;           /* preserve natural width scaling */
+    object-fit: cover;         /* crop slightly to fill container */
     border-right: 2px solid white;
     transition: filter 0.3s ease, transform 0.3s ease;
 }
@@ -2022,16 +2021,6 @@ address strong {
     filter: brightness(1.1);
     transform: scale(1.05);
     z-index: 1;
-}
-
-/* Seamless infinite scroll */
-@keyframes galleryScroll {
-    from {
-        transform: translateX(0);
-    }
-    to {
-        transform: translateX(-50%);
-    }
 }
 
 /* ============================================
