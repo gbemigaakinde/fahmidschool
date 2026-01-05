@@ -2005,8 +2005,8 @@ address strong {
    ============================================ */
 
 .gallery-teaser {
-    background: linear-gradient(180deg, 
-        var(--color-gray-50) 0%, 
+    background: linear-gradient(180deg,
+        var(--color-gray-50) 0%,
         var(--color-white) 100%
     );
     padding: var(--space-20) 0;
@@ -2019,37 +2019,43 @@ address strong {
     border-radius: var(--radius-xl);
 }
 
-/* FIXED: Exact width calculation for seamless loop */
+/* Track */
 .gallery-track {
     display: flex;
-    width: 200%;
+    width: max-content;
     animation: galleryScroll 40s linear infinite;
     will-change: transform;
 }
 
-.gallery-track:hover {
+.gallery-carousel:hover .gallery-track {
     animation-play-state: paused;
 }
 
+/* Images */
 .gallery-track img {
     height: 280px;
-    width: auto;
+    width: 280px;
     object-fit: cover;
-    flex: 0 0 16.666%;
+    flex-shrink: 0;
     border-right: 2px solid white;
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
+/* Hover effect */
 .gallery-track img:hover {
     filter: brightness(1.1);
     transform: scale(1.05);
     z-index: 1;
 }
 
-/* FIXED: Seamless infinite scroll animation */
+/* Seamless infinite scroll */
 @keyframes galleryScroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
 }
 
 /* ============================================
