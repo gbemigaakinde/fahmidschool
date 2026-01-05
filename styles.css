@@ -1864,6 +1864,12 @@ address strong {
     box-shadow: var(--shadow-lg);
 }
 
+.carousel-wrapper {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
 .carousel-track {
     display: flex;
     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1872,7 +1878,9 @@ address strong {
 
 .testimonial {
     min-width: 100%;
+    max-width: 100%;
     flex-shrink: 0;
+    flex-grow: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1882,7 +1890,7 @@ address strong {
 .testimonial-content {
     max-width: 800px;
     width: 100%;
-    text-align: center; /* Perfect centering */
+    text-align: center;
     padding: 0 var(--space-6);
 }
 
@@ -1986,11 +1994,20 @@ address strong {
         font-size: var(--text-xl);
     }
 
-    .carousel-btn.prev { left: var(--space-3); }
-    .carousel-btn.next { right: var(--space-3); }
+    .carousel-btn.prev { 
+        left: var(--space-3); 
+    }
+    
+    .carousel-btn.next { 
+        right: var(--space-3); 
+    }
 
     .testimonial .quote {
         font-size: 1.125rem;
+    }
+
+    .testimonial-content {
+        padding: 0 var(--space-4);
     }
 }
 
