@@ -1,20 +1,15 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - FULLY UPDATED WITH ASSIGNMENT FILTERING
+ * Teacher Portal JavaScript - FULLY FIXED AND FUNCTIONAL
  * 
  * Key Features:
- * - Teachers only see data for classes assigned to them (via teacherId in classes collection)
- * - No more class selectors in any section
- * - Auto-loads pupils from assigned classes
- * - Enter Results fully implemented with CA/Exam scores
- * - Attendance loads existing data
- * - Remarks saves both Teacher and Headteacher remarks
- * - Dashboard shows only teacher's classes/pupils
- * - Caching for performance
- * - Duplicate listeners removed
- * - ALL MISSING FUNCTIONS ADDED
+ * - Teachers only see data for classes assigned to them
+ * - Loads existing data for editing
+ * - All save buttons properly connected
+ * - Fixed initialization sequence
+ * - Handles 10+ classes limitation
  * 
- * @version 6.0.1 - FIXED
+ * @version 7.0.0 - COMPLETE FIX
  * @date 2026-01-05
  */
 
@@ -244,22 +239,30 @@ async function loadAssignedClasses() {
 
         if (assignedClasses.length === 0) {
             window.showToast?.('No classes assigned yet. Contact admin.', 'warning', 8000);
+            allPupils = [];
+            return;
         }
 
-        // Load all pupils in assigned classes
-        if (assignedClasses.length > 0) {
-            const classNames = assignedClasses.map(c => c.name);
+        // FIX: Handle 10+ classes by batching queries
+        const classNames = assignedClasses.map(c => c.name);
+        allPupils = [];
+
+        // Query in batches of 10 (Firestore 'in' limitation)
+        for (let i = 0; i < classNames.length; i += 10) {
+            const batch = classNames.slice(i, i + 10);
             const pupilsSnap = await db.collection('pupils')
-                .where('class', 'in', classNames)
+                .where('class', 'in', batch)
                 .get();
 
-            allPupils = pupilsSnap.docs.map(doc => ({
+            const batchPupils = pupilsSnap.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            })).sort((a, b) => a.name.localeCompare(b.name));
-        } else {
-            allPupils = [];
+            }));
+
+            allPupils = allPupils.concat(batchPupils);
         }
+
+        allPupils.sort((a, b) => a.name.localeCompare(b.name));
 
     } catch (err) {
         console.error('Error loading assigned classes:', err);
@@ -324,7 +327,10 @@ function showSection(sectionId) {
 ========================= */
 
 function initTeacherPortal() {
-    // First load current settings, then proceed with portal init
+    // FIX: Set up event listeners FIRST before any section loads
+    setupAllEventListeners();
+    
+    // Then load current settings and show dashboard
     getCurrentSettings().then(settings => {
         // Set default term in all term selects
         const termSelects = [
@@ -340,9 +346,9 @@ function initTeacherPortal() {
             }
         });
 
-        // Now show dashboard and setup navigation
+        // Now show dashboard
         showSection('dashboard');
-        console.log('✓ Teacher portal ready (v6.0.1) - Current term:', settings.term);
+        console.log('✓ Teacher portal ready (v7.0.0) - Current term:', settings.term);
 
         // Sidebar navigation
         document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
@@ -353,9 +359,6 @@ function initTeacherPortal() {
             });
         });
 
-        // Trigger initial loads that depend on term
-        loadResultsTable();
-        loadAttendanceSection();
     }).catch(error => {
         console.error('Failed to load current settings:', error);
         window.showToast?.('Using default term (First Term)', 'warning');
@@ -370,6 +373,82 @@ function initTeacherPortal() {
             });
         });
     });
+}
+
+/* =========================
+   FIX: SETUP ALL EVENT LISTENERS
+========================= */
+
+function setupAllEventListeners() {
+    // SAVE BUTTON LISTENERS - THIS WAS MISSING!
+    const saveResultsBtn = document.getElementById('save-results-btn');
+    if (saveResultsBtn) {
+        saveResultsBtn.addEventListener('click', saveAllResults);
+    }
+
+    const saveAttendanceBtn = document.getElementById('save-attendance-btn');
+    if (saveAttendanceBtn) {
+        saveAttendanceBtn.addEventListener('click', saveAllAttendance);
+    }
+
+    const saveTraitsBtn = document.getElementById('save-traits-btn');
+    if (saveTraitsBtn) {
+        saveTraitsBtn.addEventListener('click', saveTraitsAndSkills);
+    }
+
+    const saveRemarksBtn = document.getElementById('save-remarks-btn');
+    if (saveRemarksBtn) {
+        saveRemarksBtn.addEventListener('click', saveRemarks);
+    }
+
+    // Results: term or subject change → reload table
+    const resultTerm = document.getElementById('result-term');
+    const resultSubject = document.getElementById('result-subject');
+    
+    if (resultTerm) {
+        resultTerm.addEventListener('change', loadResultsTable);
+    }
+    if (resultSubject) {
+        resultSubject.addEventListener('change', loadResultsTable);
+    }
+
+    // Traits & Skills: pupil or term change → reload data
+    const traitsPupil = document.getElementById('traits-pupil');
+    const traitsTerm = document.getElementById('traits-term');
+    
+    if (traitsPupil) {
+        traitsPupil.addEventListener('change', loadTraitsData);
+    }
+    if (traitsTerm) {
+        traitsTerm.addEventListener('change', () => {
+            if (traitsPupil?.value) {
+                loadTraitsData();
+            }
+        });
+    }
+
+    // Remarks: pupil or term change → reload data
+    const remarksPupil = document.getElementById('remarks-pupil');
+    const remarksTerm = document.getElementById('remarks-term');
+    
+    if (remarksPupil) {
+        remarksPupil.addEventListener('change', loadRemarksData);
+    }
+    if (remarksTerm) {
+        remarksTerm.addEventListener('change', () => {
+            if (remarksPupil?.value) {
+                loadRemarksData();
+            }
+        });
+    }
+
+    // Attendance: term change → reload section
+    const attendanceTerm = document.getElementById('attendance-term');
+    if (attendanceTerm) {
+        attendanceTerm.addEventListener('change', loadAttendanceSection);
+    }
+
+    console.log('✓ All event listeners connected');
 }
 
 /* =========================
@@ -420,7 +499,7 @@ function loadMyClassesSection() {
 }
 
 /* =========================
-   ENTER RESULTS (FULLY IMPLEMENTED)
+   ENTER RESULTS (NOW LOADS EXISTING DATA)
 ========================= */
 
 async function loadResultsSection() {
@@ -475,6 +554,23 @@ async function loadResultsTable() {
     }
 
     try {
+        // FIX: Load existing results from Firestore
+        const resultsMap = {};
+        
+        // Fetch all existing results for these pupils, term, and subject
+        for (const pupil of allPupils) {
+            const docId = `${pupil.id}_${term}_${subject}`;
+            const resultDoc = await db.collection('results').doc(docId).get();
+            
+            if (resultDoc.exists) {
+                const data = resultDoc.data();
+                resultsMap[pupil.id] = {
+                    ca: data.caScore || 0,
+                    exam: data.examScore || 0
+                };
+            }
+        }
+
         container.innerHTML = `
             <table class="responsive-table" id="results-table">
                 <thead>
@@ -490,26 +586,32 @@ async function loadResultsTable() {
         `;
 
         paginateTable(allPupils, 'results-table', 20, (pupil, tbody) => {
+            const existing = resultsMap[pupil.id] || { ca: 0, exam: 0 };
+            const total = existing.ca + existing.exam;
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${pupil.name}</td>
                 <td>
                     <input type="number" min="0" max="40"
+                        value="${existing.ca || ''}"
                         data-pupil="${pupil.id}" data-field="ca"
                         style="width:90px;">
                 </td>
                 <td>
                     <input type="number" min="0" max="60"
+                        value="${existing.exam || ''}"
                         data-pupil="${pupil.id}" data-field="exam"
                         style="width:90px;">
                 </td>
-                <td>-</td>
+                <td>${total > 0 ? total : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
 
         if (saveBtn) saveBtn.hidden = false;
 
+        // Update totals when inputs change
         container.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', () => {
                 const row = input.closest('tr');
@@ -602,6 +704,23 @@ async function loadAttendanceSection() {
     }
 
     try {
+        // FIX: Load existing attendance data
+        const attendanceMap = {};
+        
+        for (const pupil of allPupils) {
+            const docId = `${pupil.id}_${term}`;
+            const attendDoc = await db.collection('attendance').doc(docId).get();
+            
+            if (attendDoc.exists) {
+                const data = attendDoc.data();
+                attendanceMap[pupil.id] = {
+                    timesOpened: data.timesOpened || 0,
+                    timesPresent: data.timesPresent || 0,
+                    timesAbsent: data.timesAbsent || 0
+                };
+            }
+        }
+
         container.innerHTML = `
             <table class="responsive-table" id="attendance-table">
                 <thead>
@@ -617,21 +736,26 @@ async function loadAttendanceSection() {
         `;
 
         paginateTable(allPupils, 'attendance-table', 25, (pupil, tbody) => {
+            const existing = attendanceMap[pupil.id] || { timesOpened: 0, timesPresent: 0, timesAbsent: 0 };
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${pupil.name}</td>
                 <td>
                     <input type="number" min="0"
+                        value="${existing.timesOpened || ''}"
                         data-pupil="${pupil.id}" data-field="timesOpened"
                         style="width:80px;">
                 </td>
                 <td>
                     <input type="number" min="0"
+                        value="${existing.timesPresent || ''}"
                         data-pupil="${pupil.id}" data-field="timesPresent"
                         style="width:80px;">
                 </td>
                 <td>
                     <input type="number" min="0"
+                        value="${existing.timesAbsent || ''}"
                         data-pupil="${pupil.id}" data-field="timesAbsent"
                         style="width:80px;">
                 </td>
@@ -785,7 +909,7 @@ async function saveTraitsAndSkills() {
 }
 
 /* =========================
-   REMARKS (NOW SAVES HEADTEACHER TOO)
+   REMARKS
 ========================= */
 
 function loadRemarksSection() {
@@ -866,58 +990,4 @@ async function saveRemarks() {
     }
 }
 
-/* =========================
-   EVENT LISTENERS FOR DYNAMIC SECTIONS
-========================= */
-document.addEventListener('DOMContentLoaded', () => {
-    // Results: term or subject change → reload table
-    const resultTerm = document.getElementById('result-term');
-    const resultSubject = document.getElementById('result-subject');
-    
-    if (resultTerm) {
-        resultTerm.addEventListener('change', loadResultsTable);
-    }
-    if (resultSubject) {
-        resultSubject.addEventListener('change', loadResultsTable);
-    }
-
-    // Traits & Skills: pupil or term change → reload data
-    const traitsPupil = document.getElementById('traits-pupil');
-    const traitsTerm = document.getElementById('traits-term');
-    
-    if (traitsPupil) {
-        traitsPupil.addEventListener('change', loadTraitsData);
-    }
-    if (traitsTerm) {
-        traitsTerm.addEventListener('change', () => {
-            // Only reload if a pupil is already selected
-            if (traitsPupil?.value) {
-                loadTraitsData();
-            }
-        });
-    }
-
-    // Remarks: pupil or term change → reload data
-    const remarksPupil = document.getElementById('remarks-pupil');
-    const remarksTerm = document.getElementById('remarks-term');
-    
-    if (remarksPupil) {
-        remarksPupil.addEventListener('change', loadRemarksData);
-    }
-    if (remarksTerm) {
-        remarksTerm.addEventListener('change', () => {
-            // Only reload if a pupil is already selected
-            if (remarksPupil?.value) {
-                loadRemarksData();
-            }
-        });
-    }
-
-    // Attendance: term change → reload section
-    const attendanceTerm = document.getElementById('attendance-term');
-    if (attendanceTerm) {
-        attendanceTerm.addEventListener('change', loadAttendanceSection);
-    }
-
-    console.log('✓ Teacher portal event listeners fully updated and loaded');
-});
+console.log('✓ Teacher portal v7.0.0 loaded - ALL FIXES APPLIED');
