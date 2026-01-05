@@ -12,120 +12,132 @@
     
     <style>
         /* Report Card Specific Styles - Optimized for Single-Page Print */
-        body {
+                body {
             background: #f5f5f5;
             font-family: 'Open Sans', Arial, sans-serif;
-            font-size: 9pt; /* Reduced base font for compactness */
-            line-height: 1.3; /* Tighter line height */
+            font-size: 8.5pt;           /* Slightly smaller for better space use */
+            line-height: 1.25;          /* Tighter lines */
+            color: #000;
         }
 
         .report-card-container {
             max-width: 210mm;
-            margin: 10mm auto;
+            margin: 8mm auto;           /* Reduced margin */
             padding: 0;
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         .report-page {
-            padding: 8mm; /* Reduced padding */
+            padding: 6mm;               /* Reduced from 8mm */
             background: white;
         }
 
-        /* Header Section - Compact */
+        /* Header - Now with real logo and school info */
         .report-header {
             text-align: center;
-            border: 2px solid var(--color-gray-900);
-            padding: 4mm 3mm; /* Reduced padding */
-            margin-bottom: 3mm; /* Less margin */
-            background: linear-gradient(to bottom, var(--color-gray-50) 0%, var(--color-white) 100%);
+            border: 2px solid #000;
+            padding: 3mm 3mm 4mm;        /* Reduced top padding */
+            margin-bottom: 3mm;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
         }
 
         .school-logo {
-            width: 50px; /* Smaller logo */
-            height: 50px;
-            margin: 0 auto 2mm; /* Less margin */
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+            width: 70px;                /* Larger for real image */
+            height: 70px;
+            margin: 0 auto 3mm;
             border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid var(--color-primary-dark, #1976d2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20pt; /* Smaller font */
-            color: white;
-            font-weight: bold;
+        }
+
+        .school-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
         }
 
         .report-header h1 {
-            font-size: 14pt; /* Smaller */
-            color: var(--color-primary-dark);
-            margin-bottom: 1mm; /* Tight */
+            font-size: 14pt;
+            color: var(--color-primary-dark, #1976d2);
+            margin: 0 0 1mm;
             font-weight: bold;
         }
 
         .report-header .subtitle {
-            font-size: 8pt; /* Smaller */
+            font-size: 8pt;
             color: var(--color-gray-600);
-            margin-bottom: 1mm;
+            margin: 0 0 1mm;
+        }
+
+        /* NEW: School Address & Contact */
+        .school-info {
+            font-size: 8pt;
+            color: var(--color-gray-700);
+            margin: 2mm 0 3mm;
+            line-height: 1.3;
         }
 
         .report-header .report-title {
-            font-size: 10pt; /* Smaller */
+            font-size: 10pt;
             font-weight: bold;
-            color: var(--color-gray-900);
-            margin-top: 1mm;
+            color: #000;
+            margin: 0;
             text-transform: uppercase;
         }
 
-        /* Bio Data - More Compact Grid */
+        /* Bio Data */
         .bio-section {
-            border: 1px solid var(--color-gray-900);
+            border: 1px solid #000;
             margin-bottom: 3mm;
         }
 
         .bio-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            font-size: 8pt; /* Smaller font */
+            font-size: 8pt;
         }
 
         .bio-item {
-            padding: 1mm 2mm; /* Reduced padding */
+            padding: 1mm 2mm;
             border-bottom: 1px solid var(--color-gray-400);
             border-right: 1px solid var(--color-gray-400);
             display: flex;
         }
 
-        .bio-item:nth-child(2n) {
-            border-right: none;
-        }
-
-        .bio-item:nth-last-child(-n+2) {
-            border-bottom: none;
-        }
+        .bio-item:nth-child(2n) { border-right: none; }
+        .bio-item:nth-last-child(-n+2) { border-bottom: none; }
 
         .bio-label {
             font-weight: bold;
-            min-width: 80px; /* Reduced width */
+            min-width: 80px;
             color: var(--color-gray-700);
         }
 
         .bio-value {
-            color: var(--color-gray-900);
             flex: 1;
+            color: #000;
         }
 
-        /* Attendance - Compact */
+        /* Attendance - Much Tighter */
         .attendance-section {
-            border: 1px solid var(--color-gray-900);
+            border: 1px solid #000;
             margin-bottom: 3mm;
         }
 
         .section-title {
-            background: var(--color-primary);
-            color: var(--color-white);
-            padding: 1mm 2mm; /* Reduced */
+            background: var(--color-primary, #2196F3);
+            color: white;
+            padding: 0.8mm 2mm;         /* Reduced significantly */
             font-weight: bold;
-            font-size: 9pt; /* Smaller */
+            font-size: 9pt;
+            margin: 0;
         }
 
         .attendance-grid {
@@ -135,57 +147,63 @@
         }
 
         .attendance-item {
-            padding: 1mm; /* Reduced */
+            padding: 0.8mm;             /* Reduced */
             border-right: 1px solid var(--color-gray-400);
             text-align: center;
         }
 
-        .attendance-item:last-child {
-            border-right: none;
-        }
+        .attendance-item:last-child { border-right: none; }
 
         .attendance-label {
-            font-size: 7pt; /* Smaller */
+            font-size: 7pt;
             color: var(--color-gray-600);
-            margin-bottom: 0.5mm; /* Tight */
+            margin-bottom: 0.3mm;
         }
 
         .attendance-value {
             font-weight: bold;
-            font-size: 10pt; /* Adjusted */
-            color: var(--color-primary);
+            font-size: 10pt;
+            color: var(--color-primary, #2196F3);
         }
 
-        /* Academic Table - Compact */
+        /* Academic Table - Safe from Overflow */
         .academic-section {
-            border: 1px solid var(--color-gray-900);
+            border: 1px solid #000;
             margin-bottom: 3mm;
         }
 
         .academic-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8pt; /* Smaller base */
+            font-size: 8pt;
+            table-layout: fixed;        /* Critical: Prevents overflow */
         }
 
         .academic-table th {
-            background: var(--color-primary);
-            color: var(--color-white);
-            padding: 1mm; /* Reduced */
+            background: var(--color-primary, #2196F3);
+            color: white;
+            padding: 0.8mm;
             text-align: center;
             font-weight: bold;
-            border: 1px solid var(--color-gray-900);
-            font-size: 7pt; /* Smaller headers */
+            border: 1px solid #000;
+            font-size: 7pt;
+            word-wrap: break-word;
         }
 
         .academic-table td {
-            padding: 1mm; /* Reduced */
+            padding: 0.8mm;
             border: 1px solid var(--color-gray-400);
             text-align: center;
+            word-wrap: break-word;
         }
 
         .academic-table td:first-child {
             text-align: left;
+            font-weight: bold;
+        }
+
+        .summary-row {
+            background: #f5f5f5;
             font-weight: bold;
         }
 
@@ -196,66 +214,57 @@
         .grade-D7, .grade-D8 { color: #d32f2f; font-weight: bold; }
         .grade-F9 { color: #c62828; font-weight: bold; }
 
-        .summary-row {
-            background: var(--color-gray-100);
-            font-weight: bold;
-        }
-
-        /* Grading Key - 3 Columns for Compactness */
+        /* Grading Key */
         .grading-key {
             border: 1px solid var(--color-gray-300);
-            padding: 1mm; /* Reduced */
-            font-size: 7pt; /* Smaller */
+            padding: 1mm;
+            font-size: 7pt;
             margin-bottom: 3mm;
-            border-radius: var(--radius-md);
-            background: var(--color-gray-50);
+            border-radius: 6px;
+            background: #f9f9f9;
         }
 
         .grading-key-title {
             font-weight: bold;
-            margin-bottom: 0.5mm; /* Tight */
-            color: var(--color-gray-900);
+            margin-bottom: 0.5mm;
+            color: #000;
         }
 
         .grading-key-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 columns to save space */
-            gap: 0.5mm; /* Tight gap */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5mm;
         }
 
         .grading-key-item {
-            padding: 0.5mm; /* Minimal */
-            font-size: 6pt; /* Even smaller */
+            padding: 0.4mm;
+            font-size: 6.5pt;
         }
 
-        /* Traits & Skills - Compact Grids */
+        /* Traits & Skills - Now 3 Columns (Much More Compact) */
         .traits-section,
         .psychomotor-section {
-            border: 1px solid var(--color-gray-900);
+            border: 1px solid #000;
             margin-bottom: 3mm;
         }
 
         .traits-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            font-size: 8pt; /* Smaller */
+            grid-template-columns: repeat(3, 1fr);  /* 3 columns = ~50% less height */
+            font-size: 7.8pt;                       /* Smaller since less important */
+            gap: 0;
         }
 
         .trait-item {
             display: grid;
             grid-template-columns: 2fr 1fr;
-            padding: 1mm 2mm; /* Reduced */
+            padding: 0.8mm 1.5mm;
             border-bottom: 1px solid var(--color-gray-400);
             border-right: 1px solid var(--color-gray-400);
         }
 
-        .trait-item:nth-child(2n) {
-            border-right: none;
-        }
-
-        .trait-item:nth-last-child(-n+2) {
-            border-bottom: none;
-        }
+        .trait-item:nth-child(3n) { border-right: none; }
+        .trait-item:nth-last-child(-n+3) { border-bottom: none; }
 
         .trait-label {
             font-weight: bold;
@@ -265,42 +274,40 @@
         .trait-value {
             text-align: center;
             font-weight: bold;
-            color: var(--color-primary);
+            color: var(--color-primary, #2196F3);
         }
 
-        /* Remarks - Compact */
+        /* Remarks */
         .remarks-section {
-            border: 1px solid var(--color-gray-900);
+            border: 1px solid #000;
             margin-bottom: 3mm;
         }
 
         .remark-box {
-            padding: 1mm 2mm; /* Reduced */
+            padding: 1mm 2mm;
             border-bottom: 1px solid var(--color-gray-400);
             font-size: 8pt;
         }
 
-        .remark-box:last-child {
-            border-bottom: none;
-        }
+        .remark-box:last-child { border-bottom: none; }
 
         .remark-label {
             font-weight: bold;
-            color: var(--color-gray-900);
+            color: #000;
             margin-bottom: 0.5mm;
             display: block;
         }
 
         .remark-text {
-            min-height: 10mm; /* Reduced height */
+            min-height: 8mm;            /* Reduced */
             color: var(--color-gray-700);
-            line-height: 1.3; /* Tighter */
+            line-height: 1.25;
         }
 
         .signature-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 3mm; /* Reduced gap */
+            gap: 3mm;
             margin-top: 2mm;
         }
 
@@ -309,8 +316,8 @@
         }
 
         .signature-line {
-            border-top: 1px solid var(--color-gray-900);
-            margin-top: 5mm; /* Reduced space for signature */
+            border-top: 1px solid #000;
+            margin-top: 4mm;
             padding-top: 1mm;
             font-size: 7pt;
         }
@@ -319,15 +326,10 @@
             text-align: center;
             margin: 5mm 0;
             padding: 5mm;
-            background: var(--color-gray-50);
+            background: #f0f0f0;
         }
 
-        .print-actions button,
-        .print-actions a {
-            margin: 0 2mm;
-        }
-
-        /* Print Styles - Optimized for Single Page */
+        /* Print Optimizations */
         @media print {
             body {
                 background: white;
@@ -342,15 +344,15 @@
             }
 
             .report-page {
-                padding: 5mm; /* Minimal padding */
+                padding: 8mm 10mm;
             }
 
-            .print-actions,
-            .no-print {
+            .print-actions, .no-print {
                 display: none !important;
             }
 
-            /* Optimize colors for printing */
+            /* Force colors to print */
+            .section-title,
             .academic-table th {
                 background: #2196F3 !important;
                 color: white !important;
@@ -358,20 +360,19 @@
                 print-color-adjust: exact;
             }
 
-            .section-title {
-                background: #2196F3 !important;
-                color: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
             .school-logo {
-                background: #00B2FF !important;
+                border: 3px solid #000 !important;
+                background: white !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
 
-            /* Prevent page breaks inside sections */
+            .school-logo img {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Prevent bad breaks */
             .bio-section,
             .attendance-section,
             .academic-section,
@@ -382,39 +383,23 @@
                 page-break-inside: avoid;
             }
 
-            /* Allow break after grading key if needed */
-            .grading-key {
-                page-break-after: auto;
+            table {
+                page-break-inside: avoid;
             }
 
-            /* Force single page if possible */
             @page {
-                size: A4;
-                margin: 5mm; /* Minimal margins */
+                size: A4 portrait;
+                margin: 10mm 12mm;
             }
         }
 
         @media (max-width: 768px) {
-            .report-card-container {
-                margin: 0;
-            }
-
-            .report-page {
-                padding: 5mm;
-            }
-
-            .bio-grid,
-            .traits-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .attendance-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .signature-grid {
-                grid-template-columns: 1fr;
-            }
+            .report-card-container { margin: 0; }
+            .report-page { padding: 5mm; }
+            .bio-grid, .traits-grid { grid-template-columns: 1fr; }
+            .attendance-grid { grid-template-columns: 1fr; }
+            .signature-grid { grid-template-columns: 1fr; }
+            .grading-key-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -433,14 +418,20 @@
         <!-- Report Card Page -->
         <div class="report-page">
             <!-- Header -->
-            <div class="report-header">
-                <div class="school-logo">
-    <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+<div class="report-header">
+    <div class="school-logo">
+        <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+    </div>
+    <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
+    <div class="subtitle">Academic Excellence; Our Duty, Our Right.</div>
+    
+    <!-- NEW: School Address and Contact -->
+    <div class="school-info" style="font-size: 8pt; color: var(--color-gray-600); margin: 1mm 0 2mm;">
+        18 Shittu Street, Adura Bus Stop, Lagos. | Phone: +2348061427297 | Email: fahmidschool@gmail.com
+    </div>
+    
+    <div class="report-title" id="report-title">Termly Report Card</div>
 </div>
-                <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
-                <div class="subtitle">Building Bright Futures Through Quality Education</div>
-                <div class="report-title" id="report-title">Termly Report Card</div>
-            </div>
 
 <div class="form-group" style="text-align:center; margin: var(--space-lg) 0;">
     <label for="print-term" style="font-weight:bold; font-size: var(--text-lg);">Select Term:</label>
