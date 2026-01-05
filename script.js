@@ -191,6 +191,59 @@ function initGalleryLightbox() {
     });
 }
 
+function initGalleryCarousel() {
+    const carousel = document.querySelector('.gallery-carousel');
+    const track = carousel?.querySelector('.gallery-track');
+    if (!carousel || !track) return;
+
+    const images = Array.from(track.querySelectorAll('img'));
+    let loadedCount = 0;
+
+    // Wait until all images are fully loaded
+    images.forEach(img => {
+        if (img.complete) {
+            loadedCount++;
+        } else {
+            img.addEventListener('load', () => {
+                loadedCount++;
+                if (loadedCount === images.length) startScroll();
+            });
+        }
+    });
+
+    if (loadedCount === images.length) startScroll();
+
+    function startScroll() {
+        let position = 0;
+        const speed = 0.5; // pixels per frame; adjust for faster/slower scroll
+
+        // Duplicate images in DOM for seamless infinite loop
+        const trackWidth = track.scrollWidth;
+        track.innerHTML += track.innerHTML; // duplicate all images
+
+        function step() {
+            position -= speed;
+            if (position <= -trackWidth) position = 0; // loop back
+            track.style.transform = `translateX(${position}px)`;
+            requestAnimationFrame(step);
+        }
+
+        step();
+    }
+
+    // Pause scroll on hover
+    carousel.addEventListener('mouseenter', () => {
+        cancelAnimationFrame(track._rafId);
+    });
+
+    carousel.addEventListener('mouseleave', () => {
+        startScroll();
+    });
+}
+
+// Initialize carousel on DOM load
+window.addEventListener('DOMContentLoaded', initGalleryCarousel);
+
 /* =====================================================
    SMOOTH SCROLLING
 ===================================================== */
