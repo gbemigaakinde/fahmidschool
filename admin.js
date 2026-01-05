@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - FULLY UPDATED WITH TEACHER ASSIGNMENT
+ * Admin Portal JavaScript - FULLY UPDATED WITH TEACHER ASSIGNMENT + FIXES
  * 
- * @version 4.0.0
- * @date 2026-01-04
+ * @version 4.1.0 - ADDED ERROR TOASTS & BETTER FEEDBACK
+ * @date 2026-01-05
  */
 
 'use strict';
@@ -98,7 +98,12 @@ async function loadDashboardStats() {
         document.getElementById('announce-count').textContent = announcementsSnap.size;
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
-        handleError(error, 'Failed to load dashboard statistics');
+        window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
+        // Set to 0 as fallback
+        document.getElementById('teacher-count').textContent = '0';
+        document.getElementById('pupil-count').textContent = '0';
+        document.getElementById('class-count').textContent = '0';
+        document.getElementById('announce-count').textContent = '0';
     }
 }
 
@@ -183,7 +188,7 @@ async function loadTeachers() {
         tbody.innerHTML = '';
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet. Add one above.</td></tr>';
             return;
         }
 
@@ -208,12 +213,13 @@ async function loadTeachers() {
         });
     } catch (error) {
         console.error('Error loading teachers:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Failed to load teachers</td></tr>';
+        window.showToast?.('Failed to load teachers list. Check connection and try again.', 'danger');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading teachers - please refresh</td></tr>';
     }
 }
 
 /* ========================================
-   PUPILS MANAGEMENT (unchanged except minor cleanup)
+   PUPILS MANAGEMENT
    ======================================== */
 
 function showPupilForm() {
@@ -299,7 +305,7 @@ async function loadPupils() {
         tbody.innerHTML = '';
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
             return;
         }
 
@@ -325,12 +331,13 @@ async function loadPupils() {
         });
     } catch (error) {
         console.error('Error loading pupils:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Failed to load pupils</td></tr>';
+        window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
     }
 }
 
 /* ========================================
-   CLASSES MANAGEMENT (minor cleanup)
+   CLASSES MANAGEMENT
    ======================================== */
 
 function showClassForm() {
@@ -396,7 +403,7 @@ async function loadClasses() {
         tbody.innerHTML = '';
 
         if (classesSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add one above.</td></tr>';
             return;
         }
 
@@ -425,12 +432,13 @@ async function loadClasses() {
         });
     } catch (error) {
         console.error('Error loading classes:', error);
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Failed to load classes</td></tr>';
+        window.showToast?.('Failed to load classes list. Check connection and try again.', 'danger');
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading classes - please refresh</td></tr>';
     }
 }
 
 /* ========================================
-   SUBJECTS MANAGEMENT (unchanged)
+   SUBJECTS MANAGEMENT
    ======================================== */
 
 function showSubjectForm() {
@@ -486,7 +494,7 @@ async function loadSubjects() {
         tbody.innerHTML = '';
         
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects created yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects created yet. Add one above.</td></tr>';
             return;
         }
 
@@ -509,7 +517,8 @@ async function loadSubjects() {
         });
     } catch (error) {
         console.error('Error loading subjects:', error);
-        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Failed to load subjects</td></tr>';
+        window.showToast?.('Failed to load subjects list. Check connection and try again.', 'danger');
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading subjects - please refresh</td></tr>';
     }
 }
 
@@ -525,21 +534,19 @@ async function loadTeacherAssignments() {
     if (!teacherSelect || !classSelect || !tbody) return;
 
     try {
-        // Load teachers
-        const teachersSnap = await db.collection('teachers').get();
+        // Use global getAllTeachers from firebase-init.js
+        const teachers = await getAllTeachers();
         teacherSelect.innerHTML = '<option value="">-- Select Teacher --</option>';
-        const teachers = [];
-        teachersSnap.forEach(doc => {
-            const data = doc.data();
-            teachers.push({ uid: doc.id, name: data.name, email: data.email });
-        });
-        teachers.sort((a, b) => a.name.localeCompare(b.name));
         teachers.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.uid;
             opt.textContent = `${t.name} (${t.email})`;
             teacherSelect.appendChild(opt);
         });
+
+        if (teachers.length === 0) {
+            window.showToast?.('No teachers registered yet. Add some in the Teachers section.', 'warning', 6000);
+        }
 
         // Load classes
         const classesSnap = await db.collection('classes').get();
@@ -560,7 +567,7 @@ async function loadTeacherAssignments() {
         // Load current assignments table
         tbody.innerHTML = '';
         if (classes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes available</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add some in the Classes section.</td></tr>';
             return;
         }
 
@@ -569,9 +576,9 @@ async function loadTeacherAssignments() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td data-label="Class">${cls.name}</td>
-                <td data-label="Assigned Teacher">${assignedTeacher ? assignedTeacher.name : '<em>None</em>'}</td>
+                <td data-label="Assigned Teacher">${assignedTeacher ? assignedTeacher.name : '<em>None assigned</em>'}</td>
                 <td data-label="Actions">
-                    ${cls.teacherId ? `<button class="btn-small btn-danger" onclick="unassignTeacher('${cls.id}')">Remove</button>` : ''}
+                    ${cls.teacherId ? `<button class="btn-small btn-danger" onclick="unassignTeacher('${cls.id}')">Remove Assignment</button>` : ''}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -579,7 +586,8 @@ async function loadTeacherAssignments() {
 
     } catch (error) {
         console.error('Error loading assignments:', error);
-        window.showToast?.('Failed to load assignment data', 'danger');
+        window.showToast?.('Failed to load assignment data. Check connection and try again.', 'danger');
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading assignments - please refresh</td></tr>';
     }
 }
 
@@ -615,7 +623,7 @@ async function unassignTeacher(classId) {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        window.showToast?.('Teacher unassigned', 'success');
+        window.showToast?.('Teacher unassigned successfully', 'success');
         loadTeacherAssignments();
     } catch (error) {
         console.error('Error unassigning teacher:', error);
@@ -624,7 +632,7 @@ async function unassignTeacher(classId) {
 }
 
 /* ========================================
-   ANNOUNCEMENTS (unchanged)
+   ANNOUNCEMENTS
    ======================================== */
 
 function showAnnounceForm() {
@@ -677,7 +685,7 @@ async function loadAdminAnnouncements() {
         list.innerHTML = '';
 
         if (snapshot.empty) {
-            list.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No announcements yet.</p>';
+            list.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No announcements yet. Add one above.</p>';
             return;
         }
 
@@ -708,7 +716,8 @@ async function loadAdminAnnouncements() {
         });
     } catch (error) {
         console.error('Error loading announcements:', error);
-        list.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading announcements</p>';
+        window.showToast?.('Failed to load announcements. Check connection and try again.', 'danger');
+        list.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading announcements - please refresh</p>';
     }
 }
 
@@ -725,7 +734,10 @@ async function deleteUser(collection, uid) {
 
         window.showToast?.('User deleted successfully', 'success');
         
-        if (collection === 'teachers') loadTeachers();
+        if (collection === 'teachers') {
+            loadTeachers();
+            loadTeacherAssignments(); // Refresh assignments if teacher deleted
+        }
         if (collection === 'pupils') loadPupils();
         
         loadDashboardStats();
@@ -769,5 +781,5 @@ async function deleteDoc(collectionName, docId) {
 
 document.addEventListener('DOMContentLoaded', () => {
     showSection('dashboard'); // Default to dashboard
-    console.log('✓ Admin portal initialized (v4.0.0)');
+    console.log('✓ Admin portal initialized (v4.1.0)');
 });
