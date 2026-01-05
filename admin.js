@@ -35,23 +35,13 @@ try {
     secondaryAuth = secondaryApp.auth();
 }
 
-// Initialize admin portal with proper error handling
-checkRole('admin')
-    .then(async (user) => {
-        console.log('Admin authenticated:', user.email);
-        // Load initial data
-        await loadDashboardStats();
-    })
-    .catch((error) => {
-        console.error('Authentication error:', error);
-        // User will be redirected by checkRole function
-    });
+// Simple role check without loading dashboard yet
+checkRole('admin').catch(() => {});
 
 document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     e.preventDefault();
     logout();
 });
-
 
 /* ========================================
    LOGOUT FUNCTION
