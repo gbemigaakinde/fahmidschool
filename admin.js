@@ -1,6 +1,6 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - PART 1 OF 2
+ * Admin Portal JavaScript 
  * Initialization & Core Functions
  * 
  * @version 6.0.0 - DUPLICATE CODE REMOVED
