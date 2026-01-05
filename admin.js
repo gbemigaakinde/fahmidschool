@@ -35,12 +35,45 @@ try {
     secondaryAuth = secondaryApp.auth();
 }
 
-checkRole('admin').catch(() => {});
+// Initialize admin portal with proper error handling
+checkRole('admin')
+    .then(async (user) => {
+        console.log('Admin authenticated:', user.email);
+        // Load initial data
+        await loadDashboardStats();
+    })
+    .catch((error) => {
+        console.error('Authentication error:', error);
+        // User will be redirected by checkRole function
+    });
 
 document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     e.preventDefault();
     logout();
 });
+
+
+/* ========================================
+   LOGOUT FUNCTION
+======================================== */
+
+/**
+ * Logout current user
+ */
+async function logout() {
+    try {
+        await auth.signOut();
+        if (window.showToast) {
+            window.showToast('Logged out successfully', 'success');
+        }
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 800);
+    } catch (error) {
+        console.error('Logout error:', error);
+        handleError(error, 'Failed to logout');
+    }
+}
 
 /* ========================================
    HELPER FUNCTIONS
