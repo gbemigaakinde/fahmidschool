@@ -27,6 +27,7 @@ document.getElementById('admin-logout')?.addEventListener('click', (e) => {
     logout();
 });
 
+
 function showSection(sectionId) {
     document.querySelectorAll('.admin-card').forEach(card => {
         card.style.display = 'none';
@@ -108,6 +109,60 @@ async function loadDashboardStats() {
         document.getElementById('class-count').textContent = '0';
         document.getElementById('announce-count').textContent = '0';
     }
+}
+
+// ========================================
+// REUSABLE PAGINATION FUNCTION
+// ========================================
+function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
+    const tbody = document.querySelector(`#${tbodyId} tbody`);
+    if (!tbody) return;
+
+    let currentPage = 1;
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+
+    function renderPage(page) {
+        tbody.innerHTML = '';
+        const start = (page - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = data.slice(start, end);
+
+        if (pageData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+            return;
+        }
+
+        pageData.forEach(item => {
+            renderRowCallback(item, tbody);
+        });
+
+        // Update pagination controls
+        updatePaginationControls(page, totalPages);
+    }
+
+    function updatePaginationControls(page, total) {
+        let paginationContainer = document.getElementById(`pagination-${tbodyId}`);
+        if (!paginationContainer) {
+            paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination';
+            paginationContainer.id = `pagination-${tbodyId}`;
+            tbody.parentElement.parentElement.appendChild(paginationContainer);
+        }
+
+        paginationContainer.innerHTML = `
+            <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <span class="page-info">Page ${page} of ${total}</span>
+            <button onclick="changePage(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+        `;
+    }
+
+    window.changePage = function(newPage) {
+        if (newPage < 1 || newPage > totalPages) return;
+        currentPage = newPage;
+        renderPage(currentPage);
+    };
+
+    renderPage(1);
 }
 
 /* ========================================
@@ -202,18 +257,19 @@ async function loadTeachers() {
 
         teachers.sort((a, b) => a.name.localeCompare(b.name));
 
-        teachers.forEach(teacher => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Name">${teacher.name}</td>
-                <td data-label="Email">${teacher.email}</td>
-                <td data-label="Subject">${teacher.subject || '-'}</td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteUser('teachers', '${teacher.id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        paginateTable(teachers, 'teachers-table', 20, (teacher, tbody) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td data-label="Name">${teacher.name}</td>
+        <td data-label="Email">${teacher.email}</td>
+        <td data-label="Subject">${teacher.subject || '-'}</td>
+        <td data-label="Actions">
+            <button class="btn-small btn-danger" onclick="deleteUser('teachers', '${teacher.id}')">Delete</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+});
+
     } catch (error) {
         console.error('Error loading teachers:', error);
         window.showToast?.('Failed to load teachers list. Check connection and try again.', 'danger');
@@ -319,19 +375,19 @@ async function loadPupils() {
 
         pupils.sort((a, b) => a.name.localeCompare(b.name));
 
-        pupils.forEach(pupil => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Name">${pupil.name}</td>
-                <td data-label="Class">${pupil.class || '-'}</td>
-                <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
-                <td data-label="Email">${pupil.email}</td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td data-label="Name">${pupil.name}</td>
+        <td data-label="Class">${pupil.class || '-'}</td>
+        <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
+        <td data-label="Email">${pupil.email}</td>
+        <td data-label="Actions">
+            <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+});
     } catch (error) {
         console.error('Error loading pupils:', error);
         window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
@@ -422,17 +478,21 @@ async function loadClasses() {
 
         classes.sort((a, b) => a.name.localeCompare(b.name));
 
-        classes.forEach(cls => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Class Name">${cls.name}</td>
-                <td data-label="Pupil Count">${cls.pupilCount}</td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('classes', '${cls.id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        paginateTable(classes, 'classes-table', 20, (classItem, tbody) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td data-label="Class Name">${classItem.name}</td>
+        <td data-label="Arm">${classItem.arm || '-'}</td>
+        <td data-label="Teacher">${classItem.teacherName || '-'}</td>
+        <td data-label="Actions">
+            <button class="btn-small btn-danger"
+                onclick="deleteItem('classes', '${classItem.id}')">
+                Delete
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+});
     } catch (error) {
         console.error('Error loading classes:', error);
         window.showToast?.('Failed to load classes list. Check connection and try again.', 'danger');
@@ -508,16 +568,21 @@ async function loadSubjects() {
 
         subjects.sort((a, b) => a.name.localeCompare(b.name));
 
-        subjects.forEach(subject => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Subject Name">${subject.name}</td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('subjects', '${subject.id}')">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        paginateTable(subjects, 'subjects-table', 20, (subject, tbody) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td data-label="Subject">${subject.name}</td>
+        <td data-label="Class">${subject.class || '-'}</td>
+        <td data-label="Assigned Teacher">${subject.teacherName || '-'}</td>
+        <td data-label="Actions">
+            <button class="btn-small btn-danger"
+                onclick="deleteItem('subjects', '${subject.id}')">
+                Delete
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+});
     } catch (error) {
         console.error('Error loading subjects:', error);
         window.showToast?.('Failed to load subjects list. Check connection and try again.', 'danger');
@@ -703,20 +768,36 @@ async function loadAdminAnnouncements() {
             return bTime - aTime;
         });
 
-        announcements.forEach(ann => {
-            const div = document.createElement('div');
-            div.className = 'admin-card';
-            div.style.marginBottom = 'var(--space-8)';
-            div.innerHTML = `
-                <h3 style="margin-top:0;">${ann.title}</h3>
-                <p>${ann.content}</p>
-                <small style="color:var(--color-gray-600);">Posted: ${ann.createdAt ? new Date(ann.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}</small>
-                <div style="margin-top:var(--space-4);">
-                    <button class="btn-small btn-danger" onclick="deleteDoc('announcements', '${ann.id}')">Delete</button>
-                </div>
-            `;
-            list.appendChild(div);
-        });
+        paginateTable(announcements, 'announcements-list', 6, (ann, container) => {
+    const div = document.createElement('div');
+    div.className = 'admin-card';
+    div.style.marginBottom = 'var(--space-8)';
+
+    const postedDate = ann.createdAt
+        ? new Date(ann.createdAt.toDate()).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
+        : 'Just now';
+
+    div.innerHTML = `
+        <h3 style="margin-top:0;">${ann.title}</h3>
+        <p>${ann.content}</p>
+        <small style="color:var(--color-gray-600);">
+            Posted: ${postedDate}
+        </small>
+
+        <div style="margin-top:var(--space-4);">
+            <button class="btn-small btn-danger"
+                onclick="deleteDoc('announcements', '${ann.id}')">
+                Delete
+            </button>
+        </div>
+    `;
+
+    container.appendChild(div);
+});
     } catch (error) {
         console.error('Error loading announcements:', error);
         window.showToast?.('Failed to load announcements. Check connection and try again.', 'danger');
