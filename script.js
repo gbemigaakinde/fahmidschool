@@ -199,7 +199,6 @@ function initGalleryCarousel() {
     const images = Array.from(track.querySelectorAll('img'));
     let loadedCount = 0;
 
-    // Wait until all images are fully loaded
     images.forEach(img => {
         if (img.complete) {
             loadedCount++;
@@ -215,17 +214,17 @@ function initGalleryCarousel() {
 
     function startScroll() {
         let position = 0;
-        const speed = 0.5; // pixels per frame; adjust for faster/slower scroll
+        const speed = 0.5; // pixels per frame
 
-        // Duplicate images in DOM for seamless infinite loop
+        // Duplicate images dynamically for seamless scroll
         const trackWidth = track.scrollWidth;
-        track.innerHTML += track.innerHTML; // duplicate all images
+        track.innerHTML += track.innerHTML;
 
         function step() {
             position -= speed;
-            if (position <= -trackWidth) position = 0; // loop back
+            if (position <= -trackWidth) position = 0;
             track.style.transform = `translateX(${position}px)`;
-            requestAnimationFrame(step);
+            track._rafId = requestAnimationFrame(step);
         }
 
         step();
@@ -241,7 +240,6 @@ function initGalleryCarousel() {
     });
 }
 
-// Initialize carousel on DOM load
 window.addEventListener('DOMContentLoaded', initGalleryCarousel);
 
 /* =====================================================
