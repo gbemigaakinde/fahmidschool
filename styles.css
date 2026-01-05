@@ -434,10 +434,10 @@ small { font-size: var(--text-sm); }
     padding: 0;
     overflow: hidden;
     color: var(--color-white);
-    text-align: center;
+    text-align: left; /* Allows text to flow freely instead of being strictly centered */
 }
 
-/* Full-width slideshow background */
+/* Hero slideshow container */
 .hero-slideshow {
     position: absolute;
     inset: 0;
@@ -445,6 +445,7 @@ small { font-size: var(--text-sm); }
     z-index: 0;
 }
 
+/* All images start hidden */
 .hero-slideshow img {
     position: absolute;
     inset: 0;
@@ -453,35 +454,12 @@ small { font-size: var(--text-sm); }
     object-fit: cover;
     object-position: center;
     opacity: 0;
-    animation: slideshow 60s infinite linear;
+    transition: opacity 1s ease-in-out;
 }
 
-/* Show first image immediately */
-.hero-slideshow img:first-child {
+/* Visible image */
+.hero-slideshow img.visible {
     opacity: 1;
-    animation-delay: 0s;
-}
-
-/* Animation delays for 10 unique + 1 duplicate */
-.hero-slideshow img:nth-child(1)  { animation-delay: 0s; }
-.hero-slideshow img:nth-child(2)  { animation-delay: 6s; }
-.hero-slideshow img:nth-child(3)  { animation-delay: 12s; }
-.hero-slideshow img:nth-child(4)  { animation-delay: 18s; }
-.hero-slideshow img:nth-child(5)  { animation-delay: 24s; }
-.hero-slideshow img:nth-child(6)  { animation-delay: 30s; }
-.hero-slideshow img:nth-child(7)  { animation-delay: 36s; }
-.hero-slideshow img:nth-child(8)  { animation-delay: 42s; }
-.hero-slideshow img:nth-child(9)  { animation-delay: 48s; }
-.hero-slideshow img:nth-child(10) { animation-delay: 54s; }
-.hero-slideshow img:nth-child(11) { animation-delay: 60s; }
-
-/* Smooth cross-fade */
-@keyframes slideshow {
-    0%    { opacity: 0; }
-    8.33% { opacity: 1; }
-    25%   { opacity: 1; }
-    33.33%{ opacity: 0; }
-    100%  { opacity: 0; }
 }
 
 /* Dark overlay */
@@ -493,46 +471,45 @@ small { font-size: var(--text-sm); }
     z-index: 1;
 }
 
-/* Hero text content – refined positioning and animation container */
+/* Hero text content – free-flowing, not compacted */
 .hero-content {
     position: relative;
     z-index: 2;
-    width: 100%;
+    width: 90%;               /* gives space on sides */
     max-width: 900px;
     margin: 0 auto;
-    padding: var(--space-24) var(--space-8) 0 var(--space-8); /* More top space for "not too tight" */
+    padding: var(--space-12) var(--space-6) 0 var(--space-6); /* less top padding, free flow */
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
+    align-items: flex-start; /* aligns text left for a freer layout */
+    gap: var(--space-8);     /* larger gap between heading, subtitle, and button */
 }
 
-/* Bigger, bolder, modern heading – closer to top but with breathing room */
+/* Bigger, bolder heading */
 .hero h1 {
+    font-size: clamp(3.5rem, 11vw, 5rem); /* slightly bigger */
     color: var(--color-white);
     margin: 0;
-    font-size: clamp(3rem, 10vw, 4.5rem);    /* Significantly larger, responsive */
     font-weight: var(--weight-bold);
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    letter-spacing: -0.02em;
+    line-height: 1.2; /* more breathing room */
     text-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
 }
 
-/* Subtitle – much more readable */
+/* Subtitle – free spacing */
 .hero .lead {
-    margin: 0 0 var(--space-10) 0;
     font-size: var(--text-xl);
     max-width: 660px;
     font-weight: var(--weight-light);
-    color: rgba(255, 255, 255, 0.95);        /* Brighter white */
-    opacity: 1;                              /* Full opacity */
+    color: rgba(255, 255, 255, 0.95);
     text-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
     letter-spacing: -0.01em;
+    line-height: 1.6; /* taller line height for freedom */
+    margin: 0;
 }
 
-/* Apply Now button with subtle modern pulse animation */
+/* Apply Now button */
 .hero .btn {
-    margin-top: var(--space-6);
     padding: var(--space-4) var(--space-10);
     font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
@@ -540,11 +517,10 @@ small { font-size: var(--text-sm); }
     background: var(--color-primary);
     box-shadow: 0 8px 30px rgba(0, 178, 255, 0.4);
     transition: all 0.4s var(--ease-out);
-    
-    /* Subtle infinite pulse animation */
     animation: buttonPulse 4s infinite ease-in-out;
 }
 
+/* Button pulse */
 @keyframes buttonPulse {
     0%, 100% {
         transform: scale(1);
@@ -556,7 +532,7 @@ small { font-size: var(--text-sm); }
     }
 }
 
-/* Enhanced hover effect */
+/* Button hover and active effects */
 .hero .btn:hover {
     transform: scale(1.08);
     background: var(--color-primary-light);
