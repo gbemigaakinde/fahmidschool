@@ -75,13 +75,14 @@ async function loadPupilData(user) {
 }
 
 async function loadReportData() {
-    await Promise.all([
-        loadAcademicResults(),
-        loadAttendance(),
-        loadBehavioralTraits(),
-        loadPsychomotorSkills(),
-        loadRemarks()
-    ]);
+  await Promise.all([
+    loadAcademicResults(),
+    loadAttendance(),
+    loadBehavioralTraits(),
+    loadPsychomotorSkills(),
+    loadRemarks(),
+    loadResumptionDate()  // NEW
+  ]);
 }
 
 // ============================================
@@ -275,22 +276,31 @@ async function loadPsychomotorSkills() {
 // ============================================
 
 async function loadRemarks() {
-    try {
-        const remarksDoc = await db.collection('remarks')
-            .doc(`${currentPupilId}_${currentTerm}`)
-            .get();
+  try {
+    const remarksDoc = await db.collection('remarks')
+      .doc(`${currentPupilId}_${currentTerm}`)
+      .get();
 
-        if (remarksDoc.exists) {
-            const data = remarksDoc.data();
-            document.getElementById('teacher-remark').textContent = data.teacherRemark || '-';
-            document.getElementById('head-remark').textContent = data.headRemark || '-';
-            document.getElementById('resumption-date').textContent = data.resumptionDate || '-';
-        }
-
-        console.log('✓ Remarks loaded');
-    } catch (error) {
-        console.error('Error loading remarks:', error);
+    if (remarksDoc.exists) {
+      const data = remarksDoc.data();
+      document.getElementById('teacher-remark').textContent = data.teacherRemark || '-';
+      document.getElementById('head-remark').textContent = data.headRemark || '-';
     }
+
+    console.log('✓ Remarks loaded');
+  } catch (error) {
+    console.error('Error loading remarks:', error);
+  }
+}
+
+async function loadResumptionDate() {
+  try {
+    const settings = await getCurrentSettings();
+    document.getElementById('resumption-date').textContent = settings.resumptionDate || '-';
+  } catch (error) {
+    console.error('Error loading resumption date:', error);
+    document.getElementById('resumption-date').textContent = '-';
+  }
 }
 
 // ============================================
