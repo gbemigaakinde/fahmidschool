@@ -791,10 +791,12 @@ async function loadAdminAnnouncements() {
 async function loadCurrentSettings() {
   const termEl = document.getElementById('display-term');
   const sessionEl = document.getElementById('display-session');
+  const resumptionEl = document.getElementById('display-resumption');  // NEW
   const termSelect = document.getElementById('current-term');
   const sessionInput = document.getElementById('current-session');
+  const resumptionInput = document.getElementById('resumption-date');  // NEW
   
-  if (!termEl || !sessionEl || !termSelect || !sessionInput) return;
+  if (!termEl || !sessionEl || !resumptionEl || !termSelect || !sessionInput || !resumptionInput) return;
   
   try {
     const settingsDoc = await db.collection('settings').doc('current').get();
@@ -803,19 +805,24 @@ async function loadCurrentSettings() {
       const data = settingsDoc.data();
       termEl.textContent = `Term: ${data.term || 'Not set'}`;
       sessionEl.textContent = `Session: ${data.session || 'Not set'}`;
+      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;  // NEW
       termSelect.value = data.term || 'First Term';
       sessionInput.value = data.session || '';
+      resumptionInput.value = data.resumptionDate || '';  // NEW
     } else {
       termEl.textContent = 'Term: Not set';
       sessionEl.textContent = 'Session: Not set';
+      resumptionEl.textContent = 'Resumption Date: Not set';  // NEW
       termSelect.value = 'First Term';
       sessionInput.value = '';
+      resumptionInput.value = '';  // NEW
     }
   } catch (error) {
     console.error('Error loading settings:', error);
     window.showToast?.('Failed to load current settings', 'danger');
     termEl.textContent = 'Error loading';
     sessionEl.textContent = 'Error loading';
+    resumptionEl.textContent = 'Error loading';  // NEW
   }
 }
 
@@ -824,9 +831,10 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   
   const term = document.getElementById('current-term')?.value;
   const session = document.getElementById('current-session')?.value.trim();
+  const resumptionDate = document.getElementById('resumption-date')?.value;  // NEW
   
-  if (!term || !session) {
-    window.showToast?.('Both term and session are required', 'warning');
+  if (!term || !session || !resumptionDate) {  // Updated check
+    window.showToast?.('All fields are required', 'warning');
     return;
   }
   
@@ -838,6 +846,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     await db.collection('settings').doc('current').set({
       term,
       session,
+      resumptionDate,  // NEW
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
