@@ -397,12 +397,33 @@
 }
 
 @media (max-width: 768px) {
-    .report-card-container { margin: 0; }
-    .report-page { padding: 5mm; }
-    .bio-grid, .traits-grid { grid-template-columns: 1fr; }
-    .attendance-grid { grid-template-columns: 1fr; }
-    .signature-grid { grid-template-columns: 1fr; }
-    .grading-key-grid { grid-template-columns: 1fr; }
+    .report-card-container { 
+        margin: 0; 
+    }
+    .report-page { 
+        padding: 5mm; 
+    }
+    /* Multi-column layouts are kept even on mobile/small screens */
+    /* Traits & Psychomotor: 3 columns */
+    .traits-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    /* Grading Key: 4 columns */
+    .grading-key-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    /* Attendance: 3 columns */
+    .attendance-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    /* Bio: 2 columns */
+    .bio-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    /* Signatures: 2 columns */
+    .signature-grid {
+        grid-template-columns: 1fr 1fr;
+    }
 }
     </style>
 </head>
