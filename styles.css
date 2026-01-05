@@ -200,6 +200,7 @@ p:last-child { margin-bottom: 0; }
     position: relative;
 }
 
+/* REMOVED: .section-title::after - to fix short underline
 .section-title::after {
     content: '';
     position: absolute;
@@ -209,7 +210,7 @@ p:last-child { margin-bottom: 0; }
     width: 48px;
     height: 2px;
     background: var(--color-primary);
-}
+} */
 
 a {
     color: var(--color-primary);
@@ -829,276 +830,46 @@ tbody tr:last-child td {
 }
 
 /* ============================================
-   REPORT CARD SPECIFIC STYLES
+   REPORT CARD SPECIFIC STYLES - CLEANED UP
    ============================================ */
-.results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-}
+/* Most report card styles have been removed or commented out
+   to prevent conflicts with the optimized CSS in the print results page.
+   The print page now fully controls layout, columns, borders, and spacing. */
 
-.results-table th {
-    background: var(--color-primary);
-    color: var(--color-white);
-    padding: var(--space-3);
-    text-align: center;
-    font-weight: var(--weight-bold);
-    border: 1px solid var(--color-primary-dark);
-}
-
-.results-table td {
-    padding: var(--space-3);
-    border: 1px solid var(--color-gray-300);
-    text-align: center;
-}
-
-.results-table td:first-child {
-    text-align: left;
-    font-weight: var(--weight-semibold);
-}
-
-.results-table .summary-row {
-    background: var(--color-gray-100);
-    font-weight: var(--weight-bold);
-    border-top: 2px solid var(--color-gray-700);
-}
-
-/* Grade Colors */
+/* Kept: Grade colors (safe and useful) */
 .grade-A1 { color: #2e7d32; font-weight: var(--weight-bold); }
 .grade-B2, .grade-B3 { color: #1976d2; font-weight: var(--weight-bold); }
 .grade-C4, .grade-C5, .grade-C6 { color: #f57c00; font-weight: var(--weight-bold); }
 .grade-D7, .grade-D8 { color: #d32f2f; font-weight: var(--weight-bold); }
 .grade-F9 { color: #c62828; font-weight: var(--weight-bold); }
 
-/* Grading Key */
-.grading-key {
-    border: 1px solid var(--color-gray-300);
-    padding: var(--space-4);
-    font-size: var(--text-sm);
-    margin: var(--space-6) 0;
-    border-radius: var(--radius-md);
-    background: var(--color-gray-50);
-}
+/* REMOVED: All other report card rules below to avoid overriding the print page CSS */
+/*
+.results-table { ... }
+.grading-key { ... }
+.grading-key-grid { ... }
+.bio-section { ... }
+.bio-grid { ... }
+.bio-item { ... }
+.attendance-section { ... }
+.attendance-grid { ... }
+.traits-section, .psychomotor-section { ... }
+.traits-grid { ... }
+.trait-item { ... }
+.remarks-section { ... }
+.remark-box { ... }
+.signature-grid { ... }
+etc.
+*/
 
-.grading-key-title {
-    font-weight: var(--weight-bold);
-    margin-bottom: var(--space-3);
-    color: var(--color-black);
-}
-
-.grading-key-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-2);
-}
-
-.grading-key-item {
-    padding: var(--space-2);
-    font-size: var(--text-xs);
-}
-
-/* Bio Data Grid */
-.bio-section {
-    border: 1px solid var(--color-gray-300);
-    margin-bottom: var(--space-6);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.bio-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    font-size: var(--text-sm);
-}
-
-.bio-item {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-gray-200);
-    border-right: 1px solid var(--color-gray-200);
-    display: flex;
-}
-
-.bio-item:nth-child(2n) {
-    border-right: none;
-}
-
-.bio-item:nth-last-child(-n+2) {
-    border-bottom: none;
-}
-
-.bio-label {
-    font-weight: var(--weight-bold);
-    min-width: 100px;
-    color: var(--color-gray-700);
-}
-
-.bio-value {
-    color: var(--color-black);
-    flex: 1;
-}
-
-/* ============================================
-   ATTENDANCE SECTION
-   ============================================ */
-.attendance-section {
-    border: 1px solid var(--color-gray-300);
-    margin-bottom: var(--space-6);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.attendance-section-title {
-    background: var(--color-primary);
-    color: var(--color-white);
-    padding: var(--space-3) var(--space-4);
-    font-weight: var(--weight-bold);
-    font-size: var(--text-base);
-}
-
-.attendance-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    font-size: var(--text-sm);
-}
-
-.attendance-item {
-    padding: var(--space-4);
-    border-right: 1px solid var(--color-gray-200);
-    text-align: center;
-}
-
-.attendance-item:last-child {
-    border-right: none;
-}
-
-.attendance-label {
-    font-size: var(--text-xs);
-    color: var(--color-gray-600);
-    margin-bottom: var(--space-2);
-}
-
-.attendance-value {
-    font-weight: var(--weight-bold);
-    font-size: var(--text-3xl);
-    color: var(--color-primary);
-}
-
-/* ============================================
-   TRAITS & SKILLS SECTIONS (UPDATED FOR TRANSITIONS)
-   ============================================ */
-.traits-section,
-.psychomotor-section {
-    border: 1px solid var(--color-gray-300);
-    margin-bottom: var(--space-6);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-
-    /* New: transition-ready visibility */
-    opacity: 1;
-    transform: translateY(0);
-    max-height: 1000px; /* large enough to fit content */
-    transition: opacity var(--duration-medium) var(--ease-in-out),
-                transform var(--duration-medium) var(--ease-in-out),
-                max-height var(--duration-medium) var(--ease-in-out);
-}
-
-.traits-section.is-hidden,
-.psychomotor-section.is-hidden {
-    opacity: 0;
-    transform: translateY(20px);
-    max-height: 0;
-    pointer-events: none; /* prevent interactions while hidden */
-}
-
-/* Grid layout for traits */
-.traits-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2); /* optional: spacing between items */
-}
-
-/* Individual trait items */
-.trait-item {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-gray-200);
-    border-right: 1px solid var(--color-gray-200);
-    font-size: var(--text-sm);
-    transition: background var(--duration-fast) var(--ease-out);
-}
-
-.trait-item:nth-child(2n) {
-    border-right: none;
-}
-
-.trait-item:last-child,
-.trait-item:nth-last-child(2) {
-    border-bottom: none;
-}
-
-/* Labels and values */
-.trait-label {
-    font-weight: var(--weight-medium);
-    color: var(--color-gray-700);
-}
-
-.trait-value {
-    text-align: center;
-    font-weight: var(--weight-bold);
-    color: var(--color-primary);
-}
-
-/* ============================================
-   REMARKS SECTION
-   ============================================ */
-.remarks-section {
-    border: 1px solid var(--color-gray-300);
-    margin-bottom: var(--space-6);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.remark-box {
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--color-gray-200);
-    font-size: var(--text-sm);
-}
-
-.remark-box:last-child {
-    border-bottom: none;
-}
-
-.remark-label {
-    font-weight: var(--weight-bold);
-    color: var(--color-gray-900);
-    margin-bottom: var(--space-2);
-    display: block;
-}
-
-.remark-text {
-    min-height: 60px;
-    color: var(--color-gray-700);
-    line-height: 1.6;
-}
-
-.signature-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-6);
-    margin-top: var(--space-4);
-}
-
-.signature-box {
-    text-align: center;
-}
-
-.signature-line {
-    border-top: 1px solid var(--color-gray-900);
-    margin-top: 40px;
-    padding-top: var(--space-2);
-    font-size: var(--text-sm);
-}
+/* These styles are now fully controlled by the <style> tag in your print results HTML file.
+   Your print page has:
+   - 3-column traits & psychomotor (expands with more items)
+   - 4-column grading key
+   - No short underline under section titles
+   - Tight, print-optimized spacing
+   - Correct borders and colors on print
+*/
 
 /* ============================================
    TEACHER PORTAL SPECIFIC STYLES
@@ -1889,22 +1660,22 @@ address strong {
         flex: 1;
     }
 
-    /* Report Card - Mobile Adjustments */
-    .bio-grid,
-    .traits-grid,
-    .attendance-grid,
-    .signature-grid {
-        grid-template-columns: 1fr;
-    }
+    /* REMOVED: Mobile report overrides - to keep multi-columns on all screens
+.bio-grid,
+.traits-grid,
+.attendance-grid,
+.signature-grid {
+    grid-template-columns: 1fr;
+}
 
-    .bio-item,
-    .trait-item {
-        border-right: none;
-    }
+.bio-item,
+.trait-item {
+    border-right: none;
+}
 
-    .grading-key-grid {
-        grid-template-columns: 1fr;
-    }
+.grading-key-grid {
+    grid-template-columns: 1fr;
+} */
 
     #toast-container {
         right: var(--space-4);
