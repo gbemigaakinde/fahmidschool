@@ -192,51 +192,36 @@ function initGalleryLightbox() {
 }
 
 function initGalleryCarousel() {
-    const carousel = document.querySelector('.gallery-carousel');
-    const track = carousel?.querySelector('.gallery-track');
-    if (!carousel || !track) return;
+    const carousels = document.querySelectorAll('.gallery-carousel');
 
-    const images = Array.from(track.querySelectorAll('img'));
-    let loadedCount = 0;
+    carousels.forEach(carousel => {
+        const track = carousel.querySelector('.gallery-track');
+        if (!track) return;
 
-    images.forEach(img => {
-        if (img.complete) {
-            loadedCount++;
-        } else {
-            img.addEventListener('load', () => {
-                loadedCount++;
-                if (loadedCount === images.length) startScroll();
-            });
-        }
-    });
+        // Duplicate images for seamless scroll
+        const images = Array.from(track.children);
+        images.forEach(img => {
+            const clone = img.cloneNode(true);
+            track.appendChild(clone);
+        });
 
-    if (loadedCount === images.length) startScroll();
-
-    function startScroll() {
+        let speed = 0.5; // pixels per frame
         let position = 0;
-        const speed = 0.5; // pixels per frame
 
-        // Duplicate images dynamically for seamless scroll
-        const trackWidth = track.scrollWidth;
-        track.innerHTML += track.innerHTML;
-
-        function step() {
+        function animate() {
             position -= speed;
-            if (position <= -trackWidth) position = 0;
+            if (Math.abs(position) >= track.scrollWidth / 2) {
+                position = 0; // reset for infinite loop
+            }
             track.style.transform = `translateX(${position}px)`;
-            track._rafId = requestAnimationFrame(step);
+            requestAnimationFrame(animate);
         }
 
-        step();
-    }
+        animate();
 
-    // Pause scroll on hover
-    carousel.addEventListener('mouseenter', () => {
-        cancelAnimationFrame(track._rafId);
-    });
-
-    carousel.addEventListener('mouseleave', () => {
-        startScroll();
+        // Pause on hover
+        carousel.addEventListener('mouseenter', () => { speed = 0; });
+        carousel.addEventListener('mouseleave', () => { speed = 0.5; });
     });
 }
 
