@@ -12,17 +12,142 @@
  * - Dashboard shows only teacher's classes/pupils
  * - Caching for performance
  * - Duplicate listeners removed
+ * - ALL MISSING FUNCTIONS ADDED
  * 
- * @version 6.0.0
- * @date 2026-01-04
+ * @version 6.0.1 - FIXED
+ * @date 2026-01-05
  */
 
 'use strict';
+
+/* ========================================
+   FIREBASE INITIALIZATION
+======================================== */
+const db = firebase.firestore();
+const auth = firebase.auth();
 
 let currentUser = null;
 let assignedClasses = []; // Cached: [{id, name}]
 let allPupils = [];       // Cached: pupils in assigned classes
 let allSubjects = [];     // Cached subjects
+
+/* ========================================
+   HELPER FUNCTIONS
+======================================== */
+
+/**
+ * Check if current user has required role
+ */
+async function checkRole(requiredRole) {
+    return new Promise((resolve, reject) => {
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+                reject(new Error('Not authenticated'));
+                return;
+            }
+
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                
+                if (!userDoc.exists) {
+                    window.showToast?.('User profile not found', 'danger');
+                    await auth.signOut();
+                    window.location.href = 'login.html';
+                    reject(new Error('User profile not found'));
+                    return;
+                }
+
+                const userData = userDoc.data();
+                
+                if (userData.role !== requiredRole) {
+                    window.showToast?.('Access denied. Insufficient permissions.', 'danger');
+                    await auth.signOut();
+                    window.location.href = 'login.html';
+                    reject(new Error('Insufficient permissions'));
+                    return;
+                }
+
+                resolve({ uid: user.uid, email: user.email, role: userData.role });
+            } catch (error) {
+                console.error('Error checking role:', error);
+                window.showToast?.('Error verifying permissions', 'danger');
+                reject(error);
+            }
+        });
+    });
+}
+
+/**
+ * Logout function
+ */
+async function logout() {
+    try {
+        await auth.signOut();
+        window.location.href = 'login.html';
+    } catch (error) {
+        console.error('Logout error:', error);
+        window.showToast?.('Error logging out', 'danger');
+    }
+}
+
+/**
+ * Handle errors with user-friendly messages
+ */
+function handleError(error, fallbackMessage = 'An error occurred') {
+    console.error('Error details:', error);
+    
+    let userMessage = fallbackMessage;
+    
+    if (error.code) {
+        switch (error.code) {
+            case 'permission-denied':
+                userMessage = 'Permission denied. Check your access rights.';
+                break;
+            case 'not-found':
+                userMessage = 'Resource not found.';
+                break;
+            case 'unavailable':
+                userMessage = 'Service temporarily unavailable. Please try again.';
+                break;
+            case 'unauthenticated':
+                userMessage = 'You must be logged in to perform this action.';
+                break;
+            default:
+                userMessage = `${fallbackMessage}: ${error.message || error.code}`;
+        }
+    }
+    
+    window.showToast?.(userMessage, 'danger', 5000);
+}
+
+/**
+ * Get current school settings (term and session)
+ */
+async function getCurrentSettings() {
+    try {
+        const settingsDoc = await db.collection('settings').doc('current').get();
+        
+        if (settingsDoc.exists) {
+            const data = settingsDoc.data();
+            return {
+                term: data.term || 'First Term',
+                session: data.session || '2025/2026'
+            };
+        } else {
+            return {
+                term: 'First Term',
+                session: '2025/2026'
+            };
+        }
+    } catch (error) {
+        console.error('Error getting current settings:', error);
+        return {
+            term: 'First Term',
+            session: '2025/2026'
+        };
+    }
+}
 
 /* =========================
    AUTH INITIALIZATION
@@ -46,9 +171,9 @@ document.getElementById('teacher-logout')?.addEventListener('click', e => {
     logout();
 });
 
-// ========================================
-// REUSABLE PAGINATION FUNCTION
-// ========================================
+/* ========================================
+   REUSABLE PAGINATION FUNCTION
+======================================== */
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     const tbody = document.querySelector(`#${tbodyId} tbody`);
     if (!tbody) return;
@@ -71,7 +196,6 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
             renderRowCallback(item, tbody);
         });
 
-        // Update pagination controls
         updatePaginationControls(page, totalPages);
     }
 
@@ -85,13 +209,14 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
         }
 
         paginationContainer.innerHTML = `
-            <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <button onclick="window.changePage_${tbodyId}(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
             <span class="page-info">Page ${page} of ${total}</span>
-            <button onclick="changePage(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+            <button onclick="window.changePage_${tbodyId}(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
         `;
     }
 
-    window.changePage = function(newPage) {
+    // Create unique pagination function for this table
+    window[`changePage_${tbodyId}`] = function(newPage) {
         if (newPage < 1 || newPage > totalPages) return;
         currentPage = newPage;
         renderPage(currentPage);
@@ -217,9 +342,9 @@ function initTeacherPortal() {
 
         // Now show dashboard and setup navigation
         showSection('dashboard');
-        console.log('✓ Teacher portal ready (v6.1.0) - Current term:', settings.term);
+        console.log('✓ Teacher portal ready (v6.0.1) - Current term:', settings.term);
 
-        // Sidebar navigation (unchanged)
+        // Sidebar navigation
         document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
             link.addEventListener('click', e => {
                 e.preventDefault();
@@ -318,7 +443,6 @@ async function loadResultsSection() {
     const termSelect = document.getElementById('result-term');
     const subjectSelect = document.getElementById('result-subject');
     if (termSelect && subjectSelect) {
-        termSelect.value = 'First Term'; // default
         subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
         allSubjects.forEach(sub => {
             const opt = document.createElement('option');
@@ -428,9 +552,21 @@ async function saveAllResults() {
         const ref = db.collection('results').doc(docId);
 
         if (field === 'ca') {
-            batch.set(ref, { caScore: value }, { merge: true });
+            batch.set(ref, { 
+                pupilId,
+                term,
+                subject,
+                caScore: value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
         } else {
-            batch.set(ref, { examScore: value }, { merge: true });
+            batch.set(ref, { 
+                pupilId,
+                term,
+                subject,
+                examScore: value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
         }
     });
 
@@ -440,10 +576,6 @@ async function saveAllResults() {
     }
 
     try {
-        batch.set(db.collection('results').doc(), { // dummy to force commit if empty
-            dummy: true
-        }, { merge: true });
-
         await batch.commit();
         window.showToast?.('✓ All results saved successfully', 'success');
     } catch (err) {
@@ -737,7 +869,6 @@ async function saveRemarks() {
 /* =========================
    EVENT LISTENERS FOR DYNAMIC SECTIONS
 ========================= */
-
 document.addEventListener('DOMContentLoaded', () => {
     // Results: term or subject change → reload table
     const resultTerm = document.getElementById('result-term');
