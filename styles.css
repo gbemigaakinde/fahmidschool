@@ -1734,126 +1734,49 @@ address strong {
    PRINT STYLES
    ============================================ */
 @media print {
-    /* Reset page background and margins */
     body {
         background: white;
         margin: 0;
         padding: 0;
-        font-size: 9pt; /* Keep compact font size for print */
-        color: #000;
     }
 
-    /* Hide all interactive/non-essential elements */
     .no-print,
     .skip-link,
     .hamburger,
+    .sidebar,
     .admin-sidebar,
-    .teacher-sidebar,
+    .lightbox,
     .site-footer,
     #toast-container,
-    .print-actions,
-    button,
     .btn,
-    a.btn {
+    button {
         display: none !important;
     }
 
-    /* Full-width layout without sidebar offset */
-    .admin-main,
-    .main-content {
-        margin-left: 0 !important;
-        padding: 0 !important;
+    .main-content,
+    .admin-main {
+        margin-left: 0;
+        padding: 0;
     }
 
-    /* Report card fills the page */
     .report-card-container {
         max-width: 100%;
         margin: 0;
-        padding: 0;
         box-shadow: none;
-        background: white;
     }
 
-    .report-page {
-        padding: 10mm; /* Consistent padding on printed page */
-    }
-
-    /* Ensure logo prints sharply and with proper colors */
-    .school-logo {
-        background: white !important;
-        border: 3px solid #000 !important; /* Clean black border on print */
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .school-logo img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    /* Force colored headers to print in color */
-    .report-header,
-    .section-title,
-    .academic-table th {
-        background: #2196F3 !important; /* Your primary blue */
-        color: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    /* Text colors */
     h1, h2, h3, h4, h5, h6 {
-        color: #000 !important;
+        color: var(--color-black);
         page-break-after: avoid;
-    }
-
-    .bio-label,
-    .trait-label,
-    .remark-label {
-        color: #000 !important;
-        font-weight: bold;
-    }
-
-    .grade-A1 { color: #2e7d32 !important; }
-    .grade-B2, .grade-B3 { color: #1976d2 !important; }
-    .grade-C4, .grade-C5, .grade-C6 { color: #f57c00 !important; }
-    .grade-D7, .grade-D8 { color: #d32f2f !important; }
-    .grade-F9 { color: #c62828 !important; }
-
-    /* Prevent unwanted page breaks */
-    .report-header,
-    .bio-section,
-    .attendance-section,
-    .academic-section,
-    .grading-key,
-    .traits-section,
-    .psychomotor-section,
-    .remarks-section {
-        page-break-inside: avoid;
-        page-break-after: auto;
     }
 
     table {
         page-break-inside: avoid;
     }
 
-    /* A4 page setup with optimal margins */
     @page {
-        size: A4 portrait;
-        margin: 12mm 15mm 15mm 15mm; /* Top slightly reduced to fit content */
-    }
-
-    /* Ensure strong borders print clearly */
-    .bio-section,
-    .attendance-section,
-    .academic-section,
-    .traits-section,
-    .psychomotor-section,
-    .remarks-section {
-        border: 1px solid #000 !important;
+        size: A4;
+        margin: 15mm;
     }
 }
 
