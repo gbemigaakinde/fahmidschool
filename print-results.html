@@ -4,427 +4,479 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Termly Report Card - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Arial:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <style>
-        /* Report Card Specific Styles - Optimized for Single-Page Print */
-       body {
-    background: #f5f5f5;
-    font-family: 'Open Sans', Arial, sans-serif;
-    font-size: 8.5pt;
-    line-height: 1.25;
-    color: #000;
-}
+        :root {
+            --color-primary: #2196F3;
+            --color-primary-dark: #1976d2;
+            --color-gray-600: #757575;
+            --color-gray-700: #616161;
+            --color-gray-400: #BDBDBD;
+            --color-gray-300: #E0E0E0;
+        }
 
-.report-card-container {
-    max-width: 210mm;
-    margin: 8mm auto;
-    padding: 0;
-    background: white;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-.report-page {
-    padding: 6mm;
-    background: white;
-}
+        body {
+            background: #ffffff;
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
+            color: #000;
+            padding: 0;
+            margin: 0;
+        }
 
-/* Header */
-.report-header {
-    text-align: center;
-    border: 2px solid #000;
-    padding: 3mm 3mm 4mm;
-    margin-bottom: 3mm;
-    background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
-}
+        .report-card-container {
+            max-width: 210mm;
+            margin: 8mm auto;
+            padding: 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
 
-.school-logo {
-    width: 70px;
-    height: 70px;
-    margin: 0 auto 3mm;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid var(--color-primary-dark, #1976d2);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    background: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+        .report-page {
+            padding: 8mm 10mm;
+            background: white;
+        }
 
-.school-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 50%;
-}
+        /* Header Section */
+        .report-header {
+            text-align: center;
+            border: 1px solid #000;
+            padding: 4mm;
+            margin-bottom: 3mm;
+            background: #ffffff;
+        }
 
-.report-header h1 {
-    font-size: 14pt;
-    color: var(--color-primary-dark, #1976d2);
-    margin: 0 0 1mm;
-    font-weight: bold;
-}
+        .school-logo {
+            width: 65px;
+            height: 65px;
+            margin: 0 auto 3mm;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid var(--color-primary-dark);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.report-header .subtitle {
-    font-size: 8pt;
-    color: var(--color-gray-600);
-    margin: 0 0 1mm;
-}
+        .school-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
 
-.school-info {
-    font-size: 8pt;
-    color: var(--color-gray-700);
-    margin: 2mm 0 3mm;
-    line-height: 1.3;
-}
+        .report-header h1 {
+            font-size: 15pt;
+            color: #006400;
+            margin: 0 0 1mm;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
-.report-header .report-title {
-    font-size: 10pt;
-    font-weight: bold;
-    color: #000;
-    margin: 0;
-    text-transform: uppercase;
-}
+        .report-header .subtitle {
+            font-size: 8.5pt;
+            color: #000;
+            margin: 0 0 2mm;
+            font-style: italic;
+        }
 
-/* Bio Data */
-.bio-section {
-    border: 1px solid #000;
-    margin-bottom: 3mm;
-}
+        .school-info {
+            font-size: 8pt;
+            color: #000;
+            margin: 2mm 0;
+            line-height: 1.4;
+        }
 
-.bio-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    font-size: 8pt;
-}
+        .report-header .report-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #000;
+            margin: 2mm 0 0;
+            text-transform: uppercase;
+        }
 
-.bio-item {
-    padding: 1mm 2mm;
-    border-bottom: 1px solid var(--color-gray-400);
-    border-right: 1px solid var(--color-gray-400);
-    display: flex;
-}
+        /* Term Selector */
+        .form-group {
+            text-align: center;
+            margin: 3mm 0;
+            padding: 2mm;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+        }
 
-.bio-item:nth-child(2n) { border-right: none; }
-.bio-item:nth-last-child(-n+2) { border-bottom: none; }
+        .form-group label {
+            font-weight: bold;
+            font-size: 9.5pt;
+            margin-right: 8px;
+        }
 
-.bio-label {
-    font-weight: bold;
-    min-width: 80px;
-    color: var(--color-gray-700);
-}
+        .form-group select {
+            padding: 3px 12px;
+            font-size: 9pt;
+            border: 1px solid #999;
+            border-radius: 3px;
+        }
 
-.bio-value {
-    flex: 1;
-    color: #000;
-}
+        /* Bio Data Section */
+        .bio-section {
+            border: 1px solid #000;
+            margin-bottom: 3mm;
+        }
 
-/* Attendance */
-.attendance-section {
-    border: 1px solid #000;
-    margin-bottom: 3mm;
-}
+        .bio-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 9pt;
+        }
 
-.section-title {
-    background: var(--color-primary, #2196F3);
-    color: white;
-    padding: 0.8mm 2mm;
-    font-weight: bold;
-    font-size: 9pt;
-    margin: 0;
-}
+        .bio-item {
+            padding: 1.5mm 3mm;
+            border-bottom: 1px solid #000;
+            border-right: 1px solid #000;
+            display: flex;
+            align-items: center;
+        }
 
-.attendance-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    font-size: 8pt;
-}
+        .bio-item:nth-child(2n) { 
+            border-right: none; 
+        }
+        
+        .bio-item:nth-last-child(-n+2) { 
+            border-bottom: none; 
+        }
 
-.attendance-item {
-    padding: 0.8mm;
-    border-right: 1px solid var(--color-gray-400);
-    text-align: center;
-}
+        .bio-label {
+            font-weight: bold;
+            min-width: 100px;
+            color: #000;
+        }
 
-.attendance-item:last-child { border-right: none; }
+        .bio-value {
+            flex: 1;
+            color: #000;
+        }
 
-.attendance-label {
-    font-size: 7pt;
-    color: var(--color-gray-600);
-    margin-bottom: 0.3mm;
-}
+        /* Attendance Section */
+        .attendance-section {
+            border: 1px solid #000;
+            margin-bottom: 3mm;
+        }
 
-.attendance-value {
-    font-weight: bold;
-    font-size: 10pt;
-    color: var(--color-primary, #2196F3);
-}
+        .section-title {
+            background: var(--color-primary);
+            color: white;
+            padding: 1.5mm 3mm;
+            font-weight: bold;
+            font-size: 9.5pt;
+            margin: 0;
+            text-align: center;
+        }
 
-/* Academic Table */
-.academic-section {
-    border: 1px solid #000;
-    margin-bottom: 3mm;
-}
+        .attendance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            font-size: 9pt;
+        }
 
-.academic-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 8pt;
-    table-layout: fixed;
-}
+        .attendance-item {
+            padding: 2mm;
+            border-right: 1px solid #000;
+            text-align: center;
+        }
 
-.academic-table th {
-    background: var(--color-primary, #2196F3);
-    color: white;
-    padding: 0.8mm;
-    text-align: center;
-    font-weight: bold;
-    border: 1px solid #000;
-    font-size: 7pt;
-    word-wrap: break-word;
-}
+        .attendance-item:last-child { 
+            border-right: none; 
+        }
 
-.academic-table td {
-    padding: 0.8mm;
-    border: 1px solid var(--color-gray-400);
-    text-align: center;
-    word-wrap: break-word;
-}
+        .attendance-label {
+            font-size: 8.5pt;
+            color: #000;
+            margin-bottom: 1mm;
+            font-weight: 600;
+        }
 
-.academic-table td:first-child {
-    text-align: left;
-    font-weight: bold;
-}
+        .attendance-value {
+            font-weight: bold;
+            font-size: 12pt;
+            color: var(--color-primary);
+        }
 
-.summary-row {
-    background: #f5f5f5;
-    font-weight: bold;
-}
+        /* Academic Performance Section */
+        .academic-section {
+            border: 1px solid #000;
+            margin-bottom: 3mm;
+        }
 
-/* Grade Colors */
-.grade-A1 { color: #2e7d32; font-weight: bold; }
-.grade-B2, .grade-B3 { color: #1976d2; font-weight: bold; }
-.grade-C4, .grade-C5, .grade-C6 { color: #f57c00; font-weight: bold; }
-.grade-D7, .grade-D8 { color: #d32f2f; font-weight: bold; }
-.grade-F9 { color: #c62828; font-weight: bold; }
+        .academic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
 
-/* Grading Key - 4 columns, expands naturally with more items */
-.grading-key {
-    border: 1px solid var(--color-gray-300);
-    padding: 1mm;
-    font-size: 7pt;
-    margin-bottom: 3mm;
-    border-radius: 6px;
-    background: #f9f9f9;
-}
+        .academic-table th {
+            background: var(--color-primary);
+            color: white;
+            padding: 1.5mm;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #000;
+            font-size: 8.5pt;
+        }
 
-.grading-key-title {
-    font-weight: bold;
-    margin-bottom: 0.5mm;
-    color: #000;
-}
+        .academic-table td {
+            padding: 1.5mm 2mm;
+            border: 1px solid #000;
+            text-align: center;
+        }
 
-.grading-key-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5mm;
-}
+        .academic-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            padding-left: 3mm;
+        }
 
-.grading-key-item {
-    padding: 0.4mm;
-    font-size: 6.5pt;
-}
+        .summary-row {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
 
-/* Traits & Psychomotor Skills - 3 columns, expands with more than 9 items */
-.traits-section,
-.psychomotor-section {
-    border: 1px solid #000;
-    margin-bottom: 3mm;
-}
+        .summary-row td {
+            padding: 2mm;
+        }
 
-.traits-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    font-size: 7.8pt;
-    gap: 0;
-}
+        /* Grade Colors */
+        .grade-A1 { color: #2e7d32; font-weight: bold; }
+        .grade-B2, .grade-B3 { color: #1976d2; font-weight: bold; }
+        .grade-C4, .grade-C5, .grade-C6 { color: #f57c00; font-weight: bold; }
+        .grade-D7, .grade-D8 { color: #d32f2f; font-weight: bold; }
+        .grade-F9 { color: #c62828; font-weight: bold; }
 
-.trait-item {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    padding: 0.8mm 1.5mm;
-    border-bottom: 1px solid var(--color-gray-400);
-    border-right: 1px solid var(--color-gray-400);
-}
+        /* Grading Key */
+        .grading-key {
+            border: 1px solid #ddd;
+            padding: 2mm;
+            font-size: 8pt;
+            margin-bottom: 3mm;
+            background: #f9f9f9;
+        }
 
-.trait-item:nth-child(3n) { border-right: none; }
-.trait-item:nth-last-child(-n+3) { border-bottom: none; }
+        .grading-key-title {
+            font-weight: bold;
+            margin-bottom: 1mm;
+            color: #000;
+            font-size: 9pt;
+        }
 
-.trait-label {
-    font-weight: bold;
-    color: var(--color-gray-700);
-}
+        .grading-key-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1mm;
+        }
 
-.trait-value {
-    text-align: center;
-    font-weight: bold;
-    color: var(--color-primary, #2196F3);
-}
+        .grading-key-item {
+            padding: 1mm;
+            font-size: 7.5pt;
+            background: white;
+            border: 1px solid #e0e0e0;
+        }
 
-/* Remarks */
-.remarks-section {
-    border: 1px solid #000;
-    margin-bottom: 3mm;
-}
+        /* Traits & Psychomotor Sections */
+        .traits-section,
+        .psychomotor-section {
+            border: 1px solid #000;
+            margin-bottom: 3mm;
+        }
 
-.remark-box {
-    padding: 1mm 2mm;
-    border-bottom: 1px solid var(--color-gray-400);
-    font-size: 8pt;
-}
+        .traits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            font-size: 8.5pt;
+        }
 
-.remark-box:last-child { border-bottom: none; }
+        .trait-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            padding: 1.5mm 2.5mm;
+            border-bottom: 1px solid #ddd;
+            border-right: 1px solid #ddd;
+            align-items: center;
+        }
 
-.remark-label {
-    font-weight: bold;
-    color: #000;
-    margin-bottom: 0.5mm;
-    display: block;
-}
+        .trait-item:nth-child(3n) { 
+            border-right: none; 
+        }
 
-.remark-text {
-    min-height: 8mm;
-    color: var(--color-gray-700);
-    line-height: 1.25;
-}
+        /* Calculate last row dynamically */
+        .traits-section .traits-grid {
+            position: relative;
+        }
 
-.signature-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3mm;
-    margin-top: 2mm;
-}
+        /* Remove bottom border from last row items */
+        .trait-item:nth-last-child(-n+3) {
+            border-bottom: none;
+        }
 
-.signature-box {
-    text-align: center;
-}
+        /* For cases where items aren't divisible by 3 */
+        .trait-item:last-child {
+            border-bottom: none;
+        }
 
-.signature-line {
-    border-top: 1px solid #000;
-    margin-top: 4mm;
-    padding-top: 1mm;
-    font-size: 7pt;
-}
+        .trait-label {
+            font-weight: 600;
+            color: #000;
+        }
 
-.print-actions {
-    text-align: center;
-    margin: 5mm 0;
-    padding: 5mm;
-    background: #f0f0f0;
-}
+        .trait-value {
+            text-align: center;
+            font-weight: bold;
+            color: var(--color-primary);
+        }
 
-/* Print Optimizations */
-@media print {
-    body {
-        background: white;
-        margin: 0;
-        padding: 0;
-    }
+        /* Remarks Section */
+        .remarks-section {
+            border: 1px solid #000;
+            margin-bottom: 3mm;
+        }
 
-    .report-card-container {
-        max-width: 100%;
-        margin: 0;
-        box-shadow: none;
-    }
+        .remark-box {
+            padding: 2mm 3mm;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
 
-    .report-page {
-        padding: 8mm 10mm;
-    }
+        .remark-box:last-child { 
+            border-bottom: none; 
+        }
 
-    .print-actions, .no-print {
-        display: none !important;
-    }
+        .remark-label {
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 1mm;
+            display: block;
+        }
 
-    .report-header {
-        background: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+        .remark-text {
+            min-height: 10mm;
+            color: #000;
+            line-height: 1.4;
+        }
 
-    .section-title,
-    .academic-table th {
-        background: #2196F3 !important;
-        color: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+        .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4mm;
+            margin-top: 3mm;
+        }
 
-    .school-logo {
-        border: 3px solid #000 !important;
-        background: white !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+        .signature-box {
+            text-align: center;
+        }
 
-    .school-logo img {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 8mm;
+            padding-top: 1.5mm;
+            font-size: 8pt;
+            font-weight: 600;
+        }
 
-    .bio-section,
-    .attendance-section,
-    .academic-section,
-    .grading-key,
-    .traits-section,
-    .psychomotor-section,
-    .remarks-section {
-        page-break-inside: avoid;
-    }
+        /* Print Actions */
+        .print-actions {
+            text-align: center;
+            margin: 5mm 0;
+            padding: 4mm;
+            background: #f5f5f5;
+        }
 
-    table {
-        page-break-inside: avoid;
-    }
+        .btn {
+            display: inline-block;
+            padding: 6px 16px;
+            margin: 0 4px;
+            background: var(--color-primary);
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 3px;
+            font-size: 9pt;
+            cursor: pointer;
+            font-weight: 600;
+        }
 
-    @page {
-        size: A4 portrait;
-        margin: 10mm 12mm;
-    }
-}
+        .btn:hover {
+            background: var(--color-primary-dark);
+        }
 
-@media (max-width: 768px) {
-    .report-card-container { 
-        margin: 0; 
-    }
-    .report-page { 
-        padding: 5mm; 
-    }
-    /* Multi-column layouts are kept even on mobile/small screens */
-    /* Traits & Psychomotor: 3 columns */
-    .traits-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    /* Grading Key: 4 columns */
-    .grading-key-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    /* Attendance: 3 columns */
-    .attendance-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    /* Bio: 2 columns */
-    .bio-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    /* Signatures: 2 columns */
-    .signature-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-}
+        /* Print Optimizations */
+        @media print {
+            body {
+                background: white;
+                margin: 0;
+                padding: 0;
+            }
+
+            .report-card-container {
+                max-width: 100%;
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .report-page {
+                padding: 10mm 12mm;
+            }
+
+            .print-actions, .no-print {
+                display: none !important;
+            }
+
+            .report-header,
+            .section-title,
+            .academic-table th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .bio-section,
+            .attendance-section,
+            .academic-section,
+            .grading-key,
+            .traits-section,
+            .psychomotor-section,
+            .remarks-section {
+                page-break-inside: avoid;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 10mm 12mm;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .report-card-container { 
+                margin: 0; 
+            }
+            .report-page { 
+                padding: 6mm; 
+            }
+            .traits-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .grading-key-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
     </style>
 </head>
 <body>
@@ -442,29 +494,29 @@
         <!-- Report Card Page -->
         <div class="report-page">
             <!-- Header -->
-<div class="report-header">
-    <div class="school-logo">
-        <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-    </div>
-    <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
-    <div class="subtitle">Academic Excellence; Our Duty, Our Right.</div>
-    
-    <!-- NEW: School Address and Contact -->
-    <div class="school-info" style="font-size: 8pt; color: var(--color-gray-600); margin: 1mm 0 2mm;">
-        18 Shittu Street, Adura Bus Stop, Lagos. | Phone: +2348061427297 | Email: fahmidschool@gmail.com
-    </div>
-    
-    <div class="report-title" id="report-title">Termly Report Card</div>
-</div>
+            <div class="report-header">
+                <div class="school-logo">
+                    <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo">
+                </div>
+                <h1>FAHMID NURSERY & PRIMARY SCHOOL</h1>
+                <div class="subtitle">Academic Excellence; Our Duty, Our Right.</div>
+                
+                <div class="school-info">
+                    18 Shittu Street, Adura Bus Stop, Lagos. | Phone: +2348061427297 | Email: fahmidschool@gmail.com
+                </div>
+                
+                <div class="report-title" id="report-title">Termly Report Card</div>
+            </div>
 
-<div class="form-group" style="text-align:center; margin: var(--space-lg) 0;">
-    <label for="print-term" style="font-weight:bold; font-size: var(--text-lg);">Select Term:</label>
-    <select id="print-term" style="margin-left:10px; padding: var(--space-2); font-size: var(--text-base);">
-        <option value="First Term">First Term</option>
-        <option value="Second Term">Second Term</option>
-        <option value="Third Term">Third Term</option>
-    </select>
-</div>
+            <div class="form-group">
+                <label for="print-term">Select Term:</label>
+                <select id="print-term">
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term">Third Term</option>
+                </select>
+            </div>
+
             <!-- Student Bio Data -->
             <div class="bio-section">
                 <div class="bio-grid">
@@ -491,7 +543,7 @@
                     <div class="bio-item">
                        <span class="bio-label">Session:</span>
                        <span class="bio-value" id="current-session">2025/2026</span>
-                      </div>
+                    </div>
                 </div>
             </div>
 
@@ -654,8 +706,8 @@
                             </div>
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 3mm; font-weight: bold; font-size: 9pt;">
-                        <span style="margin-right: 5mm;">Resumption Date:</span>
+                    <div style="text-align: center; margin-top: 4mm; font-weight: bold; font-size: 9pt;">
+                        <span style="margin-right: 6mm;">Resumption Date:</span>
                         <span id="resumption-date">-</span>
                     </div>
                 </div>
