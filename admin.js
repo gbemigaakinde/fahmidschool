@@ -68,6 +68,9 @@ function showSection(sectionId) {
         case 'announcements':
             loadAdminAnnouncements();
             break;
+        case 'settings':
+            loadCurrentSettings();
+            break;
     }
     
     // Close mobile sidebar after navigation
@@ -720,6 +723,75 @@ async function loadAdminAnnouncements() {
         list.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading announcements - please refresh</p>';
     }
 }
+
+/* ========================================
+   NEW: SCHOOL SETTINGS SECTION
+   ======================================== */
+
+async function loadCurrentSettings() {
+    const termEl = document.getElementById('display-term');
+    const sessionEl = document.getElementById('display-session');
+    const termSelect = document.getElementById('current-term');
+    const sessionInput = document.getElementById('current-session');
+
+    if (!termEl || !sessionEl || !termSelect || !sessionInput) return;
+
+    try {
+        const settingsDoc = await db.collection('settings').doc('current').get();
+
+        if (settingsDoc.exists) {
+            const data = settingsDoc.data();
+            termEl.textContent = data.term || 'Not set';
+            sessionEl.textContent = data.session || 'Not set';
+
+            termSelect.value = data.term || 'First Term';
+            sessionInput.value = data.session || '';
+        } else {
+            termEl.textContent = 'Not set';
+            sessionEl.textContent = 'Not set';
+            termSelect.value = 'First Term';
+            sessionInput.value = '';
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        window.showToast?.('Failed to load current settings', 'danger');
+        termEl.textContent = 'Error loading';
+        sessionEl.textContent = 'Error loading';
+    }
+}
+
+document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const term = document.getElementById('current-term')?.value;
+    const session = document.getElementById('current-session')?.value.trim();
+
+    if (!term || !session) {
+        window.showToast?.('Both term and session are required', 'warning');
+        return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
+
+    try {
+        await db.collection('settings').doc('current').set({
+            term,
+            session,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.showToast?.('School settings saved successfully!', 'success');
+        loadCurrentSettings(); // Refresh display
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        handleError(error, 'Failed to save settings');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Settings';
+    }
+});
 
 /* ========================================
    DELETE HELPERS
