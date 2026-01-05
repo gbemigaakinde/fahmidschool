@@ -46,6 +46,60 @@ document.getElementById('teacher-logout')?.addEventListener('click', e => {
     logout();
 });
 
+// ========================================
+// REUSABLE PAGINATION FUNCTION
+// ========================================
+function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
+    const tbody = document.querySelector(`#${tbodyId} tbody`);
+    if (!tbody) return;
+
+    let currentPage = 1;
+    const totalPages = Math.ceil(data.length / itemsPerPage);
+
+    function renderPage(page) {
+        tbody.innerHTML = '';
+        const start = (page - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const pageData = data.slice(start, end);
+
+        if (pageData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+            return;
+        }
+
+        pageData.forEach(item => {
+            renderRowCallback(item, tbody);
+        });
+
+        // Update pagination controls
+        updatePaginationControls(page, totalPages);
+    }
+
+    function updatePaginationControls(page, total) {
+        let paginationContainer = document.getElementById(`pagination-${tbodyId}`);
+        if (!paginationContainer) {
+            paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination';
+            paginationContainer.id = `pagination-${tbodyId}`;
+            tbody.parentElement.parentElement.appendChild(paginationContainer);
+        }
+
+        paginationContainer.innerHTML = `
+            <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <span class="page-info">Page ${page} of ${total}</span>
+            <button onclick="changePage(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+        `;
+    }
+
+    window.changePage = function(newPage) {
+        if (newPage < 1 || newPage > totalPages) return;
+        currentPage = newPage;
+        renderPage(currentPage);
+    };
+
+    renderPage(1);
+}
+
 /* =========================
    CORE: LOAD ASSIGNED CLASSES & PUPILS
 ========================= */
@@ -212,28 +266,31 @@ async function loadTeacherDashboard() {
 ========================= */
 
 function loadMyClassesSection() {
-    const tbody = document.querySelector('#pupils-in-class-table tbody');
-    if (!tbody) return;
+    const table = document.getElementById('pupils-in-class-table');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
 
     if (assignedClasses.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
+        tbody.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
         return;
     }
 
     if (allPupils.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
+        tbody.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
         return;
     }
 
-    tbody.innerHTML = '';
-    allPupils.forEach(pupil => {
+    paginateTable(allPupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${pupil.name}</td>
-            <td>${pupil.gender || '-'}</td>
-            <td>${pupil.admissionNo || '-'}</td>
+            <td data-label="Name">${pupil.name}</td>
+            <td data-label="Gender">${pupil.gender || '-'}</td>
+            <td data-label="Admission No">${pupil.admissionNo || '-'}</td>
         `;
-        tbody.appendChild(tr);
+        tbodyEl.appendChild(tr);
     });
 }
 
@@ -276,9 +333,9 @@ async function loadResultsSection() {
 
 async function loadResultsTable() {
     const container = document.getElementById('results-entry-table-container');
+    const saveBtn = document.getElementById('save-results-btn');
     const term = document.getElementById('result-term')?.value;
     const subject = document.getElementById('result-subject')?.value;
-    const saveBtn = document.getElementById('save-results-btn');
 
     if (!container || !term || !subject) {
         container.innerHTML = '';
@@ -286,52 +343,64 @@ async function loadResultsTable() {
         return;
     }
 
+    if (allPupils.length === 0) {
+        container.innerHTML =
+            '<p style="text-align:center; color:var(--color-gray-600);">No pupils available</p>';
+        if (saveBtn) saveBtn.hidden = true;
+        return;
+    }
+
     try {
-        let html = `<table class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Pupil Name</th>
-                    <th>CA Score (40)</th>
-                    <th>Exam Score (60)</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>`;
+        container.innerHTML = `
+            <table class="responsive-table" id="results-table">
+                <thead>
+                    <tr>
+                        <th>Pupil Name</th>
+                        <th>CA Score (40)</th>
+                        <th>Exam Score (60)</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `;
 
-        for (const pupil of allPupils) {
-            const docId = `${pupil.id}_${term}_${subject}`;
-            const docSnap = await db.collection('results').doc(docId).get();
-            const data = docSnap.exists ? docSnap.data() : {};
-
-            const ca = data.caScore || '';
-            const exam = data.examScore || '';
-            const total = (parseFloat(ca) || 0) + (parseFloat(exam) || 0);
-
-            html += `<tr>
+        paginateTable(allPupils, 'results-table', 20, (pupil, tbody) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
                 <td>${pupil.name}</td>
-                <td><input type="number" min="0" max="40" data-pupil="${pupil.id}" data-field="ca" value="${ca}" style="width:90px;"></td>
-                <td><input type="number" min="0" max="60" data-pupil="${pupil.id}" data-field="exam" value="${exam}" style="width:90px;"></td>
-                <td>${total > 0 ? total : '-'}</td>
-            </tr>`;
-        }
+                <td>
+                    <input type="number" min="0" max="40"
+                        data-pupil="${pupil.id}" data-field="ca"
+                        style="width:90px;">
+                </td>
+                <td>
+                    <input type="number" min="0" max="60"
+                        data-pupil="${pupil.id}" data-field="exam"
+                        style="width:90px;">
+                </td>
+                <td>-</td>
+            `;
+            tbody.appendChild(tr);
+        });
 
-        html += `</tbody></table>`;
-        container.innerHTML = html;
         if (saveBtn) saveBtn.hidden = false;
 
-        // Auto-recalc total on input
         container.querySelectorAll('input').forEach(input => {
             input.addEventListener('input', () => {
                 const row = input.closest('tr');
-                const ca = parseFloat(row.querySelector('[data-field="ca"]').value) || 0;
-                const exam = parseFloat(row.querySelector('[data-field="exam"]').value) || 0;
-                row.querySelector('td:last-child').textContent = ca + exam || '-';
+                const ca = parseFloat(row.querySelector('[data-field="ca"]')?.value) || 0;
+                const exam = parseFloat(row.querySelector('[data-field="exam"]')?.value) || 0;
+                row.querySelector('td:last-child').textContent =
+                    ca + exam > 0 ? ca + exam : '-';
             });
         });
 
     } catch (err) {
         handleError(err, 'Failed to load results');
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
+        container.innerHTML =
+            '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
+        if (saveBtn) saveBtn.hidden = true;
     }
 }
 
@@ -389,40 +458,62 @@ async function saveAllResults() {
 async function loadAttendanceSection() {
     const container = document.getElementById('attendance-form-container');
     const saveBtn = document.getElementById('save-attendance-btn');
-    if (!container || !saveBtn) return;
-
     const term = document.getElementById('attendance-term')?.value || 'First Term';
 
+    if (!container || !saveBtn) return;
+
     if (assignedClasses.length === 0 || allPupils.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in assigned classes</p>';
+        container.innerHTML =
+            '<p style="text-align:center; color:var(--color-gray-600);">No pupils in assigned classes</p>';
         saveBtn.hidden = true;
         return;
     }
 
     try {
-        let html = `<table class="responsive-table">
-            <thead><tr><th>Pupil Name</th><th>Times Opened</th><th>Times Present</th><th>Times Absent</th></tr></thead>
-            <tbody>`;
+        container.innerHTML = `
+            <table class="responsive-table" id="attendance-table">
+                <thead>
+                    <tr>
+                        <th>Pupil Name</th>
+                        <th>Times Opened</th>
+                        <th>Times Present</th>
+                        <th>Times Absent</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `;
 
-        for (const pupil of allPupils) {
-            const docRef = db.collection('attendance').doc(`${pupil.id}_${term}`);
-            const docSnap = await docRef.get();
-            const data = docSnap.exists ? docSnap.data() : {};
-
-            html += `<tr>
+        paginateTable(allPupils, 'attendance-table', 25, (pupil, tbody) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
                 <td>${pupil.name}</td>
-                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesOpened" value="${data.timesOpened || ''}" style="width:80px;"></td>
-                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesPresent" value="${data.timesPresent || ''}" style="width:80px;"></td>
-                <td><input type="number" min="0" data-pupil="${pupil.id}" data-field="timesAbsent" value="${data.timesAbsent || ''}" style="width:80px;"></td>
-            </tr>`;
-        }
+                <td>
+                    <input type="number" min="0"
+                        data-pupil="${pupil.id}" data-field="timesOpened"
+                        style="width:80px;">
+                </td>
+                <td>
+                    <input type="number" min="0"
+                        data-pupil="${pupil.id}" data-field="timesPresent"
+                        style="width:80px;">
+                </td>
+                <td>
+                    <input type="number" min="0"
+                        data-pupil="${pupil.id}" data-field="timesAbsent"
+                        style="width:80px;">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
 
-        html += `</tbody></table>`;
-        container.innerHTML = html;
         saveBtn.hidden = false;
+
     } catch (err) {
         handleError(err, 'Failed to load attendance');
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading attendance</p>';
+        container.innerHTML =
+            '<p style="text-align:center; color:var(--color-danger);">Error loading attendance</p>';
+        saveBtn.hidden = true;
     }
 }
 
