@@ -1980,10 +1980,7 @@ address strong {
    ============================================ */
 
 .gallery-teaser {
-    background: linear-gradient(180deg,
-        var(--color-gray-50) 0%,
-        var(--color-white) 100%
-    );
+    background: linear-gradient(180deg, var(--color-gray-50) 0%, var(--color-white) 100%);
     padding: var(--space-20) 0;
     text-align: center;
 }
@@ -1992,19 +1989,20 @@ address strong {
     overflow: hidden;
     margin: var(--space-12) 0;
     border-radius: var(--radius-xl);
+    position: relative;
 }
 
 .gallery-track {
     display: flex;
-    will-change: transform;
+    gap: var(--space-4);
 }
 
 .gallery-track img {
-    height: 350px; /* slightly bigger for better visibility */
+    height: 350px;       /* you can increase to 350px or more if desired */
     width: auto;
-    flex-shrink: 0;
     object-fit: cover;
-    margin-right: 8px; /* spacing between images */
+    flex-shrink: 0;
+    border-right: 2px solid white;
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
