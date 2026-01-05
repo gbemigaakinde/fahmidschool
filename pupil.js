@@ -50,10 +50,15 @@ async function loadPupilProfile(user) {
             class: currentClass
         });
 
-        // Update welcome message
+        // Fetch current academic session from admin settings
+        const settings = await getCurrentSettings();
+        const currentSession = settings.session;
+
+        // Update welcome message to include session
         document.getElementById('pupil-welcome').innerHTML = `
             Hello, <strong>${currentPupilName}</strong>!<br>
-            Class: ${currentClass}
+            Class: ${currentClass}<br>
+            Session: ${currentSession}
         `;
 
         // Load results
