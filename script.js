@@ -291,6 +291,12 @@ function initTestimonialsCarousel() {
         let index = 0;
         let interval;
 
+        // Lock layout geometry
+        track.style.width = `${slides.length * 100}%`;
+        slides.forEach(slide => {
+            slide.style.width = '100%';
+        });
+
         dotsWrap.innerHTML = '';
         slides.forEach((_, i) => {
             const dot = document.createElement('button');
@@ -299,7 +305,7 @@ function initTestimonialsCarousel() {
             dotsWrap.appendChild(dot);
         });
 
-        const dots = [...dotsWrap.children];
+        const dots = Array.from(dotsWrap.children);
 
         function goTo(i, reset = false) {
             index = i;
@@ -318,16 +324,21 @@ function initTestimonialsCarousel() {
         }
 
         function startAutoPlay() {
+            clearInterval(interval);
             interval = setInterval(next, 6000);
         }
 
         function resetAutoPlay() {
-            clearInterval(interval);
             startAutoPlay();
         }
 
-        nextBtn.addEventListener('click', () => goTo((index + 1) % slides.length, true));
-        prevBtn.addEventListener('click', () => goTo((index - 1 + slides.length) % slides.length, true));
+        nextBtn.addEventListener('click', () =>
+            goTo((index + 1) % slides.length, true)
+        );
+
+        prevBtn.addEventListener('click', () =>
+            goTo((index - 1 + slides.length) % slides.length, true)
+        );
 
         startAutoPlay();
     });
