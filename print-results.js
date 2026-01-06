@@ -146,13 +146,18 @@ async function fetchPupilProfile(uid) {
 
 function setupTermSelector() {
     const select = document.getElementById('print-term');
-    if (!select) return;
+    if (!select) {
+        console.error('❌ Term selector element not found!');
+        return;
+    }
 
+    console.log('✓ Setting up term selector, current term:', currentSettings.term);
     select.value = currentSettings.term;
     setText('current-term', currentSettings.term);
 
     select.addEventListener('change', async e => {
         currentSettings.term = e.target.value;
+        console.log('Term changed to:', currentSettings.term);
         setText('current-term', currentSettings.term);
         updateReportHeader();
         await loadReportData();
@@ -188,15 +193,26 @@ function updateReportHeader() {
 ================================ */
 
 async function loadReportData() {
+    console.log('=== Loading Report Data ===');
+    console.log('Pupil ID:', currentPupilId);
+    console.log('Term:', currentSettings.term);
+    console.log('Session:', currentSettings.session);
+    
     resetTraitsAndRemarks();
 
-    await Promise.all([
-        loadAcademicResults(),
-        loadAttendance(),
-        loadBehavioralTraits(),
-        loadPsychomotorSkills(),
-        loadRemarks()
-    ]);
+    try {
+        await Promise.all([
+            loadAcademicResults(),
+            loadAttendance(),
+            loadBehavioralTraits(),
+            loadPsychomotorSkills(),
+            loadRemarks()
+        ]);
+        console.log('=== Report Data Loaded Successfully ===');
+    } catch (error) {
+        console.error('=== Error Loading Report Data ===', error);
+        window.showToast?.('Failed to load some report data', 'warning');
+    }
 }
 
 /* ===============================
@@ -208,28 +224,48 @@ async function loadAcademicResults() {
     tbody.innerHTML = loadingRow();
 
     try {
-        // Get ALL results documents
-        const snap = await db.collection('results').get();
+        console.log('Loading results for:', currentPupilId, currentSettings.term);
         
-        // Filter results by pupilId and term from document ID
+        // METHOD 1: Try document ID format (pupilId_term_subject)
+        const allResultsDocs = await db.collection('results').get();
         const results = [];
-        snap.forEach(doc => {
+        
+        allResultsDocs.forEach(doc => {
             const docId = doc.id;
-            // Format: pupilId_term_subject
+            const data = doc.data();
+            
+            // Check if document ID starts with current pupil ID
             if (docId.startsWith(currentPupilId + '_')) {
                 const parts = docId.split('_');
+                
                 if (parts.length >= 3) {
-                    const term = parts[1];
-                    const subject = parts.slice(2).join('_');
+                    const docPupilId = parts[0];
+                    const docTerm = parts[1];
+                    const docSubject = parts.slice(2).join('_');
                     
-                    if (term === currentSettings.term) {
-                        const data = doc.data();
+                    // Match current term
+                    if (docTerm === currentSettings.term) {
                         results.push({
-                            subject: subject,
+                            subject: docSubject,
                             caScore: data.caScore || 0,
                             examScore: data.examScore || 0
                         });
+                        console.log('Found result (ID format):', docSubject, data);
                     }
+                }
+            }
+            
+            // METHOD 2: Also check field-based format (backup)
+            if (data.pupilId === currentPupilId && data.term === currentSettings.term) {
+                // Only add if not already added from ID format
+                const alreadyExists = results.some(r => r.subject === data.subject);
+                if (!alreadyExists && data.subject) {
+                    results.push({
+                        subject: data.subject,
+                        caScore: data.caScore || 0,
+                        examScore: data.examScore || 0
+                    });
+                    console.log('Found result (field format):', data.subject, data);
                 }
             }
         });
@@ -237,9 +273,12 @@ async function loadAcademicResults() {
         tbody.innerHTML = '';
 
         if (results.length === 0) {
+            console.log('No results found for pupil:', currentPupilId, 'term:', currentSettings.term);
             tbody.innerHTML = emptyRow('No results available for this term');
             return;
         }
+
+        console.log('Total results found:', results.length);
 
         // Sort results alphabetically by subject
         results.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -286,7 +325,7 @@ async function loadAcademicResults() {
 
     } catch (error) {
         console.error('Error loading academic results:', error);
-        tbody.innerHTML = emptyRow('Error loading results');
+        tbody.innerHTML = emptyRow('Error loading results - ' + error.message);
     }
 }
 
@@ -297,19 +336,29 @@ async function loadAcademicResults() {
 async function loadAttendance() {
     try {
         const docId = `${currentPupilId}_${currentSettings.term}`;
+        console.log('Loading attendance for:', docId);
+        
         const doc = await db.collection('attendance').doc(docId).get();
 
         if (!doc.exists) {
-            console.log('No attendance data for:', docId);
+            console.log('No attendance data found for:', docId);
+            setText('times-opened', '-');
+            setText('times-present', '-');
+            setText('times-absent', '-');
             return;
         }
 
         const d = doc.data();
-        setText('times-opened', d.timesOpened || '-');
-        setText('times-present', d.timesPresent || '-');
-        setText('times-absent', d.timesAbsent || '-');
+        console.log('Attendance data:', d);
+        
+        setText('times-opened', d.timesOpened !== undefined ? d.timesOpened : '-');
+        setText('times-present', d.timesPresent !== undefined ? d.timesPresent : '-');
+        setText('times-absent', d.timesAbsent !== undefined ? d.timesAbsent : '-');
     } catch (error) {
         console.error('Error loading attendance:', error);
+        setText('times-opened', '-');
+        setText('times-present', '-');
+        setText('times-absent', '-');
     }
 }
 
