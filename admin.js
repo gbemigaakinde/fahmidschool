@@ -871,8 +871,8 @@ async function loadSubjects() {
           <input type="text" value="${subject.name}" class="subject-name-input" data-id="${subject.id}">
         </td>
         <td data-label="Actions">
-          <button class="btn-small btn-primary save-subject-btn" data-id="${subject.id}">Save</button>
-          <button class="btn-small btn-danger delete-subject-btn" data-id="${subject.id}">Delete</button>
+            <button class="btn-small btn-secondary" onclick="editSubject('${subject.id}', '${subject.name}')">Edit</button>
+          <button class="btn-small btn-danger" onclick="deleteSubject('${subject.id}', '${subject.name}')">Delete</button>
         </td>
       `;
       tbodyEl.appendChild(tr);
