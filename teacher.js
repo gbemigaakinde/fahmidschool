@@ -61,14 +61,13 @@ async function loadAssignedClasses() {
     }
     
     // Load pupils in batches (Firestore 'in' limit = 10)
-    const classNames = assignedClasses.map(c => c.name);
-    allPupils = [];
-    
-    for (let i = 0; i < classNames.length; i += 10) {
-      const batch = classNames.slice(i, i + 10);
-      const pupilsSnap = await db.collection('pupils')
-        .where('class.name', 'in', batch)  // CHANGED: Query the nested field
-        .get();
+    const classIds = assignedClasses.map(c => c.id); // Use IDs
+
+for (let i = 0; i < classIds.length; i += 10) {
+  const batch = classIds.slice(i, i + 10);
+  const pupilsSnap = await db.collection('pupils')
+    .where('class.id', 'in', batch)  // Query by class.id
+    .get();
       
       const batchPupils = pupilsSnap.docs.map(doc => ({
         id: doc.id,
