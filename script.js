@@ -255,6 +255,7 @@ function initSmoothScroll() {
 window.showToast = function (message, type = 'info', duration = 3000) {
     let container = document.getElementById('toast-container');
 
+    // Create container if it doesn't exist
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
@@ -263,10 +264,12 @@ window.showToast = function (message, type = 'info', duration = 3000) {
         document.body.appendChild(container);
     }
 
+    // Create the toast element
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.setAttribute('role', 'alert');
 
+    // Add icons based on type
     const icons = {
         success: '✓',
         danger: '✕',
@@ -281,14 +284,19 @@ window.showToast = function (message, type = 'info', duration = 3000) {
         toast.appendChild(icon);
     }
 
+    // Add message text
     toast.appendChild(document.createTextNode(message));
     container.appendChild(toast);
 
+    // Trigger CSS slide-in
     requestAnimationFrame(() => toast.classList.add('show'));
 
+    // Automatically hide after duration
+    const slideOutDuration = 300; // matches CSS slide-out animation
     setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
+        toast.classList.remove('show'); // trigger slide-out
+        // Remove from DOM after animation ends
+        setTimeout(() => toast.remove(), slideOutDuration);
     }, duration);
 };
 
