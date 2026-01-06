@@ -24,11 +24,18 @@ checkRole('pupil')
 // ============================================
 // PUPIL PROFILE
 // ============================================
+
 async function loadPupilProfile(user) {
     try {
         // Detach existing listeners first to prevent duplicates
-        if (pupilListener) pupilListener();
-        if (classListener) classListener();
+        if (pupilListener) {
+            pupilListener();
+            pupilListener = null;
+        }
+        if (classListener) {
+            classListener();
+            classListener = null;
+        }
 
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
@@ -80,75 +87,34 @@ async function loadPupilProfile(user) {
 
         // Update welcome message
         const settings = await getCurrentSettings();
-        document.getElementById('pupil-welcome').innerHTML = `
-            Hello, <strong>${data.name}</strong>!<br>
-            Class: ${currentClassInfo.name}<br>
-            Session: ${settings.session}
-        `;
+        const welcomeEl = document.getElementById('pupil-welcome');
+        if (welcomeEl) {
+            welcomeEl.innerHTML = `
+                Hello, <strong>${data.name}</strong>!<br>
+                Class: ${currentClassInfo.name}<br>
+                Session: ${settings.session}
+            `;
+        }
 
         // Load results
         await loadResults();
 
-        // Live update: watch pupil doc (store listener reference)
+        // Live update: watch pupil doc (store listener reference with error handling)
         pupilListener = db.collection('pupils').doc(currentPupilId)
-            .onSnapshot(async snap => {
-                if (snap.exists) {
-                    const updatedData = snap.data();
-                    currentPupilData = updatedData;
-                    
-                    // Update UI directly without calling loadPupilProfile again
-                    renderProfile({
-                        name: updatedData.name || '-',
-                        dob: updatedData.dob || '-',
-                        gender: updatedData.gender || '-',
-                        contact: updatedData.contact || '-',
-                        address: updatedData.address || '-',
-                        email: updatedData.email || '-',
-                        class: currentClassInfo.name,
-                        teacher: currentClassInfo.teacher,
-                        subjects: currentClassInfo.subjects
-                    });
-
-                    // Update welcome message
-                    const settings = await getCurrentSettings();
-                    document.getElementById('pupil-welcome').innerHTML = `
-                        Hello, <strong>${updatedData.name}</strong>!<br>
-                        Class: ${currentClassInfo.name}<br>
-                        Session: ${settings.session}
-                    `;
-
-                    // Reload results in case they changed
-                    await loadResults();
-                }
-            });
-
-        // Live update: watch class doc for subject changes (store listener reference)
-        if (data.class?.id) {
-            classListener = db.collection('classes').doc(data.class.id)
-                .onSnapshot(async snap => {
+            .onSnapshot(
+                async snap => {
                     if (snap.exists) {
-                        const classData = snap.data();
-                        currentClassInfo.name = classData.name;
-                        currentClassInfo.subjects = classData.subjects || [];
+                        const updatedData = snap.data();
+                        currentPupilData = updatedData;
                         
-                        // Fetch teacher name if needed
-                        if (classData.teacherName) {
-                            currentClassInfo.teacher = classData.teacherName;
-                        } else if (classData.teacherId) {
-                            const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                            currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-                        } else {
-                            currentClassInfo.teacher = '-';
-                        }
-                        
-                        // Update profile with new class info
+                        // Update UI directly without calling loadPupilProfile again
                         renderProfile({
-                            name: currentPupilData.name || '-',
-                            dob: currentPupilData.dob || '-',
-                            gender: currentPupilData.gender || '-',
-                            contact: currentPupilData.contact || '-',
-                            address: currentPupilData.address || '-',
-                            email: currentPupilData.email || '-',
+                            name: updatedData.name || '-',
+                            dob: updatedData.dob || '-',
+                            gender: updatedData.gender || '-',
+                            contact: updatedData.contact || '-',
+                            address: updatedData.address || '-',
+                            email: updatedData.email || '-',
                             class: currentClassInfo.name,
                             teacher: currentClassInfo.teacher,
                             subjects: currentClassInfo.subjects
@@ -156,22 +122,98 @@ async function loadPupilProfile(user) {
 
                         // Update welcome message
                         const settings = await getCurrentSettings();
-                        document.getElementById('pupil-welcome').innerHTML = `
-                            Hello, <strong>${currentPupilData.name}</strong>!<br>
-                            Class: ${currentClassInfo.name}<br>
-                            Session: ${settings.session}
-                        `;
+                        const welcomeEl = document.getElementById('pupil-welcome');
+                        if (welcomeEl) {
+                            welcomeEl.innerHTML = `
+                                Hello, <strong>${updatedData.name}</strong>!<br>
+                                Class: ${currentClassInfo.name}<br>
+                                Session: ${settings.session}
+                            `;
+                        }
 
-                        renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
+                        // Reload results in case they changed
+                        await loadResults();
                     }
-                });
+                },
+                error => {
+                    console.error('Pupil listener error:', error);
+                    window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
+                    // Optionally auto-refresh after delay
+                    // setTimeout(() => location.reload(), 3000);
+                }
+            );
+
+        // Live update: watch class doc for subject changes (store listener reference with error handling)
+        if (data.class?.id) {
+            classListener = db.collection('classes').doc(data.class.id)
+                .onSnapshot(
+                    async snap => {
+                        if (snap.exists) {
+                            const classData = snap.data();
+                            currentClassInfo.name = classData.name;
+                            currentClassInfo.subjects = classData.subjects || [];
+                            
+                            // Fetch teacher name if needed
+                            if (classData.teacherName) {
+                                currentClassInfo.teacher = classData.teacherName;
+                            } else if (classData.teacherId) {
+                                const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                                currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                            } else {
+                                currentClassInfo.teacher = '-';
+                            }
+                            
+                            // Update profile with new class info
+                            renderProfile({
+                                name: currentPupilData.name || '-',
+                                dob: currentPupilData.dob || '-',
+                                gender: currentPupilData.gender || '-',
+                                contact: currentPupilData.contact || '-',
+                                address: currentPupilData.address || '-',
+                                email: currentPupilData.email || '-',
+                                class: currentClassInfo.name,
+                                teacher: currentClassInfo.teacher,
+                                subjects: currentClassInfo.subjects
+                            });
+
+                            // Update welcome message
+                            const settings = await getCurrentSettings();
+                            const welcomeEl = document.getElementById('pupil-welcome');
+                            if (welcomeEl) {
+                                welcomeEl.innerHTML = `
+                                    Hello, <strong>${currentPupilData.name}</strong>!<br>
+                                    Class: ${currentClassInfo.name}<br>
+                                    Session: ${settings.session}
+                                `;
+                            }
+
+                            renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
+                        }
+                    },
+                    error => {
+                        console.error('Class listener error:', error);
+                        window.showToast?.('Lost connection to class updates. Please refresh the page.', 'warning');
+                    }
+                );
         }
 
     } catch (error) {
         console.error('Error loading pupil profile:', error);
-        handleError(error, 'Failed to load pupil profile');
+        window.handleError?.(error, 'Failed to load pupil profile');
     }
 }
+
+// Clean up listeners when page unloads (ADD THIS AT THE TOP OF pupil.js)
+window.addEventListener('beforeunload', () => {
+    if (pupilListener) {
+        pupilListener();
+        pupilListener = null;
+    }
+    if (classListener) {
+        classListener();
+        classListener = null;
+    }
+});
 
 // ============================================
 // PROFILE RENDER
