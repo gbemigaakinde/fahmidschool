@@ -2,117 +2,113 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript - Complete Report Card
  * 
- * @version 4.0.0 - FULL NIGERIAN REPORT CARD
- * @date 2026-01-04
+ * @version 5.0.0 - FULL NIGERIAN REPORT CARD
+ * @date 2026-01-06
  */
 
 'use strict';
 
 let currentPupilId = null;
-let currentTerm = 'First Term'; // Default term
+let currentTerm = 'First Term';
+let currentSession = '';
+let currentResumptionDate = '-';
+
+// ==============================
+// INITIALIZATION
+// ==============================
 
 checkRole('pupil').then(async user => {
     await loadPupilData(user);
 }).catch(() => {});
 
+// ==============================
+// LOAD PUPIL DATA
+// ==============================
+
 async function loadPupilData(user) {
     try {
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
-
         if (!pupilDoc.exists) {
             console.error('No pupil profile found for UID:', user.uid);
             window.showToast?.('No pupil profile found', 'danger');
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000);
+            setTimeout(() => window.location.href = 'login.html', 2000);
             return;
         }
 
         const pupilData = pupilDoc.data();
         currentPupilId = pupilDoc.id;
 
-        console.log('✓ Pupil profile loaded:', {
-            uid: currentPupilId,
-            name: pupilData.name
-        });
-
-        // Update bio data
+        // Update bio section
         document.getElementById('student-name').textContent = pupilData.name;
         document.getElementById('student-class').textContent = pupilData.class || 'N/A';
         document.getElementById('admission-no').textContent = pupilData.admissionNo || '-';
         document.getElementById('student-gender').textContent = pupilData.gender || '-';
 
-        // Fetch current settings for default term and session
+        // Fetch current school settings
         const settings = await getCurrentSettings();
-        currentTerm = settings.term; // Set global currentTerm
-        const currentSession = settings.session;
+        currentTerm = settings.term || 'First Term';
+        currentSession = settings.session || '';
+        currentResumptionDate = settings.resumptionDate || '-';
 
-        // Set term selector to current term
+        // Update term selector
         const termSelect = document.getElementById('print-term');
         if (termSelect) {
             termSelect.value = currentTerm;
-            // Reload data when term changed
             termSelect.addEventListener('change', (e) => {
                 currentTerm = e.target.value;
                 loadReportData();
             });
         }
 
-        // Update report title with term and session
+        // Update report title and bio term/session
         document.getElementById('report-title').textContent = `${currentTerm} Report Card - ${currentSession} Session`;
         document.getElementById('current-term').textContent = currentTerm;
 
         // Load all report data
         await loadReportData();
+
     } catch (error) {
         console.error('Error loading pupil data:', error);
         handleError(error, 'Failed to load pupil information');
-        
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 3000);
+        setTimeout(() => window.location.href = 'login.html', 3000);
     }
 }
+
+// ==============================
+// GET CURRENT SETTINGS
+// ==============================
 
 async function getCurrentSettings() {
-  try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
-    
-    if (settingsDoc.exists) {
-      return settingsDoc.data();
-    } else {
-      // Return defaults if no settings document exists
-      return {
-        term: 'First Term',
-        session: '',
-        resumptionDate: ''  // Or 'Not set' if preferred
-      };
+    try {
+        const settingsDoc = await db.collection('settings').doc('current').get();
+        if (settingsDoc.exists) {
+            return settingsDoc.data();
+        }
+        return { term: 'First Term', session: '', resumptionDate: '-' };
+    } catch (error) {
+        console.error('Error fetching current settings:', error);
+        return { term: 'First Term', session: '', resumptionDate: '-' };
     }
-  } catch (error) {
-    console.error('Error fetching current settings:', error);
-    // Return fallback defaults on error
-    return {
-      term: 'First Term',
-      session: '',
-      resumptionDate: '-'
-    };
-  }
 }
+
+// ==============================
+// LOAD FULL REPORT DATA
+// ==============================
 
 async function loadReportData() {
-  await Promise.all([
-    loadAcademicResults(),
-    loadAttendance(),
-    loadBehavioralTraits(),
-    loadPsychomotorSkills(),
-    loadRemarks(),
-    loadResumptionDate()  // NEW
-  ]);
+    await Promise.all([
+        loadAcademicResults(),
+        loadAttendance(),
+        loadBehavioralTraits(),
+        loadPsychomotorSkills(),
+        loadRemarks(),
+        displayResumptionDate()  // Resumption date is handled here
+    ]);
 }
 
-// ============================================
+// ==============================
 // ACADEMIC RESULTS
-// ============================================
+// ==============================
 
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
@@ -121,8 +117,6 @@ async function loadAcademicResults() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm;">Loading results...</td></tr>';
 
     try {
-        console.log('Loading results for:', currentPupilId, currentTerm);
-
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .where('term', '==', currentTerm)
@@ -135,22 +129,14 @@ async function loadAcademicResults() {
             return;
         }
 
-        // Collect results
         const results = [];
-        resultsSnap.forEach(doc => {
-            results.push(doc.data());
-        });
-
-        // Sort by subject name
+        resultsSnap.forEach(doc => results.push(doc.data()));
         results.sort((a, b) => a.subject.localeCompare(b.subject));
 
-        // Calculate totals
         let totalScore = 0;
         let subjectCount = 0;
 
-        // Display each subject
         results.forEach(result => {
-            // FIXED: Use correct field names from Firestore
             const ca = result.caScore || 0;
             const exam = result.examScore || 0;
             const total = ca + exam;
@@ -172,12 +158,10 @@ async function loadAcademicResults() {
             subjectCount++;
         });
 
-        // Add summary rows
         if (subjectCount > 0) {
             const average = (totalScore / subjectCount).toFixed(1);
             const overallGrade = getGrade(parseFloat(average));
 
-            // Total row
             const totalRow = document.createElement('tr');
             totalRow.className = 'summary-row';
             totalRow.innerHTML = `
@@ -186,7 +170,6 @@ async function loadAcademicResults() {
             `;
             tbody.appendChild(totalRow);
 
-            // Average row
             const avgRow = document.createElement('tr');
             avgRow.className = 'summary-row';
             avgRow.innerHTML = `
@@ -195,7 +178,6 @@ async function loadAcademicResults() {
             `;
             tbody.appendChild(avgRow);
 
-            // Overall grade row
             const gradeRow = document.createElement('tr');
             gradeRow.className = 'summary-row';
             gradeRow.innerHTML = `
@@ -205,16 +187,15 @@ async function loadAcademicResults() {
             tbody.appendChild(gradeRow);
         }
 
-        console.log('✓ Academic results loaded successfully');
     } catch (error) {
         console.error('Error loading academic results:', error);
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 5mm; color: #d32f2f;">Error loading results.</td></tr>';
     }
 }
 
-// ============================================
+// ==============================
 // ATTENDANCE
-// ============================================
+// ==============================
 
 async function loadAttendance() {
     try {
@@ -222,27 +203,19 @@ async function loadAttendance() {
             .doc(`${currentPupilId}_${currentTerm}`)
             .get();
 
-        if (attendanceDoc.exists) {
-            const data = attendanceDoc.data();
-            document.getElementById('times-opened').textContent = data.timesOpened || '-';
-            document.getElementById('times-present').textContent = data.timesPresent || '-';
-            document.getElementById('times-absent').textContent = data.timesAbsent || '-';
-        } else {
-            // Default values if no attendance record
-            document.getElementById('times-opened').textContent = '-';
-            document.getElementById('times-present').textContent = '-';
-            document.getElementById('times-absent').textContent = '-';
-        }
+        const data = attendanceDoc.exists ? attendanceDoc.data() : {};
+        document.getElementById('times-opened').textContent = data.timesOpened || '-';
+        document.getElementById('times-present').textContent = data.timesPresent || '-';
+        document.getElementById('times-absent').textContent = data.timesAbsent || '-';
 
-        console.log('✓ Attendance loaded');
     } catch (error) {
         console.error('Error loading attendance:', error);
     }
 }
 
-// ============================================
+// ==============================
 // BEHAVIORAL TRAITS
-// ============================================
+// ==============================
 
 async function loadBehavioralTraits() {
     try {
@@ -264,15 +237,14 @@ async function loadBehavioralTraits() {
             document.getElementById('trait-creativity').textContent = data.creativity || '-';
         }
 
-        console.log('✓ Behavioral traits loaded');
     } catch (error) {
         console.error('Error loading behavioral traits:', error);
     }
 }
 
-// ============================================
+// ==============================
 // PSYCHOMOTOR SKILLS
-// ============================================
+// ==============================
 
 async function loadPsychomotorSkills() {
     try {
@@ -290,58 +262,54 @@ async function loadPsychomotorSkills() {
             document.getElementById('skill-coordination').textContent = data.coordination || '-';
         }
 
-        console.log('✓ Psychomotor skills loaded');
     } catch (error) {
         console.error('Error loading psychomotor skills:', error);
     }
 }
 
-// ============================================
+// ==============================
 // REMARKS
-// ============================================
+// ==============================
 
 async function loadRemarks() {
-  try {
-    const remarksDoc = await db.collection('remarks')
-      .doc(`${currentPupilId}_${currentTerm}`)
-      .get();
+    try {
+        const remarksDoc = await db.collection('remarks')
+            .doc(`${currentPupilId}_${currentTerm}`)
+            .get();
 
-    if (remarksDoc.exists) {
-      const data = remarksDoc.data();
-      document.getElementById('teacher-remark').textContent = data.teacherRemark || '-';
-      document.getElementById('head-remark').textContent = data.headRemark || '-';
+        if (remarksDoc.exists) {
+            const data = remarksDoc.data();
+            document.getElementById('teacher-remark').textContent = data.teacherRemark || '-';
+            document.getElementById('head-remark').textContent = data.headRemark || '-';
+        }
+
+    } catch (error) {
+        console.error('Error loading remarks:', error);
     }
-
-    console.log('✓ Remarks loaded');
-  } catch (error) {
-    console.error('Error loading remarks:', error);
-  }
 }
 
-async function loadResumptionDate() {
-  try {
-    const settings = await getCurrentSettings();
-    let displayDate = settings.resumptionDate || '-';
-    
-    if (displayDate !== '-' && displayDate) {
-      const dateObj = new Date(displayDate);
-      displayDate = dateObj.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });  // Outputs: 15 January 2026
+// ==============================
+// RESUMPTION DATE
+// ==============================
+
+function displayResumptionDate() {
+    let displayDate = currentResumptionDate || '-';
+
+    if (displayDate && displayDate !== '-') {
+        const dateObj = new Date(displayDate);
+        displayDate = dateObj.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     }
-    
+
     document.getElementById('resumption-date').textContent = displayDate;
-  } catch (error) {
-    console.error('Error loading resumption date:', error);
-    document.getElementById('resumption-date').textContent = '-';
-  }
 }
 
-// ============================================
+// ==============================
 // GRADING FUNCTIONS
-// ============================================
+// ==============================
 
 function getGrade(score) {
     if (score >= 75) return 'A1';
