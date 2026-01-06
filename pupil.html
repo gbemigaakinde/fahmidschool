@@ -52,7 +52,7 @@
         .pupil-header .container {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             gap: var(--space-6);
             flex-wrap: wrap;
         }
@@ -74,6 +74,13 @@
             font-size: var(--text-lg);
             color: rgba(255,255,255,0.9);
             margin-top: var(--space-2);
+        }
+
+        /* LEFT-ALIGNED INFO */
+        .header-info {
+            flex: 1;
+            min-width: 250px;
+            text-align: left;
         }
 
         .welcome-message {
@@ -187,7 +194,7 @@
 
         .results-table {
             width: 100%;
-            min-width: 600px; /* prevents columns from collapsing too much */
+            min-width: 600px;
             border-collapse: collapse;
             margin-top: var(--space-8);
             font-size: var(--text-sm);
@@ -269,6 +276,9 @@
                 flex-direction: column;
                 text-align: center;
             }
+            .header-info {
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -278,16 +288,17 @@
 <header class="pupil-header">
     <div class="container">
 
+        <!-- CENTERED SCHOOL NAME AND PORTAL -->
         <div class="header-brand">
             <div class="logo-text">Fahmid Nursery & Primary School</div>
-            <div class="portal-title">Student Portal</div>
+            <div class="portal-title">Pupil Portal</div>
         </div>
 
-        <div>
+        <!-- LEFT-ALIGNED WELCOME INFO -->
+        <div class="header-info">
             <div id="pupil-welcome" class="welcome-message">Welcome back</div>
             <div class="student-meta">
-                <span id="student-class"></span> 
-                <span id="student-term" class="term"></span> 
+                <span id="student-class"></span>
                 <span id="student-session"></span>
             </div>
             <button class="btn-logout" onclick="logout()">Logout</button>
