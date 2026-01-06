@@ -72,37 +72,72 @@ async function fetchPupilProfile(uid) {
     pupilProfile = doc.data();
     currentPupilId = doc.id;
 
-    /* BIO */
+    /* ===============================
+       BIO
+    ================================== */
     setText('student-name', pupilProfile.name || '-');
     setText('student-gender', pupilProfile.gender || '-');
-    setText('student-class', pupilProfile.class?.name || '-');
     setText('admission-no', pupilProfile.admissionNo || '-');
 
-    /* FETCH CLASS TEACHER IF NEEDED */
-    if (pupilProfile.class?.id) {
-        const classDoc = await db.collection('classes').doc(pupilProfile.class.id).get();
+    /* ===============================
+       HANDLE CLASS DATA (OLD & NEW)
+    ================================== */
+    let classId = null;
+    let className = '-';
+
+    if (pupilProfile.class) {
+        if (typeof pupilProfile.class === 'object') {
+            // New format
+            classId = pupilProfile.class.id;
+            className = pupilProfile.class.name || '-';
+        } else if (typeof pupilProfile.class === 'string') {
+            // Old format
+            className = pupilProfile.class;
+
+            // Try to find class by name
+            const classSnap = await db.collection('classes')
+                .where('name', '==', className)
+                .limit(1)
+                .get();
+
+            if (!classSnap.empty) {
+                const classDoc = classSnap.docs[0];
+                classId = classDoc.id;
+                className = classDoc.data().name || className;
+            }
+        }
+    }
+
+    setText('student-class', className);
+
+    /* ===============================
+       FETCH CLASS TEACHER AND SUBJECTS
+    ================================== */
+    let teacherName = '-';
+    let subjectsList = '-';
+
+    if (classId) {
+        const classDoc = await db.collection('classes').doc(classId).get();
         if (classDoc.exists) {
             const classData = classDoc.data();
-            
-            // Get teacher name
-            let teacherName = '-';
+
+            // Teacher
             if (classData.teacherName) {
                 teacherName = classData.teacherName;
             } else if (classData.teacherId) {
                 const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                teacherName = teacherDoc.exists ? teacherDoc.data().name : '-';
+                if (teacherDoc.exists) teacherName = teacherDoc.data().name;
             }
-            
-            setText('class-teacher', teacherName);
-            
-            // Get subjects
+
+            // Subjects
             if (Array.isArray(classData.subjects) && classData.subjects.length > 0) {
-                setText('subjects-list', classData.subjects.join(', '));
-            } else {
-                setText('subjects-list', '-');
+                subjectsList = classData.subjects.join(', ');
             }
         }
     }
+
+    setText('class-teacher', teacherName);
+    setText('subjects-list', subjectsList);
 }
 
 /* ===============================
