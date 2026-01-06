@@ -1,10 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript 
- * Initialization & Core Functions
+ * Admin Portal JavaScript - FIXED
  * 
- * @version 6.0.0 - DUPLICATE CODE REMOVED
- * @date 2026-01-05
+ * @version 6.1.0 - CLASS HANDLING FIXED
+ * @date 2026-01-06
  */
 'use strict';
 
@@ -198,7 +197,7 @@ async function populateClassDropdown(selectedClass = '') {
       return;
     }
 
-    classSelect.disabled = false; // Re-enable if it was disabled
+    classSelect.disabled = false;
     snapshot.forEach(doc => {
       const data = doc.data();
       const opt = document.createElement('option');
@@ -246,7 +245,7 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
-  // NEW: Check if email already exists
+  // Check if email already exists
   try {
     const existingUsers = await db.collection('users')
       .where('email', '==', email)
@@ -339,7 +338,7 @@ async function loadTeachers() {
 }
 
 /* ======================================== 
-   PUPILS MANAGEMENT 
+   PUPILS MANAGEMENT - FIXED
 ======================================== */
 
 async function showPupilForm() {
@@ -357,19 +356,36 @@ function cancelPupilForm() {
   document.getElementById('pupil-form').style.display = 'none';
   document.getElementById('add-pupil-form').reset();
   document.getElementById('pupil-id').value = '';
+  
+  // Reset form title and button text
+  document.getElementById('pupil-form-title').textContent = 'Add / Edit Pupil';
+  document.getElementById('save-pupil-btn').textContent = 'Save Pupil';
 }
 
 /**
- * Fetch full class details by class name
- * Used to sync subjects and assigned teacher
+ * FIXED: Safely extract class ID from pupil data
+ * Handles both old format (string) and new format (object)
  */
+function getClassIdFromPupilData(classData) {
+  if (!classData) return null;
+  
+  // New format: {id: "xyz", name: "Primary 3"}
+  if (typeof classData === 'object' && classData.id) {
+    return classData.id;
+  }
+  
+  // Old format: just "Primary 3" as string
+  // We can't get an ID from this, so return null
+  return null;
+}
+
 /**
- * Fetch full class details by class ID (FIXED)
- * Used to sync subjects and assigned teacher
+ * FIXED: Fetch class details by class ID
  */
 async function getClassDetails(classId) {
   try {
-    // FIXED: Query by class ID, not class name
+    if (!classId) return null;
+    
     const doc = await db.collection('classes').doc(classId).get();
     
     if (!doc.exists) return null;
@@ -405,7 +421,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   const name = document.getElementById('pupil-name').value.trim();
   const dob = document.getElementById('pupil-dob').value;
   const gender = document.getElementById('pupil-gender').value;
-  const pupilClass = document.getElementById('pupil-class').value; // This is now the class ID
+  const pupilClassId = document.getElementById('pupil-class').value; // This is the class ID
   const parentName = document.getElementById('pupil-parent-name').value.trim();
   const parentEmail = document.getElementById('pupil-parent-email').value.trim();
   const contact = document.getElementById('pupil-contact').value.trim();
@@ -413,7 +429,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   const email = document.getElementById('pupil-email').value.trim();
   const tempPassword = document.getElementById('pupil-password').value;
 
-  if (!name || !gender || !pupilClass || !email || (!uid && !tempPassword)) {
+  if (!name || !gender || !pupilClassId || !email || (!uid && !tempPassword)) {
     window.showToast?.('Please fill all required fields', 'warning');
     return;
   }
@@ -439,8 +455,8 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.innerHTML = `<span class="btn-loading">${uid ? 'Updating pupil...' : 'Creating pupil...'}</span>`;
 
   try {
-    // FIXED: Pass class ID instead of class name
-    const classDetails = await getClassDetails(pupilClass);
+    // FIXED: Get class details using the class ID
+    const classDetails = await getClassDetails(pupilClassId);
 
     if (!classDetails) {
       window.showToast?.('Selected class not found', 'danger');
@@ -449,6 +465,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       return;
     }
 
+    // FIXED: Always store class in the NEW format (object with id and name)
     const pupilPayload = {
       name,
       dob: dob || '',
@@ -472,18 +489,10 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
     if (uid) {
       // ===== UPDATE EXISTING PUPIL =====
-
-      const userDoc = await db.collection('users').doc(uid).get();
-      if (userDoc.exists && userDoc.data().email !== email) {
-        // Auth email update intentionally left out for security
-      }
-
       await db.collection('pupils').doc(uid).update(pupilPayload);
-
       window.showToast?.(`Pupil "${name}" updated successfully!`, 'success');
     } else {
       // ===== ADD NEW PUPIL =====
-
       const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
       const newUid = userCredential.user.uid;
 
@@ -543,10 +552,20 @@ async function loadPupils() {
     pupils.sort((a, b) => a.name.localeCompare(b.name));
 
     paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
+      // FIXED: Safely extract class name from both old and new formats
+      let className = '-';
+      if (pupil.class) {
+        if (typeof pupil.class === 'object' && pupil.class.name) {
+          className = pupil.class.name;
+        } else if (typeof pupil.class === 'string') {
+          className = pupil.class;
+        }
+      }
+      
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Name">${pupil.name}</td>
-        <td data-label="Class">${pupil.class?.name || '-'}</td>
+        <td data-label="Class">${className}</td>
         <td data-label="Gender">${pupil.gender || '-'}</td>
         <td data-label="Parent Name">${pupil.parentName || '-'}</td>
         <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
@@ -570,9 +589,12 @@ async function editPupil(uid) {
     if (!doc.exists) throw new Error('Pupil not found');
 
     const data = doc.data();
+    
+    // FIXED: Safely extract class ID
+    const classId = getClassIdFromPupilData(data.class);
 
-    // Populate class dropdown dynamically and select pupil's current class
-    await populateClassDropdown(data.class?.id || '');
+    // Populate class dropdown and select the pupil's current class
+    await populateClassDropdown(classId);
 
     // Fill form fields
     document.getElementById('pupil-id').value = uid;
@@ -585,6 +607,35 @@ async function editPupil(uid) {
     document.getElementById('pupil-address').value = data.address || '';
     document.getElementById('pupil-email').value = data.email || '';
     document.getElementById('pupil-password').value = ''; // always blank for security
+    
+    // FIXED: If the pupil has old-format class data (just a string), 
+    // we need to find the matching class by name
+    if (!classId && data.class && typeof data.class === 'string') {
+      const className = data.class;
+      
+      // Try to find the class by name
+      const classesSnapshot = await db.collection('classes')
+        .where('name', '==', className)
+        .limit(1)
+        .get();
+      
+      if (!classesSnapshot.empty) {
+        const matchedClassId = classesSnapshot.docs[0].id;
+        document.getElementById('pupil-class').value = matchedClassId;
+        
+        window.showToast?.(
+          'Note: This pupil has old class data. Saving will upgrade it to the new format.', 
+          'info', 
+          5000
+        );
+      } else {
+        window.showToast?.(
+          `Warning: Could not find class "${className}". Please select the correct class.`, 
+          'warning', 
+          6000
+        );
+      }
+    }
 
     // Update form title and button
     document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
@@ -654,8 +705,18 @@ async function loadClasses() {
     
     const pupilCountMap = {};
     pupilsSnap.forEach(pupilDoc => {
-      const classObj = pupilDoc.data().class;
-      const className = classObj?.name || classObj;  // Handle both object and string
+      const classData = pupilDoc.data().class;
+      
+      // FIXED: Handle both old and new format
+      let className = null;
+      if (classData) {
+        if (typeof classData === 'object' && classData.name) {
+          className = classData.name;
+        } else if (typeof classData === 'string') {
+          className = classData;
+        }
+      }
+      
       if (className) {
         pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
       }
@@ -927,7 +988,7 @@ async function unassignTeacher(classId) {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    // ========== NEW: CLEAR TEACHER FROM ALL PUPILS IN THIS CLASS ==========
+    // Clear teacher from all pupils in this class
     const pupilsSnap = await db.collection('pupils')
       .where('class.id', '==', classId)
       .get();
@@ -1059,10 +1120,10 @@ async function loadAdminAnnouncements() {
 async function loadCurrentSettings() {
   const termEl = document.getElementById('display-term');
   const sessionEl = document.getElementById('display-session');
-  const resumptionEl = document.getElementById('display-resumption');  // NEW
+  const resumptionEl = document.getElementById('display-resumption');
   const termSelect = document.getElementById('current-term');
   const sessionInput = document.getElementById('current-session');
-  const resumptionInput = document.getElementById('resumption-date');  // NEW
+  const resumptionInput = document.getElementById('resumption-date');
   
   if (!termEl || !sessionEl || !resumptionEl || !termSelect || !sessionInput || !resumptionInput) return;
   
@@ -1073,24 +1134,24 @@ async function loadCurrentSettings() {
       const data = settingsDoc.data();
       termEl.textContent = `Term: ${data.term || 'Not set'}`;
       sessionEl.textContent = `Session: ${data.session || 'Not set'}`;
-      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;  // NEW
+      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;
       termSelect.value = data.term || 'First Term';
       sessionInput.value = data.session || '';
-      resumptionInput.value = data.resumptionDate || '';  // NEW
+      resumptionInput.value = data.resumptionDate || '';
     } else {
       termEl.textContent = 'Term: Not set';
       sessionEl.textContent = 'Session: Not set';
-      resumptionEl.textContent = 'Resumption Date: Not set';  // NEW
+      resumptionEl.textContent = 'Resumption Date: Not set';
       termSelect.value = 'First Term';
       sessionInput.value = '';
-      resumptionInput.value = '';  // NEW
+      resumptionInput.value = '';
     }
   } catch (error) {
     console.error('Error loading settings:', error);
     window.showToast?.('Failed to load current settings', 'danger');
     termEl.textContent = 'Error loading';
     sessionEl.textContent = 'Error loading';
-    resumptionEl.textContent = 'Error loading';  // NEW
+    resumptionEl.textContent = 'Error loading';
   }
 }
 
@@ -1099,9 +1160,9 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   
   const term = document.getElementById('current-term')?.value;
   const session = document.getElementById('current-session')?.value.trim();
-  const resumptionDate = document.getElementById('resumption-date')?.value;  // NEW
+  const resumptionDate = document.getElementById('resumption-date')?.value;
   
-  if (!term || !session || !resumptionDate) {  // Updated check
+  if (!term || !session || !resumptionDate) {
     window.showToast?.('All fields are required', 'warning');
     return;
   }
@@ -1114,7 +1175,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     await db.collection('settings').doc('current').set({
       term,
       session,
-      resumptionDate,  // NEW
+      resumptionDate,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
@@ -1198,5 +1259,5 @@ document.addEventListener('DOMContentLoaded', () => {
     dobInput.setAttribute('max', maxDate);
   }
   
-  console.log('✓ Admin portal initialized (v6.0.0 - PRODUCTION READY)');
+  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
 });
