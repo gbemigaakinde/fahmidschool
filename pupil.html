@@ -9,30 +9,560 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* ============================================
+           PUPIL PORTAL - COMPLETE STANDALONE STYLES
+           ============================================ */
+        
+        /* Portal Layout */
+        .pupil-portal {
+            min-height: 100vh;
+            background: var(--color-white);
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Header */
+        .pupil-header {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            padding: var(--space-8) 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-bottom: none;
+        }
+
+        .pupil-header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+
+        .header-left {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .logo-text {
+            font-size: var(--text-3xl);
+            font-weight: var(--weight-bold);
+            color: var(--color-white);
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.02em;
+        }
+
+        .portal-title {
+            font-size: var(--text-xl);
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            font-weight: var(--weight-semibold);
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .welcome-message {
+            font-size: var(--text-lg);
+            color: var(--color-white);
+            margin-bottom: var(--space-3);
+            font-weight: var(--weight-semibold);
+        }
+
+        .welcome-message strong {
+            color: var(--color-white);
+            font-weight: var(--weight-bold);
+        }
+
+        .student-meta {
+            font-size: var(--text-sm);
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: var(--space-4);
+            line-height: 1.6;
+        }
+
+        .student-meta span {
+            display: inline-block;
+            margin-right: var(--space-4);
+        }
+
+        /* Main Content */
+        .pupil-main {
+            padding: var(--space-16) 0;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--color-white);
+        }
+
+        /* Dashboard Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-8);
+            margin-bottom: var(--space-16);
+        }
+
+        .dashboard-card {
+            background: var(--color-white);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-8);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0, 178, 255, 0.3);
+            border-color: var(--color-primary);
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-4);
+            display: block;
+        }
+
+        .dashboard-card h3 {
+            color: var(--color-gray-900);
+            font-size: var(--text-2xl);
+            margin-bottom: var(--space-3);
+            font-weight: var(--weight-bold);
+        }
+
+        .dashboard-card p {
+            color: var(--color-gray-600);
+            margin-bottom: var(--space-6);
+            line-height: 1.6;
+        }
+
+        /* Results Section */
+        .results-section {
+            background: var(--color-white);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: var(--space-12);
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: var(--space-12);
+            padding-bottom: var(--space-8);
+            border-bottom: 3px solid var(--color-primary);
+        }
+
+        .results-header h2 {
+            font-size: var(--text-4xl);
+            color: var(--color-gray-900);
+            margin-bottom: var(--space-4);
+            margin-top: 0;
+        }
+
+        .results-header p {
+            color: var(--color-gray-600);
+            font-size: var(--text-lg);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Term Section */
+        .results-term-section {
+            margin: var(--space-12) 0;
+            padding: var(--space-10);
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: var(--radius-xl);
+            border-left: 6px solid var(--color-primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-term-section h3 {
+            color: var(--color-primary);
+            font-size: var(--text-3xl);
+            margin: 0 0 var(--space-8) 0;
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--color-primary);
+            font-weight: var(--weight-bold);
+        }
+
+        /* Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: var(--space-8) 0;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-table thead {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+        }
+
+        .results-table th {
+            color: var(--color-white);
+            padding: var(--space-4);
+            font-size: var(--text-sm);
+            font-weight: var(--weight-bold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+
+        .results-table th:first-child {
+            text-align: left;
+            padding-left: var(--space-6);
+        }
+
+        .results-table tbody tr {
+            background: var(--color-white);
+            transition: all 0.2s ease;
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background: var(--color-gray-50);
+        }
+
+        .results-table tbody tr:hover {
+            background: rgba(0, 178, 255, 0.05);
+            transform: scale(1.01);
+        }
+
+        .results-table td {
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--color-gray-200);
+            font-weight: var(--weight-medium);
+            text-align: center;
+        }
+
+        .results-table td:first-child {
+            text-align: left;
+            padding-left: var(--space-6);
+            font-weight: var(--weight-semibold);
+            color: var(--color-gray-900);
+        }
+
+        .results-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Grade Colors */
+        .grade-A1 { 
+            color: #2e7d32; 
+            font-weight: var(--weight-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .grade-B2, .grade-B3 { 
+            color: #1976d2; 
+            font-weight: var(--weight-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .grade-C4, .grade-C5, .grade-C6 { 
+            color: #f57c00; 
+            font-weight: var(--weight-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .grade-D7, .grade-D8 { 
+            color: #d32f2f; 
+            font-weight: var(--weight-bold);
+            font-size: var(--text-lg);
+        }
+        
+        .grade-F9 { 
+            color: #c62828; 
+            font-weight: var(--weight-bold);
+            font-size: var(--text-lg);
+        }
+
+        /* Summary Row */
+        .summary-row {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%) !important;
+            color: var(--color-white);
+            font-weight: var(--weight-bold);
+            border-top: 3px solid var(--color-primary-dark);
+        }
+
+        .summary-row td {
+            color: var(--color-white) !important;
+            font-size: var(--text-lg);
+            padding: var(--space-5) var(--space-4);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-20) var(--space-8);
+        }
+
+        .empty-state-icon {
+            font-size: 5rem;
+            margin-bottom: var(--space-6);
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            color: var(--color-gray-700);
+            font-size: var(--text-2xl);
+            margin-bottom: var(--space-4);
+        }
+
+        .empty-state p {
+            color: var(--color-gray-600);
+            font-size: var(--text-lg);
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.8;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: var(--space-4);
+            justify-content: center;
+            margin-top: var(--space-12);
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: var(--color-white);
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-full);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-lg);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 178, 255, 0.3);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 178, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--color-white);
+            color: var(--color-primary);
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-full);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-lg);
+            border: 2px solid var(--color-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-primary);
+            color: var(--color-white);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 178, 255, 0.3);
+        }
+
+        .btn-logout {
+            background: transparent;
+            color: var(--color-white);
+            border: 2px solid var(--color-white);
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--radius-full);
+            font-weight: var(--weight-semibold);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: var(--text-base);
+        }
+
+        .btn-logout:hover {
+            background: var(--color-white);
+            color: var(--color-primary);
+        }
+
+        /* Footer */
+        .pupil-footer {
+            background: var(--color-gray-900);
+            padding: var(--space-8) 0;
+            text-align: center;
+            border-top: none;
+            margin-top: var(--space-16);
+        }
+
+        .pupil-footer p {
+            color: var(--color-white);
+            margin: 0;
+            font-size: var(--text-sm);
+        }
+
+        /* Loading Skeleton */
+        .skeleton-container {
+            padding: var(--space-12);
+        }
+
+        .skeleton {
+            background: linear-gradient(
+                90deg,
+                var(--color-gray-200) 25%,
+                var(--color-gray-300) 50%,
+                var(--color-gray-200) 75%
+            );
+            background-size: 200% 100%;
+            animation: loading 1.5s ease-in-out infinite;
+            border-radius: var(--radius-md);
+            height: 40px;
+            margin-bottom: var(--space-4);
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .pupil-header .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-left,
+            .header-right {
+                width: 100%;
+                text-align: center;
+            }
+
+            .logo-text {
+                font-size: var(--text-2xl);
+            }
+
+            .portal-title {
+                font-size: var(--text-lg);
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-section {
+                padding: var(--space-6);
+            }
+
+            .results-term-section {
+                padding: var(--space-6);
+            }
+
+            .results-header h2 {
+                font-size: var(--text-3xl);
+            }
+
+            .results-table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .results-table th,
+            .results-table td {
+                padding: var(--space-3);
+                font-size: var(--text-sm);
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn-primary,
+            .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .pupil-portal {
+                background: white;
+            }
+
+            .pupil-header,
+            .pupil-footer,
+            .action-buttons,
+            .btn-logout {
+                display: none;
+            }
+
+            .results-section {
+                box-shadow: none;
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="pupil-portal">
     <!-- Skip to main content -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <!-- Pupil Header -->
-    <header style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: var(--space-xl); text-align: center; color: var(--color-white); box-shadow: var(--shadow-lg);">
-        <div class="logo-text" style="color: var(--color-white); margin-bottom: var(--space-sm);">Fahmid School</div>
-        <h1 style="color: var(--color-white); margin-bottom: var(--space-sm);">Pupil Portal</h1>
-        <p id="pupil-welcome" style="font-size: var(--font-size-lg); margin-bottom: var(--space-md);">Welcome back!</p>
-        <div id="user-status">
-            <button class="btn" onclick="logout()" style="background: var(--color-white); color: var(--color-success); border-color: var(--color-white);">
-                Logout
-            </button>
+    <header class="pupil-header">
+        <div class="container">
+            <div class="header-left">
+                <div class="logo-text">Fahmid School</div>
+                <h1 class="portal-title">📚 Student Portal</h1>
+            </div>
+            <div class="header-right">
+                <div id="pupil-welcome" class="welcome-message">Welcome back!</div>
+                <div class="student-meta">
+                    <span id="student-class"></span>
+                    <span id="student-session"></span>
+                </div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
         </div>
     </header>
 
-    <main class="container" id="main-content" style="padding: var(--space-2xl) var(--space-lg); max-width: 1000px;">
-        <div class="admin-card">
-            <h2 style="text-align: center; color: var(--color-primary-dark); margin-bottom: var(--space-sm);">📊 My Academic Results</h2>
-            <p style="text-align: center; color: var(--color-gray-600); margin-bottom: var(--space-xl);">View your performance across all terms and subjects.</p>
+    <!-- Main Content -->
+    <main class="pupil-main container" id="main-content">
+        <!-- Dashboard Cards -->
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <span class="card-icon">📊</span>
+                <h3>My Results</h3>
+                <p>View your academic performance across all terms and subjects</p>
+            </div>
 
-            <div style="text-align: center; margin: var(--space-xl) 0;">
-                <a href="print-results.html" class="btn" style="background: var(--color-success);">
+            <div class="dashboard-card">
+                <span class="card-icon">🎯</span>
+                <h3>Track Progress</h3>
+                <p>Monitor your grades and identify areas for improvement</p>
+            </div>
+
+            <div class="dashboard-card">
+                <span class="card-icon">🏆</span>
+                <h3>Achievements</h3>
+                <p>Celebrate your academic milestones and success</p>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section">
+            <div class="results-header">
+                <h2>📈 Academic Results</h2>
+                <p>Your complete performance record for the current academic session</p>
+            </div>
+
+            <div class="action-buttons">
+                <a href="print-results.html" class="btn-primary">
                     🖨️ View & Print Full Report Card
                 </a>
             </div>
@@ -48,13 +578,14 @@
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: var(--space-2xl);">
-            <a href="index.html" class="btn" style="background: var(--color-gray-600);">← Back to School Website</a>
+        <!-- Back to Website -->
+        <div class="action-buttons">
+            <a href="index.html" class="btn-secondary">← Back to School Website</a>
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="site-footer" style="margin-left: 0;">
+    <footer class="pupil-footer">
         <div class="container">
             <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
         </div>
@@ -66,72 +597,5 @@
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
     <script src="pupil.js"></script>
-
-    <style>
-        /* Pupil-specific styles - Enhanced for consistency */
-        .results-term-section {
-            margin: var(--space-2xl) 0;
-            padding: var(--space-xl);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-lg);
-            border-left: 5px solid var(--color-success);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .results-term-section h3 {
-            color: var(--color-success);
-            border-bottom: 2px solid var(--color-success);
-            padding-bottom: var(--space-sm);
-            margin-bottom: var(--space-lg);
-            font-size: var(--text-xl);
-        }
-
-        .results-table {
-            width: 100%;
-            margin: var(--space-lg) 0;
-            border-collapse: collapse;
-        }
-
-        .results-table th {
-            background: var(--color-success);
-            color: var(--color-white);
-            padding: var(--space-3);
-            font-size: var(--text-sm);
-        }
-
-        .results-table td {
-            padding: var(--space-3);
-            font-weight: var(--weight-medium);
-        }
-
-        .results-table tr:hover {
-            background: var(--color-gray-100);
-        }
-
-        /* Consistent with print page grade classes */
-        .grade-A1 { color: #2e7d32; font-weight: var(--weight-bold); }
-        .grade-B2, .grade-B3 { color: #1976d2; font-weight: var(--weight-bold); }
-        .grade-C4, .grade-C5, .grade-C6 { color: #f57c00; font-weight: var(--weight-bold); }
-        .grade-D7, .grade-D8 { color: #d32f2f; font-weight: var(--weight-bold); }
-        .grade-F9 { color: #c62828; font-weight: var(--weight-bold); }
-
-        .summary-row {
-            background: var(--color-gray-100);
-            font-weight: var(--weight-bold);
-            border-top: 2px solid var(--color-primary);
-        }
-
-        @media (max-width: 768px) {
-            .results-table {
-                display: block;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .results-term-section {
-                padding: var(--space-lg);
-            }
-        }
-    </style>
 </body>
 </html>
