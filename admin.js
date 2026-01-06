@@ -191,18 +191,29 @@ async function populateClassDropdown(selectedClass = '') {
     const snapshot = await db.collection('classes').orderBy('name').get();
     classSelect.innerHTML = '<option value="">-- Select Class --</option>';
 
+    if (snapshot.empty) {
+      classSelect.innerHTML = '<option value="">No classes available - Create one first</option>';
+      classSelect.disabled = true;
+      window.showToast?.('Please create a class first', 'warning');
+      return;
+    }
+
+    classSelect.disabled = false; // Re-enable if it was disabled
     snapshot.forEach(doc => {
       const data = doc.data();
       const opt = document.createElement('option');
-      opt.value = doc.id;  // CHANGED: Use class ID instead of name
+      opt.value = doc.id;
       opt.textContent = data.name;
-      if (selectedClass && data.name === selectedClass) {
+      if (selectedClass && doc.id === selectedClass) {
         opt.selected = true;
       }
       classSelect.appendChild(opt);
     });
   } catch (error) {
     console.error('Error populating class dropdown:', error);
+    classSelect.innerHTML = '<option value="">Error loading classes</option>';
+    classSelect.disabled = true;
+    window.showToast?.('Failed to load classes. Please refresh the page.', 'danger');
   }
 }
 
