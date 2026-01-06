@@ -794,7 +794,7 @@ async function addSubject() {
     window.showToast?.('Subject created successfully', 'success');
     document.getElementById('subject-form').style.display = 'none';
     document.getElementById('subject-name').value = '';
-    loadSubjects();
+    loadSubjects(); // Refresh table to include the new subject
   } catch (error) {
     console.error('Error adding subject:', error);
     window.handleError(error, 'Failed to create subject');
@@ -823,21 +823,70 @@ async function loadSubjects() {
     
     subjects.sort((a, b) => a.name.localeCompare(b.name));
     
-    paginateTable(subjects, 'subjects-table', 20, (subject, tbody) => {
+    paginateTable(subjects, 'subjects-table', 20, (subject, tbodyEl) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td data-label="Subject Name">${subject.name}</td>
+        <td data-label="Subject Name">
+          <input type="text" value="${subject.name}" class="subject-name-input" data-id="${subject.id}">
+        </td>
         <td data-label="Actions">
-          <button class="btn-small btn-danger" onclick="deleteItem('subjects', '${subject.id}')">Delete</button>
+          <button class="btn-small btn-primary save-subject-btn" data-id="${subject.id}">Save</button>
+          <button class="btn-small btn-danger delete-subject-btn" data-id="${subject.id}">Delete</button>
         </td>
       `;
-      tbody.appendChild(tr);
+      tbodyEl.appendChild(tr);
     });
+
+    setupSubjectsEventListeners();
   } catch (error) {
     console.error('Error loading subjects:', error);
     window.showToast?.('Failed to load subjects list. Check connection and try again.', 'danger');
     tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading subjects - please refresh</td></tr>';
   }
+}
+
+function setupSubjectsEventListeners() {
+  // Save (Edit) Subject
+  document.querySelectorAll('.save-subject-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const input = document.querySelector(`.subject-name-input[data-id="${id}"]`);
+      const newName = input.value.trim();
+      if (!newName) return window.showToast?.('Subject name cannot be empty', 'warning');
+
+      try {
+        // Check for duplicates
+        const snap = await db.collection('subjects').where('name', '==', newName).get();
+        if (!snap.empty && snap.docs[0].id !== id) {
+          return window.showToast?.('Another subject with this name already exists', 'warning');
+        }
+
+        await db.collection('subjects').doc(id).set({ name: newName }, { merge: true });
+        window.showToast?.('✓ Subject updated successfully', 'success');
+        loadSubjects(); // Refresh the table
+      } catch (err) {
+        console.error('Error updating subject:', err);
+        window.showToast?.('Failed to update subject', 'danger');
+      }
+    });
+  });
+
+  // Delete Subject
+  document.querySelectorAll('.delete-subject-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (!confirm('Are you sure you want to delete this subject?')) return;
+
+      try {
+        await db.collection('subjects').doc(id).delete();
+        window.showToast?.('✓ Subject deleted successfully', 'success');
+        loadSubjects();
+      } catch (err) {
+        console.error('Error deleting subject:', err);
+        window.showToast?.('Failed to delete subject', 'danger');
+      }
+    });
+  });
 }
 
 /* ======================================== 
