@@ -1071,7 +1071,17 @@ async function deleteItem(collectionName, docId) {
 ======================================== */
 document.addEventListener('DOMContentLoaded', () => {
   showSection('dashboard');
+  
+  // Set maximum date for date of birth (today's date)
+  const dobInput = document.getElementById('pupil-dob');
+  if (dobInput) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const maxDate = `${year}-${month}-${day}`;
+    dobInput.setAttribute('max', maxDate);
+  }
+  
   console.log('✓ Admin portal initialized (v6.0.0 - PRODUCTION READY)');
 });
-
-console.log('✓ Admin portal v6.0.0 Part 2 loaded');
