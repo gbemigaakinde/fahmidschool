@@ -402,6 +402,22 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     window.showToast?.('Please fill all required fields', 'warning');
     return;
   }
+  
+  // NEW: Check if email already exists (only when creating new pupil)
+  if (!uid) {
+    try {
+      const existingUsers = await db.collection('users')
+        .where('email', '==', email)
+        .get();
+      
+      if (!existingUsers.empty) {
+        window.showToast?.('This email is already registered', 'warning');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+    }
+  }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
