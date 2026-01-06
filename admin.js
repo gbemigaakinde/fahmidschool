@@ -183,17 +183,22 @@ async function loadDashboardStats() {
   }
 }
 
-async function populateClassDropdown() {
+async function populateClassDropdown(selectedClass = '') {
   const classSelect = document.getElementById('pupil-class');
   if (!classSelect) return;
 
   try {
     const snapshot = await db.collection('classes').orderBy('name').get();
     classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+
     snapshot.forEach(doc => {
+      const data = doc.data();
       const opt = document.createElement('option');
-      opt.value = doc.data().name;
-      opt.textContent = doc.data().name;
+      opt.value = data.name; // or use doc.id if you prefer class IDs
+      opt.textContent = data.name;
+      if (selectedClass && data.name === selectedClass) {
+        opt.selected = true;
+      }
       classSelect.appendChild(opt);
     });
   } catch (error) {
@@ -330,7 +335,7 @@ function cancelPupilForm() {
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const uid = document.getElementById('pupil-id').value; // empty if adding
+  const uid = document.getElementById('pupil-id').value; // empty if adding new
   const name = document.getElementById('pupil-name').value.trim();
   const dob = document.getElementById('pupil-dob').value;
   const gender = document.getElementById('pupil-gender').value;
@@ -342,8 +347,8 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   const email = document.getElementById('pupil-email').value.trim();
   const tempPassword = document.getElementById('pupil-password').value;
 
-  if (!name || !dob || !gender || !pupilClass || !email || (!uid && !tempPassword)) {
-    window.showToast?.('All required fields must be filled', 'warning');
+  if (!name || !gender || !pupilClass || !email || (!uid && !tempPassword)) {
+    window.showToast?.('Please fill all required fields', 'warning');
     return;
   }
 
@@ -352,8 +357,32 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.innerHTML = `<span class="btn-loading">${uid ? 'Updating pupil...' : 'Creating pupil...'}</span>`;
 
   try {
-    if (!uid) {
-      // NEW PUPIL
+    if (uid) {
+      // ===== UPDATE EXISTING PUPIL =====
+      const updateData = {
+        name,
+        dob: dob || '',
+        gender,
+        class: pupilClass,
+        parentName: parentName || '',
+        parentEmail: parentEmail || '',
+        contact: contact || '',
+        address: address || '',
+        email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      // Optional: update email in Firebase Auth if changed
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (userDoc.exists && userDoc.data().email !== email) {
+        // Update Auth email via admin backend / secure method if needed
+      }
+
+      await db.collection('pupils').doc(uid).update(updateData);
+
+      window.showToast?.(`Pupil "${name}" updated successfully!`, 'success');
+    } else {
+      // ===== ADD NEW PUPIL =====
       const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
       const newUid = userCredential.user.uid;
 
@@ -365,7 +394,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
       await db.collection('pupils').doc(newUid).set({
         name,
-        dob,
+        dob: dob || '',
         gender,
         class: pupilClass,
         parentName: parentName || '',
@@ -378,38 +407,20 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
 
       await secondaryAuth.signOut();
       await auth.sendPasswordResetEmail(email);
+
       window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 6000);
-    } else {
-      // EDIT EXISTING PUPIL
-      const pupilRef = db.collection('pupils').doc(uid);
-      const pupilSnap = await pupilRef.get();
-      if (!pupilSnap.exists) throw new Error('Pupil does not exist');
-
-      await pupilRef.update({
-        name,
-        dob,
-        gender,
-        class: pupilClass,
-        parentName: parentName || '',
-        parentEmail: parentEmail || '',
-        contact: contact || '',
-        address: address || '',
-        email,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      window.showToast?.(`Pupil "${name}" updated successfully!`, 'success');
     }
 
+    // Reset form and refresh table
     cancelPupilForm();
     loadPupils();
     loadDashboardStats();
   } catch (error) {
     console.error('Error saving pupil:', error);
-    window.handleError(error, uid ? 'Failed to update pupil' : 'Failed to add pupil');
+    window.handleError(error, `Failed to ${uid ? 'update' : 'add'} pupil`);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = uid ? 'Save Pupil' : 'Save Pupil';
+    submitBtn.innerHTML = uid ? 'Update Pupil' : 'Save Pupil';
   }
 });
 
@@ -467,15 +478,14 @@ async function editPupil(uid) {
 
     const data = doc.data();
 
-    // Populate class dropdown dynamically before setting value
-    await populateClassDropdown();
+    // Populate class dropdown dynamically and select pupil's current class
+    await populateClassDropdown(data.class);
 
     // Fill form fields
     document.getElementById('pupil-id').value = uid;
     document.getElementById('pupil-name').value = data.name || '';
     document.getElementById('pupil-dob').value = data.dob || '';
     document.getElementById('pupil-gender').value = data.gender || '';
-    document.getElementById('pupil-class').value = data.class || '';
     document.getElementById('pupil-parent-name').value = data.parentName || '';
     document.getElementById('pupil-parent-email').value = data.parentEmail || '';
     document.getElementById('pupil-contact').value = data.contact || '';
@@ -487,10 +497,8 @@ async function editPupil(uid) {
     document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
     document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
 
-    // Show the form
+    // Show the form and focus first field
     showPupilForm();
-
-    // Focus the first field for convenience
     document.getElementById('pupil-name')?.focus();
   } catch (error) {
     console.error('Error loading pupil for edit:', error);
