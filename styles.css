@@ -808,12 +808,13 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
-/* Loading State */
+/* ===================== Loading Animation ===================== */
 .table-loading {
     position: relative;
-    padding: var(--space-2xl) !important;
+    padding: 48px !important; /* Updated from original */
     text-align: center;
-    color: var(--color-gray-600);
+    color: #666; /* Updated from original */
+    font-size: 14px;
 }
 
 .table-loading::after {
@@ -824,43 +825,49 @@ tbody tr:last-child td {
     width: 24px;
     height: 24px;
     margin: -12px 0 0 -12px;
-    border: 3px solid var(--color-gray-300);
-    border-top-color: var(--color-primary);
+    border: 3px solid #e0e0e0; /* Updated from original */
+    border-top-color: #2196F3; /* Updated from original */
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
 
-/* Mobile Responsive Adjustments */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===================== Mobile Responsive Adjustments ===================== */
 @media (max-width: 768px) {
     .table-container {
         border-radius: var(--radius-md);
         margin: var(--space-4) 0;
     }
-    
+
     .responsive-table {
         font-size: 14px;
         min-width: 500px; /* Allow more shrinking on mobile */
     }
-    
+
     th,
     td {
         padding: var(--space-3) var(--space-4);
         white-space: nowrap;
     }
-    
+
     th {
         font-size: 12px;
     }
 }
 
-/* Tablet Adjustments */
+/* ===================== Tablet Adjustments ===================== */
 @media (min-width: 769px) and (max-width: 1024px) {
     .responsive-table {
         font-size: 15px;
     }
 }
 
-/* Print Styles */
+/* ===================== Print Styles ===================== */
 @media print {
     .table-container {
         border: 1px solid #000;
@@ -868,16 +875,17 @@ tbody tr:last-child td {
         margin: 8px 0;
         overflow: visible;
     }
-    
+
     .responsive-table {
         min-width: auto;
         font-size: 10pt;
     }
-    
-    th, td {
+
+    th,
+    td {
         padding: 4px 8px;
     }
-    
+
     tbody tr:hover {
         background: transparent;
     }
