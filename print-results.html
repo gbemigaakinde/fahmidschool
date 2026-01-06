@@ -97,12 +97,56 @@ body { background: #fff; font-family: Arial, sans-serif; font-size: 9pt; line-he
 
 /* PRINT MEDIA */
 @media print {
-    body, .report-card-container { margin: 0; padding: 0; background: white; box-shadow: none; }
-    .report-page { padding: 10mm 12mm; }
-    .print-actions, .no-print { display: none !important; }
-    .report-header, .section-title, .academic-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .bio-section, .attendance-section, .academic-section, .traits-section, .psychomotor-section, .remarks-section { page-break-inside: avoid; }
-    @page { size: A4 portrait; margin: 10mm 12mm; }
+    body, .report-card-container { 
+        margin: 0; 
+        padding: 0; 
+        background: white; 
+        box-shadow: none; 
+    }
+    
+    .report-page { 
+        padding: 10mm 12mm; 
+    }
+    
+    .print-actions, .no-print { 
+        display: none !important; 
+    }
+    
+    .report-header, .section-title, .academic-table th { 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact; 
+    }
+    
+    /* Prevent sections from splitting across pages */
+    .bio-section, 
+    .attendance-section, 
+    .academic-section, 
+    .traits-section, 
+    .psychomotor-section, 
+    .remarks-section { 
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    
+    /* Allow long academic tables to break if necessary */
+    .academic-table tbody {
+        page-break-inside: auto;
+    }
+    
+    .academic-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    
+    /* Keep summary rows with the last subject */
+    .summary-row {
+        page-break-before: avoid;
+    }
+    
+    @page { 
+        size: A4 portrait; 
+        margin: 10mm 12mm; 
+    }
 }
 </style>
 </head>
