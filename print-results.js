@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript - Complete Report Card
  * 
- * @version 5.0.1 - FULL NIGERIAN REPORT CARD
+ * @version 5.0.2 - FULL NIGERIAN REPORT CARD
  * @date 2026-01-06
  */
 
@@ -46,7 +46,7 @@ async function loadPupilData(user) {
         document.getElementById('admission-no').textContent = pupilData.admissionNo || '-';
         document.getElementById('student-gender').textContent = pupilData.gender || '-';
 
-        // Fetch current school settings
+        // Fetch current school settings once on load
         await fetchCurrentSettings();
 
         // Update term selector
@@ -55,20 +55,14 @@ async function loadPupilData(user) {
             termSelect.value = currentSettings.term;
             termSelect.addEventListener('change', async (e) => {
                 currentSettings.term = e.target.value;
-
-                // Reload settings (for session or resumption changes)
-                await fetchCurrentSettings();
-
-                // Update report header and all report data
+                // Update report header and load data for selected term
                 updateReportHeader();
                 await loadReportData();
             });
         }
 
-        // Update header
+        // Initial header and data load
         updateReportHeader();
-
-        // Load all report data for the initial term
         await loadReportData();
 
     } catch (error) {
@@ -79,7 +73,7 @@ async function loadPupilData(user) {
 }
 
 // ==============================
-// FETCH CURRENT SETTINGS
+// FETCH CURRENT SETTINGS (once)
 // ==============================
 
 async function fetchCurrentSettings() {
