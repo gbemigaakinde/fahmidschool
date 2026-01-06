@@ -21,6 +21,18 @@ checkRole('pupil')
     .then(async user => await loadPupilProfile(user))
     .catch(() => window.location.href = 'login.html');
 
+// Clean up listeners when page unloads
+window.addEventListener('beforeunload', () => {
+    if (pupilListener) {
+        pupilListener();
+        pupilListener = null;
+    }
+    if (classListener) {
+        classListener();
+        classListener = null;
+    }
+});
+
 // ============================================
 // PUPIL PROFILE
 // ============================================
