@@ -89,11 +89,11 @@ for (let i = 0; i < classIds.length; i += 10) {
 async function loadSubjects() {
   try {
     const snap = await db.collection('subjects').get();
-    allSubjects = snap.empty ? ['English', 'Mathematics', 'Science'] : snap.docs.map(d => d.data().name);
+    allSubjects = snap.docs.map(d => d.data().name); // no hardcoded fallback
     allSubjects.sort();
   } catch (err) {
     console.error('Error loading subjects:', err);
-    allSubjects = ['English', 'Mathematics', 'Science'];
+    allSubjects = []; // empty array, teacher will see “no subjects”
   }
 }
 
