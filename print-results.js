@@ -75,13 +75,13 @@ async function fetchPupilProfile(uid) {
     /* BIO */
     setText('student-name', pupilProfile.name || '-');
     setText('student-gender', pupilProfile.gender || '-');
-    setText('student-class', pupilProfile.class || '-');
+    setText('student-class', pupilProfile.class?.name || '-');  // CHANGED
     setText('admission-no', pupilProfile.admissionNo || '-');
 
     /* TEACHER */
     setText(
         'class-teacher',
-        pupilProfile.assignedTeacher || '-'
+        pupilProfile.assignedTeacher?.name || '-'  // CHANGED
     );
 
     /* SUBJECTS (comma-separated) */
