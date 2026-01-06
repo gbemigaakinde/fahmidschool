@@ -316,6 +316,7 @@ async function loadTeachers() {
 /* ======================================== 
    PUPILS MANAGEMENT 
 ======================================== */
+
 async function showPupilForm() {
   const form = document.getElementById('pupil-form');
   if (!form) return;
@@ -330,12 +331,48 @@ async function showPupilForm() {
 function cancelPupilForm() {
   document.getElementById('pupil-form').style.display = 'none';
   document.getElementById('add-pupil-form').reset();
+  document.getElementById('pupil-id').value = '';
+}
+
+/**
+ * Fetch full class details by class name
+ * Used to sync subjects and assigned teacher
+ */
+async function getClassDetails(className) {
+  const snap = await db
+    .collection('classes')
+    .where('name', '==', className)
+    .limit(1)
+    .get();
+
+  if (snap.empty) return null;
+
+  const doc = snap.docs[0];
+  const data = doc.data();
+
+  let teacherName = '';
+  let teacherId = data.teacherId || '';
+
+  if (teacherId) {
+    const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+    if (teacherDoc.exists) {
+      teacherName = teacherDoc.data().name || '';
+    }
+  }
+
+  return {
+    classId: doc.id,
+    className: data.name,
+    subjects: data.subjects || [],
+    teacherId,
+    teacherName
+  };
 }
 
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const uid = document.getElementById('pupil-id').value; // empty if adding new
+  const uid = document.getElementById('pupil-id').value;
   const name = document.getElementById('pupil-name').value.trim();
   const dob = document.getElementById('pupil-dob').value;
   const gender = document.getElementById('pupil-gender').value;
@@ -357,32 +394,48 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.innerHTML = `<span class="btn-loading">${uid ? 'Updating pupil...' : 'Creating pupil...'}</span>`;
 
   try {
+    const classDetails = await getClassDetails(pupilClass);
+
+    if (!classDetails) {
+      window.showToast?.('Selected class not found', 'danger');
+      return;
+    }
+
+    const pupilPayload = {
+      name,
+      dob: dob || '',
+      gender,
+      email,
+      parentName: parentName || '',
+      parentEmail: parentEmail || '',
+      contact: contact || '',
+      address: address || '',
+      class: {
+        id: classDetails.classId,
+        name: classDetails.className
+      },
+      subjects: classDetails.subjects,
+      assignedTeacher: {
+        id: classDetails.teacherId,
+        name: classDetails.teacherName
+      },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
     if (uid) {
       // ===== UPDATE EXISTING PUPIL =====
-      const updateData = {
-        name,
-        dob: dob || '',
-        gender,
-        class: pupilClass,
-        parentName: parentName || '',
-        parentEmail: parentEmail || '',
-        contact: contact || '',
-        address: address || '',
-        email,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
 
-      // Optional: update email in Firebase Auth if changed
       const userDoc = await db.collection('users').doc(uid).get();
       if (userDoc.exists && userDoc.data().email !== email) {
-        // Update Auth email via admin backend / secure method if needed
+        // Auth email update intentionally left out for security
       }
 
-      await db.collection('pupils').doc(uid).update(updateData);
+      await db.collection('pupils').doc(uid).update(pupilPayload);
 
       window.showToast?.(`Pupil "${name}" updated successfully!`, 'success');
     } else {
       // ===== ADD NEW PUPIL =====
+
       const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
       const newUid = userCredential.user.uid;
 
@@ -393,15 +446,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       });
 
       await db.collection('pupils').doc(newUid).set({
-        name,
-        dob: dob || '',
-        gender,
-        class: pupilClass,
-        parentName: parentName || '',
-        parentEmail: parentEmail || '',
-        contact: contact || '',
-        address: address || '',
-        email,
+        ...pupilPayload,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -411,10 +456,10 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 6000);
     }
 
-    // Reset form and refresh table
     cancelPupilForm();
     loadPupils();
     loadDashboardStats();
+
   } catch (error) {
     console.error('Error saving pupil:', error);
     window.handleError(error, `Failed to ${uid ? 'update' : 'add'} pupil`);
