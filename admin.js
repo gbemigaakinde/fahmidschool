@@ -235,6 +235,20 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
+  // NEW: Check if email already exists
+  try {
+    const existingUsers = await db.collection('users')
+      .where('email', '==', email)
+      .get();
+    
+    if (!existingUsers.empty) {
+      window.showToast?.('This email is already registered', 'warning');
+      return;
+    }
+  } catch (error) {
+    console.error('Error checking email:', error);
+  }
+  
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
