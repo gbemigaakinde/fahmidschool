@@ -844,17 +844,55 @@ async function assignTeacherToClass() {
   }
   
   try {
-    // ADDED: Fetch teacher's name
+    // Fetch teacher's name and class name
     const teacherDoc = await db.collection('teachers').doc(teacherUid).get();
     const teacherName = teacherDoc.exists ? teacherDoc.data().name : '';
     
+    const classDoc = await db.collection('classes').doc(classId).get();
+    const className = classDoc.exists ? classDoc.data().name : '';
+    
+    if (!className) {
+      window.showToast?.('Class not found', 'danger');
+      return;
+    }
+    
+    // Update the class document
     await db.collection('classes').doc(classId).update({
       teacherId: teacherUid,
-      teacherName: teacherName,  // ADDED: Store teacher name
+      teacherName: teacherName,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    window.showToast?.('Teacher assigned successfully!', 'success');
+    // ========== NEW: UPDATE ALL PUPILS IN THIS CLASS ==========
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', classId)
+      .get();
+    
+    if (!pupilsSnap.empty) {
+      const batch = db.batch();
+      let updateCount = 0;
+      
+      pupilsSnap.forEach(pupilDoc => {
+        const pupilRef = db.collection('pupils').doc(pupilDoc.id);
+        batch.update(pupilRef, {
+          'assignedTeacher.id': teacherUid,
+          'assignedTeacher.name': teacherName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+      });
+      
+      await batch.commit();
+      
+      window.showToast?.(
+        `Teacher assigned successfully! ${updateCount} pupil(s) updated.`, 
+        'success', 
+        5000
+      );
+    } else {
+      window.showToast?.('Teacher assigned successfully! (No pupils in this class yet)', 'success');
+    }
+    
     loadTeacherAssignments();
   } catch (error) {
     console.error('Error assigning teacher:', error);
@@ -866,12 +904,47 @@ async function unassignTeacher(classId) {
   if (!confirm('Remove teacher assignment from this class?')) return;
   
   try {
+    // Get class name first
+    const classDoc = await db.collection('classes').doc(classId).get();
+    const className = classDoc.exists ? classDoc.data().name : '';
+    
+    // Update the class document
     await db.collection('classes').doc(classId).update({
       teacherId: firebase.firestore.FieldValue.delete(),
+      teacherName: firebase.firestore.FieldValue.delete(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    window.showToast?.('Teacher unassigned successfully', 'success');
+    // ========== NEW: CLEAR TEACHER FROM ALL PUPILS IN THIS CLASS ==========
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', classId)
+      .get();
+    
+    if (!pupilsSnap.empty) {
+      const batch = db.batch();
+      let updateCount = 0;
+      
+      pupilsSnap.forEach(pupilDoc => {
+        const pupilRef = db.collection('pupils').doc(pupilDoc.id);
+        batch.update(pupilRef, {
+          'assignedTeacher.id': '',
+          'assignedTeacher.name': '-',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+      });
+      
+      await batch.commit();
+      
+      window.showToast?.(
+        `Teacher unassigned successfully! ${updateCount} pupil(s) updated.`, 
+        'success', 
+        5000
+      );
+    } else {
+      window.showToast?.('Teacher unassigned successfully', 'success');
+    }
+    
     loadTeacherAssignments();
   } catch (error) {
     console.error('Error unassigning teacher:', error);
