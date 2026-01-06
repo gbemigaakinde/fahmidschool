@@ -47,7 +47,7 @@ async function loadPupilData(user) {
         document.getElementById('student-gender').textContent = pupilData.gender || '-';
 
         // Fetch current school settings
-        await getCurrentSettings();
+        await fetchCurrentSettings();
 
         // Update term selector
         const termSelect = document.getElementById('print-term');
@@ -55,15 +55,20 @@ async function loadPupilData(user) {
             termSelect.value = currentSettings.term;
             termSelect.addEventListener('change', async (e) => {
                 currentSettings.term = e.target.value;
+
+                // Reload settings (for session or resumption changes)
+                await fetchCurrentSettings();
+
+                // Update report header and all report data
                 updateReportHeader();
                 await loadReportData();
             });
         }
 
-        // Update report header
+        // Update header
         updateReportHeader();
 
-        // Load all report data
+        // Load all report data for the initial term
         await loadReportData();
 
     } catch (error) {
@@ -74,22 +79,20 @@ async function loadPupilData(user) {
 }
 
 // ==============================
-// GET CURRENT SETTINGS
+// FETCH CURRENT SETTINGS
 // ==============================
 
-async function getCurrentSettings() {
+async function fetchCurrentSettings() {
     try {
         const settingsDoc = await db.collection('settings').doc('current').get();
         if (settingsDoc.exists) {
-            currentSettings = settingsDoc.data();
-        } else {
-            currentSettings = { term: 'First Term', session: '', resumptionDate: '-' };
+            const data = settingsDoc.data();
+            currentSettings.term = data.term || currentSettings.term;
+            currentSettings.session = data.session || currentSettings.session;
+            currentSettings.resumptionDate = data.resumptionDate || currentSettings.resumptionDate;
         }
-        return currentSettings;
     } catch (error) {
         console.error('Error fetching current settings:', error);
-        currentSettings = { term: 'First Term', session: '', resumptionDate: '-' };
-        return currentSettings;
     }
 }
 
@@ -107,7 +110,7 @@ function updateReportHeader() {
 
     if (reportTitleEl) reportTitleEl.textContent = `${term} Report Card - ${session} Session`;
     if (termEl) termEl.textContent = term;
-    if (sessionEl) sessionEl.textContent = session;
+    if (sessionEl) sessionEl.textContent = session || '-';
 
     let displayDate = '-';
     if (resumptionDate) {
@@ -137,14 +140,38 @@ function updateReportHeader() {
 // ==============================
 
 async function loadReportData() {
+    // Reset all traits, skills, and remarks to '-'
+    resetTraitsAndSkillsAndRemarks();
+
     await Promise.all([
         loadAcademicResults(),
         loadAttendance(),
         loadBehavioralTraits(),
         loadPsychomotorSkills(),
-        loadRemarks(),
-        displayResumptionDate()
+        loadRemarks()
     ]);
+}
+
+// ==============================
+// RESET TRAITS, SKILLS, REMARKS
+// ==============================
+
+function resetTraitsAndSkillsAndRemarks() {
+    const traitIds = [
+        'trait-punctuality', 'trait-neatness', 'trait-politeness', 'trait-honesty',
+        'trait-obedience', 'trait-cooperation', 'trait-attentiveness', 'trait-leadership',
+        'trait-selfcontrol', 'trait-creativity'
+    ];
+    traitIds.forEach(id => document.getElementById(id).textContent = '-');
+
+    const skillIds = [
+        'skill-handwriting', 'skill-drawing', 'skill-sports',
+        'skill-craft', 'skill-verbal', 'skill-coordination'
+    ];
+    skillIds.forEach(id => document.getElementById(id).textContent = '-');
+
+    document.getElementById('teacher-remark').textContent = '-';
+    document.getElementById('head-remark').textContent = '-';
 }
 
 // ==============================
@@ -266,16 +293,10 @@ async function loadBehavioralTraits() {
 
         if (traitsDoc.exists) {
             const data = traitsDoc.data();
-            document.getElementById('trait-punctuality').textContent = data.punctuality || '-';
-            document.getElementById('trait-neatness').textContent = data.neatness || '-';
-            document.getElementById('trait-politeness').textContent = data.politeness || '-';
-            document.getElementById('trait-honesty').textContent = data.honesty || '-';
-            document.getElementById('trait-obedience').textContent = data.obedience || '-';
-            document.getElementById('trait-cooperation').textContent = data.cooperation || '-';
-            document.getElementById('trait-attentiveness').textContent = data.attentiveness || '-';
-            document.getElementById('trait-leadership').textContent = data.leadership || '-';
-            document.getElementById('trait-selfcontrol').textContent = data.selfcontrol || '-';
-            document.getElementById('trait-creativity').textContent = data.creativity || '-';
+            for (const key in data) {
+                const el = document.getElementById(`trait-${key.toLowerCase()}`);
+                if (el) el.textContent = data[key];
+            }
         }
 
     } catch (error) {
@@ -295,12 +316,10 @@ async function loadPsychomotorSkills() {
 
         if (skillsDoc.exists) {
             const data = skillsDoc.data();
-            document.getElementById('skill-handwriting').textContent = data.handwriting || '-';
-            document.getElementById('skill-drawing').textContent = data.drawing || '-';
-            document.getElementById('skill-sports').textContent = data.sports || '-';
-            document.getElementById('skill-craft').textContent = data.craft || '-';
-            document.getElementById('skill-verbal').textContent = data.verbal || '-';
-            document.getElementById('skill-coordination').textContent = data.coordination || '-';
+            for (const key in data) {
+                const el = document.getElementById(`skill-${key.toLowerCase()}`);
+                if (el) el.textContent = data[key];
+            }
         }
 
     } catch (error) {
@@ -327,14 +346,6 @@ async function loadRemarks() {
     } catch (error) {
         console.error('Error loading remarks:', error);
     }
-}
-
-// ==============================
-// RESUMPTION DATE
-// ==============================
-
-function displayResumptionDate() {
-    updateReportHeader();
 }
 
 // ==============================
