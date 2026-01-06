@@ -36,13 +36,23 @@ async function loadPupilProfile(user) {
         currentPupilData = data;
 
         // Fetch class info, teacher, subjects
-        currentClassInfo = { name: data.class || 'Unknown', teacher: '-', subjects: [] };
-        if (data.classId) {
-            const classDoc = await db.collection('classes').doc(data.classId).get();
+        currentClassInfo = { name: data.class?.name || 'Unknown', teacher: '-', subjects: [] };
+        if (data.class?.id) {  // CHANGED: Use class.id instead of classId
+            const classDoc = await db.collection('classes').doc(data.class.id).get();
             if (classDoc.exists) {
                 const classData = classDoc.data();
                 currentClassInfo.name = classData.name;
-                currentClassInfo.teacher = classData.teacherName || '-';
+                
+                // CHANGED: Fetch teacher name if teacherName is missing
+                if (classData.teacherName) {
+                    currentClassInfo.teacher = classData.teacherName;
+                } else if (classData.teacherId) {
+                    const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                    currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                } else {
+                    currentClassInfo.teacher = '-';
+                }
+                
                 currentClassInfo.subjects = classData.subjects || [];
             }
         }
@@ -81,13 +91,23 @@ async function loadPupilProfile(user) {
             });
 
         // Live update: watch class doc for subject changes
-        if (data.classId) {
-            db.collection('classes').doc(data.classId)
-                .onSnapshot(snap => {
+        if (data.class?.id) {  // CHANGED: Use class.id
+            db.collection('classes').doc(data.class.id)
+                .onSnapshot(async snap => {  // ADDED: async
                     if (snap.exists) {
                         const classData = snap.data();
                         currentClassInfo.subjects = classData.subjects || [];
-                        currentClassInfo.teacher = classData.teacherName || '-';
+                        
+                        // CHANGED: Fetch teacher name if needed
+                        if (classData.teacherName) {
+                            currentClassInfo.teacher = classData.teacherName;
+                        } else if (classData.teacherId) {
+                            const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                            currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                        } else {
+                            currentClassInfo.teacher = '-';
+                        }
+                        
                         renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
                     }
                 });
