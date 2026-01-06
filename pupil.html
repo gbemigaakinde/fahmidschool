@@ -54,7 +54,7 @@ body.pupil-portal {
     gap: var(--space-2);
 }
 .header-info > * {
-    text-align: left; /* ensures children are left-aligned */
+    text-align: left; 
 }
 .welcome-message {
     font-size: var(--text-base);
@@ -72,7 +72,7 @@ body.pupil-portal {
     border-radius: var(--radius-full);
     cursor: pointer;
     width: max-content;
-    align-self: flex-start; /* aligns the button to the left */
+    align-self: flex-start; 
 }
 .btn-logout:hover {
     background: var(--color-white);
@@ -173,6 +173,32 @@ body.pupil-portal {
     background: rgba(0,178,255,0.05);
 }
 
+/* ===============================
+   PUPIL PROFILE TABLE
+   =============================== */
+#profile-container {
+    margin-bottom: var(--space-12);
+}
+#profile-container .results-table th {
+    background: var(--color-primary);
+    color: var(--color-white);
+    text-transform: uppercase;
+    font-size: var(--text-sm);
+    text-align: left;
+    padding: var(--space-4);
+}
+#profile-container .results-table td {
+    padding: var(--space-4);
+    text-align: left;
+    color: var(--color-gray-700);
+}
+#profile-container .results-table tr:nth-child(even) td {
+    background: rgba(0,178,255,0.03);
+}
+#profile-container .results-table td:first-child {
+    font-weight: 600;
+}
+
 /* BUTTONS */
 .action-buttons {
     display: flex;
@@ -226,6 +252,11 @@ body.pupil-portal {
     .btn-logout {
         align-self: center;
     }
+    #profile-container .results-table td,
+    #profile-container .results-table th {
+        font-size: var(--text-xs);
+        padding: var(--space-3);
+    }
 }
 </style>
 </head>
@@ -251,6 +282,53 @@ body.pupil-portal {
 </header>
 
 <main class="pupil-main container">
+   <!-- PUPIL PROFILE INFO -->
+<section class="results-section reveal">
+    <div class="results-header">
+        <h2>Pupil Profile</h2>
+        <p>View your personal and academic information below.</p>
+    </div>
+
+    <div class="results-table-container" id="profile-container">
+        <table class="results-table">
+            <tbody>
+                <tr>
+                    <th>Name</th>
+                    <td id="pupil-name-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Date of Birth</th>
+                    <td id="pupil-dob-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Gender</th>
+                    <td id="pupil-gender-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Contact</th>
+                    <td id="pupil-contact-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Address</th>
+                    <td id="pupil-address-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Class</th>
+                    <td id="pupil-class-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Assigned Teacher</th>
+                    <td id="pupil-teacher-display">Loading...</td>
+                </tr>
+                <tr>
+                    <th>Subjects</th>
+                    <td id="pupil-subjects-display">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
     <section class="dashboard-grid">
         <div class="dashboard-card reveal delay-1">
             <h3>My Results</h3>
