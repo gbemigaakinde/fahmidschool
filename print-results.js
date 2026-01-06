@@ -2,16 +2,18 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript - Complete Report Card
  * 
- * @version 5.0.0 - FULL NIGERIAN REPORT CARD
+ * @version 5.0.1 - FULL NIGERIAN REPORT CARD
  * @date 2026-01-06
  */
 
 'use strict';
 
 let currentPupilId = null;
-let currentTerm = 'First Term';
-let currentSession = '';
-let currentResumptionDate = '-';
+let currentSettings = {
+    term: 'First Term',
+    session: '',
+    resumptionDate: '-'
+};
 
 // ==============================
 // INITIALIZATION
@@ -45,24 +47,21 @@ async function loadPupilData(user) {
         document.getElementById('student-gender').textContent = pupilData.gender || '-';
 
         // Fetch current school settings
-        const settings = await getCurrentSettings();
-        currentTerm = settings.term || 'First Term';
-        currentSession = settings.session || '';
-        currentResumptionDate = settings.resumptionDate || '-';
+        await getCurrentSettings();
 
         // Update term selector
         const termSelect = document.getElementById('print-term');
         if (termSelect) {
-            termSelect.value = currentTerm;
-            termSelect.addEventListener('change', (e) => {
-                currentTerm = e.target.value;
-                loadReportData();
+            termSelect.value = currentSettings.term;
+            termSelect.addEventListener('change', async (e) => {
+                currentSettings.term = e.target.value;
+                updateReportHeader();
+                await loadReportData();
             });
         }
 
-        // Update report title and bio term/session
-        document.getElementById('report-title').textContent = `${currentTerm} Report Card - ${currentSession} Session`;
-        document.getElementById('current-term').textContent = currentTerm;
+        // Update report header
+        updateReportHeader();
 
         // Load all report data
         await loadReportData();
@@ -82,13 +81,55 @@ async function getCurrentSettings() {
     try {
         const settingsDoc = await db.collection('settings').doc('current').get();
         if (settingsDoc.exists) {
-            return settingsDoc.data();
+            currentSettings = settingsDoc.data();
+        } else {
+            currentSettings = { term: 'First Term', session: '', resumptionDate: '-' };
         }
-        return { term: 'First Term', session: '', resumptionDate: '-' };
+        return currentSettings;
     } catch (error) {
         console.error('Error fetching current settings:', error);
-        return { term: 'First Term', session: '', resumptionDate: '-' };
+        currentSettings = { term: 'First Term', session: '', resumptionDate: '-' };
+        return currentSettings;
     }
+}
+
+// ==============================
+// UPDATE REPORT HEADER (TERM, SESSION, RESUMPTION DATE)
+// ==============================
+
+function updateReportHeader() {
+    const { term, session, resumptionDate } = currentSettings;
+
+    const reportTitleEl = document.getElementById('report-title');
+    const termEl = document.getElementById('current-term');
+    const sessionEl = document.getElementById('current-session');
+    const resumptionEl = document.getElementById('resumption-date');
+
+    if (reportTitleEl) reportTitleEl.textContent = `${term} Report Card - ${session} Session`;
+    if (termEl) termEl.textContent = term;
+    if (sessionEl) sessionEl.textContent = session;
+
+    let displayDate = '-';
+    if (resumptionDate) {
+        if (resumptionDate.toDate) { // Firestore Timestamp
+            displayDate = resumptionDate.toDate().toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        } else {
+            const dateObj = new Date(resumptionDate);
+            if (!isNaN(dateObj)) {
+                displayDate = dateObj.toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+            }
+        }
+    }
+
+    if (resumptionEl) resumptionEl.textContent = displayDate;
 }
 
 // ==============================
@@ -102,7 +143,7 @@ async function loadReportData() {
         loadBehavioralTraits(),
         loadPsychomotorSkills(),
         loadRemarks(),
-        displayResumptionDate()  // Resumption date is handled here
+        displayResumptionDate()
     ]);
 }
 
@@ -119,7 +160,7 @@ async function loadAcademicResults() {
     try {
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
-            .where('term', '==', currentTerm)
+            .where('term', '==', currentSettings.term)
             .get();
 
         tbody.innerHTML = '';
@@ -200,7 +241,7 @@ async function loadAcademicResults() {
 async function loadAttendance() {
     try {
         const attendanceDoc = await db.collection('attendance')
-            .doc(`${currentPupilId}_${currentTerm}`)
+            .doc(`${currentPupilId}_${currentSettings.term}`)
             .get();
 
         const data = attendanceDoc.exists ? attendanceDoc.data() : {};
@@ -220,7 +261,7 @@ async function loadAttendance() {
 async function loadBehavioralTraits() {
     try {
         const traitsDoc = await db.collection('behavioral_traits')
-            .doc(`${currentPupilId}_${currentTerm}`)
+            .doc(`${currentPupilId}_${currentSettings.term}`)
             .get();
 
         if (traitsDoc.exists) {
@@ -249,7 +290,7 @@ async function loadBehavioralTraits() {
 async function loadPsychomotorSkills() {
     try {
         const skillsDoc = await db.collection('psychomotor_skills')
-            .doc(`${currentPupilId}_${currentTerm}`)
+            .doc(`${currentPupilId}_${currentSettings.term}`)
             .get();
 
         if (skillsDoc.exists) {
@@ -274,7 +315,7 @@ async function loadPsychomotorSkills() {
 async function loadRemarks() {
     try {
         const remarksDoc = await db.collection('remarks')
-            .doc(`${currentPupilId}_${currentTerm}`)
+            .doc(`${currentPupilId}_${currentSettings.term}`)
             .get();
 
         if (remarksDoc.exists) {
@@ -293,18 +334,7 @@ async function loadRemarks() {
 // ==============================
 
 function displayResumptionDate() {
-    let displayDate = currentResumptionDate || '-';
-
-    if (displayDate && displayDate !== '-') {
-        const dateObj = new Date(displayDate);
-        displayDate = dateObj.toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-    }
-
-    document.getElementById('resumption-date').textContent = displayDate;
+    updateReportHeader();
 }
 
 // ==============================
