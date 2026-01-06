@@ -74,6 +74,31 @@ async function loadPupilData(user) {
     }
 }
 
+async function getCurrentSettings() {
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (settingsDoc.exists) {
+      return settingsDoc.data();
+    } else {
+      // Return defaults if no settings document exists
+      return {
+        term: 'First Term',
+        session: '',
+        resumptionDate: ''  // Or 'Not set' if preferred
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching current settings:', error);
+    // Return fallback defaults on error
+    return {
+      term: 'First Term',
+      session: '',
+      resumptionDate: '-'
+    };
+  }
+}
+
 async function loadReportData() {
   await Promise.all([
     loadAcademicResults(),
@@ -296,7 +321,18 @@ async function loadRemarks() {
 async function loadResumptionDate() {
   try {
     const settings = await getCurrentSettings();
-    document.getElementById('resumption-date').textContent = settings.resumptionDate || '-';
+    let displayDate = settings.resumptionDate || '-';
+    
+    if (displayDate !== '-' && displayDate) {
+      const dateObj = new Date(displayDate);
+      displayDate = dateObj.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });  // Outputs: 15 January 2026
+    }
+    
+    document.getElementById('resumption-date').textContent = displayDate;
   } catch (error) {
     console.error('Error loading resumption date:', error);
     document.getElementById('resumption-date').textContent = '-';
