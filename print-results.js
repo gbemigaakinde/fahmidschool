@@ -224,48 +224,62 @@ async function loadAcademicResults() {
     tbody.innerHTML = loadingRow();
 
     try {
-        console.log('Loading results for:', currentPupilId, currentSettings.term);
+        // Get all results documents
+        const allResultsSnap = await db.collection('results').get();
         
-        // METHOD 1: Try document ID format (pupilId_term_subject)
-        const allResultsDocs = await db.collection('results').get();
+        if (allResultsSnap.empty) {
+            tbody.innerHTML = emptyRow('No results in system yet. Teacher must enter scores.');
+            return;
+        }
+        
         const results = [];
+        const currentPupilUid = currentPupilId; // Store in local variable
+        const currentTermValue = currentSettings.term;
         
-        allResultsDocs.forEach(doc => {
+        // Check every document
+        allResultsSnap.forEach(doc => {
             const docId = doc.id;
             const data = doc.data();
             
-            // Check if document ID starts with current pupil ID
-            if (docId.startsWith(currentPupilId + '_')) {
+            // Skip if document has no data
+            if (!data) return;
+            
+            let matchFound = false;
+            let subject = '';
+            
+            // METHOD 1: Document ID format (pupilId_term_subject)
+            if (typeof docId === 'string' && docId.includes('_')) {
                 const parts = docId.split('_');
-                
                 if (parts.length >= 3) {
-                    const docPupilId = parts[0];
-                    const docTerm = parts[1];
-                    const docSubject = parts.slice(2).join('_');
+                    const idPupilId = parts[0];
+                    const idTerm = parts[1];
+                    const idSubject = parts.slice(2).join('_');
                     
-                    // Match current term
-                    if (docTerm === currentSettings.term) {
-                        results.push({
-                            subject: docSubject,
-                            caScore: data.caScore || 0,
-                            examScore: data.examScore || 0
-                        });
-                        console.log('Found result (ID format):', docSubject, data);
+                    if (idPupilId === currentPupilUid && idTerm === currentTermValue) {
+                        matchFound = true;
+                        subject = idSubject;
                     }
                 }
             }
             
-            // METHOD 2: Also check field-based format (backup)
-            if (data.pupilId === currentPupilId && data.term === currentSettings.term) {
-                // Only add if not already added from ID format
-                const alreadyExists = results.some(r => r.subject === data.subject);
-                if (!alreadyExists && data.subject) {
+            // METHOD 2: Field-based format (backup)
+            if (!matchFound && data.pupilId && data.term && data.subject) {
+                if (data.pupilId === currentPupilUid && data.term === currentTermValue) {
+                    matchFound = true;
+                    subject = data.subject;
+                }
+            }
+            
+            // If match found, add to results
+            if (matchFound && subject) {
+                // Check if this subject is already in results (avoid duplicates)
+                const existingIndex = results.findIndex(r => r.subject === subject);
+                if (existingIndex === -1) {
                     results.push({
-                        subject: data.subject,
+                        subject: subject,
                         caScore: data.caScore || 0,
                         examScore: data.examScore || 0
                     });
-                    console.log('Found result (field format):', data.subject, data);
                 }
             }
         });
@@ -273,19 +287,17 @@ async function loadAcademicResults() {
         tbody.innerHTML = '';
 
         if (results.length === 0) {
-            console.log('No results found for pupil:', currentPupilId, 'term:', currentSettings.term);
-            tbody.innerHTML = emptyRow('No results available for this term');
+            tbody.innerHTML = emptyRow(`No results for ${currentTermValue}`);
             return;
         }
 
-        console.log('Total results found:', results.length);
-
-        // Sort results alphabetically by subject
+        // Sort alphabetically
         results.sort((a, b) => a.subject.localeCompare(b.subject));
 
         let totalScore = 0;
         let subjectCount = 0;
 
+        // Display each result
         results.forEach(r => {
             const ca = r.caScore;
             const exam = r.examScore;
@@ -306,7 +318,7 @@ async function loadAcademicResults() {
             `);
         });
 
-        // Add summary rows
+        // Add summary
         if (subjectCount > 0) {
             const average = (totalScore / subjectCount).toFixed(1);
             const avgGrade = getGrade(parseFloat(average));
@@ -324,8 +336,8 @@ async function loadAcademicResults() {
         }
 
     } catch (error) {
-        console.error('Error loading academic results:', error);
-        tbody.innerHTML = emptyRow('Error loading results - ' + error.message);
+        console.error('Error loading results:', error);
+        tbody.innerHTML = emptyRow('Error loading results: ' + error.message);
     }
 }
 
