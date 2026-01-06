@@ -67,7 +67,7 @@ async function loadAssignedClasses() {
     for (let i = 0; i < classNames.length; i += 10) {
       const batch = classNames.slice(i, i + 10);
       const pupilsSnap = await db.collection('pupils')
-        .where('class', 'in', batch)
+        .where('class.name', 'in', batch)  // CHANGED: Query the nested field
         .get();
       
       const batchPupils = pupilsSnap.docs.map(doc => ({
