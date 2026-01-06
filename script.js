@@ -473,3 +473,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('✓ Fahmid School website initialized successfully (v2.3.0)');
 });
+
+// Offline/Online Detection
+window.addEventListener('online', () => {
+    if (window.showToast) {
+        window.showToast('✓ Internet connection restored', 'success', 3000);
+    }
+});
+
+window.addEventListener('offline', () => {
+    if (window.showToast) {
+        window.showToast('⚠️ No internet connection. Some features may not work.', 'warning', 10000);
+    }
+});
+
+console.log('✓ Offline detection enabled');
