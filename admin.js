@@ -862,7 +862,6 @@ async function assignTeacherToClass() {
   }
   
   try {
-    // Fetch teacher's name and class name
     const teacherDoc = await db.collection('teachers').doc(teacherUid).get();
     const teacherName = teacherDoc.exists ? teacherDoc.data().name : '';
     
@@ -874,42 +873,37 @@ async function assignTeacherToClass() {
       return;
     }
     
-    // Update the class document
-    await db.collection('classes').doc(classId).update({
-      teacherId: teacherUid,
-      teacherName: teacherName,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    
-    // ========== NEW: UPDATE ALL PUPILS IN THIS CLASS ==========
+    // Get pupils first
     const pupilsSnap = await db.collection('pupils')
       .where('class.id', '==', classId)
       .get();
     
-    if (!pupilsSnap.empty) {
-      const batch = db.batch();
-      let updateCount = 0;
+    // Use Firestore transaction for atomic update
+    await db.runTransaction(async (transaction) => {
+      const classRef = db.collection('classes').doc(classId);
       
+      transaction.update(classRef, {
+        teacherId: teacherUid,
+        teacherName: teacherName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Update all pupils in the same transaction
       pupilsSnap.forEach(pupilDoc => {
         const pupilRef = db.collection('pupils').doc(pupilDoc.id);
-        batch.update(pupilRef, {
+        transaction.update(pupilRef, {
           'assignedTeacher.id': teacherUid,
           'assignedTeacher.name': teacherName,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        updateCount++;
       });
-      
-      await batch.commit();
-      
-      window.showToast?.(
-        `Teacher assigned successfully! ${updateCount} pupil(s) updated.`, 
-        'success', 
-        5000
-      );
-    } else {
-      window.showToast?.('Teacher assigned successfully! (No pupils in this class yet)', 'success');
-    }
+    });
+    
+    window.showToast?.(
+      `Teacher assigned successfully! ${pupilsSnap.size} pupil(s) updated.`, 
+      'success', 
+      5000
+    );
     
     loadTeacherAssignments();
   } catch (error) {
