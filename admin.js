@@ -194,7 +194,7 @@ async function populateClassDropdown(selectedClass = '') {
     snapshot.forEach(doc => {
       const data = doc.data();
       const opt = document.createElement('option');
-      opt.value = data.name; // or use doc.id if you prefer class IDs
+      opt.value = doc.id;  // CHANGED: Use class ID instead of name
       opt.textContent = data.name;
       if (selectedClass && data.name === selectedClass) {
         opt.selected = true;
@@ -498,7 +498,7 @@ async function loadPupils() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Name">${pupil.name}</td>
-        <td data-label="Class">${pupil.class || '-'}</td>
+        <td data-label="Class">${pupil.class?.name || '-'}</td>
         <td data-label="Gender">${pupil.gender || '-'}</td>
         <td data-label="Parent Name">${pupil.parentName || '-'}</td>
         <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
@@ -524,7 +524,7 @@ async function editPupil(uid) {
     const data = doc.data();
 
     // Populate class dropdown dynamically and select pupil's current class
-    await populateClassDropdown(data.class);
+    await populateClassDropdown(data.class?.id || '');
 
     // Fill form fields
     document.getElementById('pupil-id').value = uid;
@@ -606,7 +606,8 @@ async function loadClasses() {
     
     const pupilCountMap = {};
     pupilsSnap.forEach(pupilDoc => {
-      const className = pupilDoc.data().class;
+      const classObj = pupilDoc.data().class;
+      const className = classObj?.name || classObj;  // Handle both object and string
       if (className) {
         pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
       }
@@ -813,8 +814,13 @@ async function assignTeacherToClass() {
   }
   
   try {
+    // ADDED: Fetch teacher's name
+    const teacherDoc = await db.collection('teachers').doc(teacherUid).get();
+    const teacherName = teacherDoc.exists ? teacherDoc.data().name : '';
+    
     await db.collection('classes').doc(classId).update({
       teacherId: teacherUid,
+      teacherName: teacherName,  // ADDED: Store teacher name
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
