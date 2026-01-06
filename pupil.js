@@ -1,8 +1,8 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript - FULLY ALIGNED WITH PRINT PAGE
+ * Pupil Portal JavaScript - FIXED
  * 
- * @version 4.2.0
+ * @version 4.3.0 - CLASS HANDLING FIXED
  * @date 2026-01-06
  */
 
@@ -34,6 +34,41 @@ window.addEventListener('beforeunload', () => {
 });
 
 // ============================================
+// HELPER: Safely extract class ID from pupil data
+// ============================================
+function getClassIdFromPupilData(classData) {
+  if (!classData) return null;
+  
+  // New format: {id: "xyz", name: "Primary 3"}
+  if (typeof classData === 'object' && classData.id) {
+    return classData.id;
+  }
+  
+  // Old format: just "Primary 3" as string
+  // We can't get an ID from this, so return null
+  return null;
+}
+
+// ============================================
+// HELPER: Safely extract class name from pupil data
+// ============================================
+function getClassNameFromPupilData(classData) {
+  if (!classData) return 'Unknown';
+  
+  // New format: {id: "xyz", name: "Primary 3"}
+  if (typeof classData === 'object' && classData.name) {
+    return classData.name;
+  }
+  
+  // Old format: just "Primary 3" as string
+  if (typeof classData === 'string') {
+    return classData;
+  }
+  
+  return 'Unknown';
+}
+
+// ============================================
 // PUPIL PROFILE
 // ============================================
 
@@ -62,25 +97,69 @@ async function loadPupilProfile(user) {
         currentPupilId = pupilDoc.id;
         currentPupilData = data;
 
-        // Fetch class info, teacher, subjects
-        currentClassInfo = { name: data.class?.name || 'Unknown', teacher: '-', subjects: [] };
-        if (data.class?.id) {
-            const classDoc = await db.collection('classes').doc(data.class.id).get();
-            if (classDoc.exists) {
-                const classData = classDoc.data();
-                currentClassInfo.name = classData.name;
-                
-                // Fetch teacher name if teacherName is missing
-                if (classData.teacherName) {
-                    currentClassInfo.teacher = classData.teacherName;
-                } else if (classData.teacherId) {
-                    const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                    currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-                } else {
-                    currentClassInfo.teacher = '-';
+        // FIXED: Safely extract class ID and name
+        const classId = getClassIdFromPupilData(data.class);
+        const className = getClassNameFromPupilData(data.class);
+
+        // Initialize class info with defaults
+        currentClassInfo = { 
+          name: className, 
+          teacher: data.assignedTeacher?.name || '-', 
+          subjects: data.subjects || [] 
+        };
+
+        // If we have a class ID, fetch full class details
+        if (classId) {
+            try {
+                const classDoc = await db.collection('classes').doc(classId).get();
+                if (classDoc.exists) {
+                    const classData = classDoc.data();
+                    currentClassInfo.name = classData.name;
+                    currentClassInfo.subjects = classData.subjects || [];
+                    
+                    // Fetch teacher name if teacherName is missing
+                    if (classData.teacherName) {
+                        currentClassInfo.teacher = classData.teacherName;
+                    } else if (classData.teacherId) {
+                        const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                        currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                    } else {
+                        currentClassInfo.teacher = '-';
+                    }
                 }
-                
-                currentClassInfo.subjects = classData.subjects || [];
+            } catch (error) {
+                console.error('Error fetching class details:', error);
+                // Continue with defaults if class fetch fails
+            }
+        } else {
+            // FIXED: If pupil has old-format class data (no ID), try to find class by name
+            if (typeof data.class === 'string') {
+                try {
+                    const classesSnapshot = await db.collection('classes')
+                        .where('name', '==', data.class)
+                        .limit(1)
+                        .get();
+                    
+                    if (!classesSnapshot.empty) {
+                        const matchedClassDoc = classesSnapshot.docs[0];
+                        const matchedClassData = matchedClassDoc.data();
+                        
+                        currentClassInfo.subjects = matchedClassData.subjects || [];
+                        
+                        // Get teacher info
+                        if (matchedClassData.teacherName) {
+                            currentClassInfo.teacher = matchedClassData.teacherName;
+                        } else if (matchedClassData.teacherId) {
+                            const teacherDoc = await db.collection('teachers').doc(matchedClassData.teacherId).get();
+                            currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                        }
+                        
+                        console.log('Note: Pupil has old class format. Admin should edit and save to upgrade.');
+                    }
+                } catch (error) {
+                    console.error('Error finding class by name:', error);
+                    // Continue with defaults if search fails
+                }
             }
         }
 
@@ -119,6 +198,14 @@ async function loadPupilProfile(user) {
                         const updatedData = snap.data();
                         currentPupilData = updatedData;
                         
+                        // FIXED: Safely extract updated class info
+                        const updatedClassId = getClassIdFromPupilData(updatedData.class);
+                        const updatedClassName = getClassNameFromPupilData(updatedData.class);
+                        
+                        currentClassInfo.name = updatedClassName;
+                        currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
+                        currentClassInfo.subjects = updatedData.subjects || [];
+                        
                         // Update UI directly without calling loadPupilProfile again
                         renderProfile({
                             name: updatedData.name || '-',
@@ -150,14 +237,12 @@ async function loadPupilProfile(user) {
                 error => {
                     console.error('Pupil listener error:', error);
                     window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
-                    // Optionally auto-refresh after delay
-                    // setTimeout(() => location.reload(), 3000);
                 }
             );
 
-        // Live update: watch class doc for subject changes (store listener reference with error handling)
-        if (data.class?.id) {
-            classListener = db.collection('classes').doc(data.class.id)
+        // Live update: watch class doc for subject changes (only if we have a class ID)
+        if (classId) {
+            classListener = db.collection('classes').doc(classId)
                 .onSnapshot(
                     async snap => {
                         if (snap.exists) {
@@ -215,70 +300,49 @@ async function loadPupilProfile(user) {
     }
 }
 
-// Clean up listeners when page unloads (ADD THIS AT THE TOP OF pupil.js)
-window.addEventListener('beforeunload', () => {
-    if (pupilListener) {
-        pupilListener();
-        pupilListener = null;
-    }
-    if (classListener) {
-        classListener();
-        classListener = null;
-    }
-});
-
 // ============================================
 // PROFILE RENDER
 // ============================================
 function renderProfile(profile) {
-    const containerId = 'profile-container';
-    let container = document.getElementById(containerId);
-    if (!container) {
-        container = document.createElement('div');
-        container.id = containerId;
-        container.className = 'reveal';
-        document.querySelector('.pupil-main').prepend(container);
+    // Update the existing profile table fields
+    const nameDisplay = document.getElementById('pupil-name-display');
+    const dobDisplay = document.getElementById('pupil-dob-display');
+    const genderDisplay = document.getElementById('pupil-gender-display');
+    const contactDisplay = document.getElementById('pupil-contact-display');
+    const addressDisplay = document.getElementById('pupil-address-display');
+    const classDisplay = document.getElementById('pupil-class-display');
+    const teacherDisplay = document.getElementById('pupil-teacher-display');
+    const subjectsDisplay = document.getElementById('pupil-subjects-display');
+
+    if (nameDisplay) nameDisplay.textContent = profile.name;
+    if (dobDisplay) dobDisplay.textContent = profile.dob;
+    if (genderDisplay) genderDisplay.textContent = profile.gender;
+    if (contactDisplay) contactDisplay.textContent = profile.contact;
+    if (addressDisplay) addressDisplay.textContent = profile.address;
+    if (classDisplay) classDisplay.textContent = profile.class;
+    if (teacherDisplay) teacherDisplay.textContent = profile.teacher;
+    
+    if (subjectsDisplay) {
+        const subjectList = profile.subjects && profile.subjects.length > 0 
+            ? profile.subjects.join(', ') 
+            : '-';
+        subjectsDisplay.textContent = subjectList;
     }
-
-    container.innerHTML = `
-        <table class="results-table">
-            <tbody>
-                <tr><td>Name</td><td>${profile.name}</td></tr>
-                <tr><td>Date of Birth</td><td>${profile.dob}</td></tr>
-                <tr><td>Gender</td><td>${profile.gender}</td></tr>
-                <tr><td>Contact</td><td>${profile.contact}</td></tr>
-                <tr><td>Address</td><td>${profile.address}</td></tr>
-                <tr><td>Email</td><td>${profile.email}</td></tr>
-                <tr><td>Class</td><td>${profile.class}</td></tr>
-                <tr><td>Class Teacher</td><td>${profile.teacher}</td></tr>
-            </tbody>
-        </table>
-    `;
-
-    renderSubjects(profile.subjects, profile.teacher);
 }
 
 // ============================================
-// SUBJECTS RENDER
+// SUBJECTS RENDER (Kept for compatibility)
 // ============================================
 function renderSubjects(subjects, teacher) {
-    const containerId = 'subjects-container';
-    let container = document.getElementById(containerId);
-    if (!container) {
-        container = document.createElement('div');
-        container.id = containerId;
-        container.className = 'reveal';
-        const profileContainer = document.getElementById('profile-container');
-        profileContainer.insertAdjacentElement('afterend', container);
+    // This function is kept for backward compatibility
+    // but the subjects are now displayed in the main profile table
+    const subjectsDisplay = document.getElementById('pupil-subjects-display');
+    if (subjectsDisplay) {
+        const subjectList = subjects && subjects.length > 0 
+            ? subjects.join(', ') 
+            : '-';
+        subjectsDisplay.textContent = subjectList;
     }
-
-    const subjectList = subjects.length ? subjects.map(s => `<li>${s}</li>`).join('') : '<li>-</li>';
-
-    container.innerHTML = `
-        <h3>Subjects & Teacher</h3>
-        <p><strong>Class Teacher:</strong> ${teacher}</p>
-        <ul>${subjectList}</ul>
-    `;
 }
 
 // ============================================
@@ -412,4 +476,4 @@ function getGrade(score) {
     return 'F9';
 }
 
-console.log('✓ Pupil portal initialized (v4.2.0)');
+console.log('✓ Pupil portal initialized (v4.3.0 - CLASS HANDLING FIXED)');
