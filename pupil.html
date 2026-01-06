@@ -7,6 +7,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="pupil-profile.css">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -170,42 +171,6 @@ body.pupil-portal {
 .summary-row td {
     font-weight: bold;
     background: rgba(0,178,255,0.05);
-}
-
-/* ===============================
-   PUPIL PROFILE TABLE
-   =============================== */
-
-@media (max-width: 768px) {
-    #profile-container .results-table {
-        font-size: 11.5px;
-        line-height: 1.35;
-    }
-    
-    #profile-container .results-table td,
-    #profile-container .results-table th {
-        padding: 5px 6px;
-    }
-    
-    #profile-container .results-table tbody tr {
-        display: flex;
-        flex-direction: column;
-        border-bottom: 1px solid #e5e5e5;
-        margin-bottom: 6px;
-    }
-    
-    #profile-container .results-table td:first-child {
-        background: #f7f9fb;
-        font-weight: 600;
-        border-bottom: none;
-        padding-bottom: 1px;
-        color: #333;
-    }
-    
-    #profile-container .results-table td:last-child {
-        padding-top: 1px;
-        color: #444;
-    }
 }
 
 /* BUTTONS */
