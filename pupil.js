@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Pupil Portal JavaScript - FULLY ALIGNED WITH PRINT PAGE
  * 
- * @version 4.1.0
+ * @version 4.2.0
  * @date 2026-01-06
  */
 
@@ -11,6 +11,10 @@
 let currentPupilId = null;
 let currentPupilData = null;
 let currentClassInfo = null;
+
+// Listener references to prevent duplicates
+let pupilListener = null;
+let classListener = null;
 
 // Enforce pupil access and load profile
 checkRole('pupil')
@@ -22,6 +26,10 @@ checkRole('pupil')
 // ============================================
 async function loadPupilProfile(user) {
     try {
+        // Detach existing listeners first to prevent duplicates
+        if (pupilListener) pupilListener();
+        if (classListener) classListener();
+
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
         if (!pupilDoc.exists) {
@@ -37,13 +45,13 @@ async function loadPupilProfile(user) {
 
         // Fetch class info, teacher, subjects
         currentClassInfo = { name: data.class?.name || 'Unknown', teacher: '-', subjects: [] };
-        if (data.class?.id) {  // CHANGED: Use class.id instead of classId
+        if (data.class?.id) {
             const classDoc = await db.collection('classes').doc(data.class.id).get();
             if (classDoc.exists) {
                 const classData = classDoc.data();
                 currentClassInfo.name = classData.name;
                 
-                // CHANGED: Fetch teacher name if teacherName is missing
+                // Fetch teacher name if teacherName is missing
                 if (classData.teacherName) {
                     currentClassInfo.teacher = classData.teacherName;
                 } else if (classData.teacherId) {
@@ -81,24 +89,49 @@ async function loadPupilProfile(user) {
         // Load results
         await loadResults();
 
-        // Live update: watch pupil doc
-        db.collection('pupils').doc(currentPupilId)
+        // Live update: watch pupil doc (store listener reference)
+        pupilListener = db.collection('pupils').doc(currentPupilId)
             .onSnapshot(async snap => {
                 if (snap.exists) {
-                    currentPupilData = snap.data();
-                    await loadPupilProfile({ uid: currentPupilId });
+                    const updatedData = snap.data();
+                    currentPupilData = updatedData;
+                    
+                    // Update UI directly without calling loadPupilProfile again
+                    renderProfile({
+                        name: updatedData.name || '-',
+                        dob: updatedData.dob || '-',
+                        gender: updatedData.gender || '-',
+                        contact: updatedData.contact || '-',
+                        address: updatedData.address || '-',
+                        email: updatedData.email || '-',
+                        class: currentClassInfo.name,
+                        teacher: currentClassInfo.teacher,
+                        subjects: currentClassInfo.subjects
+                    });
+
+                    // Update welcome message
+                    const settings = await getCurrentSettings();
+                    document.getElementById('pupil-welcome').innerHTML = `
+                        Hello, <strong>${updatedData.name}</strong>!<br>
+                        Class: ${currentClassInfo.name}<br>
+                        Session: ${settings.session}
+                    `;
+
+                    // Reload results in case they changed
+                    await loadResults();
                 }
             });
 
-        // Live update: watch class doc for subject changes
-        if (data.class?.id) {  // CHANGED: Use class.id
-            db.collection('classes').doc(data.class.id)
-                .onSnapshot(async snap => {  // ADDED: async
+        // Live update: watch class doc for subject changes (store listener reference)
+        if (data.class?.id) {
+            classListener = db.collection('classes').doc(data.class.id)
+                .onSnapshot(async snap => {
                     if (snap.exists) {
                         const classData = snap.data();
+                        currentClassInfo.name = classData.name;
                         currentClassInfo.subjects = classData.subjects || [];
                         
-                        // CHANGED: Fetch teacher name if needed
+                        // Fetch teacher name if needed
                         if (classData.teacherName) {
                             currentClassInfo.teacher = classData.teacherName;
                         } else if (classData.teacherId) {
@@ -108,6 +141,27 @@ async function loadPupilProfile(user) {
                             currentClassInfo.teacher = '-';
                         }
                         
+                        // Update profile with new class info
+                        renderProfile({
+                            name: currentPupilData.name || '-',
+                            dob: currentPupilData.dob || '-',
+                            gender: currentPupilData.gender || '-',
+                            contact: currentPupilData.contact || '-',
+                            address: currentPupilData.address || '-',
+                            email: currentPupilData.email || '-',
+                            class: currentClassInfo.name,
+                            teacher: currentClassInfo.teacher,
+                            subjects: currentClassInfo.subjects
+                        });
+
+                        // Update welcome message
+                        const settings = await getCurrentSettings();
+                        document.getElementById('pupil-welcome').innerHTML = `
+                            Hello, <strong>${currentPupilData.name}</strong>!<br>
+                            Class: ${currentClassInfo.name}<br>
+                            Session: ${settings.session}
+                        `;
+
                         renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
                     }
                 });
@@ -304,4 +358,4 @@ function getGrade(score) {
     return 'F9';
 }
 
-console.log('✓ Pupil portal initialized (v4.1.0)');
+console.log('✓ Pupil portal initialized (v4.2.0)');
