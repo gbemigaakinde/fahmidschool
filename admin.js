@@ -772,32 +772,73 @@ function showSubjectForm() {
 
 async function addSubject() {
   const subjectName = document.getElementById('subject-name')?.value.trim();
-  
+
   if (!subjectName) {
     window.showToast?.('Subject name is required', 'warning');
     return;
   }
-  
+
   try {
-    const existingSnap = await db.collection('subjects').where('name', '==', subjectName).get();
-    
+    // Check if the subject already exists
+    const existingSnap = await db.collection('subjects')
+      .where('name', '==', subjectName)
+      .get();
+
     if (!existingSnap.empty) {
       window.showToast?.('This subject already exists', 'warning');
       return;
     }
-    
-    await db.collection('subjects').add({
+
+    // Add subject to 'subjects' collection
+    const docRef = await db.collection('subjects').add({
       name: subjectName,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    
-    window.showToast?.('Subject created successfully', 'success');
+
+    // Sync this subject to all classes automatically
+    await syncSubjectToClasses(subjectName, 'add');
+
+    window.showToast?.('Subject created successfully and synced to all classes', 'success');
+
     document.getElementById('subject-form').style.display = 'none';
     document.getElementById('subject-name').value = '';
-    loadSubjects(); // Refresh table to include the new subject
+    loadSubjects();
+
   } catch (error) {
     console.error('Error adding subject:', error);
     window.handleError(error, 'Failed to create subject');
+  }
+}
+
+/**
+ * Sync subject changes with all classes
+ * @param {string} subjectName - name of the subject
+ * @param {string|object} action - 'add', 'delete' or {action:'edit', oldName, newName}
+ */
+async function syncSubjectToClasses(subjectName, action) {
+  try {
+    const classesSnap = await db.collection('classes').get();
+    const batch = db.batch();
+
+    classesSnap.forEach(doc => {
+      const classData = doc.data();
+      let subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+
+      if (action === 'add') {
+        if (!subjects.includes(subjectName)) subjects.push(subjectName);
+      } else if (action === 'delete') {
+        subjects = subjects.filter(s => s !== subjectName);
+      } else if (typeof action === 'object' && action.action === 'edit') {
+        subjects = subjects.map(s => s === action.oldName ? action.newName : s);
+      }
+
+      batch.update(doc.ref, { subjects });
+    });
+
+    await batch.commit();
+    console.log('Subjects synced with all classes');
+  } catch (err) {
+    console.error('Error syncing subjects to classes:', err);
   }
 }
 
@@ -872,21 +913,44 @@ function setupSubjectsEventListeners() {
   });
 
   // Delete Subject
-  document.querySelectorAll('.delete-subject-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      if (!confirm('Are you sure you want to delete this subject?')) return;
+ async function deleteSubject(subjectId, subjectName) {
+  if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
 
-      try {
-        await db.collection('subjects').doc(id).delete();
-        window.showToast?.('✓ Subject deleted successfully', 'success');
-        loadSubjects();
-      } catch (err) {
-        console.error('Error deleting subject:', err);
-        window.showToast?.('Failed to delete subject', 'danger');
-      }
+  try {
+    // Delete from subjects collection
+    await db.collection('subjects').doc(subjectId).delete();
+
+    // Remove subject from all classes
+    await syncSubjectToClasses(subjectName, 'delete');
+
+    window.showToast?.(`Subject "${subjectName}" deleted and removed from all classes`, 'success');
+    loadSubjects();
+  } catch (err) {
+    console.error('Error deleting subject:', err);
+    window.handleError(err, 'Failed to delete subject');
+  }
+}
+
+async function editSubject(subjectId, oldName) {
+  const newName = prompt('Enter new name for subject:', oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+
+  try {
+    // Update subject in subjects collection
+    await db.collection('subjects').doc(subjectId).update({
+      name: newName,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-  });
+
+    // Sync name change in classes
+    await syncSubjectToClasses(null, { action: 'edit', oldName, newName });
+
+    window.showToast?.(`Subject renamed to "${newName}" and synced with classes`, 'success');
+    loadSubjects();
+  } catch (err) {
+    console.error('Error editing subject:', err);
+    window.handleError(err, 'Failed to edit subject');
+  }
 }
 
 /* ======================================== 
