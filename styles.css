@@ -1185,50 +1185,112 @@ etc.
 /* ============================================
    TOAST NOTIFICATIONS
    ============================================ */
+
 #toast-container {
     position: fixed;
-    bottom: var(--space-6);
-    right: var(--space-6);
-    z-index: var(--z-modal);
+    top: 20px; /* Top instead of bottom for modern UX */
+    right: 20px;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: 12px; /* Slightly larger spacing */
+    pointer-events: none; /* Prevent clicks passing through */
     max-width: 400px;
 }
 
+/* Generic Toast */
 .toast {
-    background: var(--color-gray-900);
-    color: var(--color-white);
-    padding: var(--space-4) var(--space-6);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    transform: translateX(150%);
-    transition: transform var(--duration-base) var(--ease-out);
+    pointer-events: auto; /* Allow interaction with the toast */
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    min-width: 300px;
-    animation: slideInRight var(--duration-base) var(--ease-out) forwards;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 250px;
+    max-width: 100%;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    border-left: 4px solid;
+    background: white;
+    transform: translateX(400px);
+    opacity: 0;
+    animation: slideInRight 0.3s ease forwards;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.toast.show {
-    transform: translateX(0);
-}
-
+/* Toast Types */
 .toast-success {
-    background: var(--color-success);
+    border-left-color: #4caf50;
+    background: #f1f8f4;
+    color: #2e7d32;
 }
 
 .toast-danger {
-    background: var(--color-danger);
+    border-left-color: #f44336;
+    background: #fef2f2;
+    color: #c62828;
 }
 
 .toast-warning {
-    background: var(--color-warning);
+    border-left-color: #ff9800;
+    background: #fff9f0;
+    color: #e65100;
 }
 
 .toast-info {
-    background: var(--color-info);
+    border-left-color: #2196F3;
+    background: #f0f8ff;
+    color: #1565c0;
+}
+
+/* Show/Hide Animations */
+.toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast.hide {
+    animation: slideOutRight 0.3s ease forwards;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    #toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: auto;
+    }
+
+    .toast {
+        min-width: auto;
+        font-size: 13px;
+        padding: 12px 16px;
+    }
 }
 
 /* ============================================
