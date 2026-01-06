@@ -183,6 +183,24 @@ async function loadDashboardStats() {
   }
 }
 
+async function populateClassDropdown() {
+  const classSelect = document.getElementById('pupil-class');
+  if (!classSelect) return;
+
+  try {
+    const snapshot = await db.collection('classes').orderBy('name').get();
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+    snapshot.forEach(doc => {
+      const opt = document.createElement('option');
+      opt.value = doc.data().name;
+      opt.textContent = doc.data().name;
+      classSelect.appendChild(opt);
+    });
+  } catch (error) {
+    console.error('Error populating class dropdown:', error);
+  }
+}
+
 /* ======================================== 
    TEACHERS MANAGEMENT 
 ======================================== */
@@ -293,12 +311,15 @@ async function loadTeachers() {
 /* ======================================== 
    PUPILS MANAGEMENT 
 ======================================== */
-function showPupilForm() {
+async function showPupilForm() {
   const form = document.getElementById('pupil-form');
-  if (form) {
-    form.style.display = 'block';
-    document.getElementById('pupil-name')?.focus();
-  }
+  if (!form) return;
+
+  // Populate class dropdown first
+  await populateClassDropdown();
+
+  form.style.display = 'block';
+  document.getElementById('pupil-name')?.focus();
 }
 
 function cancelPupilForm() {
@@ -308,90 +329,125 @@ function cancelPupilForm() {
 
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
+
+  const uid = document.getElementById('pupil-id').value; // empty if adding
   const name = document.getElementById('pupil-name').value.trim();
-  const admissionNo = document.getElementById('pupil-admission').value.trim();
+  const dob = document.getElementById('pupil-dob').value;
   const gender = document.getElementById('pupil-gender').value;
-  const pupilClass = document.getElementById('pupil-class').value.trim();
-  const parentEmail = document.getElementById('pupil-parent').value.trim();
+  const pupilClass = document.getElementById('pupil-class').value;
+  const parentName = document.getElementById('pupil-parent-name').value.trim();
+  const parentEmail = document.getElementById('pupil-parent-email').value.trim();
+  const contact = document.getElementById('pupil-contact').value.trim();
+  const address = document.getElementById('pupil-address').value.trim();
   const email = document.getElementById('pupil-email').value.trim();
   const tempPassword = document.getElementById('pupil-password').value;
-  
-  if (!name || !gender || !pupilClass || !email || !tempPassword) {
+
+  if (!name || !dob || !gender || !pupilClass || !email || (!uid && !tempPassword)) {
     window.showToast?.('All required fields must be filled', 'warning');
     return;
   }
-  
+
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
-  submitBtn.innerHTML = '<span class="btn-loading">Creating pupil...</span>';
-  
+  submitBtn.innerHTML = `<span class="btn-loading">${uid ? 'Updating pupil...' : 'Creating pupil...'}</span>`;
+
   try {
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
-    const uid = userCredential.user.uid;
-    
-    await db.collection('users').doc(uid).set({
-      email,
-      role: 'pupil',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    
-    await db.collection('pupils').doc(uid).set({
-      name,
-      admissionNo: admissionNo || '',
-      gender,
-      email,
-      class: pupilClass,
-      parentEmail: parentEmail || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    
-    await secondaryAuth.signOut();
-    await auth.sendPasswordResetEmail(email);
-    
-    window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 6000);
+    if (!uid) {
+      // NEW PUPIL
+      const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
+      const newUid = userCredential.user.uid;
+
+      await db.collection('users').doc(newUid).set({
+        email,
+        role: 'pupil',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await db.collection('pupils').doc(newUid).set({
+        name,
+        dob,
+        gender,
+        class: pupilClass,
+        parentName: parentName || '',
+        parentEmail: parentEmail || '',
+        contact: contact || '',
+        address: address || '',
+        email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      await secondaryAuth.signOut();
+      await auth.sendPasswordResetEmail(email);
+      window.showToast?.(`Pupil "${name}" added! Password reset email sent.`, 'success', 6000);
+    } else {
+      // EDIT EXISTING PUPIL
+      const pupilRef = db.collection('pupils').doc(uid);
+      const pupilSnap = await pupilRef.get();
+      if (!pupilSnap.exists) throw new Error('Pupil does not exist');
+
+      await pupilRef.update({
+        name,
+        dob,
+        gender,
+        class: pupilClass,
+        parentName: parentName || '',
+        parentEmail: parentEmail || '',
+        contact: contact || '',
+        address: address || '',
+        email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      window.showToast?.(`Pupil "${name}" updated successfully!`, 'success');
+    }
+
     cancelPupilForm();
     loadPupils();
     loadDashboardStats();
   } catch (error) {
-    console.error('Error adding pupil:', error);
-    window.handleError(error, 'Failed to add pupil');
+    console.error('Error saving pupil:', error);
+    window.handleError(error, uid ? 'Failed to update pupil' : 'Failed to add pupil');
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Save Pupil';
+    submitBtn.innerHTML = uid ? 'Save Pupil' : 'Save Pupil';
   }
 });
 
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
   if (!tbody) return;
-  
-  tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading pupils...</td></tr>';
-  
+
+  // Populate class dropdown first
+  await populateClassDropdown();
+
+  tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading pupils...</td></tr>';
+
   try {
     const snapshot = await db.collection('pupils').get();
     tbody.innerHTML = '';
-    
+
     if (snapshot.empty) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
       return;
     }
-    
+
     const pupils = [];
     snapshot.forEach(doc => {
       pupils.push({ id: doc.id, ...doc.data() });
     });
-    
+
     pupils.sort((a, b) => a.name.localeCompare(b.name));
-    
+
     paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Name">${pupil.name}</td>
         <td data-label="Class">${pupil.class || '-'}</td>
+        <td data-label="Gender">${pupil.gender || '-'}</td>
+        <td data-label="Parent Name">${pupil.parentName || '-'}</td>
         <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
-        <td data-label="Email">${pupil.email}</td>
         <td data-label="Actions">
+          <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
           <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
         </td>
       `;
@@ -400,7 +456,45 @@ async function loadPupils() {
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
+  }
+}
+
+async function editPupil(uid) {
+  try {
+    const doc = await db.collection('pupils').doc(uid).get();
+    if (!doc.exists) throw new Error('Pupil not found');
+
+    const data = doc.data();
+
+    // Populate class dropdown dynamically before setting value
+    await populateClassDropdown();
+
+    // Fill form fields
+    document.getElementById('pupil-id').value = uid;
+    document.getElementById('pupil-name').value = data.name || '';
+    document.getElementById('pupil-dob').value = data.dob || '';
+    document.getElementById('pupil-gender').value = data.gender || '';
+    document.getElementById('pupil-class').value = data.class || '';
+    document.getElementById('pupil-parent-name').value = data.parentName || '';
+    document.getElementById('pupil-parent-email').value = data.parentEmail || '';
+    document.getElementById('pupil-contact').value = data.contact || '';
+    document.getElementById('pupil-address').value = data.address || '';
+    document.getElementById('pupil-email').value = data.email || '';
+    document.getElementById('pupil-password').value = ''; // always blank for security
+
+    // Update form title and button
+    document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
+    document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
+
+    // Show the form
+    showPupilForm();
+
+    // Focus the first field for convenience
+    document.getElementById('pupil-name')?.focus();
+  } catch (error) {
+    console.error('Error loading pupil for edit:', error);
+    window.showToast?.('Failed to load pupil details for editing', 'danger');
   }
 }
 
