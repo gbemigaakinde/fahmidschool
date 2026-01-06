@@ -1,309 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pupil Portal - Fahmid Nursery & Primary School</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pupil Portal - Fahmid Nursery & Primary School</title>
 
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-    <style>
-        body.pupil-portal {
-            background: var(--color-white);
-            font-family: 'Open Sans', sans-serif;
-        }
+<style>
+    body.pupil-portal {
+        background: var(--color-white);
+        font-family: 'Open Sans', sans-serif;
+    }
 
-        /* ===============================
-           ANIMATION UTILITIES
-           =============================== */
+    /* ===============================
+       ANIMATION UTILITIES
+       =============================== */
 
-        .reveal {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: revealFade 0.7s ease forwards;
-        }
+    .reveal {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: revealFade 0.7s ease forwards;
+    }
 
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
 
-        @keyframes revealFade {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+    @keyframes revealFade {
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-        /* ===============================
-           HEADER
-           =============================== */
+    /* ===============================
+       HEADER
+       =============================== */
 
-        .pupil-header {
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-            padding: var(--space-8) 0;
-            box-shadow: 0 6px 25px rgba(0,0,0,0.12);
-        }
+    .pupil-header {
+        position: relative;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+        padding: var(--space-8) 0;
+        box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+    }
 
-        .pupil-header .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: var(--space-6);
-            flex-wrap: wrap;
-        }
+    .header-brand {
+        text-align: center;
+    }
 
-        /* CENTERED BRAND BLOCK */
-        .header-brand {
-            text-align: center;
-            flex: 1;
-            min-width: 250px;
-        }
+    .logo-text {
+        font-size: var(--text-3xl);
+        font-weight: var(--weight-bold);
+        color: var(--color-white);
+    }
 
-        .logo-text {
-            font-size: var(--text-3xl);
-            font-weight: var(--weight-bold);
-            color: var(--color-white);
-        }
+    .portal-title {
+        font-size: var(--text-lg);
+        color: rgba(255,255,255,0.9);
+        margin-top: var(--space-2);
+    }
 
-        .portal-title {
-            font-size: var(--text-lg);
-            color: rgba(255,255,255,0.9);
-            margin-top: var(--space-2);
-        }
+    /* LEFT-ALIGNED INFO */
+    .header-info {
+        position: absolute;
+        top: 50%;
+        left: var(--space-8);
+        transform: translateY(-50%);
+        text-align: left;
+        color: var(--color-white);
+    }
 
-        /* LEFT-ALIGNED INFO */
+    .welcome-message {
+        font-size: var(--text-base);
+        margin-bottom: var(--space-2);
+    }
+
+    .student-meta {
+        font-size: var(--text-sm);
+        color: rgba(255,255,255,0.85);
+        margin-bottom: var(--space-2);
+    }
+
+    .btn-logout {
+        padding: var(--space-3) var(--space-6);
+        border: 2px solid var(--color-white);
+        background: transparent;
+        color: var(--color-white);
+        border-radius: var(--radius-full);
+        cursor: pointer;
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .btn-logout:hover {
+        background: var(--color-white);
+        color: var(--color-primary);
+    }
+
+    /* ===============================
+       MAIN CONTENT
+       =============================== */
+
+    .pupil-main {
+        padding: var(--space-16) 0;
+        max-width: 1200px;
+        margin: auto;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-8);
+        margin-bottom: var(--space-16);
+    }
+
+    .dashboard-card {
+        background: var(--color-white);
+        padding: var(--space-8);
+        border-radius: var(--radius-2xl);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 45px rgba(0,178,255,0.25);
+    }
+
+    .dashboard-card h3 {
+        font-size: var(--text-xl);
+        margin-bottom: var(--space-3);
+        color: var(--color-gray-900);
+    }
+
+    .dashboard-card p {
+        font-size: var(--text-base);
+        line-height: 1.6;
+        color: var(--color-gray-600);
+    }
+
+    .results-section {
+        background: var(--color-white);
+        border-radius: var(--radius-2xl);
+        padding: var(--space-12);
+        box-shadow: 0 10px 35px rgba(0,0,0,0.1);
+        margin-bottom: var(--space-16);
+    }
+
+    .results-header {
+        text-align: center;
+        margin-bottom: var(--space-12);
+    }
+
+    .results-header h2 {
+        font-size: var(--text-3xl);
+        margin-bottom: var(--space-4);
+        color: var(--color-gray-900);
+    }
+
+    .results-header p {
+        font-size: var(--text-base);
+        color: var(--color-gray-600);
+    }
+
+    /* RESULTS TABLE */
+    .results-table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+        border-radius: var(--radius-lg);
+    }
+
+    .results-table {
+        width: 100%;
+        min-width: 600px;
+        border-collapse: collapse;
+        margin-top: var(--space-8);
+        font-size: var(--text-sm);
+    }
+
+    .results-table th,
+    .results-table td {
+        padding: var(--space-4);
+        text-align: center;
+        border-bottom: 1px solid var(--color-gray-200);
+    }
+
+    .results-table th {
+        background: var(--color-primary);
+        color: var(--color-white);
+        text-transform: uppercase;
+        font-size: var(--text-xs);
+        letter-spacing: 0.05em;
+    }
+
+    .results-table td:first-child,
+    .results-table th:first-child {
+        text-align: left;
+    }
+
+    /* BUTTONS */
+    .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: var(--space-4);
+        margin-top: var(--space-12);
+        flex-wrap: wrap;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: var(--space-4) var(--space-8);
+        border-radius: var(--radius-full);
+        font-weight: var(--weight-semibold);
+        text-decoration: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: var(--color-white);
+        box-shadow: 0 6px 20px rgba(0,178,255,0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0,178,255,0.4);
+    }
+
+    .btn-secondary {
+        border: 2px solid var(--color-primary);
+        color: var(--color-primary);
+        background: transparent;
+    }
+
+    .btn-secondary:hover {
+        background: var(--color-primary);
+        color: var(--color-white);
+    }
+
+    .pupil-footer {
+        background: var(--color-gray-900);
+        padding: var(--space-8) 0;
+        text-align: center;
+        color: var(--color-white);
+        font-size: var(--text-sm);
+    }
+
+    @media (max-width: 768px) {
         .header-info {
-            flex: 1;
-            min-width: 250px;
-            text-align: left;
-        }
-
-        .welcome-message {
-            font-size: var(--text-base);
-            color: var(--color-white);
-            margin-bottom: var(--space-2);
-        }
-
-        .student-meta {
-            font-size: var(--text-sm);
-            color: rgba(255,255,255,0.85);
-        }
-
-        .student-meta span.term {
-            font-weight: var(--weight-semibold);
-        }
-
-        .btn-logout {
-            margin-top: var(--space-4);
-            padding: var(--space-3) var(--space-6);
-            border: 2px solid var(--color-white);
-            background: transparent;
-            color: var(--color-white);
-            border-radius: var(--radius-full);
-            cursor: pointer;
-            transition: background 0.3s ease, color 0.3s ease;
-        }
-
-        .btn-logout:hover {
-            background: var(--color-white);
-            color: var(--color-primary);
-        }
-
-        /* ===============================
-           MAIN CONTENT
-           =============================== */
-
-        .pupil-main {
-            padding: var(--space-16) 0;
-            max-width: 1200px;
-            margin: auto;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: var(--space-8);
-            margin-bottom: var(--space-16);
-        }
-
-        .dashboard-card {
-            background: var(--color-white);
-            padding: var(--space-8);
-            border-radius: var(--radius-2xl);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .dashboard-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 16px 45px rgba(0,178,255,0.25);
-        }
-
-        .dashboard-card h3 {
-            font-size: var(--text-xl);
-            margin-bottom: var(--space-3);
-            color: var(--color-gray-900);
-        }
-
-        .dashboard-card p {
-            font-size: var(--text-base);
-            line-height: 1.6;
-            color: var(--color-gray-600);
-        }
-
-        .results-section {
-            background: var(--color-white);
-            border-radius: var(--radius-2xl);
-            padding: var(--space-12);
-            box-shadow: 0 10px 35px rgba(0,0,0,0.1);
-            margin-bottom: var(--space-16);
-        }
-
-        .results-header {
+            position: static;
+            transform: none;
             text-align: center;
-            margin-bottom: var(--space-12);
-        }
-
-        .results-header h2 {
-            font-size: var(--text-3xl);
             margin-bottom: var(--space-4);
-            color: var(--color-gray-900);
         }
-
-        .results-header p {
-            font-size: var(--text-base);
-            color: var(--color-gray-600);
-        }
-
-        /* ===============================
-           RESULTS TABLE WRAPPER
-           =============================== */
-
-        .results-table-container {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
-            border-radius: var(--radius-lg);
-        }
-
-        .results-table {
-            width: 100%;
-            min-width: 600px;
-            border-collapse: collapse;
-            margin-top: var(--space-8);
-            font-size: var(--text-sm);
-        }
-
-        .results-table th,
-        .results-table td {
-            padding: var(--space-4);
-            text-align: center;
-            border-bottom: 1px solid var(--color-gray-200);
-        }
-
-        .results-table th {
-            background: var(--color-primary);
-            color: var(--color-white);
-            text-transform: uppercase;
-            font-size: var(--text-xs);
-            letter-spacing: 0.05em;
-        }
-
-        .results-table td:first-child,
-        .results-table th:first-child {
-            text-align: left;
-        }
-
-        /* ===============================
-           BUTTONS
-           =============================== */
-
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            gap: var(--space-4);
-            margin-top: var(--space-12);
-            flex-wrap: wrap;
-        }
-
-        .btn-primary,
-        .btn-secondary {
-            padding: var(--space-4) var(--space-8);
-            border-radius: var(--radius-full);
-            font-weight: var(--weight-semibold);
-            text-decoration: none;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .btn-primary {
-            background: var(--color-primary);
-            color: var(--color-white);
-            box-shadow: 0 6px 20px rgba(0,178,255,0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0,178,255,0.4);
-        }
-
-        .btn-secondary {
-            border: 2px solid var(--color-primary);
-            color: var(--color-primary);
-            background: transparent;
-        }
-
-        .btn-secondary:hover {
-            background: var(--color-primary);
-            color: var(--color-white);
-        }
-
-        .pupil-footer {
-            background: var(--color-gray-900);
-            padding: var(--space-8) 0;
-            text-align: center;
-            color: var(--color-white);
-            font-size: var(--text-sm);
-        }
-
-        @media (max-width: 768px) {
-            .pupil-header .container {
-                flex-direction: column;
-                text-align: center;
-            }
-            .header-info {
-                text-align: center;
-            }
-        }
-    </style>
+    }
+</style>
 </head>
 
 <body class="pupil-portal">
 
 <header class="pupil-header">
-    <div class="container">
-
-        <!-- CENTERED SCHOOL NAME AND PORTAL -->
-        <div class="header-brand">
-            <div class="logo-text">Fahmid Nursery & Primary School</div>
-            <div class="portal-title">Pupil Portal</div>
+    <!-- CENTERED SCHOOL NAME AND PORTAL -->
+    <div class="header-brand">
+        <div class="logo-text">Fahmid Nursery & Primary School</div>
+        <div class="portal-title">Pupil Portal</div>
+    </div>
+    <!-- LEFT-ALIGNED INFO -->
+    <div class="header-info">
+        <div id="pupil-welcome" class="welcome-message">Welcome back</div>
+        <div class="student-meta">
+            <span id="student-class"></span>
+            <span id="student-session"></span>
         </div>
-
-        <!-- LEFT-ALIGNED WELCOME INFO -->
-        <div class="header-info">
-            <div id="pupil-welcome" class="welcome-message">Welcome back</div>
-            <div class="student-meta">
-                <span id="student-class"></span>
-                <span id="student-session"></span>
-            </div>
-            <button class="btn-logout" onclick="logout()">Logout</button>
-        </div>
-
+        <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
 </header>
 
