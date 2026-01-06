@@ -748,20 +748,28 @@ textarea {
     margin-top: var(--space-6);
 }
 
-/* ============================================
-   TABLES
-   ============================================ */
+/* ========================================
+   TABLE STYLES - RESPONSIVE & ACCESSIBLE
+   ======================================== */
+
 .table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-gray-200);
     margin: var(--space-8) 0;
+    background: var(--color-white);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
     background: var(--color-white);
+}
+
+.responsive-table {
+    width: 100%;
+    min-width: 600px; /* Prevents table from being too narrow */
 }
 
 thead {
@@ -800,9 +808,79 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
-/* Responsive Tables */
-.responsive-table {
-    width: 100%;
+/* Loading State */
+.table-loading {
+    position: relative;
+    padding: var(--space-2xl) !important;
+    text-align: center;
+    color: var(--color-gray-600);
+}
+
+.table-loading::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 3px solid var(--color-gray-300);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+    .table-container {
+        border-radius: var(--radius-md);
+        margin: var(--space-4) 0;
+    }
+    
+    .responsive-table {
+        font-size: 14px;
+        min-width: 500px; /* Allow more shrinking on mobile */
+    }
+    
+    th,
+    td {
+        padding: var(--space-3) var(--space-4);
+        white-space: nowrap;
+    }
+    
+    th {
+        font-size: 12px;
+    }
+}
+
+/* Tablet Adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .responsive-table {
+        font-size: 15px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .table-container {
+        border: 1px solid #000;
+        border-radius: 0;
+        margin: 8px 0;
+        overflow: visible;
+    }
+    
+    .responsive-table {
+        min-width: auto;
+        font-size: 10pt;
+    }
+    
+    th, td {
+        padding: 4px 8px;
+    }
+    
+    tbody tr:hover {
+        background: transparent;
+    }
 }
 
 /* ============================================
