@@ -13,10 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ===============================
-           GENERAL PAGE SETUP
-           =============================== */
-
         body.pupil-portal {
             background: var(--color-white);
             font-family: 'Open Sans', sans-serif;
@@ -51,6 +47,21 @@
             background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
             padding: var(--space-8) 0;
             box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+        }
+
+        .pupil-header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-6);
+            flex-wrap: wrap;
+        }
+
+        /* CENTERED BRAND BLOCK */
+        .header-brand {
+            text-align: center;
+            flex: 1;
+            min-width: 250px;
         }
 
         .logo-text {
@@ -102,10 +113,6 @@
             margin: auto;
         }
 
-        /* ===============================
-           DASHBOARD CARDS
-           =============================== */
-
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -138,10 +145,6 @@
             color: var(--color-gray-600);
         }
 
-        /* ===============================
-           RESULTS SECTION
-           =============================== */
-
         .results-section {
             background: var(--color-white);
             border-radius: var(--radius-2xl);
@@ -167,11 +170,20 @@
         }
 
         /* ===============================
-           TABLE
+           RESULTS TABLE WRAPPER
            =============================== */
+
+        .results-table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+            border-radius: var(--radius-lg);
+        }
 
         .results-table {
             width: 100%;
+            min-width: 600px; /* prevents columns from collapsing too much */
             border-collapse: collapse;
             margin-top: var(--space-8);
             font-size: var(--text-sm);
@@ -240,10 +252,6 @@
             color: var(--color-white);
         }
 
-        /* ===============================
-           FOOTER
-           =============================== */
-
         .pupil-footer {
             background: var(--color-gray-900);
             padding: var(--space-8) 0;
@@ -252,16 +260,9 @@
             font-size: var(--text-sm);
         }
 
-        /* ===============================
-           RESPONSIVE
-           =============================== */
-
         @media (max-width: 768px) {
-            .results-section {
-                padding: var(--space-6);
-            }
-
-            .dashboard-card {
+            .pupil-header .container {
+                flex-direction: column;
                 text-align: center;
             }
         }
@@ -272,8 +273,9 @@
 
 <header class="pupil-header">
     <div class="container">
-        <div>
-            <div class="logo-text">Fahmid School</div>
+
+        <div class="header-brand">
+            <div class="logo-text">Fahmid Nursery & Primary School</div>
             <div class="portal-title">Student Portal</div>
         </div>
 
@@ -285,22 +287,20 @@
             </div>
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
+
     </div>
 </header>
 
 <main class="pupil-main container">
-
     <section class="dashboard-grid">
         <div class="dashboard-card reveal delay-1">
             <h3>My Results</h3>
             <p>View your academic performance across all terms and subjects.</p>
         </div>
-
         <div class="dashboard-card reveal delay-2">
             <h3>Track Progress</h3>
             <p>Monitor improvements and identify areas that need attention.</p>
         </div>
-
         <div class="dashboard-card reveal delay-3">
             <h3>Achievements</h3>
             <p>Review milestones and personal academic highlights.</p>
@@ -313,7 +313,37 @@
             <p>Your performance record for the current academic session.</p>
         </div>
 
-        <div id="results-container"></div>
+        <div class="results-table-container" id="results-container">
+            <!-- Example Table -->
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>CA</th>
+                        <th>Exam</th>
+                        <th>Total</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Mathematics</td>
+                        <td>25</td>
+                        <td>55</td>
+                        <td>80</td>
+                        <td class="grade-A1">A1</td>
+                    </tr>
+                    <tr>
+                        <td>English</td>
+                        <td>20</td>
+                        <td>50</td>
+                        <td>70</td>
+                        <td class="grade-B2">B2</td>
+                    </tr>
+                    <!-- More rows dynamically here -->
+                </tbody>
+            </table>
+        </div>
 
         <div class="action-buttons">
             <a href="print-results.html" class="btn-primary">View and Print Report Card</a>
@@ -323,7 +353,6 @@
     <div class="action-buttons reveal">
         <a href="index.html" class="btn-secondary">Back to School Website</a>
     </div>
-
 </main>
 
 <footer class="pupil-footer">
