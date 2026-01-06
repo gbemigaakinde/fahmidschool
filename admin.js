@@ -352,35 +352,39 @@ function cancelPupilForm() {
  * Fetch full class details by class name
  * Used to sync subjects and assigned teacher
  */
-async function getClassDetails(className) {
-  const snap = await db
-    .collection('classes')
-    .where('name', '==', className)
-    .limit(1)
-    .get();
+/**
+ * Fetch full class details by class ID (FIXED)
+ * Used to sync subjects and assigned teacher
+ */
+async function getClassDetails(classId) {
+  try {
+    // FIXED: Query by class ID, not class name
+    const doc = await db.collection('classes').doc(classId).get();
+    
+    if (!doc.exists) return null;
 
-  if (snap.empty) return null;
+    const data = doc.data();
+    let teacherName = '';
+    let teacherId = data.teacherId || '';
 
-  const doc = snap.docs[0];
-  const data = doc.data();
-
-  let teacherName = '';
-  let teacherId = data.teacherId || '';
-
-  if (teacherId) {
-    const teacherDoc = await db.collection('teachers').doc(teacherId).get();
-    if (teacherDoc.exists) {
-      teacherName = teacherDoc.data().name || '';
+    if (teacherId) {
+      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+      if (teacherDoc.exists) {
+        teacherName = teacherDoc.data().name || '';
+      }
     }
-  }
 
-  return {
-    classId: doc.id,
-    className: data.name,
-    subjects: data.subjects || [],
-    teacherId,
-    teacherName
-  };
+    return {
+      classId: doc.id,
+      className: data.name,
+      subjects: data.subjects || [],
+      teacherId,
+      teacherName
+    };
+  } catch (error) {
+    console.error('Error fetching class details:', error);
+    return null;
+  }
 }
 
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
@@ -390,7 +394,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   const name = document.getElementById('pupil-name').value.trim();
   const dob = document.getElementById('pupil-dob').value;
   const gender = document.getElementById('pupil-gender').value;
-  const pupilClass = document.getElementById('pupil-class').value;
+  const pupilClass = document.getElementById('pupil-class').value; // This is now the class ID
   const parentName = document.getElementById('pupil-parent-name').value.trim();
   const parentEmail = document.getElementById('pupil-parent-email').value.trim();
   const contact = document.getElementById('pupil-contact').value.trim();
@@ -403,7 +407,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     return;
   }
   
-  // NEW: Check if email already exists (only when creating new pupil)
+  // Check if email already exists (only when creating new pupil)
   if (!uid) {
     try {
       const existingUsers = await db.collection('users')
@@ -424,10 +428,13 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.innerHTML = `<span class="btn-loading">${uid ? 'Updating pupil...' : 'Creating pupil...'}</span>`;
 
   try {
+    // FIXED: Pass class ID instead of class name
     const classDetails = await getClassDetails(pupilClass);
 
     if (!classDetails) {
       window.showToast?.('Selected class not found', 'danger');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = uid ? 'Update Pupil' : 'Save Pupil';
       return;
     }
 
