@@ -760,87 +760,49 @@ async function loadClasses() {
 }
 
 /* ======================================== 
-   SUBJECTS MANAGEMENT 
+   SUBJECTS MANAGEMENT - FIXED
 ======================================== */
-function showSubjectForm() {
-  const form = document.getElementById('subject-form');
-  if (form) {
-    form.style.display = 'block';
-    document.getElementById('subject-name')?.focus();
-  }
-}
 
-async function addSubject() {
-  const subjectName = document.getElementById('subject-name')?.value.trim();
-
-  if (!subjectName) {
-    window.showToast?.('Subject name is required', 'warning');
-    return;
-  }
+// Move these functions to GLOBAL scope (outside setupSubjectsEventListeners)
+window.deleteSubject = async function(subjectId, subjectName) {
+  if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
 
   try {
-    // Check if the subject already exists
-    const existingSnap = await db.collection('subjects')
-      .where('name', '==', subjectName)
-      .get();
+    // Delete from subjects collection
+    await db.collection('subjects').doc(subjectId).delete();
 
-    if (!existingSnap.empty) {
-      window.showToast?.('This subject already exists', 'warning');
-      return;
-    }
+    // Remove subject from all classes
+    await syncSubjectToClasses(subjectName, 'delete');
 
-    // Add subject to 'subjects' collection
-    const docRef = await db.collection('subjects').add({
-      name: subjectName,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Sync this subject to all classes automatically
-    await syncSubjectToClasses(subjectName, 'add');
-
-    window.showToast?.('Subject created successfully and synced to all classes', 'success');
-
-    document.getElementById('subject-form').style.display = 'none';
-    document.getElementById('subject-name').value = '';
+    window.showToast?.(`Subject "${subjectName}" deleted and removed from all classes`, 'success');
     loadSubjects();
-
-  } catch (error) {
-    console.error('Error adding subject:', error);
-    window.handleError(error, 'Failed to create subject');
+  } catch (err) {
+    console.error('Error deleting subject:', err);
+    window.handleError(err, 'Failed to delete subject');
   }
-}
+};
 
-/**
- * Sync subject changes with all classes
- * @param {string} subjectName - name of the subject
- * @param {string|object} action - 'add', 'delete' or {action:'edit', oldName, newName}
- */
-async function syncSubjectToClasses(subjectName, action) {
+window.editSubject = async function(subjectId, oldName) {
+  const newName = prompt('Enter new name for subject:', oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+
   try {
-    const classesSnap = await db.collection('classes').get();
-    const batch = db.batch();
-
-    classesSnap.forEach(doc => {
-      const classData = doc.data();
-      let subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
-
-      if (action === 'add') {
-        if (!subjects.includes(subjectName)) subjects.push(subjectName);
-      } else if (action === 'delete') {
-        subjects = subjects.filter(s => s !== subjectName);
-      } else if (typeof action === 'object' && action.action === 'edit') {
-        subjects = subjects.map(s => s === action.oldName ? action.newName : s);
-      }
-
-      batch.update(doc.ref, { subjects });
+    // Update subject in subjects collection
+    await db.collection('subjects').doc(subjectId).update({
+      name: newName,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    await batch.commit();
-    console.log('Subjects synced with all classes');
+    // Sync name change in classes
+    await syncSubjectToClasses(null, { action: 'edit', oldName, newName });
+
+    window.showToast?.(`Subject renamed to "${newName}" and synced with classes`, 'success');
+    loadSubjects();
   } catch (err) {
-    console.error('Error syncing subjects to classes:', err);
+    console.error('Error editing subject:', err);
+    window.handleError(err, 'Failed to edit subject');
   }
-}
+};
 
 async function loadSubjects() {
   const tbody = document.getElementById('subjects-table');
@@ -867,18 +829,15 @@ async function loadSubjects() {
     paginateTable(subjects, 'subjects-table', 20, (subject, tbodyEl) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td data-label="Subject Name">
-          <input type="text" value="${subject.name}" class="subject-name-input" data-id="${subject.id}">
-        </td>
+        <td data-label="Subject Name">${subject.name}</td>
         <td data-label="Actions">
-            <button class="btn-small btn-secondary" onclick="editSubject('${subject.id}', '${subject.name}')">Edit</button>
+          <button class="btn-small btn-secondary" onclick="editSubject('${subject.id}', '${subject.name}')">Edit</button>
           <button class="btn-small btn-danger" onclick="deleteSubject('${subject.id}', '${subject.name}')">Delete</button>
         </td>
       `;
       tbodyEl.appendChild(tr);
     });
 
-    setupSubjectsEventListeners();
   } catch (error) {
     console.error('Error loading subjects:', error);
     window.showToast?.('Failed to load subjects list. Check connection and try again.', 'danger');
@@ -886,31 +845,10 @@ async function loadSubjects() {
   }
 }
 
+// This function is no longer needed since we removed the input fields
 function setupSubjectsEventListeners() {
-  // Save (Edit) Subject
-  document.querySelectorAll('.save-subject-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      const input = document.querySelector(`.subject-name-input[data-id="${id}"]`);
-      const newName = input.value.trim();
-      if (!newName) return window.showToast?.('Subject name cannot be empty', 'warning');
-
-      try {
-        // Check for duplicates
-        const snap = await db.collection('subjects').where('name', '==', newName).get();
-        if (!snap.empty && snap.docs[0].id !== id) {
-          return window.showToast?.('Another subject with this name already exists', 'warning');
-        }
-
-        await db.collection('subjects').doc(id).set({ name: newName }, { merge: true });
-        window.showToast?.('✓ Subject updated successfully', 'success');
-        loadSubjects(); // Refresh the table
-      } catch (err) {
-        console.error('Error updating subject:', err);
-        window.showToast?.('Failed to update subject', 'danger');
-      }
-    });
-  });
+  // Empty - can be removed or kept for future use
+}
 
   // Delete Subject
  async function deleteSubject(subjectId, subjectName) {
