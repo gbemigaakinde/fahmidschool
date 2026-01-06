@@ -176,27 +176,36 @@ body.pupil-portal {
 /* ===============================
    PUPIL PROFILE TABLE
    =============================== */
-#profile-container {
-    margin-bottom: var(--space-12);
-}
-#profile-container .results-table th {
-    background: var(--color-primary);
-    color: var(--color-white);
-    text-transform: uppercase;
-    font-size: var(--text-sm);
-    text-align: left;
-    padding: var(--space-4);
-}
-#profile-container .results-table td {
-    padding: var(--space-4);
-    text-align: left;
-    color: var(--color-gray-700);
-}
-#profile-container .results-table tr:nth-child(even) td {
-    background: rgba(0,178,255,0.03);
-}
-#profile-container .results-table td:first-child {
-    font-weight: 600;
+
+@media (max-width: 768px) {
+    #profile-container .results-table {
+        font-size: 14px;
+    }
+    
+    #profile-container .results-table td,
+    #profile-container .results-table th {
+        padding: 10px;
+    }
+    
+    #profile-container .results-table tbody tr {
+        display: flex;
+        flex-direction: column;
+        border-bottom: 2px solid #e0e0e0;
+        margin-bottom: 16px;
+    }
+    
+    #profile-container .results-table td:first-child {
+        background: #f0f8ff;
+        font-weight: bold;
+        border-bottom: none;
+        padding-bottom: 4px;
+        color: #2196F3;
+    }
+    
+    #profile-container .results-table td:last-child {
+        padding-top: 4px;
+        color: #333;
+    }
 }
 
 /* BUTTONS */
