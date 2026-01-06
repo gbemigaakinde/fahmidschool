@@ -1,0 +1,68 @@
+/* ===============================
+   PUPIL PROFILE TABLE OVERRIDE
+   =============================== */
+#profile-container .results-table {
+    font-size: 0.875rem; /* Slightly smaller, readable */
+    line-height: 1.4;
+    width: auto;
+    max-width: 100%;
+    border-collapse: collapse;
+}
+
+#profile-container .results-table th,
+#profile-container .results-table td {
+    padding: 0.25rem 0.5rem; /* Tight padding to reduce table height */
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+    color: #333;
+}
+
+#profile-container .results-table th {
+    font-weight: 600;
+    font-size: 0.8rem; /* Smaller header */
+    text-transform: uppercase;
+    color: #000;
+}
+
+#profile-container .results-table td:first-child {
+    font-weight: 500;
+    color: #2196F3;
+    min-width: 100px; /* Optional: keeps first column readable */
+}
+
+#profile-container .results-table tbody tr {
+    display: table-row; /* keep normal table layout for desktop */
+}
+
+#profile-container .results-table td:last-child {
+    color: #444;
+}
+
+/* Optional: responsive tweaks for mobile */
+@media (max-width: 768px) {
+    #profile-container .results-table {
+        font-size: 0.85rem;
+    }
+
+    #profile-container .results-table th,
+    #profile-container .results-table td {
+        padding: 0.25rem 0.4rem;
+    }
+
+    #profile-container .results-table tbody tr {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    #profile-container .results-table td:first-child {
+        background: #f0f8ff;
+        border-bottom: none;
+        padding-bottom: 2px;
+    }
+
+    #profile-container .results-table td:last-child {
+        padding-top: 2px;
+    }
+}
