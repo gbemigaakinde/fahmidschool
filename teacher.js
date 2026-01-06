@@ -351,17 +351,19 @@ async function loadResultsTable() {
     });
     
     container.innerHTML = `
-      <table class="responsive-table" id="results-table">
-        <thead>
-          <tr>
-            <th>Pupil Name</th>
-            <th>CA Score (40)</th>
-            <th>Exam Score (60)</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-container">
+        <table class="responsive-table" id="results-table">
+          <thead>
+            <tr>
+              <th>Pupil Name</th>
+              <th>CA Score (40)</th>
+              <th>Exam Score (60)</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     `;
     
     paginateTable(allPupils, 'results-table', 20, (pupil, tbody) => {
@@ -488,17 +490,19 @@ async function loadAttendanceSection() {
     }
     
     container.innerHTML = `
-      <table class="responsive-table" id="attendance-table">
-        <thead>
-          <tr>
-            <th>Pupil Name</th>
-            <th>Times Opened</th>
-            <th>Times Present</th>
-            <th>Times Absent</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-container">
+        <table class="responsive-table" id="attendance-table">
+          <thead>
+            <tr>
+              <th>Pupil Name</th>
+              <th>Times Opened</th>
+              <th>Times Present</th>
+              <th>Times Absent</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     `;
     
     paginateTable(allPupils, 'attendance-table', 25, (pupil, tbody) => {
