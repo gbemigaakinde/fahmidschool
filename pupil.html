@@ -121,17 +121,18 @@ body.pupil-portal {
 .results-section {
     background: var(--color-white);
     border-radius: var(--radius-2xl);
-    padding: var(--space-12);
+    padding: var(--space-8); /* Reduced from space-12 */
     box-shadow: 0 10px 35px rgba(0,0,0,0.1);
-    margin-bottom: var(--space-16);
+    margin-bottom: var(--space-12); /* Reduced from space-16 */
 }
 .results-header {
     text-align: center;
     margin-bottom: var(--space-12);
 }
-.results-header h2 {
-    font-size: var(--text-3xl);
-    margin-bottom: var(--space-4);
+.results-header h2,
+.results-header h3 {
+    font-size: var(--text-2xl); /* Reduced from text-3xl */
+    margin-bottom: var(--space-3);
     color: var(--color-gray-900);
 }
 .results-header p {
@@ -148,14 +149,33 @@ body.pupil-portal {
 .results-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: var(--space-8);
-    font-size: var(--text-sm);
+    margin-top: var(--space-6);
+    font-size: 14px; /* Fixed size instead of var(--text-sm) */
 }
 .results-table th,
 .results-table td {
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4); /* Reduced vertical padding */
     text-align: center;
     border-bottom: 1px solid var(--color-gray-200);
+    font-size: 14px; /* Explicit size */
+    line-height: 1.5;
+}
+.results-table th {
+    background: var(--color-primary);
+    color: var(--color-white);
+    text-transform: uppercase;
+    font-size: 12px; /* Smaller header text */
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+.results-table td:first-child,
+.results-table th:first-child {
+    text-align: left;
+    font-weight: 600; /* Make labels bold */
+}
+.summary-row td {
+    font-weight: bold;
+    background: rgba(0,178,255,0.05);
 }
 .results-table th {
     background: var(--color-primary);
@@ -171,6 +191,23 @@ body.pupil-portal {
 .summary-row td {
     font-weight: bold;
     background: rgba(0,178,255,0.05);
+}
+
+/* PROFILE TABLE - COMPACT SIZING */
+#profile-container .results-table {
+    font-size: 14px;
+}
+#profile-container .results-table th {
+    background: var(--color-gray-100);
+    color: var(--color-gray-800);
+    font-size: 13px;
+    font-weight: 600;
+    width: 180px; /* Fixed width for labels */
+}
+#profile-container .results-table td {
+    font-size: 14px;
+    text-align: left;
+    color: var(--color-gray-700);
 }
 
 /* BUTTONS */
