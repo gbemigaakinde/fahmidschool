@@ -94,42 +94,18 @@ function initHeroSlideshow() {
     if (!slides.length) return;
 
     let index = 0;
+    slides[index].classList.add('visible'); // Show first image immediately
 
-    // Wait for all images to load
-    let loadedCount = 0;
-    slides.forEach(img => {
-        if (img.complete) {
-            loadedCount++;
-        } else {
-            img.addEventListener('load', () => {
-                loadedCount++;
-                if (loadedCount === slides.length) startSlideshow();
-            });
-            img.addEventListener('error', () => {
-                loadedCount++;
-                if (loadedCount === slides.length) startSlideshow();
-            });
-        }
-    });
-
-    // If all images already loaded
-    if (loadedCount === slides.length) startSlideshow();
-
-    function startSlideshow() {
-        // Show first image
+    // Start rotation
+    setInterval(() => {
+        slides[index].classList.remove('visible');
+        index = (index + 1) % slides.length;
         slides[index].classList.add('visible');
-
-        // Slide interval
-        setInterval(() => {
-            slides[index].classList.remove('visible');
-            index = (index + 1) % slides.length;
-            slides[index].classList.add('visible');
-        }, 6000); // 6 seconds per slide
-    }
+    }, 6000);
 }
 
-// Start the hero slideshow when page loads
-window.addEventListener('load', initHeroSlideshow);
+// Call on DOMContentLoaded (faster than 'load')
+document.addEventListener('DOMContentLoaded', initHeroSlideshow);
 
 /* =====================================================
    GALLERY LIGHTBOX
