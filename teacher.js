@@ -255,8 +255,19 @@ async function loadTeacherDashboard() {
   const classCountEl = document.getElementById('my-class-count');
   const pupilCountEl = document.getElementById('my-pupil-count');
   
-  if (classCountEl) classCountEl.textContent = assignedClasses.length;
-  if (pupilCountEl) pupilCountEl.textContent = allPupils.length;
+  const classCount = assignedClasses.length;
+  const pupilCount = allPupils.length;
+  
+  // Update dashboard stats
+  if (classCountEl) classCountEl.textContent = classCount;
+  if (pupilCountEl) pupilCountEl.textContent = pupilCount;
+  
+  // Update header stats
+  const headerClassCount = document.getElementById('header-class-count');
+  const headerPupilCount = document.getElementById('header-pupil-count');
+  
+  if (headerClassCount) headerClassCount.textContent = classCount;
+  if (headerPupilCount) headerPupilCount.textContent = pupilCount;
 }
 
 /* ======================================== 
