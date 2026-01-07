@@ -1,11 +1,11 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Shared Authentication
- * SHARED CODE ONLY
+ * SHARED CODE ONLY - No portal-specific logic
  * 
- * Version: 3.0.0 (fixed and ready)
+ * @version 3.0.0 - FIXED
+ * @date 2026-01-05
  */
-
 'use strict';
 
 // ============================================
@@ -22,12 +22,12 @@ const firebaseConfig = {
   measurementId: "G-HEC84JXFY2"
 };
 
-// Initialize Firebase only once
+// Initialize Firebase (only once)
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-// Global references
+// Export to window for global access
 window.db = firebase.firestore();
 window.auth = firebase.auth();
 
@@ -48,15 +48,17 @@ const ERROR_MESSAGES = {
 };
 
 // ============================================
-// SHARED HELPERS
+// SHARED HELPER FUNCTIONS
 // ============================================
 
-// Handle errors with user-friendly messages
+/**
+ * Handle errors with user-friendly messages
+ */
 window.handleError = function(error, fallbackMessage = 'An error occurred') {
   console.error('Error details:', error);
   const errorCode = error.code || 'unknown';
-  const userMessage = ERROR_MESSAGES[errorCode] || `${fallbackMessage}: ${error.message || errorCode}`;
-
+  const userMessage = ERROR_MESSAGES[errorCode] || `${fallbackMessage}: ${error.message || error.code}`;
+  
   if (window.showToast) {
     window.showToast(userMessage, 'danger', 5000);
   } else {
@@ -64,10 +66,12 @@ window.handleError = function(error, fallbackMessage = 'An error occurred') {
   }
 };
 
-// Get current school settings
+/**
+ * Get current school settings
+ */
 window.getCurrentSettings = async function() {
   try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
+    const settingsDoc = await window.db.collection('settings').doc('current').get();
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
       return {
@@ -82,10 +86,12 @@ window.getCurrentSettings = async function() {
   }
 };
 
-// Get user role from Firestore
+/**
+ * Get user role from Firestore
+ */
 window.getUserRole = async function(uid) {
   try {
-    const doc = await db.collection('users').doc(uid).get();
+    const doc = await window.db.collection('users').doc(uid).get();
     return doc.exists ? (doc.data().role || 'pupil') : null;
   } catch (error) {
     console.error('Error getting user role:', error);
@@ -93,72 +99,87 @@ window.getUserRole = async function(uid) {
   }
 };
 
-// Check if user has required role
+/**
+ * Check if user has required role
+ */
 window.checkRole = function(requiredRole) {
   return new Promise((resolve, reject) => {
-    auth.onAuthStateChanged(async (user) => {
+    window.auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        showToast?.('Please log in to continue', 'warning');
+        window.showToast?.('Please log in to continue', 'warning');
         setTimeout(() => window.location.href = 'login.html', 1500);
         reject(new Error('Not authenticated'));
         return;
       }
 
       try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
+        const userDoc = await window.db.collection('users').doc(user.uid).get();
+        
         if (!userDoc.exists) {
-          showToast?.('User profile not found', 'danger');
-          await auth.signOut();
+          window.showToast?.('User profile not found', 'danger');
+          await window.auth.signOut();
           setTimeout(() => window.location.href = 'login.html', 1500);
           reject(new Error('User profile not found'));
           return;
         }
 
         const userData = userDoc.data();
+        
         if (userData.role !== requiredRole) {
-          showToast?.('Access denied. Insufficient permissions.', 'danger');
-          await auth.signOut();
+          window.showToast?.('Access denied. Insufficient permissions.', 'danger');
+          await window.auth.signOut();
           setTimeout(() => window.location.href = 'login.html', 2000);
           reject(new Error('Insufficient permissions'));
           return;
         }
 
-        resolve({ uid: user.uid, email: user.email, role: userData.role });
+        resolve({
+          uid: user.uid,
+          email: user.email,
+          role: userData.role
+        });
       } catch (error) {
-        handleError(error, 'Error verifying permissions');
+        console.error('Error checking role:', error);
+        window.handleError(error, 'Error verifying permissions');
         reject(error);
       }
     });
   });
 };
 
-// Login
+/**
+ * Login user
+ */
 window.login = async function(email, password) {
   try {
-    await auth.signInWithEmailAndPassword(email, password);
-    showToast?.('Login successful!', 'success');
+    await window.auth.signInWithEmailAndPassword(email, password);
+    window.showToast?.('Login successful!', 'success');
     setTimeout(() => window.location.href = 'portal.html', 800);
   } catch (error) {
-    handleError(error, 'Login failed');
+    window.handleError(error, 'Login failed');
     throw error;
   }
 };
 
-// Logout
+/**
+ * Logout user
+ */
 window.logout = async function() {
   try {
-    await auth.signOut();
-    showToast?.('Logged out successfully', 'success');
+    await window.auth.signOut();
+    window.showToast?.('Logged out successfully', 'success');
     setTimeout(() => window.location.href = 'login.html', 800);
   } catch (error) {
-    handleError(error, 'Logout failed');
+    window.handleError(error, 'Logout failed');
   }
 };
 
-// Get all teachers (for admin)
+/**
+ * Get all teachers (for admin)
+ */
 window.getAllTeachers = async function() {
   try {
-    const snapshot = await db.collection('teachers').get();
+    const snapshot = await window.db.collection('teachers').get();
     const teachers = [];
     snapshot.forEach(doc => {
       teachers.push({ uid: doc.id, ...doc.data() });
