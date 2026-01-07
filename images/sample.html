@@ -39,46 +39,82 @@ body {
     padding: 0 24px;
 }
 
-/* Navigation Bar with Scrolling Text */
+/* Sidebar Navigation */
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 600;
+}
+
+.sidebar-header {
+    padding: 24px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sidebar-content ul {
+    list-style: none;
+}
+
+.sidebar-content li {
+    margin-bottom: 16px;
+}
+
+.sidebar-content a {
+    text-decoration: none;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.sidebar-footer {
+    padding: 24px;
+}
+
+/* Top Navigation Bar */
 .top-nav {
     position: fixed;
     top: 0;
     left: var(--sidebar-width);
     right: 0;
     height: 60px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0); /* fully transparent */
+    backdrop-filter: none;
+    border-bottom: none;
     z-index: 500;
     display: flex;
     align-items: center;
+    justify-content: space-between; /* nav left, buttons right */
     padding: 0 32px;
-    transition: left 0.3s ease;
-    justify-content: space-between;
 }
 
+/* Navigation Items on the left */
 .scroll-wrapper {
-    overflow: hidden;
-    position: relative;
-    height: 100%;
     display: flex;
     align-items: center;
+    gap: 32px;
 }
 
-.scroll-text {
-    display: inline-block;
-    white-space: nowrap;
-    animation: scroll-left 25s linear infinite;
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.5);
+.scroll-wrapper a {
+    text-decoration: none;
+    color: var(--text);
     font-weight: 500;
+    font-size: 14px;
 }
 
-@keyframes scroll-left {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
-
+/* Buttons on the right */
 .top-nav-buttons {
     display: flex;
     gap: 12px;
@@ -90,44 +126,19 @@ body {
     text-decoration: none;
     font-weight: 600;
     font-size: 14px;
-    transition: all 0.2s;
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    background: transparent; /* absolute transparent */
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    transition: all 0.2s;
 }
 
-/* Updated styles for hero buttons - transparent background */
-.top-nav-btn-transparent {
-    background: transparent;
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-}
-
-.top-nav-btn-transparent:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: white;
-    transform: translateY(-1px);
-}
-
-.top-nav-btn-primary {
+.top-nav-btn:hover {
     background: var(--primary);
     color: white;
-}
-
-.top-nav-btn-primary:hover {
-    background: var(--primary-dark);
     transform: translateY(-1px);
-}
-
-.top-nav-btn-secondary {
-    background: white;
-    color: var(--text);
-    border: 1px solid var(--border);
-}
-
-.top-nav-btn-secondary:hover {
-    border-color: var(--primary);
-    color: var(--primary);
 }
 
 /* Hero - Full Screen with Images */
@@ -177,51 +188,14 @@ body {
 .hero-content {
     position: relative;
     z-index: 2;
-    max-width: 1200px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 0 40px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
-}
-
-/* Hero header row - navigation on left, buttons on right */
-.hero-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 60px;
-    padding-top: 20px;
-}
-
-.hero-nav {
-    display: flex;
-    gap: 32px;
-}
-
-.hero-nav a {
-    color: white;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 15px;
-    opacity: 0.9;
-    transition: opacity 0.2s;
-}
-
-.hero-nav a:hover {
-    opacity: 1;
-}
-
-.hero-buttons {
-    display: flex;
-    gap: 16px;
-}
-
-/* Main hero text */
-.hero-text {
-    max-width: 700px;
+    align-items: flex-start;
     text-align: left;
 }
 
@@ -240,6 +214,7 @@ body {
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.95);
     margin-bottom: 40px;
+    max-width: 680px;
     font-weight: 400;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
@@ -265,303 +240,15 @@ body {
     box-shadow: 0 12px 32px rgba(0, 102, 255, 0.5);
 }
 
-/* Stats */
-.stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
-    margin-top: 80px;
-}
-
-.stat-card {
-    background: white;
-    padding: 32px;
-    border-radius: 16px;
-    text-align: center;
-    border: 1px solid var(--border);
-}
-
-.stat-number {
-    font-size: 40px;
-    font-weight: 800;
-    color: var(--primary);
-    display: block;
-    margin-bottom: 8px;
-}
-
-.stat-label {
-    color: var(--text-light);
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* Section */
-section {
-    padding: 100px 0;
-}
-
-.section-header {
-    text-align: center;
-    max-width: 700px;
-    margin: 0 auto 64px;
-}
-
-.section-header h2 {
-    font-size: 40px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: -0.02em;
-}
-
-.section-header p {
-    font-size: 18px;
-    color: var(--text-light);
-}
-
-/* Features Grid */
-.features {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
-}
-
-.feature-card {
-    background: white;
-    padding: 40px 32px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    transition: all 0.3s;
-}
-
-.feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-    border-color: var(--primary);
-}
-
-.feature-icon {
-    width: 48px;
-    height: 48px;
-    background: var(--primary);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-.feature-icon svg {
-    color: white;
-}
-
-.feature-card h3 {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.feature-card p {
-    color: var(--text-light);
-    font-size: 15px;
-    line-height: 1.6;
-}
-
-/* Programs */
-.programs {
-    background: var(--bg-light);
-}
-
-.program-cards {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 32px;
-}
-
-.program-card {
-    background: white;
-    border-radius: 20px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    transition: all 0.3s;
-}
-
-.program-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-}
-
-.program-image {
-    height: 300px;
-    background-size: cover;
-    background-position: center;
-}
-
-.program-content {
-    padding: 32px;
-}
-
-.program-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #e8f2ff;
-    color: var(--primary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 16px;
-}
-
-.program-card h3 {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.program-card p {
-    color: var(--text-light);
-    margin-bottom: 20px;
-    line-height: 1.6;
-}
-
-.program-link {
-    color: var(--primary);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 15px;
-    transition: gap 0.3s;
-}
-
-.program-link:hover {
-    gap: 10px;
-}
-
-/* Testimonials */
-.testimonials {
-    background: white;
-}
-
-.testimonial-card {
-    max-width: 800px;
-    margin: 0 auto;
-    background: var(--bg-light);
-    padding: 48px;
-    border-radius: 20px;
-    text-align: center;
-}
-
-.testimonial-quote {
-    font-size: 22px;
-    line-height: 1.6;
-    margin-bottom: 32px;
-    color: var(--text);
-}
-
-.testimonial-author {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-}
-
-.author-avatar {
-    width: 56px;
-    height: 56px;
-    background: var(--primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 18px;
-}
-
-.author-info {
-    text-align: left;
-}
-
-.author-name {
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.author-role {
-    color: var(--text-light);
-    font-size: 14px;
-}
-
-/* CTA */
-.cta {
-    background: var(--primary);
-    color: white;
-    border-radius: 24px;
-    padding: 80px 60px;
-    text-align: center;
-}
-
-.cta h2 {
-    font-size: 40px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    color: white;
-}
-
-.cta p {
-    font-size: 18px;
-    margin-bottom: 32px;
-    opacity: 0.9;
-}
-
-.cta-buttons {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-}
-
-.btn-white {
-    background: white;
-    color: var(--primary);
-    padding: 16px 32px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 16px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-}
-
-.btn-white:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* Footer */
-footer {
-    background: var(--text);
-    color: white;
-    padding: 60px 0;
-    text-align: center;
-}
-
-footer p {
-    opacity: 0.7;
-}
+/* Stats, Features, Programs, Testimonials, CTA, Footer */
+.stats, .features, .program-cards, .testimonials, .cta, footer { margin-top: 80px; }
+.stat-card, .feature-card, .program-card, .testimonial-card, .cta { border-radius: 16px; }
+.stat-number, .stat-label, .feature-icon, .feature-card h3, .program-card h3, .testimonial-quote { font-weight: 700; }
 
 /* Responsive */
 @media (max-width: 1024px) {
     .top-nav {
         left: 0;
-    }
-
-    .hero-header {
-        padding: 0 24px;
     }
 }
 
@@ -570,28 +257,11 @@ footer p {
         display: none;
     }
 
-    .hero-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 24px;
-        margin-bottom: 40px;
-    }
-
-    .hero-nav {
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-
-    .hero-buttons {
-        width: 100%;
-        justify-content: center;
-    }
-
     .hero h1 {
         font-size: 40px;
     }
 
-    .hero .lead {
+    .hero p {
         font-size: 18px;
     }
 
@@ -605,22 +275,6 @@ footer p {
 
     .program-cards {
         grid-template-columns: 1fr;
-    }
-
-    .section-header h2 {
-        font-size: 32px;
-    }
-
-    .cta {
-        padding: 60px 32px;
-    }
-
-    .cta h2 {
-        font-size: 32px;
-    }
-
-    .cta-buttons {
-        flex-direction: column;
     }
 }
 </style>
@@ -657,27 +311,26 @@ footer p {
 
     <div class="sidebar-footer">
         <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-            Login / Register
+            Login
         </a>
     </div>
 </nav>
 
-<!-- Top Navigation Bar with Scrolling Text -->
+<!-- Top Navigation Bar -->
 <div class="top-nav">
+    <!-- Navigation on the left -->
     <div class="scroll-wrapper">
-        <span class="scroll-text">
-            Welcome to Fahmid Nursery and Primary School &nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp; Welcome to Fahmid Nursery and Primary School &nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp; Welcome to Fahmid Nursery and Primary School &nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp; Welcome to Fahmid Nursery and Primary School &nbsp;&nbsp;&nbsp;•&nbsp;&nbsp;&nbsp;
-        </span>
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="academics.html">Academics</a>
+        <a href="admissions.html">Admissions</a>
+        <a href="contact.html">Contact</a>
     </div>
+
+    <!-- Buttons on the right -->
     <div class="top-nav-buttons">
-        <a href="admissions.html" class="top-nav-btn top-nav-btn-primary">
-            <i data-lucide="clipboard-check" size="16"></i>
-            Apply Now
-        </a>
-        <a href="contact.html" class="top-nav-btn top-nav-btn-secondary">
-            <i data-lucide="calendar" size="16"></i>
-            Visit Us
-        </a>
+        <a href="admissions.html" class="top-nav-btn">Apply Now</a>
+        <a href="contact.html" class="top-nav-btn">Visit Us</a>
     </div>
 </div>
 
@@ -697,39 +350,14 @@ footer p {
     </div>
 
     <div class="hero-content">
-        <div class="hero-header container">
-            <!-- Navigation links on the left -->
-            <div class="hero-nav">
-                <a href="about.html">About</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="school-life.html">School Life</a>
-                <a href="gallery.html">Gallery</a>
-                <a href="contact.html">Contact</a>
-            </div>
-
-            <!-- Apply Now & Visit Us on the right (transparent) -->
-            <div class="hero-buttons">
-                <a href="admissions.html" class="top-nav-btn top-nav-btn-transparent">
-                    <i data-lucide="clipboard-check" size="18"></i>
-                    Apply Now
-                </a>
-                <a href="contact.html" class="top-nav-btn top-nav-btn-transparent">
-                    <i data-lucide="calendar" size="18"></i>
-                    Visit Us
-                </a>
-            </div>
-        </div>
-
-        <div class="hero-text container">
-            <h1>Fahmid Nursery and Primary School</h1>
-            <p class="lead">
-                Building strong academic foundations and positive values in a safe, caring, and structured learning environment.
-            </p>
-            <a href="admissions.html" class="btn">Enroll Your Child Now!</a>
-        </div>
+        <h1>Fahmid Nursery and Primary School</h1>
+        <p class="lead">
+            Building strong academic foundations and positive values in a safe, caring, and structured learning environment.
+        </p>
+        <a href="admissions.html" class="btn">Enroll Your Child Now!</a>
     </div>
 </section>
+
 
 <!-- MAIN CONTENT -->
 <main id="main-content" class="main-content">
@@ -914,7 +542,6 @@ footer p {
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="../script.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
