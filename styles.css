@@ -317,6 +317,12 @@ h5, h6 { font-size: var(--text-xl); }
     border-top: 1px solid var(--color-gray-200);
 }
 
+.sidebar nav ul li a i[data-lucide] {
+    margin-right: var(--space-3);
+    width: 20px;
+    height: 20px;
+}
+
 /* ============================================
    HAMBURGER MENU
    ============================================ */
