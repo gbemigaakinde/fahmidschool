@@ -36,11 +36,6 @@ function initHamburgerMenu() {
             sidebar.classList.remove('active');
             hamburger.setAttribute('aria-expanded', 'false');
             document.body.style.overflow = '';
-            
-            // Ensure hamburger slides back to left
-            requestAnimationFrame(() => {
-                hamburger.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            });
             return;
         }
 
@@ -50,13 +45,6 @@ function initHamburgerMenu() {
         const expanded = sidebar.classList.contains('active');
         hamburger.setAttribute('aria-expanded', expanded);
         document.body.style.overflow = expanded ? 'hidden' : '';
-        
-        // Ensure smooth hamburger slide animation
-        if (expanded) {
-            requestAnimationFrame(() => {
-                hamburger.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            });
-        }
     }
 
     hamburger.addEventListener('click', e => {
