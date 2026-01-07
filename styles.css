@@ -181,6 +181,7 @@ h5, h6 { font-size: var(--text-xl); }
     font-weight: 800;
     letter-spacing: -0.03em;
     position: relative;
+    text-align: center; /* Added center alignment */
 }
 
 .section-title::after,
@@ -195,40 +196,40 @@ h5, h6 { font-size: var(--text-xl); }
 }
 
 /* ============================================
-   SECTION SPACING - TIGHTER FOR BETTER FLOW
+   SECTION SPACING - OPTIMIZED FOR BETTER FLOW
    ============================================ */
 section {
-    padding: var(--space-16) 0; /* Reduced from var(--space-20) = 5rem → 4rem (~64px) */
+    padding: var(--space-10) 0; /* Further reduced to 2.5rem (~40px) */
 }
 
 .programs-section,
 .testimonials-section,
 .gallery-teaser,
 .cta-section {
-    padding: var(--space-12) 0; /* Even tighter for colored/alternating sections (~48px) */
+    padding: var(--space-8) 0; /* Reduced to 2rem (~32px) */
 }
 
 /* Reduce gaps inside grids/cards */
 .grid,
 .features-grid {
-    gap: var(--space-6); /* Was var(--space-8) */
-    margin-bottom: var(--space-12); /* Reduced */
+    gap: var(--space-6);
+    margin-bottom: var(--space-8); /* Further reduced */
 }
 
 /* Hero to first section transition */
 .main-content > section:first-child {
-    padding-top: var(--space-12); /* Less gap after hero */
+    padding-top: var(--space-8); /* Less gap after hero */
 }
 
 /* Footer top margin */
 .site-footer {
-    margin-top: var(--space-16); /* Reduced from var(--space-20) */
+    margin-top: var(--space-12); /* Further reduced */
 }
 
 /* Mobile fine-tuning */
 @media (max-width: 768px) {
     section {
-        padding: var(--space-12) 0;
+        padding: var(--space-8) 0;
     }
 }
 
@@ -356,7 +357,7 @@ section {
 }
 
 .sidebar nav ul li a i[data-lucide] {
-    margin-right: var(--space-3);
+    margin-right: var(--space-4);  /* Changed from space-3 to space-4 */
     width: 20px;
     height: 20px;
 }
@@ -368,7 +369,7 @@ section {
     display: none;
     position: fixed;
     top: var(--space-6);
-    left: var(--space-6);
+    right: var(--space-6);  /* Changed from left to right */
     z-index: var(--z-hamburger);
     width: 44px;
     height: 44px;
@@ -2257,6 +2258,7 @@ address strong {
     border: 1px solid var(--color-gray-200);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-xs);
+    padding: var(--space-10); /* Added generous padding */
 }
 
 .features-grid .feature-card:hover {
@@ -2331,13 +2333,13 @@ address strong {
     background-position: center;
     background-repeat: no-repeat;
     color: white;
-    padding: var(--space-16);
+    padding: var(--space-20); /* Increased from space-16 */
     border-radius: var(--radius-xl);
     position: relative;
     overflow: hidden;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     box-shadow: var(--shadow-lg);
-    min-height: 350px;
+    min-height: 400px; /* Increased from 350px */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -2601,11 +2603,11 @@ address strong {
 }
 
 .gallery-track img {
-    height: 350px;       /* you can increase to 350px or more if desired */
+    height: 400px;       /* Increased from 350px */
     width: auto;
     object-fit: cover;
     flex-shrink: 0;
-    border-right: 2px solid white;
+    border-right: 4px solid white; /* Increased border for better separation */
     transition: filter 0.3s ease, transform 0.3s ease;
 }
 
