@@ -1,4 +1,4 @@
-/**
+/*
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Admin Portal JavaScript - FIXED
  * 
@@ -763,7 +763,7 @@ async function loadClasses() {
    SUBJECTS MANAGEMENT - FIXED
 ======================================== */
 
-// Move these functions to GLOBAL scope (outside setupSubjectsEventListeners)
+// Global functions for edit/delete (to avoid reference errors)
 window.deleteSubject = async function(subjectId, subjectName) {
   if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
 
@@ -845,50 +845,8 @@ async function loadSubjects() {
   }
 }
 
-// This function is no longer needed since we removed the input fields
 function setupSubjectsEventListeners() {
-  // Empty - can be removed or kept for future use
-}
-
-  // Delete Subject
- async function deleteSubject(subjectId, subjectName) {
-  if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
-
-  try {
-    // Delete from subjects collection
-    await db.collection('subjects').doc(subjectId).delete();
-
-    // Remove subject from all classes
-    await syncSubjectToClasses(subjectName, 'delete');
-
-    window.showToast?.(`Subject "${subjectName}" deleted and removed from all classes`, 'success');
-    loadSubjects();
-  } catch (err) {
-    console.error('Error deleting subject:', err);
-    window.handleError(err, 'Failed to delete subject');
-  }
-}
-
-async function editSubject(subjectId, oldName) {
-  const newName = prompt('Enter new name for subject:', oldName);
-  if (!newName || newName.trim() === '' || newName === oldName) return;
-
-  try {
-    // Update subject in subjects collection
-    await db.collection('subjects').doc(subjectId).update({
-      name: newName,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Sync name change in classes
-    await syncSubjectToClasses(null, { action: 'edit', oldName, newName });
-
-    window.showToast?.(`Subject renamed to "${newName}" and synced with classes`, 'success');
-    loadSubjects();
-  } catch (err) {
-    console.error('Error editing subject:', err);
-    window.handleError(err, 'Failed to edit subject');
-  }
+  // Empty - kept for future use
 }
 
 /* ======================================== 
@@ -1169,51 +1127,69 @@ async function loadAdminAnnouncements() {
    SCHOOL SETTINGS 
 ======================================== */
 async function loadCurrentSettings() {
-  const termEl = document.getElementById('display-term');
-  const sessionEl = document.getElementById('display-session');
-  const resumptionEl = document.getElementById('display-resumption');
-  const termSelect = document.getElementById('current-term');
-  const sessionInput = document.getElementById('current-session');
-  const resumptionInput = document.getElementById('resumption-date');
+  const termEl = document.getElementById('display-current-term');
+  const sessionEl = document.getElementById('display-session-name');
+  const startEl = document.getElementById('display-session-start');
+  const endEl = document.getElementById('display-session-end');
+  const resumptionEl = document.getElementById('display-next-resumption');
+  const badgeEl = document.getElementById('session-status-badge');
+  const alertEl = document.getElementById('session-end-alert');
   
-  if (!termEl || !sessionEl || !resumptionEl || !termSelect || !sessionInput || !resumptionInput) return;
+  if (!termEl || !sessionEl || !badgeEl) return;
   
   try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
+    const settingsDoc = await db.collection('settings').doc('session').get();
     
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
-      termEl.textContent = `Term: ${data.term || 'Not set'}`;
-      sessionEl.textContent = `Session: ${data.session || 'Not set'}`;
-      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;
-      termSelect.value = data.term || 'First Term';
-      sessionInput.value = data.session || '';
-      resumptionInput.value = data.resumptionDate || '';
+      
+      termEl.textContent = data.currentTerm || 'Not set';
+      sessionEl.textContent = `${data.sessionStartYear}/${data.sessionEndYear}`;
+      startEl.textContent = data.sessionStartDate || 'Not set';
+      endEl.textContent = data.sessionEndDate || 'Not set';
+      resumptionEl.textContent = data.resumptionDate || 'Not set';
+      
+      badgeEl.textContent = 'Active';
+      badgeEl.className = 'status-badge';
+      
+      // Simple warning if less than 30 days left (example logic)
+      if (data.sessionEndDate) {
+        const endDate = new Date(data.sessionEndDate);
+        const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+        if (daysLeft <= 30 && daysLeft > 0) {
+          badgeEl.textContent = 'Ending Soon';
+          badgeEl.classList.add('ending-soon');
+          alertEl.style.display = 'block';
+        } else if (daysLeft <= 0) {
+          badgeEl.textContent = 'Ended';
+          badgeEl.classList.add('ended');
+        }
+      }
     } else {
-      termEl.textContent = 'Term: Not set';
-      sessionEl.textContent = 'Session: Not set';
-      resumptionEl.textContent = 'Resumption Date: Not set';
-      termSelect.value = 'First Term';
-      sessionInput.value = '';
-      resumptionInput.value = '';
+      termEl.textContent = 'Not set';
+      sessionEl.textContent = 'Not set';
+      startEl.textContent = 'Not set';
+      endEl.textContent = 'Not set';
+      resumptionEl.textContent = 'Not set';
+      badgeEl.textContent = 'Not configured';
     }
   } catch (error) {
-    console.error('Error loading settings:', error);
-    window.showToast?.('Failed to load current settings', 'danger');
-    termEl.textContent = 'Error loading';
-    sessionEl.textContent = 'Error loading';
-    resumptionEl.textContent = 'Error loading';
+    console.error('Error loading session settings:', error);
+    window.showToast?.('Failed to load session settings', 'danger');
   }
 }
 
 document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   
+  const startYear = document.getElementById('session-start-year')?.value;
+  const endYear = document.getElementById('session-end-year')?.value;
+  const startDate = document.getElementById('session-start-date')?.value;
+  const endDate = document.getElementById('session-end-date')?.value;
   const term = document.getElementById('current-term')?.value;
-  const session = document.getElementById('current-session')?.value.trim();
-  const resumptionDate = document.getElementById('resumption-date')?.value;
+  const resumption = document.getElementById('resumption-date')?.value;
   
-  if (!term || !session || !resumptionDate) {
+  if (!startYear || !endYear || !startDate || !endDate || !term || !resumption) {
     window.showToast?.('All fields are required', 'warning');
     return;
   }
@@ -1223,23 +1199,33 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    await db.collection('settings').doc('current').set({
-      term,
-      session,
-      resumptionDate,
+    await db.collection('settings').doc('session').set({
+      sessionStartYear: parseInt(startYear),
+      sessionEndYear: parseInt(endYear),
+      sessionStartDate: startDate,
+      sessionEndDate: endDate,
+      currentTerm: term,
+      resumptionDate: resumption,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    window.showToast?.('School settings saved successfully!', 'success');
+    window.showToast?.('Session settings saved successfully!', 'success');
     loadCurrentSettings();
   } catch (error) {
-    console.error('Error saving settings:', error);
+    console.error('Error saving session settings:', error);
     window.handleError(error, 'Failed to save settings');
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = 'Save Settings';
   }
 });
+
+function confirmStartNewSession() {
+  if (confirm('Are you sure you want to start a new academic session? This will archive the current session and reset the term to First Term.')) {
+    // Placeholder - implement actual logic when ready
+    window.showToast?.('Feature coming soon', 'info');
+  }
+}
 
 /* ======================================== 
    DELETE FUNCTIONS 
@@ -1310,5 +1296,5 @@ document.addEventListener('DOMContentLoaded', () => {
     dobInput.setAttribute('max', maxDate);
   }
   
-  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+  console.log('Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
 });
