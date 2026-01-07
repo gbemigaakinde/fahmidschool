@@ -82,6 +82,115 @@
             font-size: var(--text-sm);
             user-select: none;
         }
+        
+        /* Session Status Card Styles */
+        .session-status-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            color: white;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+            margin-bottom: var(--space-xl);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-header h3 {
+            margin: 0;
+            font-size: var(--text-xl);
+            color: white;
+        }
+
+        .status-badge {
+            padding: var(--space-xs) var(--space-md);
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-badge.ending-soon {
+            background: #ff9800;
+            color: white;
+        }
+
+        .status-badge.ended {
+            background: #f44336;
+            color: white;
+        }
+
+        .status-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .status-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .status-label {
+            font-size: var(--text-xs);
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-value {
+            font-size: var(--text-lg);
+            font-weight: 700;
+        }
+
+        .status-alert {
+            margin-top: var(--space-lg);
+            padding: var(--space-md);
+            background: rgba(255, 152, 0, 0.2);
+            border: 2px solid rgba(255, 152, 0, 0.5);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-alert strong {
+            display: block;
+            margin-bottom: var(--space-xs);
+        }
+
+        .status-alert p {
+            margin: 0;
+            font-size: var(--text-sm);
+        }
+
+        .alert {
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin: var(--space-md) 0;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert ul {
+            margin: var(--space-sm) 0 0 var(--space-lg);
+            padding: 0;
+        }
+
+        .alert li {
+            margin-bottom: var(--space-xs);
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -470,49 +579,136 @@
             </div>
         </div>
         
-        <!-- School Settings Section (NEW) -->
+       <!-- School Settings Section -->
         <div id="settings" class="admin-card" style="display:none;">
-    <h1>School Settings</h1>
-    <p class="section-description">Set the current academic term and session. This will be reflected across teacher and pupil portals.</p>
+            <h1>School Settings</h1>
+            <p class="section-description">Manage academic session, term, and system settings</p>
 
-    <div class="form-section">
-        <form id="settings-form" class="admin-form">
-    <div class="form-row form-row-2">
-        <div class="form-group">
-            <label for="current-term">Current Term <span class="required">*</span></label>
-            <select id="current-term" required>
-                <option value="First Term">First Term</option>
-                <option value="Second Term">Second Term</option>
-                <option value="Third Term">Third Term</option>
-            </select>
+            <!-- Session Status Card -->
+            <div class="session-status-card" id="session-status-card">
+                <div class="status-header">
+                    <h3>📅 Current Academic Session</h3>
+                    <span class="status-badge" id="session-status-badge">Active</span>
+                </div>
+                <div class="status-body">
+                    <div class="status-item">
+                        <span class="status-label">Session:</span>
+                        <span class="status-value" id="display-session-name">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Current Term:</span>
+                        <span class="status-value" id="display-current-term">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Session Starts:</span>
+                        <span class="status-value" id="display-session-start">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Session Ends:</span>
+                        <span class="status-value" id="display-session-end">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Next Resumption:</span>
+                        <span class="status-value" id="display-next-resumption">Loading...</span>
+                    </div>
+                </div>
+                <div class="status-alert" id="session-end-alert" style="display:none;">
+                    <strong>⚠️ Session Ending Soon!</strong>
+                    <p>This academic session will end soon. Prepare for promotion and new session.</p>
+                </div>
+            </div>
+
+            <!-- Edit Session Form -->
+            <div class="form-section" style="margin-top: var(--space-xl);">
+                <h3>Update Session Settings</h3>
+                <form id="settings-form" class="admin-form">
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="session-start-year">Session Start Year <span class="required">*</span></label>
+                            <input type="number" id="session-start-year" placeholder="2025" required min="2020" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label for="session-end-year">Session End Year <span class="required">*</span></label>
+                            <input type="number" id="session-end-year" placeholder="2026" required min="2020" max="2100">
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="session-start-date">Session Start Date <span class="required">*</span></label>
+                            <input type="date" id="session-start-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="session-end-date">Session End Date <span class="required">*</span></label>
+                            <input type="date" id="session-end-date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="current-term">Current Term <span class="required">*</span></label>
+                        <select id="current-term" required>
+                            <option value="First Term">First Term</option>
+                            <option value="Second Term">Second Term</option>
+                            <option value="Third Term">Third Term</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
+                        <input type="date" id="resumption-date" required>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn">💾 Save Settings</button>
+                        <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">↻ Refresh</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Start New Session Section -->
+            <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+                <h3 style="color: var(--color-primary);">🎓 Start New Academic Session</h3>
+                <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+                    Use this when the current session ends. This will archive the current session and create a new one.
+                </p>
+                
+                <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
+                    <strong>⚠️ Important:</strong> Starting a new session will:
+                    <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
+                        <li>Archive the current session (2025/2026)</li>
+                        <li>Create a new session (2026/2027)</li>
+                        <li>Reset current term to "First Term"</li>
+                        <li>Enable promotion period for teachers</li>
+                    </ul>
+                </div>
+
+                <button type="button" class="btn btn-danger" onclick="confirmStartNewSession()" id="start-new-session-btn">
+                    🚀 Start New Session
+                </button>
+            </div>
+
+            <!-- Session History -->
+            <div class="form-section" style="margin-top: var(--space-2xl);">
+                <h3>📚 Session History</h3>
+                <div id="session-history-container" class="table-container">
+                    <table class="responsive-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="session-history-table">
+                            <tr>
+                                <td colspan="4" class="table-loading">Loading history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="current-session">Academic Session <span class="required">*</span></label>
-            <input type="text" id="current-session" placeholder="e.g., 2025/2026" required>
-        </div>
-    </div>
-    
-    <!-- NEW: Resumption Date -->
-    <div class="form-group">
-        <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
-        <input type="date" id="resumption-date" required>
-    </div>
-
-    <div class="form-actions">
-        <button type="submit" class="btn">Save Settings</button>
-        <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">Cancel / Refresh</button>
-    </div>
-</form>
-
-<!-- Update status display -->
-<div id="settings-status" style="margin-top: var(--space-lg); padding: var(--space-md); background: var(--color-gray-50); border-radius: var(--radius-md);">
-    <strong>Current Settings:</strong><br>
-    <span id="display-term">Loading...</span><br>
-    <span id="display-session">Loading...</span><br>
-    <span id="display-resumption">Resumption Date: Loading...</span>  <!-- NEW -->
-</div>
-    </div>
-</div>
 </div> <!-- Close content-wrapper -->
     </main>
 
