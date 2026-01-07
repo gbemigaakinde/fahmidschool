@@ -5,268 +5,521 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pupil Portal - Fahmid Nursery & Primary School</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="pupil-profile.css">
+<!-- Lucide Icons CDN -->
+<script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
 <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body.pupil-portal {
-    background: var(--color-white);
-    font-family: 'Open Sans', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
 }
 
 /* ===============================
-   HEADER
+   MODERN HEADER WITH GLASSMORPHISM
    =============================== */
 .pupil-header {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-    padding: var(--space-8) 0;
-    box-shadow: 0 6px 25px rgba(0,0,0,0.12);
-    text-align: center;
+    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+    padding: 2rem 0;
+    box-shadow: 0 8px 32px rgba(0, 178, 255, 0.2);
+    position: relative;
+    overflow: hidden;
 }
 
-/* CENTERED SCHOOL NAME & PORTAL */
-.header-brand {
-    display: block;
-}
-.logo-text {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-bold);
-    color: var(--color-white);
-}
-.portal-title {
-    font-size: var(--text-lg);
-    color: rgba(255,255,255,0.9);
-    margin-top: var(--space-2);
+.pupil-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.03)"/></svg>');
+    opacity: 0.4;
 }
 
-/* LEFT-ALIGNED INFO BELOW HEADER */
-.header-info {
+.header-content {
     max-width: 1200px;
-    margin: var(--space-4) auto 0 auto;
-    text-align: left;
-    padding: 0 var(--space-4);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.school-logo {
+    width: 50px;
+    height: 50px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #00B2FF;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.brand-text h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.brand-text .portal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    margin-top: 0.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-logout {
+    padding: 0.625rem 1.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-logout:hover {
+    background: white;
+    color: #00B2FF;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header-info {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: 0.25rem;
 }
-.header-info > * {
-    text-align: left; 
+
+.info-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
 }
-.welcome-message {
-    font-size: var(--text-base);
-    color: var(--color-white);
-}
-.student-meta {
-    font-size: var(--text-sm);
-    color: rgba(255,255,255,0.85);
-}
-.btn-logout {
-    padding: var(--space-3) var(--space-6);
-    border: 2px solid var(--color-white);
-    background: transparent;
-    color: var(--color-white);
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    width: max-content;
-    align-self: flex-start; 
-}
-.btn-logout:hover {
-    background: var(--color-white);
-    color: var(--color-primary);
+
+.info-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: white;
 }
 
 /* ===============================
-   MAIN CONTENT
+   MAIN CONTENT WITH CARD SYSTEM
    =============================== */
 .pupil-main {
-    padding: var(--space-16) 0;
     max-width: 1200px;
-    margin: auto;
+    margin: -2rem auto 0;
+    padding: 0 1.5rem 3rem;
+    position: relative;
+    z-index: 2;
 }
 
-/* DASHBOARD CARDS */
+/* Dashboard Cards Section */
+.dashboard-section {
+    margin-bottom: 2rem;
+}
+
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-8);
-    margin-bottom: var(--space-16);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
 }
+
 .dashboard-card {
-    background: var(--color-white);
-    padding: var(--space-8);
-    border-radius: var(--radius-2xl);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
+
+.dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #00B2FF 0%, #0090CC 100%);
+}
+
 .dashboard-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 16px 45px rgba(0,178,255,0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 178, 255, 0.15);
 }
+
 .dashboard-card h3 {
-    font-size: var(--text-xl);
-    margin-bottom: var(--space-3);
-    color: var(--color-gray-900);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.75rem;
 }
+
 .dashboard-card p {
-    font-size: var(--text-base);
+    font-size: 0.875rem;
+    color: #64748b;
     line-height: 1.6;
-    color: var(--color-gray-600);
+    margin: 0;
 }
 
-/* RESULTS SECTION */
+/* Profile Card - Compact Grid Layout */
+.profile-section {
+    background: white;
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.section-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.section-title h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.section-title p {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0.25rem 0 0;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.profile-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.profile-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.profile-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.5;
+}
+
+/* Results Table - Modern Card Style */
 .results-section {
-    background: var(--color-white);
-    border-radius: var(--radius-2xl);
-    padding: var(--space-8); /* Reduced from space-12 */
-    box-shadow: 0 10px 35px rgba(0,0,0,0.1);
-    margin-bottom: var(--space-12); /* Reduced from space-16 */
-}
-.results-header {
-    text-align: center;
-    margin-bottom: var(--space-12);
-}
-.results-header h2,
-.results-header h3 {
-    font-size: var(--text-2xl); /* Reduced from text-3xl */
-    margin-bottom: var(--space-3);
-    color: var(--color-gray-900);
-}
-.results-header p {
-    font-size: var(--text-base);
-    color: var(--color-gray-600);
+    background: white;
+    border-radius: 24px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    margin-bottom: 2rem;
 }
 
-/* RESULTS TABLE */
-.results-table-container {
-    width: 100%;
+.results-table-wrapper {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
 }
+
 .results-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: var(--space-6);
-    font-size: 14px; /* Fixed size instead of var(--text-sm) */
+    font-size: 0.875rem;
 }
-.results-table th,
+
+.results-table thead {
+    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+}
+
+.results-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: white;
+}
+
 .results-table td {
-    padding: var(--space-3) var(--space-4); /* Reduced vertical padding */
-    text-align: center;
-    border-bottom: 1px solid var(--color-gray-200);
-    font-size: 14px; /* Explicit size */
-    line-height: 1.5;
-}
-.results-table th {
-    background: var(--color-primary);
-    color: var(--color-white);
-    text-transform: uppercase;
-    font-size: 12px; /* Smaller header text */
-    letter-spacing: 0.05em;
-    font-weight: 600;
-}
-.results-table td:first-child,
-.results-table th:first-child {
-    text-align: left;
-    font-weight: 600; /* Make labels bold */
-}
-.summary-row td {
-    font-weight: bold;
-    background: rgba(0,178,255,0.05);
-}
-.results-table th {
-    background: var(--color-primary);
-    color: var(--color-white);
-    text-transform: uppercase;
-    font-size: var(--text-xs);
-    letter-spacing: 0.05em;
-}
-.results-table td:first-child,
-.results-table th:first-child {
-    text-align: left;
-}
-.summary-row td {
-    font-weight: bold;
-    background: rgba(0,178,255,0.05);
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-weight: 500;
 }
 
-/* PROFILE TABLE - COMPACT SIZING */
-#profile-container .results-table {
-    font-size: 14px;
-}
-#profile-container .results-table th {
-    background: var(--color-gray-100);
-    color: var(--color-gray-800);
-    font-size: 13px;
-    font-weight: 600;
-    width: 180px; /* Fixed width for labels */
-}
-#profile-container .results-table td {
-    font-size: 14px;
-    text-align: left;
-    color: var(--color-gray-700);
+.results-table tbody tr {
+    transition: background 0.2s ease;
 }
 
-/* BUTTONS */
+.results-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.results-table td:first-child {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.summary-row td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #00B2FF;
+    border-bottom: 2px solid #00B2FF;
+}
+
+/* Action Buttons */
 .action-buttons {
     display: flex;
-    justify-content: center;
-    gap: var(--space-4);
-    margin-top: var(--space-12);
+    gap: 1rem;
+    margin-top: 2rem;
     flex-wrap: wrap;
 }
+
 .btn-primary,
 .btn-secondary {
-    padding: var(--space-4) var(--space-8);
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
+    padding: 0.875rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9375rem;
     text-decoration: none;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
 }
+
 .btn-primary {
-    background: var(--color-primary);
-    color: var(--color-white);
-    box-shadow: 0 6px 20px rgba(0,178,255,0.3);
+    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 178, 255, 0.3);
 }
+
 .btn-primary:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 30px rgba(0,178,255,0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 178, 255, 0.4);
 }
+
 .btn-secondary {
-    border: 2px solid var(--color-primary);
-    color: var(--color-primary);
-    background: transparent;
+    background: white;
+    color: #00B2FF;
+    border: 2px solid #00B2FF;
 }
+
 .btn-secondary:hover {
-    background: var(--color-primary);
-    color: var(--color-white);
+    background: #00B2FF;
+    color: white;
 }
 
-/* FOOTER */
+/* Footer */
 .pupil-footer {
-    background: var(--color-gray-900);
-    padding: var(--space-8) 0;
+    background: #0f172a;
+    padding: 2rem 0;
     text-align: center;
-    color: var(--color-white);
-    font-size: var(--text-sm);
+    color: #94a3b8;
+    font-size: 0.875rem;
+    margin-top: 4rem;
 }
 
-/* RESPONSIVE */
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.reveal {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.delay-2 { animation-delay: 0.2s; opacity: 0; }
+.delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+/* Icon Sizing */
+.section-icon svg,
+.profile-label svg,
+.btn-logout svg,
+.btn-primary svg,
+.btn-secondary svg {
+    width: 20px;
+    height: 20px;
+}
+
+.portal-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-    .header-info {
+    .pupil-header {
+        padding: 1.5rem 0;
+    }
+
+    .header-top {
+        flex-direction: column;
+        gap: 1rem;
         text-align: center;
-        padding: 0 var(--space-4);
     }
-    .btn-logout {
-        align-self: center;
+
+    .header-brand {
+        flex-direction: column;
     }
-    #profile-container .results-table td,
-    #profile-container .results-table th {
-        font-size: var(--text-xs);
-        padding: var(--space-3);
+
+    .header-info {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .pupil-main {
+        margin-top: 0;
+        padding: 1.5rem 1rem 2rem;
+    }
+
+    .dashboard-grid,
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-section,
+    .results-section {
+        padding: 1.5rem;
+        border-radius: 16px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-text h1 {
+        font-size: 1.25rem;
+    }
+
+    .results-table {
+        font-size: 0.75rem;
+    }
+
+    .results-table th,
+    .results-table td {
+        padding: 0.75rem 0.5rem;
     }
 }
 </style>
@@ -275,105 +528,159 @@ body.pupil-portal {
 <body class="pupil-portal">
 
 <header class="pupil-header">
-    <!-- CENTERED SCHOOL NAME & PORTAL -->
-    <div class="header-brand">
-        <div class="logo-text">Fahmid Nursery & Primary School</div>
-        <div class="portal-title">Pupil Portal</div>
-    </div>
-
-    <!-- LEFT-ALIGNED INFO BELOW HEADER -->
-    <div class="header-info">
-        <div id="pupil-welcome" class="welcome-message">Welcome back</div>
-        <div class="student-meta">
-            <span id="student-class"></span>
-            <span id="student-session"></span>
+    <div class="header-content">
+        <div class="header-top">
+            <div class="header-brand">
+                <div class="school-logo">F</div>
+                <div class="brand-text">
+                    <h1>Fahmid Nursery & Primary School</h1>
+                    <span class="portal-badge">
+                        <i data-lucide="graduation-cap"></i>
+                        Pupil Portal
+                    </span>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="logout()">
+                <i data-lucide="log-out"></i>
+                Logout
+            </button>
         </div>
-        <button class="btn-logout" onclick="logout()">Logout</button>
+
+        <div class="header-info">
+            <div class="info-item">
+                <span class="info-label">Welcome Back</span>
+                <span class="info-value" id="pupil-welcome">Student Name</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Class</span>
+                <span class="info-value" id="student-class">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Session</span>
+                <span class="info-value" id="student-session">2025/2026</span>
+            </div>
+        </div>
     </div>
 </header>
 
-<main class="pupil-main container">
-   <!-- PUPIL PROFILE INFO -->
-<section class="results-section reveal">
-    <div class="results-header">
-        <h3>Pupil Profile</h3>
-        <p>View your personal and academic information below.</p>
-    </div>
-
-    <div class="results-table-container" id="profile-container">
-        <table class="results-table">
-            <tbody>
-                <tr>
-                    <th>Name</th>
-                    <td id="pupil-name-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Date of Birth</th>
-                    <td id="pupil-dob-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Gender</th>
-                    <td id="pupil-gender-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Contact</th>
-                    <td id="pupil-contact-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Address</th>
-                    <td id="pupil-address-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Class</th>
-                    <td id="pupil-class-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Assigned Teacher</th>
-                    <td id="pupil-teacher-display">Loading...</td>
-                </tr>
-                <tr>
-                    <th>Subjects</th>
-                    <td id="pupil-subjects-display">Loading...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</section>
-
-    <section class="dashboard-grid">
-        <div class="dashboard-card reveal delay-1">
-            <h3>My Results</h3>
-            <p>View your academic performance across all terms and subjects.</p>
-        </div>
-        <div class="dashboard-card reveal delay-2">
-            <h3>Track Progress</h3>
-            <p>Monitor improvements and identify areas that need attention.</p>
-        </div>
-        <div class="dashboard-card reveal delay-3">
-            <h3>Achievements</h3>
-            <p>Review milestones and personal academic highlights.</p>
+<main class="pupil-main">
+    <!-- Dashboard Overview Cards -->
+    <section class="dashboard-section reveal">
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h3>My Results</h3>
+                <p>View your academic performance across all terms and subjects.</p>
+            </div>
+            <div class="dashboard-card">
+                <h3>Track Progress</h3>
+                <p>Monitor improvements and identify areas that need attention.</p>
+            </div>
+            <div class="dashboard-card">
+                <h3>Achievements</h3>
+                <p>Review milestones and personal academic highlights.</p>
+            </div>
         </div>
     </section>
 
-    <section class="results-section reveal">
-        <div class="results-header">
-            <h2>Academic Results</h2>
-            <p>Your performance record for the current academic session.</p>
+    <!-- Profile Information -->
+    <section class="profile-section reveal">
+        <div class="section-header">
+            <div class="section-icon">
+                <i data-lucide="user"></i>
+            </div>
+            <div class="section-title">
+                <h2>Pupil Profile</h2>
+                <p>Your registered details and academic information</p>
+            </div>
         </div>
 
-        <!-- Dynamic results from Firestore -->
-        <div class="results-table-container" id="results-container">
-            <!-- pupil.js will populate beautifully styled tables -->
+        <div class="profile-grid">
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="user"></i>
+                    Full Name
+                </span>
+                <span class="profile-value" id="pupil-name-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="calendar"></i>
+                    Date of Birth
+                </span>
+                <span class="profile-value" id="pupil-dob-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="users"></i>
+                    Gender
+                </span>
+                <span class="profile-value" id="pupil-gender-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="phone"></i>
+                    Contact Number
+                </span>
+                <span class="profile-value" id="pupil-contact-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="map-pin"></i>
+                    Address
+                </span>
+                <span class="profile-value" id="pupil-address-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="book-open"></i>
+                    Class
+                </span>
+                <span class="profile-value" id="pupil-class-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="user-check"></i>
+                    Assigned Teacher
+                </span>
+                <span class="profile-value" id="pupil-teacher-display">Loading...</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label">
+                    <i data-lucide="library"></i>
+                    Subjects
+                </span>
+                <span class="profile-value" id="pupil-subjects-display">Loading...</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Academic Results -->
+    <section class="results-section reveal">
+        <div class="section-header">
+            <div class="section-icon">
+                <i data-lucide="bar-chart-3"></i>
+            </div>
+            <div class="section-title">
+                <h2>Academic Results</h2>
+                <p>Your performance record for the current academic session</p>
+            </div>
+        </div>
+
+        <div class="results-table-wrapper" id="results-container">
+            <!-- pupil.js will populate results table -->
         </div>
 
         <div class="action-buttons">
-            <a href="print-results.html" class="btn-primary">View and Print Report Card</a>
+            <a href="print-results.html" class="btn-primary">
+                <i data-lucide="printer"></i>
+                View & Print Report Card
+            </a>
+            <a href="index.html" class="btn-secondary">
+                <i data-lucide="home"></i>
+                Back to School Website
+            </a>
         </div>
     </section>
-
-    <div class="action-buttons reveal">
-        <a href="index.html" class="btn-secondary">Back to School Website</a>
-    </div>
 </main>
 
 <footer class="pupil-footer">
@@ -383,6 +690,13 @@ body.pupil-portal {
 <script src="firebase-init.js"></script>
 <script src="script.js"></script>
 <script src="pupil.js"></script>
+
+<script>
+// Initialize Lucide icons after page loads
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+});
+</script>
 
 </body>
 </html>
