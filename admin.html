@@ -34,7 +34,34 @@
     </nav>
 
     <main class="admin-main" id="main-content">
-        <!-- Dashboard -->
+        <!-- Portal Header -->
+<header class="portal-header">
+    <div class="header-content-admin">
+        <div class="header-welcome">
+            <div class="welcome-text">
+                <h1>Admin Dashboard</h1>
+                <p>Manage your school efficiently</p>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-box">
+                <div class="stat-label">Total Teachers</div>
+                <div class="stat-value" id="header-teacher-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Pupils</div>
+                <div class="stat-value" id="header-pupil-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Classes</div>
+                <div class="stat-value" id="header-class-count">0</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Content Wrapper -->
+<div class="content-wrapper">
         <div id="dashboard" class="admin-card">
             <h1>Admin Dashboard</h1>
             <p class="section-description">Welcome to the school management system</p>
@@ -385,6 +412,7 @@
 </div>
     </div>
 </div>
+</div> <!-- Close content-wrapper -->
     </main>
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
