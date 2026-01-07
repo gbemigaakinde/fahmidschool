@@ -1,4 +1,4 @@
-/*
+/**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Admin Portal JavaScript - FIXED
  * 
@@ -168,17 +168,44 @@ async function loadDashboardStats() {
       db.collection('announcements').get()
     ]);
     
-    document.getElementById('teacher-count').textContent = teachersSnap.size;
-    document.getElementById('pupil-count').textContent = pupilsSnap.size;
-    document.getElementById('class-count').textContent = classesSnap.size;
-    document.getElementById('announce-count').textContent = announcementsSnap.size;
+    const teacherCount = teachersSnap.size;
+    const pupilCount = pupilsSnap.size;
+    const classCount = classesSnap.size;
+    const announceCount = announcementsSnap.size;
+    
+    // Update dashboard stats
+    document.getElementById('teacher-count').textContent = teacherCount;
+    document.getElementById('pupil-count').textContent = pupilCount;
+    document.getElementById('class-count').textContent = classCount;
+    document.getElementById('announce-count').textContent = announceCount;
+    
+    // Update header stats
+    const headerTeacherCount = document.getElementById('header-teacher-count');
+    const headerPupilCount = document.getElementById('header-pupil-count');
+    const headerClassCount = document.getElementById('header-class-count');
+    
+    if (headerTeacherCount) headerTeacherCount.textContent = teacherCount;
+    if (headerPupilCount) headerPupilCount.textContent = pupilCount;
+    if (headerClassCount) headerClassCount.textContent = classCount;
+    
   } catch (error) {
     console.error('Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
+    
+    // Set all to 0 on error
     document.getElementById('teacher-count').textContent = '0';
     document.getElementById('pupil-count').textContent = '0';
     document.getElementById('class-count').textContent = '0';
     document.getElementById('announce-count').textContent = '0';
+    
+    // Also update header
+    const headerTeacherCount = document.getElementById('header-teacher-count');
+    const headerPupilCount = document.getElementById('header-pupil-count');
+    const headerClassCount = document.getElementById('header-class-count');
+    
+    if (headerTeacherCount) headerTeacherCount.textContent = '0';
+    if (headerPupilCount) headerPupilCount.textContent = '0';
+    if (headerClassCount) headerClassCount.textContent = '0';
   }
 }
 
@@ -697,7 +724,7 @@ async function loadClasses() {
   const tbody = document.getElementById('classes-table');
   if (!tbody) return;
   
-  tbody.innerHTML = '<tr><td colspan="3" class="table-loading">Loading classes...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading classes...</td></tr>';
   
   try {
     const classesSnap = await db.collection('classes').get();
@@ -707,7 +734,6 @@ async function loadClasses() {
     pupilsSnap.forEach(pupilDoc => {
       const classData = pupilDoc.data().class;
       
-      // FIXED: Handle both old and new format
       let className = null;
       if (classData) {
         if (typeof classData === 'object' && classData.name) {
@@ -725,7 +751,7 @@ async function loadClasses() {
     tbody.innerHTML = '';
     
     if (classesSnap.empty) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add one above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add one above.</td></tr>';
       return;
     }
     
@@ -735,6 +761,7 @@ async function loadClasses() {
       classes.push({
         id: doc.id,
         name: data.name,
+        subjects: data.subjects || [],
         pupilCount: pupilCountMap[data.name] || 0
       });
     });
@@ -742,11 +769,19 @@ async function loadClasses() {
     classes.sort((a, b) => a.name.localeCompare(b.name));
     
     paginateTable(classes, 'classes-table', 20, (classItem, tbody) => {
+      const subjectList = classItem.subjects.length > 0 
+        ? classItem.subjects.slice(0, 3).join(', ') + (classItem.subjects.length > 3 ? '...' : '')
+        : 'No subjects assigned';
+      
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Class Name">${classItem.name}</td>
         <td data-label="Pupil Count">${classItem.pupilCount}</td>
+        <td data-label="Subjects">${subjectList}</td>
         <td data-label="Actions">
+          <button class="btn-small btn-primary" onclick="openSubjectAssignmentModal('${classItem.id}', '${classItem.name}')">
+            Assign Subjects
+          </button>
           <button class="btn-small btn-danger" onclick="deleteItem('classes', '${classItem.id}')">Delete</button>
         </td>
       `;
@@ -755,7 +790,7 @@ async function loadClasses() {
   } catch (error) {
     console.error('Error loading classes:', error);
     window.showToast?.('Failed to load classes list. Check connection and try again.', 'danger');
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading classes - please refresh</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading classes - please refresh</td></tr>';
   }
 }
 
@@ -763,7 +798,7 @@ async function loadClasses() {
    SUBJECTS MANAGEMENT - FIXED
 ======================================== */
 
-// Global functions for edit/delete (to avoid reference errors)
+// Move these functions to GLOBAL scope (outside setupSubjectsEventListeners)
 window.deleteSubject = async function(subjectId, subjectName) {
   if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
 
@@ -845,8 +880,50 @@ async function loadSubjects() {
   }
 }
 
+// This function is no longer needed since we removed the input fields
 function setupSubjectsEventListeners() {
-  // Empty - kept for future use
+  // Empty - can be removed or kept for future use
+}
+
+  // Delete Subject
+ async function deleteSubject(subjectId, subjectName) {
+  if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove it from all classes.`)) return;
+
+  try {
+    // Delete from subjects collection
+    await db.collection('subjects').doc(subjectId).delete();
+
+    // Remove subject from all classes
+    await syncSubjectToClasses(subjectName, 'delete');
+
+    window.showToast?.(`Subject "${subjectName}" deleted and removed from all classes`, 'success');
+    loadSubjects();
+  } catch (err) {
+    console.error('Error deleting subject:', err);
+    window.handleError(err, 'Failed to delete subject');
+  }
+}
+
+async function editSubject(subjectId, oldName) {
+  const newName = prompt('Enter new name for subject:', oldName);
+  if (!newName || newName.trim() === '' || newName === oldName) return;
+
+  try {
+    // Update subject in subjects collection
+    await db.collection('subjects').doc(subjectId).update({
+      name: newName,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Sync name change in classes
+    await syncSubjectToClasses(null, { action: 'edit', oldName, newName });
+
+    window.showToast?.(`Subject renamed to "${newName}" and synced with classes`, 'success');
+    loadSubjects();
+  } catch (err) {
+    console.error('Error editing subject:', err);
+    window.handleError(err, 'Failed to edit subject');
+  }
 }
 
 /* ======================================== 
@@ -1127,69 +1204,51 @@ async function loadAdminAnnouncements() {
    SCHOOL SETTINGS 
 ======================================== */
 async function loadCurrentSettings() {
-  const termEl = document.getElementById('display-current-term');
-  const sessionEl = document.getElementById('display-session-name');
-  const startEl = document.getElementById('display-session-start');
-  const endEl = document.getElementById('display-session-end');
-  const resumptionEl = document.getElementById('display-next-resumption');
-  const badgeEl = document.getElementById('session-status-badge');
-  const alertEl = document.getElementById('session-end-alert');
+  const termEl = document.getElementById('display-term');
+  const sessionEl = document.getElementById('display-session');
+  const resumptionEl = document.getElementById('display-resumption');
+  const termSelect = document.getElementById('current-term');
+  const sessionInput = document.getElementById('current-session');
+  const resumptionInput = document.getElementById('resumption-date');
   
-  if (!termEl || !sessionEl || !badgeEl) return;
+  if (!termEl || !sessionEl || !resumptionEl || !termSelect || !sessionInput || !resumptionInput) return;
   
   try {
-    const settingsDoc = await db.collection('settings').doc('session').get();
+    const settingsDoc = await db.collection('settings').doc('current').get();
     
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
-      
-      termEl.textContent = data.currentTerm || 'Not set';
-      sessionEl.textContent = `${data.sessionStartYear}/${data.sessionEndYear}`;
-      startEl.textContent = data.sessionStartDate || 'Not set';
-      endEl.textContent = data.sessionEndDate || 'Not set';
-      resumptionEl.textContent = data.resumptionDate || 'Not set';
-      
-      badgeEl.textContent = 'Active';
-      badgeEl.className = 'status-badge';
-      
-      // Simple warning if less than 30 days left (example logic)
-      if (data.sessionEndDate) {
-        const endDate = new Date(data.sessionEndDate);
-        const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
-        if (daysLeft <= 30 && daysLeft > 0) {
-          badgeEl.textContent = 'Ending Soon';
-          badgeEl.classList.add('ending-soon');
-          alertEl.style.display = 'block';
-        } else if (daysLeft <= 0) {
-          badgeEl.textContent = 'Ended';
-          badgeEl.classList.add('ended');
-        }
-      }
+      termEl.textContent = `Term: ${data.term || 'Not set'}`;
+      sessionEl.textContent = `Session: ${data.session || 'Not set'}`;
+      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;
+      termSelect.value = data.term || 'First Term';
+      sessionInput.value = data.session || '';
+      resumptionInput.value = data.resumptionDate || '';
     } else {
-      termEl.textContent = 'Not set';
-      sessionEl.textContent = 'Not set';
-      startEl.textContent = 'Not set';
-      endEl.textContent = 'Not set';
-      resumptionEl.textContent = 'Not set';
-      badgeEl.textContent = 'Not configured';
+      termEl.textContent = 'Term: Not set';
+      sessionEl.textContent = 'Session: Not set';
+      resumptionEl.textContent = 'Resumption Date: Not set';
+      termSelect.value = 'First Term';
+      sessionInput.value = '';
+      resumptionInput.value = '';
     }
   } catch (error) {
-    console.error('Error loading session settings:', error);
-    window.showToast?.('Failed to load session settings', 'danger');
+    console.error('Error loading settings:', error);
+    window.showToast?.('Failed to load current settings', 'danger');
+    termEl.textContent = 'Error loading';
+    sessionEl.textContent = 'Error loading';
+    resumptionEl.textContent = 'Error loading';
   }
 }
 
 document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   
-  const startYear = document.getElementById('session-start-year')?.value;
-  const endYear = document.getElementById('session-end-year')?.value;
-  const startDate = document.getElementById('session-start-date')?.value;
-  const endDate = document.getElementById('session-end-date')?.value;
   const term = document.getElementById('current-term')?.value;
-  const resumption = document.getElementById('resumption-date')?.value;
+  const session = document.getElementById('current-session')?.value.trim();
+  const resumptionDate = document.getElementById('resumption-date')?.value;
   
-  if (!startYear || !endYear || !startDate || !endDate || !term || !resumption) {
+  if (!term || !session || !resumptionDate) {
     window.showToast?.('All fields are required', 'warning');
     return;
   }
@@ -1199,33 +1258,23 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    await db.collection('settings').doc('session').set({
-      sessionStartYear: parseInt(startYear),
-      sessionEndYear: parseInt(endYear),
-      sessionStartDate: startDate,
-      sessionEndDate: endDate,
-      currentTerm: term,
-      resumptionDate: resumption,
+    await db.collection('settings').doc('current').set({
+      term,
+      session,
+      resumptionDate,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
-    window.showToast?.('Session settings saved successfully!', 'success');
+    window.showToast?.('School settings saved successfully!', 'success');
     loadCurrentSettings();
   } catch (error) {
-    console.error('Error saving session settings:', error);
+    console.error('Error saving settings:', error);
     window.handleError(error, 'Failed to save settings');
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = 'Save Settings';
   }
 });
-
-function confirmStartNewSession() {
-  if (confirm('Are you sure you want to start a new academic session? This will archive the current session and reset the term to First Term.')) {
-    // Placeholder - implement actual logic when ready
-    window.showToast?.('Feature coming soon', 'info');
-  }
-}
 
 /* ======================================== 
    DELETE FUNCTIONS 
@@ -1296,5 +1345,171 @@ document.addEventListener('DOMContentLoaded', () => {
     dobInput.setAttribute('max', maxDate);
   }
   
-  console.log('Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+  /* ======================================== 
+   SUBJECT ASSIGNMENT TO CLASSES
+======================================== */
+
+let currentAssignmentClassId = null;
+let currentAssignmentClassName = null;
+
+async function openSubjectAssignmentModal(classId, className) {
+  currentAssignmentClassId = classId;
+  currentAssignmentClassName = className;
+  
+  const modal = document.getElementById('subject-assignment-modal');
+  const classNameEl = document.getElementById('assignment-class-name');
+  const checkboxContainer = document.getElementById('subject-checkboxes');
+  
+  if (!modal || !classNameEl || !checkboxContainer) {
+    console.error('Modal elements not found');
+    return;
+  }
+  
+  classNameEl.textContent = `Class: ${className}`;
+  checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">Loading subjects...</p>';
+  
+  modal.style.display = 'block';
+  
+  try {
+    // Get all available subjects
+    const subjectsSnap = await db.collection('subjects').orderBy('name').get();
+    
+    if (subjectsSnap.empty) {
+      checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No subjects available. Create subjects first in the Subjects section.</p>';
+      return;
+    }
+    
+    // Get current class subjects
+    const classDoc = await db.collection('classes').doc(classId).get();
+    const currentSubjects = classDoc.exists ? (classDoc.data().subjects || []) : [];
+    
+    // Render checkboxes
+    checkboxContainer.innerHTML = '';
+    
+    subjectsSnap.forEach(doc => {
+      const subjectName = doc.data().name;
+      const isChecked = currentSubjects.includes(subjectName);
+      
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'subject-checkbox-item';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `subject-${doc.id}`;
+      checkbox.value = subjectName;
+      checkbox.checked = isChecked;
+      
+      const label = document.createElement('label');
+      label.htmlFor = `subject-${doc.id}`;
+      label.textContent = subjectName;
+      
+      itemDiv.appendChild(checkbox);
+      itemDiv.appendChild(label);
+      checkboxContainer.appendChild(itemDiv);
+    });
+    
+  } catch (error) {
+    console.error('Error loading subjects for assignment:', error);
+    checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading subjects. Please try again.</p>';
+    window.showToast?.('Failed to load subjects', 'danger');
+  }
+}
+
+function closeSubjectAssignmentModal() {
+  const modal = document.getElementById('subject-assignment-modal');
+  if (modal) modal.style.display = 'none';
+  currentAssignmentClassId = null;
+  currentAssignmentClassName = null;
+}
+
+async function saveClassSubjects() {
+  if (!currentAssignmentClassId) {
+    window.showToast?.('No class selected', 'warning');
+    return;
+  }
+  
+  // Get selected subjects
+  const checkboxes = document.querySelectorAll('#subject-checkboxes input[type="checkbox"]:checked');
+  const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
+  
+  if (selectedSubjects.length === 0) {
+    if (!confirm('No subjects selected. This will remove all subjects from this class. Continue?')) {
+      return;
+    }
+  }
+  
+  try {
+    // Step 1: Update the class document
+    await db.collection('classes').doc(currentAssignmentClassId).update({
+      subjects: selectedSubjects,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Step 2: Get class details for teacher info
+    const classDoc = await db.collection('classes').doc(currentAssignmentClassId).get();
+    const classData = classDoc.data();
+    
+    // Step 3: Get all pupils in this class
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', currentAssignmentClassId)
+      .get();
+    
+    // Step 4: Update all pupils with the new subjects
+    if (!pupilsSnap.empty) {
+      const batch = db.batch();
+      let updateCount = 0;
+      
+      pupilsSnap.forEach(pupilDoc => {
+        const pupilRef = db.collection('pupils').doc(pupilDoc.id);
+        batch.update(pupilRef, {
+          subjects: selectedSubjects,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+        
+        // Firestore batch limit is 500 operations
+        if (updateCount >= 500) {
+          console.warn('Batch limit reached. Some pupils may not be updated.');
+        }
+      });
+      
+      await batch.commit();
+      
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" and ${updateCount} pupil(s)`,
+        'success',
+        5000
+      );
+    } else {
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" (no pupils in class yet)`,
+        'success'
+      );
+    }
+    
+    // Step 5: Update assigned teacher's view (if teacher exists)
+    if (classData.teacherId) {
+      // Teacher will see the changes automatically when they reload or through real-time listeners
+      console.log(`Class teacher (${classData.teacherId}) will see updated subjects on next load`);
+    }
+    
+    // Close modal and refresh
+    closeSubjectAssignmentModal();
+    loadClasses();
+    
+  } catch (error) {
+    console.error('Error saving subjects:', error);
+    window.handleError(error, 'Failed to save subjects');
+  }
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('subject-assignment-modal');
+  if (event.target === modal) {
+    closeSubjectAssignmentModal();
+  }
+});
+  
+  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
 });
