@@ -390,14 +390,15 @@ section .container > p.lead {
 }
 
 /* ============================================
-   HAMBURGER MENU
+   HAMBURGER MENU - NEW VERSION (inside sidebar header)
    ============================================ */
+
 .hamburger {
-    display: none;
-    position: fixed;
-    top: var(--space-6);
-    left: var(--space-6);  /* Back to LEFT */
-    z-index: var(--z-hamburger);
+    display: none;                    /* hidden on large screens */
+    position: absolute;               /* now positioned relative to the header */
+    top: 50%;                         /* vertically centered */
+    right: var(--space-6);            /* distance from right edge of header */
+    transform: translateY(-50%);      /* perfect vertical centering */
     width: 44px;
     height: 44px;
     background: var(--color-white);
@@ -410,12 +411,46 @@ section .container > p.lead {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth animation */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: var(--z-hamburger);
 }
 
-/* When sidebar is OPEN, slide hamburger to the right */
-.sidebar.active ~ .hamburger {
-    left: calc(var(--sidebar-width) - 60px); /* Positions it near right edge of sidebar */
+.hamburger:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-primary);
+}
+
+.hamburger span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--color-gray-900);
+    border-radius: var(--radius-full);
+    transition: all var(--duration-base) var(--ease-in-out);
+}
+
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Make the header position relative so the absolute hamburger works */
+.sidebar-header {
+    position: relative;
+    padding: 0 var(--space-6);
+    margin-bottom: var(--space-12);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;   /* pushes logo left, hamburger right */
 }
 
 .hamburger:hover {
@@ -2106,6 +2141,7 @@ address strong {
 /* ============================================
    RESPONSIVE DESIGN
    ============================================ */
+
 @media (max-width: 1024px) {
     :root {
         --sidebar-width: 280px;
