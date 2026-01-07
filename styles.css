@@ -1783,22 +1783,56 @@ etc.
 }
 
 /* ============================================
-   FOOTER
+   FOOTER - MODERN MINIMALIST REDESIGN
    ============================================ */
 .site-footer {
-    background: var(--color-gray-900);
-    color: var(--color-white);
+    background: var(--color-gray-100); /* Very light gray for modern feel */
+    color: var(--color-gray-700);
     text-align: center;
     padding: var(--space-12) var(--space-6);
     margin-top: var(--space-20);
     margin-left: var(--sidebar-width);
-    transition: margin-left var(--duration-medium);
+    transition: all var(--duration-medium) var(--ease-in-out);
+    border-top: 1px solid var(--color-gray-200); /* Subtle separation */
+    font-size: var(--text-sm);
+}
+
+.site-footer .container {
+    max-width: var(--content-width);
+    margin: 0 auto;
 }
 
 .site-footer p {
     margin: 0;
-    max-width: none;
-    opacity: 0.9;
+    opacity: 0.8;
+    line-height: 1.6;
+}
+
+.site-footer a {
+    color: var(--color-gray-600);
+    text-decoration: none;
+    transition: color var(--duration-fast);
+}
+
+.site-footer a:hover {
+    color: var(--color-primary); /* Touch of your brand blue on hover */
+}
+
+/* Optional: Add quick links or social icons later */
+.site-footer .footer-links {
+    margin-bottom: var(--space-4);
+}
+
+.site-footer .footer-links a {
+    margin: 0 var(--space-4);
+    font-weight: var(--weight-medium);
+}
+
+/* Responsive adjustment */
+@media (max-width: 1024px) {
+    .site-footer {
+        margin-left: 0;
+    }
 }
 
 /* ============================================
