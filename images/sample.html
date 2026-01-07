@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Fahmid Nursery and Primary School offers quality nursery and primary education in a safe, caring, and structured learning environment.">
+<title>Home - Fahmid Nursery & Primary School</title>
+
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/jpeg" href="IMG_4629.png">
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+/* Modern refinements */
+:root {
+    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+    font-family: var(--font-primary);
+}
+
+/* Modern Hero with better text positioning */
+.hero-content {
+    padding-top: 15vh;
+}
+
+.hero h1 {
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+}
+
+.hero .subtitle {
+    font-size: clamp(1.125rem, 2.5vw, 1.375rem);
+    max-width: 680px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: var(--space-10);
+    line-height: 1.6;
+}
+
+/* Stats bar - modern floating design */
+.stats-bar {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 24px 40px;
+    display: flex;
+    gap: 48px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 100px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    font-weight: 500;
+}
+
+/* Feature cards with icons */
+.feature-card-modern {
+    background: white;
+    border-radius: 24px;
+    padding: 40px 32px;
+    border: 1px solid var(--color-gray-200);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+}
+
+.feature-card-modern:hover::before {
+    transform: scaleX(1);
+}
+
+.feature-card-modern:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 60px rgba(0, 178, 255, 0.15);
+    border-color: var(--color-primary-light);
+}
+
+.feature-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    color: white;
+    transition: transform 0.4s ease;
+}
+
+.feature-card-modern:hover .feature-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.feature-card-modern h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--color-black);
+}
+
+.feature-card-modern p {
+    font-size: 0.9375rem;
+    color: var(--color-gray-600);
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* Program cards with better overlay */
+.program-card-modern {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    min-height: 400px;
+    display: flex;
+    align-items: flex-end;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.4s ease;
+}
+
+.program-card-modern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 70%);
+    z-index: 1;
+}
+
+.program-card-modern:hover {
+    transform: translateY(-8px);
+}
+
+.program-content {
+    position: relative;
+    z-index: 2;
+    padding: 40px;
+    color: white;
+}
+
+.program-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.program-card-modern h3 {
+    font-size: 1.875rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: white;
+}
+
+.program-card-modern p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: 20px;
+}
+
+.program-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: gap 0.3s ease;
+}
+
+.program-link:hover {
+    gap: 12px;
+}
+
+/* Testimonial card style */
+.testimonial-modern {
+    background: white;
+    border-radius: 24px;
+    padding: 48px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.quote-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: white;
+}
+
+.testimonial-modern .quote {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: var(--color-gray-800);
+    margin-bottom: 32px;
+    font-weight: 400;
+}
+
+.testimonial-author {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.author-avatar {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+.author-info {
+    text-align: left;
+}
+
+.author-name {
+    font-weight: 700;
+    color: var(--color-black);
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.author-role {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+/* CTA Section modern */
+.cta-modern {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    border-radius: 32px;
+    padding: 80px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-modern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.05)"/></svg>');
+}
+
+.cta-modern h2 {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+}
+
+.cta-modern p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.125rem;
+    max-width: 600px;
+    margin: 0 auto 32px;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-white {
+    background: white;
+    color: var(--color-primary);
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-white:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.btn-outline-white {
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-white:hover {
+    background: white;
+    color: var(--color-primary);
+    transform: translateY(-2px);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .stats-bar {
+        flex-direction: column;
+        gap: 20px;
+        bottom: 20px;
+        padding: 20px;
+    }
+
+    .feature-card-modern {
+        padding: 32px 24px;
+    }
+
+    .program-card-modern {
+        min-height: 350px;
+    }
+
+    .testimonial-modern {
+        padding: 32px 24px;
+    }
+
+    .cta-modern {
+        padding: 60px 32px;
+    }
+
+    .cta-modern h2 {
+        font-size: 2rem;
+    }
+
+    .cta-buttons {
+        flex-direction: column;
+    }
+
+    .btn-white,
+    .btn-outline-white {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- Hamburger Menu -->
+<button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
+    <span class="line1"></span>
+    <span class="line2"></span>
+    <span class="line3"></span>
+</button>
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+        <div class="logo-text">Fahmid School</div>
+    </div>
+
+    <div class="sidebar-content">
+        <ul role="list">
+            <li><a href="index.html" aria-current="page">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="academics.html">Academics</a></li>
+            <li><a href="admissions.html">Admissions</a></li>
+            <li><a href="school-life.html">School Life</a></li>
+            <li><a href="gallery.html">Gallery</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="contact.html">Contact</a></li>
+        </ul>
+    </div>
+
+    <div class="sidebar-footer">
+        <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+            Login / Register
+        </a>
+    </div>
+</nav>
+
+<!-- HERO SECTION -->
+<section class="hero">
+    <div class="hero-slideshow" aria-hidden="true">
+        <img src="images/pupils/IMG_4611.jpeg" alt="">
+        <img src="images/pupils/IMG_4612.jpeg" alt="">
+        <img src="images/pupils/IMG_4618.jpeg" alt="">
+        <img src="images/pupils/IMG_4614.jpeg" alt="">
+        <img src="images/pupils/IMG_4615.jpeg" alt="">
+        <img src="images/pupils/IMG_4622.jpeg" alt="">
+        <img src="images/pupils/IMG_4617.jpeg" alt="">
+        <img src="images/pupils/IMG_4613.jpeg" alt="">
+        <img src="images/pupils/IMG_4619.jpeg" alt="">
+        <img src="images/pupils/IMG_4620.jpeg" alt="">
+    </div>
+
+    <div class="hero-content">
+        <h1>Fahmid Nursery and Primary School</h1>
+        <p class="subtitle">
+            Building strong academic foundations and positive values in a safe, caring, and structured learning environment.
+        </p>
+        <a href="admissions.html" class="btn">Enroll Your Child Now</a>
+    </div>
+
+    <!-- Floating Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="stat-number">15+</span>
+            <span class="stat-label">Years Excellence</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">500+</span>
+            <span class="stat-label">Happy Students</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">30+</span>
+            <span class="stat-label">Qualified Teachers</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">98%</span>
+            <span class="stat-label">Parent Satisfaction</span>
+        </div>
+    </div>
+</section>
+
+<!-- MAIN CONTENT -->
+<main id="main-content" class="main-content">
+
+    <!-- WHY PARENTS CHOOSE FAHMID -->
+    <section class="container section">
+        <h2 class="section-title">Why Parents Choose Fahmid</h2>
+
+        <div class="grid features-grid">
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="book-open" size="28"></i>
+                </div>
+                <h3>Strong Academic Foundation</h3>
+                <p>
+                    We place strong emphasis on literacy, numeracy, and critical thinking skills that prepare pupils for steady academic progress.
+                </p>
+            </article>
+
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="shield-check" size="28"></i>
+                </div>
+                <h3>Safe and Caring Environment</h3>
+                <p>
+                    Our school provides a structured, secure, and nurturing atmosphere where every child feels protected and supported.
+                </p>
+            </article>
+
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="users" size="28"></i>
+                </div>
+                <h3>Dedicated Teaching Staff</h3>
+                <p>
+                    Our teachers are experienced, patient, and committed to guiding pupils with care, discipline, and professionalism.
+                </p>
+            </article>
+
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="heart" size="28"></i>
+                </div>
+                <h3>Strong Moral Values</h3>
+                <p>
+                    We promote discipline, respect, responsibility, and good behaviour as essential parts of a child's education.
+                </p>
+            </article>
+
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="calendar-check" size="28"></i>
+                </div>
+                <h3>Structured Programme</h3>
+                <p>
+                    Our school activities are carefully planned to balance academic learning with creative and social development.
+                </p>
+            </article>
+
+            <article class="feature-card-modern">
+                <div class="feature-icon">
+                    <i data-lucide="sparkles" size="28"></i>
+                </div>
+                <h3>Positive Community</h3>
+                <p>
+                    We maintain open communication with parents and create a welcoming environment where pupils can grow with confidence.
+                </p>
+            </article>
+        </div>
+    </section>
+
+    <!-- PROGRAMMES -->
+    <section class="container section programs-section">
+        <h2 class="section-title">Our Programmes</h2>
+
+        <div class="grid">
+            <article class="program-card-modern" style="background-image: url('images/programs/IMG_4638.jpeg');">
+                <div class="program-content">
+                    <div class="program-badge">
+                        <i data-lucide="baby" size="16"></i>
+                        Early Years
+                    </div>
+                    <h3>Nursery Section</h3>
+                    <p>
+                        Our nursery programme focuses on guided play, early literacy, numeracy, and social development in a joyful and supportive learning environment.
+                    </p>
+                    <a href="academics.html#nursery" class="program-link">
+                        Explore Programme
+                        <i data-lucide="arrow-right" size="18"></i>
+                    </a>
+                </div>
+            </article>
+
+            <article class="program-card-modern" style="background-image: url('images/programs/IMG_4639.jpeg');">
+                <div class="program-content">
+                    <div class="program-badge">
+                        <i data-lucide="graduation-cap" size="16"></i>
+                        Primary Education
+                    </div>
+                    <h3>Primary Section</h3>
+                    <p>
+                        The primary programme delivers a structured curriculum that builds strong academic skills, confidence, discipline, and independent thinking.
+                    </p>
+                    <a href="academics.html#primary" class="program-link">
+                        Explore Programme
+                        <i data-lucide="arrow-right" size="18"></i>
+                    </a>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="section testimonials-section">
+        <div class="container">
+            <h2 class="section-title">What Parents Say</h2>
+
+            <div class="testimonials-carousel" data-carousel>
+                <div class="carousel-wrapper">
+                    <div class="carousel-track">
+                        <article class="testimonial-modern">
+                            <div class="quote-icon">
+                                <i data-lucide="quote" size="24"></i>
+                            </div>
+                            <p class="quote">
+                                Fahmid has transformed our child's confidence and learning. We couldn't be happier with the progress.
+                            </p>
+                            <div class="testimonial-author">
+                                <div class="author-avatar">MA</div>
+                                <div class="author-info">
+                                    <div class="author-name">Mrs. Adebayo</div>
+                                    <div class="author-role">Parent, Nursery 2</div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="testimonial-modern">
+                            <div class="quote-icon">
+                                <i data-lucide="quote" size="24"></i>
+                            </div>
+                            <p class="quote">
+                                Dedicated teachers and a genuinely caring environment. Our son looks forward to school every day.
+                            </p>
+                            <div class="testimonial-author">
+                                <div class="author-avatar">MO</div>
+                                <div class="author-info">
+                                    <div class="author-name">Mr. Okonkwo</div>
+                                    <div class="author-role">Parent, Primary 4</div>
+                                </div>
+                            </div>
+                        </article>
+
+                        <article class="testimonial-modern">
+                            <div class="quote-icon">
+                                <i data-lucide="quote" size="24"></i>
+                            </div>
+                            <p class="quote">
+                                We see real improvement academically and socially. The school's values align perfectly with ours.
+                            </p>
+                            <div class="testimonial-author">
+                                <div class="author-avatar">MB</div>
+                                <div class="author-info">
+                                    <div class="author-name">Mrs. Bello</div>
+                                    <div class="author-role">Parent, Primary 2</div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <button class="carousel-btn prev" aria-label="Previous testimonial">‹</button>
+                <button class="carousel-btn next" aria-label="Next testimonial">›</button>
+
+                <div class="carousel-dots"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- GALLERY TEASER -->
+    <section class="container section gallery-teaser">
+        <h2 class="section-title">Moments from School Life</h2>
+
+        <div class="gallery-carousel">
+            <div class="gallery-track">
+                <img src="images/gallery/IMG_4623.jpeg" alt="Fahmid School Activities">
+                <img src="images/gallery/IMG_4624.jpeg" alt="Students Learning">
+                <img src="images/gallery/IMG_4625.jpeg" alt="School Community">
+                <img src="images/gallery/IMG_4626.jpeg" alt="Classroom Activities">
+                <img src="images/gallery/IMG_4627.jpeg" alt="Student Engagement">
+                <img src="images/gallery/IMG_4635.jpeg" alt="School Events">
+            </div>
+        </div>
+
+        <a href="gallery.html" class="btn">View Full Gallery</a>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="container section">
+        <div class="cta-modern">
+            <h2>Join the Fahmid School Community</h2>
+            <p>
+                Admissions are currently open for the new academic session. Experience quality education in a caring, disciplined environment.
+            </p>
+            <div class="cta-buttons">
+                <a href="admissions.html" class="btn-white">
+                    <i data-lucide="clipboard-check" size="20"></i>
+                    Apply for Admission
+                </a>
+                <a href="contact.html" class="btn-outline-white">
+                    <i data-lucide="calendar" size="20"></i>
+                    Schedule a Visit
+                </a>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="container">
+        <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+    </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="script.js"></script>
+<script>
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+});
+</script>
+</body>
+</html>
