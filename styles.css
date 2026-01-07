@@ -2576,6 +2576,103 @@ address strong {
     }
 }
 
+/* ============================================
+   MOBILE FORM SPACING FIXES – ADMIN & TEACHER PORTALS
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* 1. Reduce padding in all major form containers */
+    .admin-card,
+    .form-section,
+    .traits-form,
+    .remarks-form,
+    .content-wrapper > section, /* fallback for any direct sections */
+    .card {
+        padding: var(--space-6) !important; /* 1.5rem → more breathing room than current 2rem/2.5rem */
+        margin-bottom: var(--space-8);
+    }
+
+    /* 2. Reduce vertical spacing between form groups */
+    .form-group {
+        margin-bottom: var(--space-4) !important; /* was var(--space-6) = 1.5rem → now 1rem */
+    }
+
+    /* 3. Reduce gap in flex/grid form layouts */
+    .admin-form,
+    .form-row,
+    .form-row-2,
+    .form-actions {
+        gap: var(--space-4);
+    }
+
+    /* 4. Make form section titles less heavy vertically */
+    .form-section h3,
+    .traits-form h3,
+    .remarks-form h3 {
+        margin-bottom: var(--space-4);
+        padding-bottom: var(--space-2);
+    }
+
+    /* 5. Slightly smaller labels and inputs for better density */
+    label {
+        margin-bottom: var(--space-1);
+        font-size: var(--text-sm);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="date"],
+    textarea,
+    select,
+    .trait-select {
+        padding: var(--space-3) var(--space-3); /* reduce horizontal padding a bit */
+        font-size: var(--text-base); /* keeps accessibility (prevents zoom on iOS) */
+    }
+
+    /* 6. Button stacks and full-width already handled, but ensure spacing */
+    .form-actions {
+        margin-top: var(--space-5);
+    }
+
+    .form-actions .btn {
+        width: 100%;
+        margin-bottom: var(--space-2);
+    }
+
+    /* 7. Special fix for traits/remarks boxed forms – reduce internal padding */
+    .traits-form,
+    .remarks-form {
+        padding: var(--space-5) !important; /* 1.25rem instead of 1.5rem */
+    }
+
+    /* 8. Section descriptions – less bottom margin */
+    .section-description {
+        margin-bottom: var(--space-6) !important;
+    }
+}
+
+/* Extra small screens – even tighter but still readable */
+@media (max-width: 480px) {
+    .admin-card,
+    .form-section,
+    .traits-form,
+    .remarks-form {
+        padding: var(--space-5) !important;
+    }
+
+    .form-group {
+        margin-bottom: var(--space-3) !important;
+    }
+
+    .content-wrapper {
+        padding: var(--space-4);
+    }
+}
+
 /* ========================================
    PAGINATION STYLES
    ======================================== */
