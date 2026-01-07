@@ -168,17 +168,44 @@ async function loadDashboardStats() {
       db.collection('announcements').get()
     ]);
     
-    document.getElementById('teacher-count').textContent = teachersSnap.size;
-    document.getElementById('pupil-count').textContent = pupilsSnap.size;
-    document.getElementById('class-count').textContent = classesSnap.size;
-    document.getElementById('announce-count').textContent = announcementsSnap.size;
+    const teacherCount = teachersSnap.size;
+    const pupilCount = pupilsSnap.size;
+    const classCount = classesSnap.size;
+    const announceCount = announcementsSnap.size;
+    
+    // Update dashboard stats
+    document.getElementById('teacher-count').textContent = teacherCount;
+    document.getElementById('pupil-count').textContent = pupilCount;
+    document.getElementById('class-count').textContent = classCount;
+    document.getElementById('announce-count').textContent = announceCount;
+    
+    // Update header stats
+    const headerTeacherCount = document.getElementById('header-teacher-count');
+    const headerPupilCount = document.getElementById('header-pupil-count');
+    const headerClassCount = document.getElementById('header-class-count');
+    
+    if (headerTeacherCount) headerTeacherCount.textContent = teacherCount;
+    if (headerPupilCount) headerPupilCount.textContent = pupilCount;
+    if (headerClassCount) headerClassCount.textContent = classCount;
+    
   } catch (error) {
     console.error('Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
+    
+    // Set all to 0 on error
     document.getElementById('teacher-count').textContent = '0';
     document.getElementById('pupil-count').textContent = '0';
     document.getElementById('class-count').textContent = '0';
     document.getElementById('announce-count').textContent = '0';
+    
+    // Also update header
+    const headerTeacherCount = document.getElementById('header-teacher-count');
+    const headerPupilCount = document.getElementById('header-pupil-count');
+    const headerClassCount = document.getElementById('header-class-count');
+    
+    if (headerTeacherCount) headerTeacherCount.textContent = '0';
+    if (headerPupilCount) headerPupilCount.textContent = '0';
+    if (headerClassCount) headerClassCount.textContent = '0';
   }
 }
 
