@@ -1,9 +1,11 @@
+// FILE: teacher.js
+
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - FIXED
+ * Teacher Portal JavaScript - FULLY UPDATED
  * 
- * @version 8.0.0 - DUPLICATE CODE REMOVED
- * @date 2026-01-05
+ * @version 9.0.0 - FULLY EXPANDED, CLEANED, PAGINATION AND INPUT VALIDATION FIXED
+ * @date 2026-01-07
  */
 'use strict';
 
@@ -27,7 +29,6 @@ window.checkRole('teacher')
     if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
     
     await loadAssignedClasses();
-    await loadSubjects();
     initTeacherPortal();
   })
   .catch(() => {});
@@ -50,47 +51,35 @@ async function loadAssignedClasses() {
     assignedClasses = snap.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
-      subjects: doc.data().subjects || []  // NEW: Include subjects
+      subjects: doc.data().subjects || []
     }));
     
     assignedClasses.sort((a, b) => a.name.localeCompare(b.name));
     
-    if (assignedClasses.length === 0) {
+    if (!assignedClasses.length) {
       window.showToast?.('No classes assigned yet. Contact admin.', 'warning', 8000);
       allPupils = [];
-      allSubjects = [];  // Clear subjects if no classes
+      allSubjects = [];
       return;
     }
     
-    // NEW: Collect all unique subjects from assigned classes
     const subjectSet = new Set();
     assignedClasses.forEach(cls => {
-      if (cls.subjects && Array.isArray(cls.subjects)) {
-        cls.subjects.forEach(subject => subjectSet.add(subject));
-      }
+      if (Array.isArray(cls.subjects)) cls.subjects.forEach(s => subjectSet.add(s));
     });
     allSubjects = Array.from(subjectSet).sort();
     
-    // Load pupils in batches (Firestore 'in' limit = 10)
     const classIds = assignedClasses.map(c => c.id);
     allPupils = [];
-
     for (let i = 0; i < classIds.length; i += 10) {
       const batch = classIds.slice(i, i + 10);
       const pupilsSnap = await db.collection('pupils')
         .where('class.id', 'in', batch)
         .get();
-      
-      const batchPupils = pupilsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      allPupils = allPupils.concat(batchPupils);
+      allPupils = allPupils.concat(pupilsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }
     
     allPupils.sort((a, b) => a.name.localeCompare(b.name));
-    
     console.log(`✓ Loaded ${assignedClasses.length} class(es), ${allPupils.length} pupil(s), ${allSubjects.length} subject(s)`);
     
   } catch (err) {
@@ -102,17 +91,6 @@ async function loadAssignedClasses() {
   }
 }
 
-async function loadSubjects() {
-  try {
-    const snap = await db.collection('subjects').get();
-    allSubjects = snap.docs.map(d => d.data().name); // no hardcoded fallback
-    allSubjects.sort();
-  } catch (err) {
-    console.error('Error loading subjects:', err);
-    allSubjects = []; // empty array, teacher will see “no subjects”
-  }
-}
-
 /* ======================================== 
    PAGINATION 
 ======================================== */
@@ -120,48 +98,58 @@ async function loadSubjects() {
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
   const tbody = document.querySelector(`#${tbodyId} tbody`);
   if (!tbody) return;
-  
+
   let currentPage = 1;
   const totalPages = Math.ceil(data.length / itemsPerPage);
-  
+
   function renderPage(page) {
     tbody.innerHTML = '';
     const start = (page - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     const pageData = data.slice(start, end);
-    
-    if (pageData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+
+    if (!pageData.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>`;
       return;
     }
-    
+
     pageData.forEach(item => renderRowCallback(item, tbody));
     updatePaginationControls(page, totalPages);
   }
-  
+
   function updatePaginationControls(page, total) {
-    let paginationContainer = document.getElementById(`pagination-${tbodyId}`);
-    
-    if (!paginationContainer) {
-      paginationContainer = document.createElement('div');
-      paginationContainer.className = 'pagination';
-      paginationContainer.id = `pagination-${tbodyId}`;
-      tbody.parentElement.parentElement.appendChild(paginationContainer);
+    let container = document.getElementById(`pagination-${tbodyId}`);
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'pagination';
+      container.id = `pagination-${tbodyId}`;
+      tbody.parentElement.parentElement.appendChild(container);
     }
-    
-    paginationContainer.innerHTML = `
-      <button onclick="window.changePage_${tbodyId}(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
-      <span class="page-info">Page ${page} of ${total}</span>
-      <button onclick="window.changePage_${tbodyId}(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
-    `;
+    container.innerHTML = '';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = 'Previous';
+    prevBtn.disabled = page === 1;
+    prevBtn.addEventListener('click', () => changePage(page - 1));
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = page === total;
+    nextBtn.addEventListener('click', () => changePage(page + 1));
+
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'page-info';
+    pageInfo.textContent = `Page ${page} of ${total}`;
+
+    container.append(prevBtn, pageInfo, nextBtn);
   }
-  
-  window[`changePage_${tbodyId}`] = function(newPage) {
+
+  function changePage(newPage) {
     if (newPage < 1 || newPage > totalPages) return;
     currentPage = newPage;
     renderPage(currentPage);
-  };
-  
+  }
+
   renderPage(1);
 }
 
@@ -180,19 +168,15 @@ const sectionLoaders = {
 
 function showSection(sectionId) {
   document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
-  
   const section = document.getElementById(sectionId);
   if (section) section.style.display = 'block';
   
   document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
     link.classList.toggle('active', link.dataset.section === sectionId);
   });
-  
-  if (typeof sectionLoaders[sectionId] === 'function') {
-    sectionLoaders[sectionId]();
-  }
-  
-  // Close mobile sidebar
+
+  if (typeof sectionLoaders[sectionId] === 'function') sectionLoaders[sectionId]();
+
   const sidebar = document.getElementById('teacher-sidebar');
   const hamburger = document.getElementById('hamburger');
   if (sidebar?.classList.contains('active')) {
@@ -209,57 +193,50 @@ function showSection(sectionId) {
 
 function initTeacherPortal() {
   setupAllEventListeners();
-  
+
   window.getCurrentSettings().then(settings => {
-    // Set default term in all selects
     ['result-term', 'attendance-term', 'traits-term', 'remarks-term'].forEach(id => {
       const select = document.getElementById(id);
       if (select) select.value = settings.term;
     });
     
     showSection('dashboard');
-    console.log('✓ Teacher portal ready (v8.0.0) - Current term:', settings.term);
-    
-    // Setup sidebar navigation
+
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
       link.addEventListener('click', e => {
         e.preventDefault();
-        const section = link.dataset.section;
-        if (section) showSection(section);
+        showSection(link.dataset.section);
       });
     });
-  }).catch(error => {
-    console.error('Failed to load settings:', error);
+
+    console.log('✓ Teacher portal ready (v9.0.0)');
+  }).catch(err => {
+    console.error('Failed to load settings:', err);
     showSection('dashboard');
   });
 }
 
 function setupAllEventListeners() {
-  // Save buttons
   document.getElementById('save-results-btn')?.addEventListener('click', saveAllResults);
   document.getElementById('save-attendance-btn')?.addEventListener('click', saveAllAttendance);
   document.getElementById('save-traits-btn')?.addEventListener('click', saveTraitsAndSkills);
   document.getElementById('save-remarks-btn')?.addEventListener('click', saveRemarks);
-  
-  // Results
+
   document.getElementById('result-term')?.addEventListener('change', loadResultsTable);
   document.getElementById('result-subject')?.addEventListener('change', loadResultsTable);
-  
-  // Traits
+
   document.getElementById('traits-pupil')?.addEventListener('change', loadTraitsData);
   document.getElementById('traits-term')?.addEventListener('change', () => {
     if (document.getElementById('traits-pupil')?.value) loadTraitsData();
   });
-  
-  // Remarks
+
   document.getElementById('remarks-pupil')?.addEventListener('change', loadRemarksData);
   document.getElementById('remarks-term')?.addEventListener('change', () => {
     if (document.getElementById('remarks-pupil')?.value) loadRemarksData();
   });
-  
-  // Attendance
+
   document.getElementById('attendance-term')?.addEventListener('change', loadAttendanceSection);
-  
+
   console.log('✓ All event listeners connected');
 }
 
@@ -270,20 +247,13 @@ function setupAllEventListeners() {
 async function loadTeacherDashboard() {
   const classCountEl = document.getElementById('my-class-count');
   const pupilCountEl = document.getElementById('my-pupil-count');
-  
-  const classCount = assignedClasses.length;
-  const pupilCount = allPupils.length;
-  
-  // Update dashboard stats
-  if (classCountEl) classCountEl.textContent = classCount;
-  if (pupilCountEl) pupilCountEl.textContent = pupilCount;
-  
-  // Update header stats
+  if (classCountEl) classCountEl.textContent = assignedClasses.length;
+  if (pupilCountEl) pupilCountEl.textContent = allPupils.length;
+
   const headerClassCount = document.getElementById('header-class-count');
   const headerPupilCount = document.getElementById('header-pupil-count');
-  
-  if (headerClassCount) headerClassCount.textContent = classCount;
-  if (headerPupilCount) headerPupilCount.textContent = pupilCount;
+  if (headerClassCount) headerClassCount.textContent = assignedClasses.length;
+  if (headerPupilCount) headerPupilCount.textContent = allPupils.length;
 }
 
 /* ======================================== 
@@ -293,19 +263,18 @@ async function loadTeacherDashboard() {
 function loadMyClassesSection() {
   const table = document.getElementById('pupils-in-class-table');
   if (!table) return;
-  
+
   const tbody = table.querySelector('tbody');
-  
-  if (assignedClasses.length === 0) {
+
+  if (!assignedClasses.length) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
     return;
   }
-  
-  if (allPupils.length === 0) {
+  if (!allPupils.length) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
     return;
   }
-  
+
   paginateTable(allPupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -316,6 +285,141 @@ function loadMyClassesSection() {
     tbodyEl.appendChild(tr);
   });
 }
+
+/* ========================================
+   RESULTS
+======================================== */
+
+async function loadResultsSection() {
+  const container = document.getElementById('results-entry-table-container');
+  const saveBtn = document.getElementById('save-results-btn');
+  if (!container || !saveBtn) return;
+
+  if (!assignedClasses.length || !allPupils.length) {
+    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</p>';
+    saveBtn.hidden = true;
+    return;
+  }
+
+  const subjectSelect = document.getElementById('result-subject');
+  if (subjectSelect) {
+    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+    allSubjects.forEach(sub => {
+      const opt = document.createElement('option');
+      opt.value = sub;
+      opt.textContent = sub;
+      subjectSelect.appendChild(opt);
+    });
+  }
+
+  await loadResultsTable();
+}
+
+async function loadResultsTable() {
+  const container = document.getElementById('results-entry-table-container');
+  const saveBtn = document.getElementById('save-results-btn');
+  const term = document.getElementById('result-term')?.value;
+  const subject = document.getElementById('result-subject')?.value;
+
+  if (!container || !term || !subject) {
+    if (container) container.innerHTML = '';
+    if (saveBtn) saveBtn.hidden = true;
+    return;
+  }
+
+  try {
+    const resultsMap = {};
+    const snap = await db.collection('results')
+      .where('term', '==', term)
+      .where('subject', '==', subject)
+      .get();
+    snap.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.pupilId) resultsMap[data.pupilId] = { ca: data.caScore || 0, exam: data.examScore || 0 };
+    });
+
+    container.innerHTML = `
+      <div class="table-container">
+        <table class="responsive-table" id="results-table">
+          <thead>
+            <tr>
+              <th>Pupil Name</th>
+              <th>CA Score (40)</th>
+              <th>Exam Score (60)</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    `;
+
+    paginateTable(allPupils, 'results-table', 20, (pupil, tbody) => {
+      const existing = resultsMap[pupil.id] || { ca: 0, exam: 0 };
+      const total = existing.ca + existing.exam;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${pupil.name}</td>
+        <td><input type="number" step="1" min="0" max="40" value="${existing.ca || ''}" data-pupil="${pupil.id}" data-field="ca" style="width:90px;"></td>
+        <td><input type="number" step="1" min="0" max="60" value="${existing.exam || ''}" data-pupil="${pupil.id}" data-field="exam" style="width:90px;"></td>
+        <td>${total > 0 ? total : '-'}</td>
+      `;
+      tbody.appendChild(tr);
+
+      tr.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', () => {
+          const row = input.closest('tr');
+          const ca = parseInt(row.querySelector('[data-field="ca"]').value) || 0;
+          const exam = parseInt(row.querySelector('[data-field="exam"]').value) || 0;
+          row.querySelector('td:last-child').textContent = ca + exam > 0 ? ca + exam : '-';
+        });
+      });
+    });
+
+    saveBtn.hidden = false;
+  } catch (err) {
+    window.handleError(err, 'Failed to load results');
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
+    if (saveBtn) saveBtn.hidden = true;
+  }
+}
+
+async function saveAllResults() {
+  const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+  const term = document.getElementById('result-term')?.value;
+  const subject = document.getElementById('result-subject')?.value;
+  if (!term || !subject) return window.showToast?.('Select term and subject', 'warning');
+
+  const batch = db.batch();
+  let hasChanges = false;
+
+  inputs.forEach(input => {
+    const pupilId = input.dataset.pupil;
+    const field = input.dataset.field;
+    const value = parseInt(input.value) || 0;
+    if (value > 0) hasChanges = true;
+
+    const docId = `${pupilId}_${term}_${subject}`;
+    const ref = db.collection('results').doc(docId);
+    batch.set(ref, {
+      pupilId, term, subject,
+      ...(field === 'ca' ? { caScore: value } : { examScore: value }),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+
+  if (!hasChanges) return window.showToast?.('No scores entered', 'warning');
+
+  try {
+    await batch.commit();
+    window.showToast?.('✓ All results saved successfully', 'success');
+  } catch (err) {
+    window.handleError(err, 'Failed to save results');
+  }
+}
+
+These are the remaining codes in the teacher.js:
 
 /* ======================================== 
    RESULTS 
