@@ -1,4 +1,4 @@
-
+/**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Admin Portal JavaScript - FIXED
  * 
@@ -1311,3 +1311,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+});
