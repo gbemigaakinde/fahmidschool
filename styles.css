@@ -149,13 +149,12 @@ body {
     padding: 0;
 }
 
-/* Critical: Prevent hamburger/sidebar from pushing content down */
-.hamburger,
+/* Critical: Prevent sidebar from pushing content down */
 .sidebar {
-    position: fixed;                 /* Ensures they don't occupy flow space */
+    position: fixed;
     top: 0;
     left: 0;
-    z-index: 1000;                   /* Keep them above hero content if needed */
+    z-index: var(--z-sidebar);
 }
 
 /* ============================================
@@ -397,7 +396,7 @@ section .container > p.lead {
     display: none;                    /* hidden on large screens */
     position: absolute;               /* now positioned relative to the header */
     top: 50%;                         /* vertically centered */
-    right: var(--space-6);            /* distance from right edge of header */
+    right: var(--space-4);            /* distance from right edge of header */
     transform: translateY(-50%);      /* perfect vertical centering */
     width: 44px;
     height: 44px;
@@ -452,24 +451,6 @@ section .container > p.lead {
     align-items: center;
     justify-content: space-between;   /* pushes logo left, hamburger right */
 }
-
-.hamburger:hover {
-    box-shadow: var(--shadow-md);
-    border-color: var(--color-primary);
-}
-
-.hamburger span {
-    display: block;
-    width: 20px;
-    height: 2px;
-    background: var(--color-gray-900);
-    border-radius: var(--radius-full);
-    transition: all var(--duration-base) var(--ease-in-out);
-}
-
-.hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
-.hamburger.active span:nth-child(2) { opacity: 0; transform: translateX(-20px); }
-.hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
 
 /* ============================================
    MAIN CONTENT
@@ -2143,10 +2124,6 @@ address strong {
    ============================================ */
 
 @media (max-width: 1024px) {
-    :root {
-        --sidebar-width: 280px;
-    }
-
     .hamburger,
     .hamburger-portal {
         display: flex;
