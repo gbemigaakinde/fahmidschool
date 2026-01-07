@@ -195,6 +195,18 @@ h5, h6 { font-size: var(--text-xl); }
     border-radius: var(--radius-full);
 }
 
+/* Force ALL h2 elements in sections to center */
+section h2,
+.section-title,
+.section-header h2,
+main section > .container > h2 {
+    text-align: center !important;
+    width: 100%;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 /* ============================================
    SECTION SPACING - OPTIMIZED FOR BETTER FLOW
    ============================================ */
@@ -341,7 +353,8 @@ section .container > p.lead {
 .sidebar nav ul li a {
     display: flex;
     align-items: center;
-    padding: var(--space-3) var(--space-4);
+    gap: var(--space-6); /* Add gap property for automatic spacing */
+    padding: var(--space-4) var(--space-5); /* Increased vertical padding */
     color: var(--color-gray-700);
     font-weight: var(--weight-medium);
     border-radius: var(--radius-md);
@@ -370,9 +383,10 @@ section .container > p.lead {
 }
 
 .sidebar nav ul li a i[data-lucide] {
-    margin-right: var(--space-4);  /* Changed from space-3 to space-4 */
+    margin-right: var(--space-6); /* Changed to space-6 (1.5rem = 24px) */
     width: 20px;
     height: 20px;
+    flex-shrink: 0; /* Prevents icon from shrinking */
 }
 
 /* ============================================
@@ -382,7 +396,7 @@ section .container > p.lead {
     display: none;
     position: fixed;
     top: var(--space-6);
-    right: var(--space-6);  /* Changed from left to right */
+    left: var(--space-6);  /* Back to LEFT */
     z-index: var(--z-hamburger);
     width: 44px;
     height: 44px;
@@ -396,7 +410,12 @@ section .container > p.lead {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    transition: all var(--duration-base) var(--ease-out);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth animation */
+}
+
+/* When sidebar is OPEN, slide hamburger to the right */
+.sidebar.active ~ .hamburger {
+    left: calc(var(--sidebar-width) - 60px); /* Positions it near right edge of sidebar */
 }
 
 .hamburger:hover {
