@@ -49,7 +49,8 @@ async function loadAssignedClasses() {
     
     assignedClasses = snap.docs.map(doc => ({
       id: doc.id,
-      name: doc.data().name
+      name: doc.data().name,
+      subjects: doc.data().subjects || []  // NEW: Include subjects
     }));
     
     assignedClasses.sort((a, b) => a.name.localeCompare(b.name));
@@ -57,17 +58,28 @@ async function loadAssignedClasses() {
     if (assignedClasses.length === 0) {
       window.showToast?.('No classes assigned yet. Contact admin.', 'warning', 8000);
       allPupils = [];
+      allSubjects = [];  // Clear subjects if no classes
       return;
     }
     
+    // NEW: Collect all unique subjects from assigned classes
+    const subjectSet = new Set();
+    assignedClasses.forEach(cls => {
+      if (cls.subjects && Array.isArray(cls.subjects)) {
+        cls.subjects.forEach(subject => subjectSet.add(subject));
+      }
+    });
+    allSubjects = Array.from(subjectSet).sort();
+    
     // Load pupils in batches (Firestore 'in' limit = 10)
-    const classIds = assignedClasses.map(c => c.id); // Use IDs
+    const classIds = assignedClasses.map(c => c.id);
+    allPupils = [];
 
-for (let i = 0; i < classIds.length; i += 10) {
-  const batch = classIds.slice(i, i + 10);
-  const pupilsSnap = await db.collection('pupils')
-    .where('class.id', 'in', batch)  // Query by class.id
-    .get();
+    for (let i = 0; i < classIds.length; i += 10) {
+      const batch = classIds.slice(i, i + 10);
+      const pupilsSnap = await db.collection('pupils')
+        .where('class.id', 'in', batch)
+        .get();
       
       const batchPupils = pupilsSnap.docs.map(doc => ({
         id: doc.id,
@@ -78,11 +90,15 @@ for (let i = 0; i < classIds.length; i += 10) {
     }
     
     allPupils.sort((a, b) => a.name.localeCompare(b.name));
+    
+    console.log(`✓ Loaded ${assignedClasses.length} class(es), ${allPupils.length} pupil(s), ${allSubjects.length} subject(s)`);
+    
   } catch (err) {
     console.error('Error loading assigned classes:', err);
     window.handleError(err, 'Failed to load your classes');
     assignedClasses = [];
     allPupils = [];
+    allSubjects = [];
   }
 }
 
