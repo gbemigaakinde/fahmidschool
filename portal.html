@@ -56,17 +56,17 @@
                         roleMessage.textContent = `Welcome! Redirecting to ${role} portal...`;
                         
                         // Small delay for better UX
-                        setTimeout(() => {
-                            if (role === 'admin') {
-                                 window.location.replace('admin.html');
-                            } else if (role === 'teacher') {
-                                 window.location.replace('teacher.html');
-                           } else if (role === 'pupil') {
-                                 window.location.replace('pupil.html');
-                           } else {
-                                throw new Error('Unknown role');
-                            }
-                        }, 800);
+setTimeout(() => {
+    if (role === 'admin') {
+        window.location.replace('admin.html');
+    } else if (role === 'teacher') {
+        window.location.replace('teacher.html');
+    } else if (role === 'pupil') {
+        window.location.replace('pupil.html');
+    } else {
+        throw new Error('Unknown role');
+    }
+}, 800);
                     } else {
                         throw new Error('User profile not found');
                     }
@@ -79,7 +79,7 @@
                     }
                     
                     setTimeout(() => {
-                        window.location.href = 'index.html';
+                        window.location.replace('index.html');
                     }, 3000);
                 }
             } else {
@@ -90,7 +90,7 @@
                 }
                 
                 setTimeout(() => {
-                    window.location.href = 'login.html';
+                    window.location.replace('login.html');
                 }, 1500);
             }
         });
