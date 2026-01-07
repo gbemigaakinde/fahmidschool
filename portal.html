@@ -58,12 +58,12 @@
                         // Small delay for better UX
                         setTimeout(() => {
                             if (role === 'admin') {
-                                window.location.href = 'admin.html';
+                                 window.location.replace('admin.html');
                             } else if (role === 'teacher') {
-                                window.location.href = 'teacher.html';
-                            } else if (role === 'pupil') {
-                                window.location.href = 'pupil.html';
-                            } else {
+                                 window.location.replace('teacher.html');
+                           } else if (role === 'pupil') {
+                                 window.location.replace('pupil.html');
+                           } else {
                                 throw new Error('Unknown role');
                             }
                         }, 800);
