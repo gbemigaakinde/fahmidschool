@@ -176,15 +176,20 @@ async function loadPupilProfile(user) {
             subjects: currentClassInfo.subjects
         });
 
-        // Update welcome message
+        // Update header information
         const settings = await getCurrentSettings();
         const welcomeEl = document.getElementById('pupil-welcome');
+        const classEl = document.getElementById('student-class');
+        const sessionEl = document.getElementById('student-session');
+        
         if (welcomeEl) {
-            welcomeEl.innerHTML = `
-                Hello, <strong>${data.name}</strong>!<br>
-                Class: ${currentClassInfo.name}<br>
-                Session: ${settings.session}
-            `;
+            welcomeEl.innerHTML = `Hello, <strong>${data.name}</strong>!`;
+        }
+        if (classEl) {
+            classEl.textContent = currentClassInfo.name;
+        }
+        if (sessionEl) {
+            sessionEl.textContent = settings.session;
         }
 
         // Load results
@@ -219,15 +224,20 @@ async function loadPupilProfile(user) {
                             subjects: currentClassInfo.subjects
                         });
 
-                        // Update welcome message
+                        // Update header information
                         const settings = await getCurrentSettings();
                         const welcomeEl = document.getElementById('pupil-welcome');
+                        const classEl = document.getElementById('student-class');
+                        const sessionEl = document.getElementById('student-session');
+                        
                         if (welcomeEl) {
-                            welcomeEl.innerHTML = `
-                                Hello, <strong>${updatedData.name}</strong>!<br>
-                                Class: ${currentClassInfo.name}<br>
-                                Session: ${settings.session}
-                            `;
+                            welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+                        }
+                        if (classEl) {
+                            classEl.textContent = currentClassInfo.name;
+                        }
+                        if (sessionEl) {
+                            sessionEl.textContent = settings.session;
                         }
 
                         // Reload results in case they changed
@@ -273,15 +283,20 @@ async function loadPupilProfile(user) {
                                 subjects: currentClassInfo.subjects
                             });
 
-                            // Update welcome message
+                            // Update header information
                             const settings = await getCurrentSettings();
                             const welcomeEl = document.getElementById('pupil-welcome');
+                            const classEl = document.getElementById('student-class');
+                            const sessionEl = document.getElementById('student-session');
+                            
                             if (welcomeEl) {
-                                welcomeEl.innerHTML = `
-                                    Hello, <strong>${currentPupilData.name}</strong>!<br>
-                                    Class: ${currentClassInfo.name}<br>
-                                    Session: ${settings.session}
-                                `;
+                                welcomeEl.innerHTML = `Hello, <strong>${currentPupilData.name}</strong>!`;
+                            }
+                            if (classEl) {
+                                classEl.textContent = currentClassInfo.name;
+                            }
+                            if (sessionEl) {
+                                sessionEl.textContent = settings.session;
                             }
 
                             renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
