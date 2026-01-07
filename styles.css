@@ -549,6 +549,37 @@ small { font-size: var(--text-sm); }
     transform: scale(1.02);
 }
 
+/* Floating pan + subtle zoom animation for visible hero images */
+.hero-slideshow img.visible {
+    opacity: 1;
+    animation: heroPan 20s ease-in-out infinite alternate;
+}
+
+/* Optional: also apply a softer version on hover/focus if desired */
+.hero-slideshow img {
+    /* existing styles... */
+    transition: opacity 1s ease-in-out;
+}
+
+/* The floating movement animation */
+@keyframes heroPan {
+    0% {
+        transform: translate(0%, 0%) scale(1.05);
+    }
+    25% {
+        transform: translate(3%, -2%) scale(1.08);
+    }
+    50% {
+        transform: translate(-3%, 2%) scale(1.05);
+    }
+    75% {
+        transform: translate(2%, 3%) scale(1.08);
+    }
+    100% {
+        transform: translate(-2%, -3%) scale(1.05);
+    }
+}
+
 /* ============================================
    CARDS
    ============================================ */
