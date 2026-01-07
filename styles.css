@@ -511,7 +511,7 @@ small { font-size: var(--text-sm); }
     letter-spacing: -0.01em;
     line-height: 1.6;
     margin: 0;
-    margin-bottom: var(--space-12); /* ← ADD THIS LINE - pushes button down */
+    margin-bottom: var(--space-16); /* ← ADD THIS LINE - pushes button down */
 }
 
 /* Apply Now button */
