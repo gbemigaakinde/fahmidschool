@@ -124,11 +124,10 @@
 }
 
 html {
-    font-size: 16px;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    height: 100%;                    /* NEW: Ensure html takes full height */
+    height: 100%;
 }
 
 body {
@@ -481,14 +480,14 @@ small { font-size: var(--text-sm); }
 .hero-content {
     position: relative;
     z-index: 2;
-    width: 90%;               /* gives space on sides */
+    width: 90%;
     max-width: 900px;
     margin: 0 auto;
-    padding: var(--space-12) var(--space-6) 0 var(--space-6); /* less top padding, free flow */
+    padding: var(--space-6) var(--space-6) 0 var(--space-6); /* ← Reduced from space-12 to space-6 */
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* aligns text left for a freer layout */
-    gap: var(--space-8);     /* larger gap between heading, subtitle, and button */
+    align-items: flex-start;
+    gap: var(--space-6); /* ← Also reduced gap from space-8 to space-6 */
 }
 
 /* Bigger, bolder heading */
