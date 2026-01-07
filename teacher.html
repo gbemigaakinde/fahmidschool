@@ -52,7 +52,30 @@
 
     <!-- Main -->
     <main class="admin-main" id="main-content" role="main" tabindex="-1">
+<!-- Portal Header -->
+<header class="portal-header">
+    <div class="header-content-admin">
+        <div class="header-welcome">
+            <div class="welcome-text">
+                <h1 id="teacher-name-header">Welcome, Teacher</h1>
+                <p>Manage your classes and enter pupil reports</p>
+            </div>
+        </div>
+        <div class="header-stats">
+            <div class="stat-box">
+                <div class="stat-label">My Classes</div>
+                <div class="stat-value" id="header-class-count">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Pupils Assigned</div>
+                <div class="stat-value" id="header-pupil-count">0</div>
+            </div>
+        </div>
+    </div>
+</header>
 
+<!-- Content Wrapper -->
+<div class="content-wrapper">
         <!-- Dashboard -->
         <section id="dashboard" class="admin-card" tabindex="-1">
             <h1>Welcome, Teacher</h1>
@@ -395,7 +418,7 @@
                 </button>
             </div>
         </section>
-
+</div> <!-- Close content-wrapper -->
     </main>
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
