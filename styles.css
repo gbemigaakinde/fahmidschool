@@ -549,34 +549,46 @@ small { font-size: var(--text-sm); }
     transform: scale(1.02);
 }
 
-/* Floating pan + subtle zoom animation for visible hero images */
+/* Apply base scale to all images (prevents gaps) */
+.hero-slideshow img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+    
+    /* Start with slight zoom to hide edges during movement */
+    transform: scale(1.05);
+}
+
+/* When visible: fade in + start/continue the continuous pan animation */
 .hero-slideshow img.visible {
     opacity: 1;
-    animation: heroPan 20s ease-in-out infinite alternate;
+    animation: heroPan 60s linear infinite;
 }
 
-/* Optional: also apply a softer version on hover/focus if desired */
-.hero-slideshow img {
-    /* existing styles... */
-    transition: opacity 1s ease-in-out;
-}
-
-/* The floating movement animation */
+/* Continuous floating pan — runs forever across all cycles */
 @keyframes heroPan {
     0% {
         transform: translate(0%, 0%) scale(1.05);
     }
-    25% {
-        transform: translate(3%, -2%) scale(1.08);
+    20% {
+        transform: translate(4%, -3%) scale(1.10);
     }
-    50% {
-        transform: translate(-3%, 2%) scale(1.05);
+    40% {
+        transform: translate(-4%, 3%) scale(1.06);
     }
-    75% {
-        transform: translate(2%, 3%) scale(1.08);
+    60% {
+        transform: translate(3%, 4%) scale(1.09);
+    }
+    80% {
+        transform: translate(-3%, -4%) scale(1.07);
     }
     100% {
-        transform: translate(-2%, -3%) scale(1.05);
+        transform: translate(0%, 0%) scale(1.05);
     }
 }
 
