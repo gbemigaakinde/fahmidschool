@@ -5,6 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
+        <style>
+        /* Modal Styles for Subject Assignment */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: var(--space-2xl);
+            border-radius: var(--radius-lg);
+            max-width: 800px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            right: var(--space-lg);
+            top: var(--space-lg);
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--color-gray-600);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--color-danger);
+        }
+
+        .subject-checkbox-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--space-md);
+            max-height: 400px;
+            overflow-y: auto;
+            padding: var(--space-md);
+            border: 1px solid var(--color-gray-300);
+            border-radius: var(--radius-md);
+            background: var(--color-gray-50);
+        }
+
+        .subject-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+            background: white;
+            border-radius: var(--radius-sm);
+            transition: background 0.2s;
+        }
+
+        .subject-checkbox-item:hover {
+            background: var(--color-gray-100);
+        }
+
+        .subject-checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .subject-checkbox-item label {
+            cursor: pointer;
+            margin: 0;
+            font-size: var(--text-sm);
+            user-select: none;
+        }
+    </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -229,7 +307,7 @@
     </div>
 </div>
 
-        <!-- Classes Section -->
+       <!-- Classes Section -->
         <div id="classes" class="admin-card" style="display:none;">
             <h1>Manage Classes</h1>
             <button class="btn" onclick="showClassForm()">+ Add New Class</button>
@@ -252,15 +330,38 @@
                         <tr>
                             <th>Class Name</th>
                             <th>Pupil Count</th>
+                            <th>Assigned Subjects</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="classes-table">
                         <tr>
-                            <td colspan="3" class="table-loading">Loading...</td>
+                            <td colspan="4" class="table-loading">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- NEW: Subject Assignment Modal -->
+            <div id="subject-assignment-modal" class="modal" style="display:none;">
+                <div class="modal-content" style="max-width: 600px;">
+                    <span class="modal-close" onclick="closeSubjectAssignmentModal()">&times;</span>
+                    <h2>Assign Subjects to Class</h2>
+                    <p id="assignment-class-name" style="font-weight:600; margin-bottom: var(--space-lg);"></p>
+
+                    <div id="subject-checkboxes" class="subject-checkbox-container">
+                        <!-- Checkboxes will be loaded here -->
+                    </div>
+
+                    <div class="form-actions" style="margin-top: var(--space-xl);">
+                        <button class="btn" onclick="saveClassSubjects()">
+                            💾 Save Subjects
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeSubjectAssignmentModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
