@@ -7,8 +7,8 @@
  * - Pull live pupil bio, class, teacher, subjects
  * - Reflect admin changes instantly
  *
- * Version: 6.2.0
- * Date: 2026-01-07
+ * Version: 6.1.0
+ * Date: 2026-01-06
  */
 
 'use strict';
@@ -33,6 +33,7 @@ checkRole('pupil')
 /* ===============================
    MAIN INITIALIZER
 ================================ */
+
 async function initReport(user) {
     try {
         await fetchSchoolSettings();
@@ -49,9 +50,11 @@ async function initReport(user) {
 /* ===============================
    FETCH SCHOOL SETTINGS
 ================================ */
+
 async function fetchSchoolSettings() {
     const doc = await db.collection('settings').doc('current').get();
     if (!doc.exists) return;
+
     const data = doc.data();
     currentSettings.term = data.term || currentSettings.term;
     currentSettings.session = data.session || '';
@@ -59,8 +62,9 @@ async function fetchSchoolSettings() {
 }
 
 /* ===============================
-   FETCH PUPIL PROFILE
+   FETCH PUPIL PROFILE (CORE FIX)
 ================================ */
+
 async function fetchPupilProfile(uid) {
     const doc = await db.collection('pupils').doc(uid).get();
     if (!doc.exists) throw new Error('Pupil record not found');
@@ -68,12 +72,16 @@ async function fetchPupilProfile(uid) {
     pupilProfile = doc.data();
     currentPupilId = doc.id;
 
-    // BIO
+    /* ===============================
+       BIO
+    ================================== */
     setText('student-name', pupilProfile.name || '-');
     setText('student-gender', pupilProfile.gender || '-');
     setText('admission-no', pupilProfile.admissionNo || '-');
 
-    // HANDLE CLASS DATA (OLD & NEW)
+    /* ===============================
+       HANDLE CLASS DATA (OLD & NEW)
+    ================================== */
     let classId = null;
     let className = '-';
 
@@ -85,10 +93,13 @@ async function fetchPupilProfile(uid) {
         } else if (typeof pupilProfile.class === 'string') {
             // Old format
             className = pupilProfile.class;
+
+            // Try to find class by name
             const classSnap = await db.collection('classes')
                 .where('name', '==', className)
                 .limit(1)
                 .get();
+
             if (!classSnap.empty) {
                 const classDoc = classSnap.docs[0];
                 classId = classDoc.id;
@@ -99,7 +110,9 @@ async function fetchPupilProfile(uid) {
 
     setText('student-class', className);
 
-    // FETCH CLASS TEACHER AND SUBJECTS
+    /* ===============================
+       FETCH CLASS TEACHER AND SUBJECTS
+    ================================== */
     let teacherName = '-';
     let subjectsList = '-';
 
@@ -107,14 +120,17 @@ async function fetchPupilProfile(uid) {
         const classDoc = await db.collection('classes').doc(classId).get();
         if (classDoc.exists) {
             const classData = classDoc.data();
+
             // Teacher
-            if (classData.teacherName) teacherName = classData.teacherName;
-            else if (classData.teacherId) {
+            if (classData.teacherName) {
+                teacherName = classData.teacherName;
+            } else if (classData.teacherId) {
                 const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
                 if (teacherDoc.exists) teacherName = teacherDoc.data().name;
             }
+
             // Subjects
-            if (Array.isArray(classData.subjects) && classData.subjects.length) {
+            if (Array.isArray(classData.subjects) && classData.subjects.length > 0) {
                 subjectsList = classData.subjects.join(', ');
             }
         }
@@ -127,6 +143,7 @@ async function fetchPupilProfile(uid) {
 /* ===============================
    TERM SELECTOR
 ================================ */
+
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) {
@@ -134,11 +151,13 @@ function setupTermSelector() {
         return;
     }
 
+    console.log('✓ Setting up term selector, current term:', currentSettings.term);
     select.value = currentSettings.term;
     setText('current-term', currentSettings.term);
 
     select.addEventListener('change', async e => {
         currentSettings.term = e.target.value;
+        console.log('Term changed to:', currentSettings.term);
         setText('current-term', currentSettings.term);
         updateReportHeader();
         await loadReportData();
@@ -148,12 +167,22 @@ function setupTermSelector() {
 /* ===============================
    UPDATE HEADER FIELDS
 ================================ */
+
 function updateReportHeader() {
-    setText('report-title', `${currentSettings.term} Report Card - ${currentSettings.session} Session`);
+    setText(
+        'report-title',
+        `${currentSettings.term} Report Card - ${currentSettings.session} Session`
+    );
+
     setText('current-session', currentSettings.session || '-');
 
     if (currentSettings.resumptionDate?.toDate) {
-        setText('resumption-date', currentSettings.resumptionDate.toDate().toLocaleDateString('en-GB'));
+        setText(
+            'resumption-date',
+            currentSettings.resumptionDate
+                .toDate()
+                .toLocaleDateString('en-GB')
+        );
     } else {
         setText('resumption-date', currentSettings.resumptionDate || '-');
     }
@@ -162,8 +191,15 @@ function updateReportHeader() {
 /* ===============================
    LOAD ALL REPORT DATA
 ================================ */
+
 async function loadReportData() {
+    console.log('=== Loading Report Data ===');
+    console.log('Pupil ID:', currentPupilId);
+    console.log('Term:', currentSettings.term);
+    console.log('Session:', currentSettings.session);
+    
     resetTraitsAndRemarks();
+
     try {
         await Promise.all([
             loadAcademicResults(),
@@ -172,63 +208,75 @@ async function loadReportData() {
             loadPsychomotorSkills(),
             loadRemarks()
         ]);
+        console.log('=== Report Data Loaded Successfully ===');
     } catch (error) {
-        console.error('Error loading report data:', error);
+        console.error('=== Error Loading Report Data ===', error);
         window.showToast?.('Failed to load some report data', 'warning');
     }
 }
 
 /* ===============================
-   ACADEMIC RESULTS
+   ACADEMIC RESULTS (FIXED)
 ================================ */
+
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     tbody.innerHTML = loadingRow();
 
     try {
+        // Get all results documents
         const allResultsSnap = await db.collection('results').get();
+        
         if (allResultsSnap.empty) {
-            tbody.innerHTML = emptyRow('No results in system yet.');
+            tbody.innerHTML = emptyRow('No results in system yet. Teacher must enter scores.');
             return;
         }
-
+        
         const results = [];
-        const uid = currentPupilId;
-        const term = currentSettings.term;
-
+        const currentPupilUid = currentPupilId; // Store in local variable
+        const currentTermValue = currentSettings.term;
+        
+        // Check every document
         allResultsSnap.forEach(doc => {
             const docId = doc.id;
             const data = doc.data();
+            
+            // Skip if document has no data
             if (!data) return;
-
-            let match = false;
+            
+            let matchFound = false;
             let subject = '';
-
-            // METHOD 1: doc ID format
+            
+            // METHOD 1: Document ID format (pupilId_term_subject)
             if (typeof docId === 'string' && docId.includes('_')) {
                 const parts = docId.split('_');
                 if (parts.length >= 3) {
-                    const idPupil = parts[0], idTerm = parts[1];
+                    const idPupilId = parts[0];
+                    const idTerm = parts[1];
                     const idSubject = parts.slice(2).join('_');
-                    if (idPupil === uid && idTerm === term) {
-                        match = true;
+                    
+                    if (idPupilId === currentPupilUid && idTerm === currentTermValue) {
+                        matchFound = true;
                         subject = idSubject;
                     }
                 }
             }
-
-            // METHOD 2: field-based fallback
-            if (!match && data.pupilId && data.term && data.subject) {
-                if (data.pupilId === uid && data.term === term) {
-                    match = true;
+            
+            // METHOD 2: Field-based format (backup)
+            if (!matchFound && data.pupilId && data.term && data.subject) {
+                if (data.pupilId === currentPupilUid && data.term === currentTermValue) {
+                    matchFound = true;
                     subject = data.subject;
                 }
             }
-
-            if (match && subject) {
-                if (!results.find(r => r.subject === subject)) {
+            
+            // If match found, add to results
+            if (matchFound && subject) {
+                // Check if this subject is already in results (avoid duplicates)
+                const existingIndex = results.findIndex(r => r.subject === subject);
+                if (existingIndex === -1) {
                     results.push({
-                        subject,
+                        subject: subject,
                         caScore: data.caScore || 0,
                         examScore: data.examScore || 0
                     });
@@ -237,35 +285,44 @@ async function loadAcademicResults() {
         });
 
         tbody.innerHTML = '';
-        if (!results.length) {
-            tbody.innerHTML = emptyRow(`No results for ${term}`);
+
+        if (results.length === 0) {
+            tbody.innerHTML = emptyRow(`No results for ${currentTermValue}`);
             return;
         }
 
+        // Sort alphabetically
         results.sort((a, b) => a.subject.localeCompare(b.subject));
 
         let totalScore = 0;
         let subjectCount = 0;
 
+        // Display each result
         results.forEach(r => {
-            const ca = r.caScore, exam = r.examScore, total = ca + exam;
-            totalScore += total;
+            const ca = r.caScore;
+            const exam = r.examScore;
+            const score = ca + exam;
+
+            totalScore += score;
             subjectCount++;
+
             tbody.insertAdjacentHTML('beforeend', `
                 <tr>
                     <td>${r.subject}</td>
                     <td>${ca}</td>
                     <td>${exam}</td>
-                    <td><strong>${total}</strong></td>
-                    <td class="grade-${getGrade(total)}">${getGrade(total)}</td>
-                    <td>${getRemark(total)}</td>
+                    <td><strong>${score}</strong></td>
+                    <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
+                    <td>${getRemark(score)}</td>
                 </tr>
             `);
         });
 
-        if (subjectCount) {
+        // Add summary
+        if (subjectCount > 0) {
             const average = (totalScore / subjectCount).toFixed(1);
             const avgGrade = getGrade(parseFloat(average));
+
             tbody.insertAdjacentHTML('beforeend', `
                 <tr class="summary-row">
                     <td colspan="3"><strong>TOTAL SCORE</strong></td>
@@ -285,22 +342,30 @@ async function loadAcademicResults() {
 }
 
 /* ===============================
-   ATTENDANCE
+   ATTENDANCE (FIXED)
 ================================ */
+
 async function loadAttendance() {
     try {
         const docId = `${currentPupilId}_${currentSettings.term}`;
+        console.log('Loading attendance for:', docId);
+        
         const doc = await db.collection('attendance').doc(docId).get();
+
         if (!doc.exists) {
+            console.log('No attendance data found for:', docId);
             setText('times-opened', '-');
             setText('times-present', '-');
             setText('times-absent', '-');
             return;
         }
+
         const d = doc.data();
-        setText('times-opened', d.timesOpened ?? '-');
-        setText('times-present', d.timesPresent ?? '-');
-        setText('times-absent', d.timesAbsent ?? '-');
+        console.log('Attendance data:', d);
+        
+        setText('times-opened', d.timesOpened !== undefined ? d.timesOpened : '-');
+        setText('times-present', d.timesPresent !== undefined ? d.timesPresent : '-');
+        setText('times-absent', d.timesAbsent !== undefined ? d.timesAbsent : '-');
     } catch (error) {
         console.error('Error loading attendance:', error);
         setText('times-opened', '-');
@@ -312,17 +377,35 @@ async function loadAttendance() {
 /* ===============================
    TRAITS & SKILLS
 ================================ */
-async function loadBehavioralTraits() { await loadKeyedCollection('behavioral_traits', 'trait-'); }
-async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
+
+async function loadBehavioralTraits() {
+    await loadKeyedCollection(
+        'behavioral_traits',
+        'trait-'
+    );
+}
+
+async function loadPsychomotorSkills() {
+    await loadKeyedCollection(
+        'psychomotor_skills',
+        'skill-'
+    );
+}
 
 async function loadKeyedCollection(collection, prefix) {
     try {
         const docId = `${currentPupilId}_${currentSettings.term}`;
         const doc = await db.collection(collection).doc(docId).get();
-        if (!doc.exists) return;
+
+        if (!doc.exists) {
+            console.log(`No ${collection} data for:`, docId);
+            return;
+        }
 
         Object.entries(doc.data()).forEach(([k, v]) => {
+            // Skip metadata fields
             if (k === 'pupilId' || k === 'term') return;
+            
             setText(prefix + k.toLowerCase(), v);
         });
     } catch (error) {
@@ -333,11 +416,17 @@ async function loadKeyedCollection(collection, prefix) {
 /* ===============================
    REMARKS
 ================================ */
+
 async function loadRemarks() {
     try {
         const docId = `${currentPupilId}_${currentSettings.term}`;
         const doc = await db.collection('remarks').doc(docId).get();
-        if (!doc.exists) return;
+
+        if (!doc.exists) {
+            console.log('No remarks data for:', docId);
+            return;
+        }
+
         const data = doc.data();
         setText('teacher-remark', data.teacherRemark || '-');
         setText('head-remark', data.headRemark || '-');
@@ -349,8 +438,12 @@ async function loadRemarks() {
 /* ===============================
    HELPERS
 ================================ */
+
 function resetTraitsAndRemarks() {
-    document.querySelectorAll('.trait-value').forEach(el => el.textContent = '-');
+    document
+        .querySelectorAll('.trait-value')
+        .forEach(el => el.textContent = '-');
+
     setText('teacher-remark', '-');
     setText('head-remark', '-');
     setText('times-opened', '-');
@@ -363,29 +456,34 @@ function setText(id, value) {
     if (el) el.textContent = value;
 }
 
-function loadingRow() { return `<tr><td colspan="6" style="text-align:center">Loading…</td></tr>`; }
-function emptyRow(text) { return `<tr><td colspan="6" style="text-align:center">${text}</td></tr>`; }
+function loadingRow() {
+    return `<tr><td colspan="6" style="text-align:center">Loading…</td></tr>`;
+}
 
-function getGrade(score){
-    if (score>=75) return 'A1';
-    if (score>=70) return 'B2';
-    if (score>=65) return 'B3';
-    if (score>=60) return 'C4';
-    if (score>=55) return 'C5';
-    if (score>=50) return 'C6';
-    if (score>=45) return 'D7';
-    if (score>=40) return 'D8';
+function emptyRow(text) {
+    return `<tr><td colspan="6" style="text-align:center">${text}</td></tr>`;
+}
+
+function getGrade(score) {
+    if (score >= 75) return 'A1';
+    if (score >= 70) return 'B2';
+    if (score >= 65) return 'B3';
+    if (score >= 60) return 'C4';
+    if (score >= 55) return 'C5';
+    if (score >= 50) return 'C6';
+    if (score >= 45) return 'D7';
+    if (score >= 40) return 'D8';
     return 'F9';
 }
 
-function getRemark(score){
-    if (score>=75) return 'Excellent';
-    if (score>=70) return 'Very Good';
-    if (score>=65) return 'Good';
-    if (score>=60) return 'Credit';
-    if (score>=50) return 'Credit';
-    if (score>=45) return 'Pass';
+function getRemark(score) {
+    if (score >= 75) return 'Excellent';
+    if (score >= 70) return 'Very Good';
+    if (score >= 65) return 'Good';
+    if (score >= 60) return 'Credit';
+    if (score >= 50) return 'Credit';
+    if (score >= 45) return 'Pass';
     return 'Fail';
 }
 
-console.log('✓ print-results.js ready (v6.2.0)');
+console.log('✓ print-results.js ready (v6.1.0)');
