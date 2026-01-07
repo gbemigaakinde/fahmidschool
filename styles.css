@@ -327,12 +327,6 @@ section .container > p.lead {
 .sidebar::-webkit-scrollbar-track { background: transparent; }
 .sidebar::-webkit-scrollbar-thumb { background: var(--color-gray-300); border-radius: var(--radius-full); }
 
-.sidebar-header {
-    padding: 0 var(--space-6);
-    margin-bottom: var(--space-12);
-    flex-shrink: 0;
-}
-
 .logo-text {
     font-family: var(--font-heading);
     font-size: var(--text-2xl);
