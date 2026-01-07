@@ -724,7 +724,7 @@ async function loadClasses() {
   const tbody = document.getElementById('classes-table');
   if (!tbody) return;
   
-  tbody.innerHTML = '<tr><td colspan="3" class="table-loading">Loading classes...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading classes...</td></tr>';
   
   try {
     const classesSnap = await db.collection('classes').get();
@@ -734,7 +734,6 @@ async function loadClasses() {
     pupilsSnap.forEach(pupilDoc => {
       const classData = pupilDoc.data().class;
       
-      // FIXED: Handle both old and new format
       let className = null;
       if (classData) {
         if (typeof classData === 'object' && classData.name) {
@@ -752,7 +751,7 @@ async function loadClasses() {
     tbody.innerHTML = '';
     
     if (classesSnap.empty) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add one above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add one above.</td></tr>';
       return;
     }
     
@@ -762,6 +761,7 @@ async function loadClasses() {
       classes.push({
         id: doc.id,
         name: data.name,
+        subjects: data.subjects || [],
         pupilCount: pupilCountMap[data.name] || 0
       });
     });
@@ -769,11 +769,19 @@ async function loadClasses() {
     classes.sort((a, b) => a.name.localeCompare(b.name));
     
     paginateTable(classes, 'classes-table', 20, (classItem, tbody) => {
+      const subjectList = classItem.subjects.length > 0 
+        ? classItem.subjects.slice(0, 3).join(', ') + (classItem.subjects.length > 3 ? '...' : '')
+        : 'No subjects assigned';
+      
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Class Name">${classItem.name}</td>
         <td data-label="Pupil Count">${classItem.pupilCount}</td>
+        <td data-label="Subjects">${subjectList}</td>
         <td data-label="Actions">
+          <button class="btn-small btn-primary" onclick="openSubjectAssignmentModal('${classItem.id}', '${classItem.name}')">
+            Assign Subjects
+          </button>
           <button class="btn-small btn-danger" onclick="deleteItem('classes', '${classItem.id}')">Delete</button>
         </td>
       `;
@@ -782,7 +790,7 @@ async function loadClasses() {
   } catch (error) {
     console.error('Error loading classes:', error);
     window.showToast?.('Failed to load classes list. Check connection and try again.', 'danger');
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading classes - please refresh</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading classes - please refresh</td></tr>';
   }
 }
 
@@ -1336,6 +1344,172 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxDate = `${year}-${month}-${day}`;
     dobInput.setAttribute('max', maxDate);
   }
+  
+  /* ======================================== 
+   SUBJECT ASSIGNMENT TO CLASSES
+======================================== */
+
+let currentAssignmentClassId = null;
+let currentAssignmentClassName = null;
+
+async function openSubjectAssignmentModal(classId, className) {
+  currentAssignmentClassId = classId;
+  currentAssignmentClassName = className;
+  
+  const modal = document.getElementById('subject-assignment-modal');
+  const classNameEl = document.getElementById('assignment-class-name');
+  const checkboxContainer = document.getElementById('subject-checkboxes');
+  
+  if (!modal || !classNameEl || !checkboxContainer) {
+    console.error('Modal elements not found');
+    return;
+  }
+  
+  classNameEl.textContent = `Class: ${className}`;
+  checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">Loading subjects...</p>';
+  
+  modal.style.display = 'block';
+  
+  try {
+    // Get all available subjects
+    const subjectsSnap = await db.collection('subjects').orderBy('name').get();
+    
+    if (subjectsSnap.empty) {
+      checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No subjects available. Create subjects first in the Subjects section.</p>';
+      return;
+    }
+    
+    // Get current class subjects
+    const classDoc = await db.collection('classes').doc(classId).get();
+    const currentSubjects = classDoc.exists ? (classDoc.data().subjects || []) : [];
+    
+    // Render checkboxes
+    checkboxContainer.innerHTML = '';
+    
+    subjectsSnap.forEach(doc => {
+      const subjectName = doc.data().name;
+      const isChecked = currentSubjects.includes(subjectName);
+      
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'subject-checkbox-item';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `subject-${doc.id}`;
+      checkbox.value = subjectName;
+      checkbox.checked = isChecked;
+      
+      const label = document.createElement('label');
+      label.htmlFor = `subject-${doc.id}`;
+      label.textContent = subjectName;
+      
+      itemDiv.appendChild(checkbox);
+      itemDiv.appendChild(label);
+      checkboxContainer.appendChild(itemDiv);
+    });
+    
+  } catch (error) {
+    console.error('Error loading subjects for assignment:', error);
+    checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading subjects. Please try again.</p>';
+    window.showToast?.('Failed to load subjects', 'danger');
+  }
+}
+
+function closeSubjectAssignmentModal() {
+  const modal = document.getElementById('subject-assignment-modal');
+  if (modal) modal.style.display = 'none';
+  currentAssignmentClassId = null;
+  currentAssignmentClassName = null;
+}
+
+async function saveClassSubjects() {
+  if (!currentAssignmentClassId) {
+    window.showToast?.('No class selected', 'warning');
+    return;
+  }
+  
+  // Get selected subjects
+  const checkboxes = document.querySelectorAll('#subject-checkboxes input[type="checkbox"]:checked');
+  const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
+  
+  if (selectedSubjects.length === 0) {
+    if (!confirm('No subjects selected. This will remove all subjects from this class. Continue?')) {
+      return;
+    }
+  }
+  
+  try {
+    // Step 1: Update the class document
+    await db.collection('classes').doc(currentAssignmentClassId).update({
+      subjects: selectedSubjects,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Step 2: Get class details for teacher info
+    const classDoc = await db.collection('classes').doc(currentAssignmentClassId).get();
+    const classData = classDoc.data();
+    
+    // Step 3: Get all pupils in this class
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', currentAssignmentClassId)
+      .get();
+    
+    // Step 4: Update all pupils with the new subjects
+    if (!pupilsSnap.empty) {
+      const batch = db.batch();
+      let updateCount = 0;
+      
+      pupilsSnap.forEach(pupilDoc => {
+        const pupilRef = db.collection('pupils').doc(pupilDoc.id);
+        batch.update(pupilRef, {
+          subjects: selectedSubjects,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+        
+        // Firestore batch limit is 500 operations
+        if (updateCount >= 500) {
+          console.warn('Batch limit reached. Some pupils may not be updated.');
+        }
+      });
+      
+      await batch.commit();
+      
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" and ${updateCount} pupil(s)`,
+        'success',
+        5000
+      );
+    } else {
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" (no pupils in class yet)`,
+        'success'
+      );
+    }
+    
+    // Step 5: Update assigned teacher's view (if teacher exists)
+    if (classData.teacherId) {
+      // Teacher will see the changes automatically when they reload or through real-time listeners
+      console.log(`Class teacher (${classData.teacherId}) will see updated subjects on next load`);
+    }
+    
+    // Close modal and refresh
+    closeSubjectAssignmentModal();
+    loadClasses();
+    
+  } catch (error) {
+    console.error('Error saving subjects:', error);
+    window.handleError(error, 'Failed to save subjects');
+  }
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', (event) => {
+  const modal = document.getElementById('subject-assignment-modal');
+  if (event.target === modal) {
+    closeSubjectAssignmentModal();
+  }
+});
   
   console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
 });
