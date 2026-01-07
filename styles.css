@@ -195,6 +195,44 @@ h5, h6 { font-size: var(--text-xl); }
 }
 
 /* ============================================
+   SECTION SPACING - TIGHTER FOR BETTER FLOW
+   ============================================ */
+section {
+    padding: var(--space-16) 0; /* Reduced from var(--space-20) = 5rem → 4rem (~64px) */
+}
+
+.programs-section,
+.testimonials-section,
+.gallery-teaser,
+.cta-section {
+    padding: var(--space-12) 0; /* Even tighter for colored/alternating sections (~48px) */
+}
+
+/* Reduce gaps inside grids/cards */
+.grid,
+.features-grid {
+    gap: var(--space-6); /* Was var(--space-8) */
+    margin-bottom: var(--space-12); /* Reduced */
+}
+
+/* Hero to first section transition */
+.main-content > section:first-child {
+    padding-top: var(--space-12); /* Less gap after hero */
+}
+
+/* Footer top margin */
+.site-footer {
+    margin-top: var(--space-16); /* Reduced from var(--space-20) */
+}
+
+/* Mobile fine-tuning */
+@media (max-width: 768px) {
+    section {
+        padding: var(--space-12) 0;
+    }
+}
+
+/* ============================================
    ACCESSIBILITY
    ============================================ */
 .skip-link {
