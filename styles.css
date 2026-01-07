@@ -434,7 +434,8 @@ small { font-size: var(--text-sm); }
     padding: 0;
     overflow: hidden;
     color: var(--color-white);
-    text-align: left; /* Allows text to flow freely instead of being strictly centered */
+    text-align: left;
+    background-color: #1a1a1a; /* ADD THIS - dark fallback while images load */
 }
 
 /* Hero slideshow container */
@@ -445,7 +446,7 @@ small { font-size: var(--text-sm); }
     z-index: 0;
 }
 
-/* All images start hidden */
+/* First image visible by default, others hidden */
 .hero-slideshow img {
     position: absolute;
     inset: 0;
@@ -455,6 +456,11 @@ small { font-size: var(--text-sm); }
     object-position: center;
     opacity: 0;
     transition: opacity 1s ease-in-out;
+}
+
+/* Show first image immediately */
+.hero-slideshow img:first-child {
+    opacity: 1;
 }
 
 /* Visible image */
