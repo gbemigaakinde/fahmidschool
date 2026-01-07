@@ -280,6 +280,19 @@ section {
     margin-bottom: var(--space-16);
 }
 
+/* Universal content breathing room */
+section .container > *:not(:last-child) {
+    margin-bottom: var(--space-8);
+}
+
+section .container > h2 {
+    margin-bottom: var(--space-12) !important;
+}
+
+section .container > p.lead {
+    margin-bottom: var(--space-10) !important;
+}
+
 /* ============================================
    SIDEBAR NAVIGATION
    ============================================ */
@@ -2592,9 +2605,13 @@ address strong {
 
 .gallery-carousel {
     overflow: hidden;
-    margin: var(--space-12) 0;
+    margin: var(--space-16) 0; /* Increased from space-12 to space-16 */
     border-radius: var(--radius-xl);
     position: relative;
+}
+
+.gallery-teaser .btn {
+    margin-top: var(--space-12); /* Add space before the button */
 }
 
 .gallery-track {
