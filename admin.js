@@ -1165,51 +1165,60 @@ async function saveClassSubjects() {
   }
 
   try {
-    await db.collection('classes').doc(currentAssignmentClassId).update({
-      subjects: selectedSubjects,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    const classDoc = await db.collection('classes').doc(currentAssignmentClassId).get();
-    const classData = classDoc.data();
-
-    const pupilsSnap = await db
-      .collection('pupils')
-      .where('class.id', '==', currentAssignmentClassId)
-      .get();
-
-    if (!pupilsSnap.empty) {
-      const batch = db.batch();
-      let updateCount = 0;
-
+    // CRITICAL FIX: Use transaction for atomic updates
+    await db.runTransaction(async (transaction) => {
+      const classRef = db.collection('classes').doc(currentAssignmentClassId);
+      
+      // Read class document
+      const classDoc = await transaction.get(classRef);
+      if (!classDoc.exists) {
+        throw new Error('Class not found');
+      }
+      
+      const classData = classDoc.data();
+      
+      // Read all pupils in this class BEFORE any updates
+      const pupilsSnap = await db
+        .collection('pupils')
+        .where('class.id', '==', currentAssignmentClassId)
+        .get();
+      
+      console.log(`Found ${pupilsSnap.size} pupils to update`);
+      
+      // Update class subjects
+      transaction.update(classRef, {
+        subjects: selectedSubjects,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Update all pupils' subjects atomically
       pupilsSnap.forEach(pupilDoc => {
-        batch.update(db.collection('pupils').doc(pupilDoc.id), {
+        transaction.update(pupilDoc.ref, {
           subjects: selectedSubjects,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        updateCount++;
       });
+      
+      console.log('✓ Transaction prepared with all updates');
+    });
 
-      await batch.commit();
-
-      window.showToast?.(
-        `✓ Subjects updated for class "${currentAssignmentClassName}" and ${updateCount} pupil(s)`,
-        'success',
-        5000
-      );
-    } else {
-      window.showToast?.(
-        `✓ Subjects updated for class "${currentAssignmentClassName}" (no pupils in class yet)`,
-        'success'
-      );
-    }
+    window.showToast?.(
+      `✓ Subjects updated atomically for class "${currentAssignmentClassName}"`,
+      'success',
+      5000
+    );
 
     closeSubjectAssignmentModal();
     loadClasses();
 
   } catch (error) {
     console.error('Error saving subjects:', error);
-    window.handleError(error, 'Failed to save subjects');
+    
+    if (error.message === 'Class not found') {
+      window.showToast?.('Class no longer exists', 'danger');
+    } else {
+      window.handleError(error, 'Failed to save subjects');
+    }
   }
 }
 
