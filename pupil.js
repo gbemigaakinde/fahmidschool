@@ -214,11 +214,11 @@ async function loadPupilProfile(user) {
         // Load results
         await loadResults();
 
-        // FIXED: Set up listeners with re-entry prevention
+    // FIXED: Set up listeners with improved re-entry prevention
         pupilListener = db.collection('pupils').doc(currentPupilId)
             .onSnapshot(
                 async snap => {
-                    // FIXED: Prevent recursive updates
+                    // CRITICAL: Prevent recursive updates
                     if (window.isUpdatingProfile) {
                         console.log('Profile update in progress, skipping listener callback');
                         return;
@@ -239,7 +239,7 @@ async function loadPupilProfile(user) {
                             currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
                             currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
                             
-                            // Update UI directly without calling loadPupilProfile again
+                            // CRITICAL: Only update UI directly, do NOT call loadPupilProfile
                             renderProfile({
                                 name: updatedData.name || '-',
                                 dob: updatedData.dob || '-',
@@ -270,9 +270,16 @@ async function loadPupilProfile(user) {
 
                             // Reload results in case they changed
                             await loadResults();
+                            
+                            console.log('✓ Profile updated from listener');
                         }
+                    } catch (error) {
+                        console.error('Error in pupil listener:', error);
                     } finally {
-                        window.isUpdatingProfile = false;
+                        // CRITICAL: Clear flag after delay to prevent rapid re-entry
+                        setTimeout(() => {
+                            window.isUpdatingProfile = false;
+                        }, 500);
                     }
                 },
                 error => {
@@ -280,7 +287,7 @@ async function loadPupilProfile(user) {
                     window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
                 }
             );
-
+            
         // Live update: watch class doc for subject changes (only if we have a class ID)
         if (classId) {
             classListener = db.collection('classes').doc(classId)
