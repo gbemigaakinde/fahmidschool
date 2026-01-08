@@ -1560,7 +1560,15 @@ async function loadCurrentSettings() {
   try {
     // CRITICAL FIX: Initialize class hierarchy FIRST
     console.log('Initializing class hierarchy...');
-    await window.classHierarchy.initializeClassHierarchy();
+    const hierarchyStatus = await window.classHierarchy.initializeClassHierarchy();
+    
+    if (hierarchyStatus && hierarchyStatus.isEmpty) {
+      window.showToast?.(
+        '⚠️ Class hierarchy is empty! Please configure your class names in the "Class Progression Order" section below.',
+        'warning',
+        8000
+      );
+    }
     console.log('✓ Class hierarchy ready');
     
     const settingsDoc = await db.collection('settings').doc('current').get();
@@ -1848,13 +1856,22 @@ function renderHierarchyUI(hierarchy) {
 function addHierarchyItem(level) {
   if (!currentHierarchy) return;
 
+  // Generate a generic placeholder name
+  const count = currentHierarchy[level].length + 1;
   const newClassName =
     level === 'nursery'
-      ? `Nursery ${currentHierarchy.nursery.length + 1}`
-      : `Primary ${currentHierarchy.primary.length + 1}`;
+      ? `Nursery Class ${count}`
+      : `Class ${count}`;
 
   currentHierarchy[level].push(newClassName);
   renderHierarchyUI(currentHierarchy);
+  
+  // Alert user to rename it
+  window.showToast?.(
+    `✓ Class added as "${newClassName}". Click the text to edit and rename it to anything you want!`,
+    'info',
+    5000
+  );
 }
 
 function removeHierarchyItem(level, index) {
@@ -1942,26 +1959,28 @@ async function saveHierarchySettings() {
 
 async function resetHierarchyToDefault() {
   const confirmation = confirm(
-    'Reset to default class hierarchy?\n\n' +
-    'This will restore:\n' +
-    '• Nursery 1, Nursery 2\n' +
-    '• Primary 1 through Primary 6\n\n' +
+    'Reset class hierarchy to EMPTY?\n\n' +
+    'This will:\n' +
+    '• Remove ALL current classes from the progression order\n' +
+    '• You will need to add your classes again manually\n' +
+    '• Classes can have ANY names you want\n\n' +
     'Continue?'
   );
 
   if (!confirmation) return;
 
   try {
-    const defaultHierarchy =
-      window.classHierarchy.DEFAULT_CLASS_HIERARCHY;
+    const emptyHierarchy = {
+      nursery: [],
+      primary: []
+    };
 
-    const result =
-      await window.classHierarchy.saveClassHierarchy(defaultHierarchy);
+    const result = await window.classHierarchy.saveClassHierarchy(emptyHierarchy);
 
     if (result.success) {
-      currentHierarchy = defaultHierarchy;
+      currentHierarchy = emptyHierarchy;
       renderHierarchyUI(currentHierarchy);
-      window.showToast?.('✓ Hierarchy reset to default', 'success');
+      window.showToast?.('✓ Hierarchy cleared. Add your custom class names now!', 'success');
     } else {
       window.showToast?.('Failed to reset hierarchy', 'danger');
     }
