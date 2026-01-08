@@ -20,51 +20,103 @@ const DEFAULT_CLASS_HIERARCHY = {
 
 /**
  * Get the complete class hierarchy from Firestore
- * Falls back to default if not found
+ * Sources classes from the 'classes' collection
+ * Returns them in the saved progression order
  */
 async function getClassHierarchy() {
   try {
     const doc = await db.collection('settings').doc('classHierarchy').get();
     
-    if (doc.exists) {
-      return doc.data().hierarchy || DEFAULT_CLASS_HIERARCHY;
+    if (doc.exists && doc.data().orderedClassIds) {
+      // New format: ordered list of class IDs
+      return doc.data();
     }
     
-    return DEFAULT_CLASS_HIERARCHY;
+    // If no hierarchy saved yet, return empty
+    return {
+      orderedClassIds: [],
+      lastUpdated: null
+    };
   } catch (error) {
     console.error('Error loading class hierarchy:', error);
-    return DEFAULT_CLASS_HIERARCHY;
+    return {
+      orderedClassIds: [],
+      lastUpdated: null
+    };
   }
 }
 
 /**
  * Get all classes in order (nursery first, then primary)
  */
-function getAllClassesInOrder(hierarchy) {
-  const allClasses = [];
-  
-  if (hierarchy.nursery && Array.isArray(hierarchy.nursery)) {
-    allClasses.push(...hierarchy.nursery);
+/**
+ * Get all classes from the classes collection in hierarchical order
+ * If no order is saved, returns classes sorted alphabetically
+ */
+async function getAllClassesInOrder() {
+  try {
+    // Get all classes from Firestore
+    const classesSnapshot = await db.collection('classes').orderBy('name').get();
+    
+    if (classesSnapshot.empty) {
+      return [];
+    }
+    
+    const allClasses = [];
+    classesSnapshot.forEach(doc => {
+      allClasses.push({
+        id: doc.id,
+        name: doc.data().name || 'Unnamed Class'
+      });
+    });
+    
+    // Get saved hierarchy order
+    const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+    
+    if (hierarchyDoc.exists && hierarchyDoc.data().orderedClassIds) {
+      const orderedIds = hierarchyDoc.data().orderedClassIds;
+      
+      // Sort classes according to saved order
+      const orderedClasses = [];
+      orderedIds.forEach(classId => {
+        const found = allClasses.find(c => c.id === classId);
+        if (found) orderedClasses.push(found);
+      });
+      
+      // Add any new classes that aren't in the order yet (append to end)
+      allClasses.forEach(cls => {
+        if (!orderedIds.includes(cls.id)) {
+          orderedClasses.push(cls);
+        }
+      });
+      
+      return orderedClasses;
+    }
+    
+    // No saved order - return alphabetically
+    return allClasses.sort((a, b) => a.name.localeCompare(b.name));
+    
+  } catch (error) {
+    console.error('Error getting classes in order:', error);
+    return [];
   }
-  
-  if (hierarchy.primary && Array.isArray(hierarchy.primary)) {
-    allClasses.push(...hierarchy.primary);
-  }
-  
-  return allClasses;
 }
 
-/**
+/**/**
  * Get the next class in progression
- * @param {string} currentClassName - Current class name (e.g., "Primary 3")
+ * @param {string} currentClassName - Current class name (e.g., "Apple Class", "Team A", etc.)
  * @returns {string|null} - Next class name or null if terminal class
  */
 async function getNextClass(currentClassName) {
   try {
-    const hierarchy = await getClassHierarchy();
-    const allClasses = getAllClassesInOrder(hierarchy);
+    const allClasses = await getAllClassesInOrder();
     
-    const currentIndex = allClasses.indexOf(currentClassName);
+    if (allClasses.length === 0) {
+      console.warn('No classes configured in system');
+      return null;
+    }
+    
+    const currentIndex = allClasses.findIndex(c => c.name === currentClassName);
     
     if (currentIndex === -1) {
       console.warn(`Class "${currentClassName}" not found in hierarchy`);
@@ -72,11 +124,11 @@ async function getNextClass(currentClassName) {
     }
     
     if (currentIndex === allClasses.length - 1) {
-      // Terminal class (last class)
+      // Terminal class (last class in order)
       return null;
     }
     
-    return allClasses[currentIndex + 1];
+    return allClasses[currentIndex + 1].name;
   } catch (error) {
     console.error('Error getting next class:', error);
     return null;
@@ -84,16 +136,21 @@ async function getNextClass(currentClassName) {
 }
 
 /**
- * Check if a class is the terminal class (Primary 6)
+ * Check if a class is the terminal (last) class in the progression order
  * @param {string} className - Class name to check
  * @returns {boolean} - True if terminal class
  */
 async function isTerminalClass(className) {
   try {
-    const hierarchy = await getClassHierarchy();
-    const allClasses = getAllClassesInOrder(hierarchy);
+    const allClasses = await getAllClassesInOrder();
     
-    return allClasses.indexOf(className) === allClasses.length - 1;
+    if (allClasses.length === 0) {
+      console.warn('No classes configured');
+      return false;
+    }
+    
+    const lastClass = allClasses[allClasses.length - 1];
+    return lastClass.name === className;
   } catch (error) {
     console.error('Error checking terminal class:', error);
     return false;
@@ -101,16 +158,15 @@ async function isTerminalClass(className) {
 }
 
 /**
- * Get the grade level number for a class
+ * Get the position/level number for a class in the progression order
  * @param {string} className - Class name
- * @returns {number} - Grade level (1-8, where Nursery 1 = 1, Primary 6 = 8)
+ * @returns {number} - Position level (1 for first class, 2 for second, etc.)
  */
 async function getGradeLevel(className) {
   try {
-    const hierarchy = await getClassHierarchy();
-    const allClasses = getAllClassesInOrder(hierarchy);
+    const allClasses = await getAllClassesInOrder();
     
-    const index = allClasses.indexOf(className);
+    const index = allClasses.findIndex(c => c.name === className);
     return index === -1 ? 0 : index + 1;
   } catch (error) {
     console.error('Error getting grade level:', error);
@@ -119,16 +175,22 @@ async function getGradeLevel(className) {
 }
 
 /**
- * Save class hierarchy to Firestore
- * @param {object} hierarchy - Hierarchy object with nursery and primary arrays
+ * Save class progression order to Firestore
+ * @param {Array} orderedClassIds - Array of class IDs in progression order
  */
-async function saveClassHierarchy(hierarchy) {
+async function saveClassHierarchy(orderedClassIds) {
   try {
+    if (!Array.isArray(orderedClassIds)) {
+      console.error('orderedClassIds must be an array');
+      return { success: false, error: 'Invalid input' };
+    }
+    
     await db.collection('settings').doc('classHierarchy').set({
-      hierarchy,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      orderedClassIds: orderedClassIds,
+      lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
     });
     
+    console.log('✓ Class progression order saved:', orderedClassIds);
     return { success: true };
   } catch (error) {
     console.error('Error saving class hierarchy:', error);
@@ -138,44 +200,50 @@ async function saveClassHierarchy(hierarchy) {
 
 /**
  * Initialize class hierarchy if it doesn't exist
- * Does NOT auto-create - admin must configure manually
- */
-/**
- * Initialize class hierarchy if it doesn't exist
- * ALWAYS starts empty - admin must configure custom class names
+ * Auto-detects classes from 'classes' collection
  */
 async function initializeClassHierarchy() {
   try {
     const doc = await db.collection('settings').doc('classHierarchy').get();
     
     if (!doc.exists) {
-      console.log('⚠️ Class hierarchy not configured. Admin MUST add classes in School Settings.');
-      console.log('Classes can be named anything: "Apple Class", "Goat 1", "Team Awesome", etc.');
+      // Get all existing classes
+      const classesSnapshot = await db.collection('classes').orderBy('name').get();
       
-      // Create completely empty structure
+      if (classesSnapshot.empty) {
+        console.log('⚠️ No classes created yet. Create classes first, then set progression order.');
+        
+        // Create empty structure
+        await db.collection('settings').doc('classHierarchy').set({
+          orderedClassIds: [],
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        return { success: true, isEmpty: true };
+      }
+      
+      // Auto-initialize with alphabetical order
+      const classIds = classesSnapshot.docs.map(doc => doc.id);
+      
       await db.collection('settings').doc('classHierarchy').set({
-        hierarchy: {
-          nursery: [],
-          primary: []
-        },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        instructions: 'Add your class names in School Settings > Class Progression Order'
+        orderedClassIds: classIds,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+        note: 'Auto-initialized in alphabetical order. Rearrange in School Settings if needed.'
       });
       
-      return { success: true, isEmpty: true };
+      console.log(`✓ Class hierarchy auto-initialized with ${classIds.length} classes in alphabetical order`);
+      return { success: true, isEmpty: false, autoInitialized: true };
     }
     
-    // Check if hierarchy exists but is empty
     const data = doc.data();
-    const hierarchy = data.hierarchy || { nursery: [], primary: [] };
-    const totalClasses = (hierarchy.nursery?.length || 0) + (hierarchy.primary?.length || 0);
+    const orderedIds = data.orderedClassIds || [];
     
-    if (totalClasses === 0) {
-      console.warn('⚠️ Class hierarchy is empty! Admin must configure it in School Settings.');
+    if (orderedIds.length === 0) {
+      console.warn('⚠️ Class progression order is empty! Admin should arrange classes in School Settings.');
       return { success: true, isEmpty: true };
     }
     
-    console.log(`✓ Class hierarchy loaded: ${totalClasses} classes configured`);
+    console.log(`✓ Class hierarchy loaded: ${orderedIds.length} classes in progression order`);
     return { success: true, isEmpty: false };
     
   } catch (error) {
