@@ -1602,19 +1602,23 @@ INITIALIZATION
 
 document.addEventListener('DOMContentLoaded', async () => {
   showSection('dashboard');
-
+  
+  // Set maximum date for date of birth (today's date)
   const dobInput = document.getElementById('pupil-dob');
   if (dobInput) {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
-
     const maxDate = `${year}-${month}-${day}`;
     dobInput.setAttribute('max', maxDate);
   }
-
+  
+  // Initialize class hierarchy if it doesn't exist
   await window.classHierarchy.initializeClassHierarchy();
+  
+  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+});
 
 /* ======================================== 
    CLASS HIERARCHY MANAGEMENT
