@@ -36,14 +36,33 @@ checkRole('pupil')
 
 async function initReport(user) {
     try {
+        console.log('=== Initializing Report (Fixed) ===');
+        
+        // STEP 1: Load school settings FIRST (needed by everything)
+        console.log('Step 1: Loading school settings...');
         await fetchSchoolSettings();
+        console.log('✓ Settings loaded:', currentSettings);
+        
+        // STEP 2: Load pupil profile SECOND (needs settings to be ready)
+        console.log('Step 2: Loading pupil profile...');
         await fetchPupilProfile(user.uid);
+        console.log('✓ Profile loaded for:', pupilProfile?.name);
+        
+        // STEP 3: Setup UI components (now safe with loaded data)
+        console.log('Step 3: Setting up UI...');
         setupTermSelector();
         updateReportHeader();
+        console.log('✓ UI ready');
+        
+        // STEP 4: Load report data LAST (needs profile and settings)
+        console.log('Step 4: Loading report data...');
         await loadReportData();
+        console.log('✓ Report data loaded');
+        
+        console.log('=== Report Initialization Complete ===');
     } catch (error) {
-        console.error(error);
-        window.showToast?.('Unable to load report card', 'danger');
+        console.error('=== Report Initialization Failed ===', error);
+        window.showToast?.('Unable to load report card. Please refresh the page.', 'danger');
     }
 }
 
