@@ -10,20 +10,11 @@
 
 'use strict';
 
-// Default class hierarchy
+// Default class hierarchy - Empty by default, admin must configure
 const DEFAULT_CLASS_HIERARCHY = {
-  nursery: [
-    "Nursery 1",
-    "Nursery 2"
-  ],
-  primary: [
-    "Primary 1",
-    "Primary 2",
-    "Primary 3",
-    "Primary 4",
-    "Primary 5",
-    "Primary 6"
-  ]
+  nursery: [],
+  kindergarten: [],
+  primary: []
 };
 
 /**
@@ -146,18 +137,22 @@ async function saveClassHierarchy(hierarchy) {
 
 /**
  * Initialize class hierarchy if it doesn't exist
+ * Does NOT auto-create - admin must configure manually
  */
 async function initializeClassHierarchy() {
   try {
     const doc = await db.collection('settings').doc('classHierarchy').get();
     
     if (!doc.exists) {
-      console.log('Initializing default class hierarchy...');
-      await saveClassHierarchy(DEFAULT_CLASS_HIERARCHY);
-      console.log('✓ Class hierarchy initialized');
+      console.log('⚠️ Class hierarchy not configured. Admin must set it up in School Settings.');
+      // Create empty structure only
+      await db.collection('settings').doc('classHierarchy').set({
+        hierarchy: DEFAULT_CLASS_HIERARCHY,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
   } catch (error) {
-    console.error('Error initializing class hierarchy:', error);
+    console.error('Error checking class hierarchy:', error);
   }
 }
 
