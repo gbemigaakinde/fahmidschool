@@ -176,7 +176,7 @@ async function loadDashboardStats() {
     document.getElementById('pupil-count').textContent = pupilsSnap.size;
     document.getElementById('class-count').textContent = classesSnap.size;
     document.getElementById('announce-count').textContent = announcementsSnap.size;
-  } catch (error) {
+} catch (error) {
     console.error('Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
     document.getElementById('teacher-count').textContent = '0';
