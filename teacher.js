@@ -175,7 +175,8 @@ const sectionLoaders = {
   'enter-results': loadResultsSection,
   attendance: loadAttendanceSection,
   'traits-skills': loadTraitsSection,
-  remarks: loadRemarksSection
+  remarks: loadRemarksSection,
+  promotions: loadPromotionSection
 };
 
 function showSection(sectionId) {
@@ -780,5 +781,346 @@ async function saveRemarks() {
     window.handleError(err, 'Failed to save remarks');
   }
 }
+
+/* ======================================== 
+   CLASS PROMOTION
+======================================== */
+
+let promotionData = {
+  currentClassName: null,
+  nextClassName: null,
+  isTerminalClass: false,
+  promotionPeriodActive: false
+};
+
+async function loadPromotionSection() {
+  try {
+    // Check if promotion period is active
+    const settings = await window.getCurrentSettings();
+    promotionData.promotionPeriodActive = settings.promotionPeriodActive || false;
+    
+    const statusBanner = document.getElementById('promotion-status-banner');
+    const disabledBanner = document.getElementById('promotion-disabled-banner');
+    const controls = document.getElementById('promotion-controls');
+    const tableContainer = document.getElementById('promotion-table-container');
+    
+    if (promotionData.promotionPeriodActive) {
+      if (statusBanner) statusBanner.style.display = 'flex';
+      if (disabledBanner) disabledBanner.style.display = 'none';
+    } else {
+      if (statusBanner) statusBanner.style.display = 'none';
+      if (disabledBanner) disabledBanner.style.display = 'flex';
+      if (controls) controls.style.display = 'none';
+      if (tableContainer) tableContainer.style.display = 'none';
+      return;
+    }
+    
+    // Check if teacher has assigned classes
+    if (assignedClasses.length === 0) {
+      document.getElementById('no-class-message').style.display = 'block';
+      if (controls) controls.style.display = 'none';
+      if (tableContainer) tableContainer.style.display = 'none';
+      return;
+    } else {
+      document.getElementById('no-class-message').style.display = 'none';
+    }
+    
+    // Get first assigned class (teacher should only have one for promotion)
+    const currentClass = assignedClasses[0];
+    promotionData.currentClassName = currentClass.name;
+    
+    // Display current class
+    document.getElementById('promotion-current-class').textContent = currentClass.name;
+    
+    // Get next class in hierarchy
+    const nextClass = await window.classHierarchy.getNextClass(currentClass.name);
+    promotionData.nextClassName = nextClass;
+    
+    // Check if terminal class
+    promotionData.isTerminalClass = await window.classHierarchy.isTerminalClass(currentClass.name);
+    
+    if (promotionData.isTerminalClass) {
+      document.getElementById('promotion-next-class').textContent = 'Graduation (Alumni)';
+      document.getElementById('terminal-class-message').style.display = 'block';
+    } else if (nextClass) {
+      document.getElementById('promotion-next-class').textContent = nextClass;
+      document.getElementById('terminal-class-message').style.display = 'none';
+    } else {
+      document.getElementById('promotion-next-class').textContent = 'Not defined';
+      window.showToast?.('Next class not found in hierarchy. Contact admin.', 'warning', 6000);
+      if (controls) controls.style.display = 'none';
+      if (tableContainer) tableContainer.style.display = 'none';
+      return;
+    }
+    
+    // Load pupils with performance data
+    await loadPromotionPupils();
+    
+    // Show controls and table
+    if (controls) controls.style.display = 'flex';
+    if (tableContainer) tableContainer.style.display = 'block';
+    
+  } catch (error) {
+    console.error('Error loading promotion section:', error);
+    window.showToast?.('Failed to load promotion section', 'danger');
+  }
+}
+
+async function loadPromotionPupils() {
+  const tbody = document.getElementById('promotion-pupils-table');
+  if (!tbody || allPupils.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils in your class</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading pupils and calculating averages...</td></tr>';
+  
+  try {
+    // Get current term
+    const settings = await window.getCurrentSettings();
+    const currentTerm = settings.term;
+    
+    // Calculate average for each pupil
+    const pupilsWithScores = await Promise.all(
+      allPupils.map(async pupil => {
+        const average = await calculatePupilAverage(pupil.id, currentTerm);
+        return {
+          ...pupil,
+          average: average.average,
+          grade: average.grade
+        };
+      })
+    );
+    
+    // Sort by average (highest first)
+    pupilsWithScores.sort((a, b) => b.average - a.average);
+    
+    tbody.innerHTML = '';
+    
+    pupilsWithScores.forEach(pupil => {
+      const tr = document.createElement('tr');
+      const avgDisplay = pupil.average > 0 ? `${pupil.average.toFixed(1)}%` : 'No results';
+      const gradeClass = pupil.grade ? `grade-${pupil.grade}` : '';
+      
+      tr.innerHTML = `
+        <td style="text-align:center;">
+          <input type="checkbox" 
+                 class="pupil-promote-checkbox" 
+                 data-pupil-id="${pupil.id}" 
+                 data-pupil-name="${pupil.name}"
+                 ${pupil.average >= 40 ? 'checked' : ''}>
+        </td>
+        <td data-label="Name"><strong>${pupil.name}</strong></td>
+        <td data-label="Average" style="text-align:center;">${avgDisplay}</td>
+        <td data-label="Grade" style="text-align:center;" class="${gradeClass}">${pupil.grade || '-'}</td>
+        <td data-label="Status" style="text-align:center;">
+          <span class="status-badge ${pupil.average >= 40 ? 'status-promote' : 'status-hold'}">
+            ${pupil.average >= 40 ? 'Promote' : 'Review'}
+          </span>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    // Update select all checkbox state
+    updateSelectAllCheckbox();
+    
+  } catch (error) {
+    console.error('Error loading promotion pupils:', error);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading pupils</td></tr>';
+  }
+}
+
+async function calculatePupilAverage(pupilId, term) {
+  try {
+    const resultsSnap = await db.collection('results')
+      .where('pupilId', '==', pupilId)
+      .where('term', '==', term)
+      .get();
+    
+    if (resultsSnap.empty) {
+      return { average: 0, grade: null };
+    }
+    
+    let totalScore = 0;
+    let subjectCount = 0;
+    
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      const score = (data.caScore || 0) + (data.examScore || 0);
+      totalScore += score;
+      subjectCount++;
+    });
+    
+    const average = subjectCount > 0 ? totalScore / subjectCount : 0;
+    const grade = getGradeFromScore(average);
+    
+    return { average, grade };
+  } catch (error) {
+    console.error('Error calculating average:', error);
+    return { average: 0, grade: null };
+  }
+}
+
+function getGradeFromScore(score) {
+  if (score >= 75) return 'A1';
+  if (score >= 70) return 'B2';
+  if (score >= 65) return 'B3';
+  if (score >= 60) return 'C4';
+  if (score >= 55) return 'C5';
+  if (score >= 50) return 'C6';
+  if (score >= 45) return 'D7';
+  if (score >= 40) return 'D8';
+  return 'F9';
+}
+
+function selectAllForPromotion() {
+  document.querySelectorAll('.pupil-promote-checkbox').forEach(checkbox => {
+    checkbox.checked = true;
+  });
+  updateSelectAllCheckbox();
+}
+
+function deselectAllForPromotion() {
+  document.querySelectorAll('.pupil-promote-checkbox').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  updateSelectAllCheckbox();
+}
+
+function toggleAllPupilsPromotion(masterCheckbox) {
+  const isChecked = masterCheckbox.checked;
+  document.querySelectorAll('.pupil-promote-checkbox').forEach(checkbox => {
+    checkbox.checked = isChecked;
+  });
+}
+
+function updateSelectAllCheckbox() {
+  const allCheckboxes = document.querySelectorAll('.pupil-promote-checkbox');
+  const checkedBoxes = document.querySelectorAll('.pupil-promote-checkbox:checked');
+  const selectAllCheckbox = document.getElementById('select-all-pupils-promo');
+  
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = allCheckboxes.length === checkedBoxes.length;
+    selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < allCheckboxes.length;
+  }
+}
+
+// Listen to individual checkbox changes
+document.addEventListener('change', (e) => {
+  if (e.target.classList.contains('pupil-promote-checkbox')) {
+    updateSelectAllCheckbox();
+  }
+});
+
+async function submitPromotionRequest() {
+  if (!promotionData.currentClassName || !promotionData.nextClassName) {
+    window.showToast?.('Promotion data not loaded. Please refresh the page.', 'danger');
+    return;
+  }
+  
+  // Get selected pupils
+  const checkboxes = document.querySelectorAll('.pupil-promote-checkbox:checked');
+  const promotedPupils = Array.from(checkboxes).map(cb => ({
+    id: cb.dataset.pupilId,
+    name: cb.dataset.pupilName
+  }));
+  
+  // Get unselected pupils (held back)
+  const allCheckboxes = document.querySelectorAll('.pupil-promote-checkbox');
+  const heldBackPupils = Array.from(allCheckboxes)
+    .filter(cb => !cb.checked)
+    .map(cb => ({
+      id: cb.dataset.pupilId,
+      name: cb.dataset.pupilName
+    }));
+  
+  if (promotedPupils.length === 0) {
+    if (!confirm('No pupils selected for promotion. This means all pupils will be held back. Continue?')) {
+      return;
+    }
+  }
+  
+  const confirmation = confirm(
+    `Submit Promotion Request?\n\n` +
+    `✓ Promote: ${promotedPupils.length} pupil(s) to ${promotionData.isTerminalClass ? 'Alumni' : promotionData.nextClassName}\n` +
+    `✗ Hold back: ${heldBackPupils.length} pupil(s) in ${promotionData.currentClassName}\n\n` +
+    `This request will be sent to the admin for approval.`
+  );
+  
+  if (!confirmation) return;
+  
+  const submitBtn = document.getElementById('submit-promotion-btn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="btn-loading">Submitting...</span>';
+  }
+  
+  try {
+    // Get current session
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session;
+    
+    // Find next class ID
+    let toClassId = null;
+    if (!promotionData.isTerminalClass) {
+      const classesSnap = await db.collection('classes')
+        .where('name', '==', promotionData.nextClassName)
+        .limit(1)
+        .get();
+      
+      if (!classesSnap.empty) {
+        toClassId = classesSnap.docs[0].id;
+      } else {
+        window.showToast?.('Next class not found in database. Contact admin.', 'danger');
+        return;
+      }
+    }
+    
+    // Create promotion request
+    await db.collection('promotions').add({
+      fromSession: currentSession,
+      fromClass: {
+        id: assignedClasses[0].id,
+        name: promotionData.currentClassName
+      },
+      toClass: promotionData.isTerminalClass 
+        ? { id: 'alumni', name: 'Alumni' }
+        : { id: toClassId, name: promotionData.nextClassName },
+      isTerminalClass: promotionData.isTerminalClass,
+      promotedPupils: promotedPupils.map(p => p.id),
+      promotedPupilsDetails: promotedPupils,
+      heldBackPupils: heldBackPupils.map(p => p.id),
+      heldBackPupilsDetails: heldBackPupils,
+      initiatedBy: currentUser.uid,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    window.showToast?.(
+      '✓ Promotion request submitted successfully!\nAdmin will review and approve your recommendations.',
+      'success',
+      8000
+    );
+    
+    // Reload section
+    await loadPromotionSection();
+    
+  } catch (error) {
+    console.error('Error submitting promotion request:', error);
+    window.handleError(error, 'Failed to submit promotion request');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '📋 Submit Promotion List';
+    }
+  }
+}
+
+// Make functions globally available
+window.selectAllForPromotion = selectAllForPromotion;
+window.deselectAllForPromotion = deselectAllForPromotion;
+window.toggleAllPupilsPromotion = toggleAllPupilsPromotion;
+window.submitPromotionRequest = submitPromotionRequest;
 
 console.log('✓ Teacher portal v8.0.0 loaded - DUPLICATE CODE REMOVED');
