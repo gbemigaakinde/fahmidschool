@@ -2019,301 +2019,336 @@ async function approvePromotion() {
     window.showToast?.('No promotion selected', 'danger');
     return;
   }
-  
+
   const confirmation = confirm(
     'Approve and Execute Promotion?\n\n' +
-    'This will:\n' +
-    '✓ Move pupils to their new classes\n' +
-    '✓ Update all pupil records\n' +
-    '✓ Move terminal class pupils to alumni (if applicable)\n\n' +
-    'This action cannot be undone. Continue?'
+      'This will:\n' +
+      '✓ Move pupils to their new classes\n' +
+      '✓ Update all pupil records\n' +
+      '✓ Move terminal class pupils to alumni (if applicable)\n\n' +
+      'This action cannot be undone. Continue?'
   );
-  
+
   if (!confirmation) return;
-  
+
   const approveBtn = document.getElementById('approve-promotion-btn');
   if (approveBtn) {
-approveBtn.disabled = true;
-approveBtn.innerHTML = '<span class="btn-loading">Processing...</span>';
-}
-try {
-// Collect overrides from checkboxes
-const finalPromotedPupils = [];
-const finalHeldBackPupils = [];
-document.querySelectorAll('.override-promote-checkbox').forEach(checkbox => {
-  if (checkbox.checked) {
-    finalPromotedPupils.push(checkbox.dataset.pupilId);
-  } else {
-    finalHeldBackPupils.push(checkbox.dataset.pupilId);
+    approveBtn.disabled = true;
+    approveBtn.innerHTML = '<span class="btn-loading">Processing...</span>';
   }
-});
 
-document.querySelectorAll('.override-hold-checkbox').forEach(checkbox => {
-  if (checkbox.checked) {
-    finalPromotedPupils.push(checkbox.dataset.pupilId);
+  try {
+    // Collect overrides from checkboxes
+    const finalPromotedPupils = [];
+    const finalHeldBackPupils = [];
+
+    document.querySelectorAll('.override-promote-checkbox').forEach(checkbox => {
+      if (checkbox.checked) {
+        finalPromotedPupils.push(checkbox.dataset.pupilId);
+      } else {
+        finalHeldBackPupils.push(checkbox.dataset.pupilId);
+      }
+    });
+
+    document.querySelectorAll('.override-hold-checkbox').forEach(checkbox => {
+      if (checkbox.checked) {
+        finalPromotedPupils.push(checkbox.dataset.pupilId);
+      }
+    });
+
+    // Execute promotion
+    await executePromotion(
+      currentPromotionId,
+      finalPromotedPupils,
+      finalHeldBackPupils,
+      manualOverrides
+    );
+
+    window.showToast?.(
+      '✓ Promotion approved and executed successfully!',
+      'success',
+      6000
+    );
+
+    closePromotionDetailsModal();
+    manualOverrides = [];
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error approving promotion:', error);
+    window.handleError(error, 'Failed to approve promotion');
+  } finally {
+    if (approveBtn) {
+      approveBtn.disabled = false;
+      approveBtn.innerHTML = '✓ Approve & Execute';
+    }
   }
-});
-
-// Execute promotion
-await executePromotion(currentPromotionId, finalPromotedPupils, finalHeldBackPupils, manualOverrides);
-
-window.showToast?.(
-  '✓ Promotion approved and executed successfully!',
-  'success',
-  6000
-);
-
-closePromotionDetailsModal();
-manualOverrides = [];
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error approving promotion:', error);
-window.handleError(error, 'Failed to approve promotion');
-} finally {
-if (approveBtn) {
-approveBtn.disabled = false;
-approveBtn.innerHTML = '✓ Approve & Execute';
 }
-}
-}
+
 async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
-const promotionDoc = await db.collection('promotions').doc(promotionId).get();
-const data = promotionDoc.data();
-const batch = db.batch();
-// Handle promoted pupils
-for (const pupilId of promotedPupils) {
-const pupilRef = db.collection('pupils').doc(pupilId);
-if (data.isTerminalClass) {
-  // Move to alumni
-  const pupilDoc = await pupilRef.get();
-  if (pupilDoc.exists) {
-    const pupilData = pupilDoc.data();
-    
-    // Create alumni record
-    await db.collection('alumni').doc(pupilId).set({
-      ...pupilData,
-      graduationSession: data.fromSession,
-      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-      finalClass: data.fromClass.name
-    });
-    
-    // Delete from pupils collection
-    batch.delete(pupilRef);
+  const promotionDoc = await db.collection('promotions').doc(promotionId).get();
+  const data = promotionDoc.data();
+  const batch = db.batch();
+
+  // Handle promoted pupils
+  for (const pupilId of promotedPupils) {
+    const pupilRef = db.collection('pupils').doc(pupilId);
+
+    if (data.isTerminalClass) {
+      // Move to alumni
+      const pupilDoc = await pupilRef.get();
+      if (pupilDoc.exists) {
+        const pupilData = pupilDoc.data();
+
+        // Create alumni record
+        await db.collection('alumni').doc(pupilId).set({
+          ...pupilData,
+          graduationSession: data.fromSession,
+          graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+          finalClass: data.fromClass.name
+        });
+
+        // Delete from pupils collection
+        batch.delete(pupilRef);
+      }
+    } else {
+      // Regular promotion
+      batch.update(pupilRef, {
+        class: {
+          id: data.toClass.id,
+          name: data.toClass.name
+        },
+        promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+          session: data.fromSession,
+          fromClass: data.fromClass.name,
+          toClass: data.toClass.name,
+          promoted: true,
+          date: firebase.firestore.FieldValue.serverTimestamp()
+        })
+      });
+    }
   }
-} else {
-  // Regular promotion
-  batch.update(pupilRef, {
-    class: {
-      id: data.toClass.id,
-      name: data.toClass.name
-    },
-    promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-      session: data.fromSession,
-      fromClass: data.fromClass.name,
-      toClass: data.toClass.name,
-      promoted: true,
-      date: firebase.firestore.FieldValue.serverTimestamp()
-    })
-  });
-}
-// Handle held back pupils
-for (const pupilId of heldBackPupils) {
-const pupilRef = db.collection('pupils').doc(pupilId);
-batch.update(pupilRef, {
-  promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-    session: data.fromSession,
-    fromClass: data.fromClass.name,
-    toClass: data.fromClass.name,
-    promoted: false,
-    reason: 'Held back by admin/teacher decision',
-    date: firebase.firestore.FieldValue.serverTimestamp()
-  })
-});
-}
-// Handle manual overrides
-for (const override of manualOverrides) {
-const pupilRef = db.collection('pupils').doc(override.pupilId);
-if (override.classId === 'alumni') {
-  // Move to alumni
-  const pupilDoc = await pupilRef.get();
-  if (pupilDoc.exists) {
-    const pupilData = pupilDoc.data();
-    
-    await db.collection('alumni').doc(override.pupilId).set({
-      ...pupilData,
-      graduationSession: data.fromSession,
-      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-      finalClass: data.fromClass.name
-    });
-    
-    batch.delete(pupilRef);
-  }
-} else {
-  // Move to specific class
-  const classDoc = await db.collection('classes').doc(override.classId).get();
-  if (classDoc.exists) {
+
+  // Handle held back pupils
+  for (const pupilId of heldBackPupils) {
+    const pupilRef = db.collection('pupils').doc(pupilId);
     batch.update(pupilRef, {
-      class: {
-        id: override.classId,
-        name: classDoc.data().name
-      },
       promotionHistory: firebase.firestore.FieldValue.arrayUnion({
         session: data.fromSession,
         fromClass: data.fromClass.name,
-        toClass: classDoc.data().name,
-        promoted: true,
-        manualOverride: true,
+        toClass: data.fromClass.name,
+        promoted: false,
+        reason: 'Held back by admin/teacher decision',
         date: firebase.firestore.FieldValue.serverTimestamp()
       })
     });
   }
-}
-}
-// Mark promotion as completed
-batch.update(promotionDoc.ref, {
-status: 'completed',
-approvedBy: auth.currentUser.uid,
-approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-executedAt: firebase.firestore.FieldValue.serverTimestamp()
-});
-await batch.commit();
-}
-async function rejectPromotion() {
-if (!currentPromotionId) {
-window.showToast?.('No promotion selected', 'danger');
-return;
-}
-const reason = prompt('Reason for rejection (optional):');
-try {
-await db.collection('promotions').doc(currentPromotionId).update({
-status: 'rejected',
-rejectedBy: auth.currentUser.uid,
-rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-rejectionReason: reason || 'No reason provided'
-});
-window.showToast?.('✓ Promotion request rejected', 'success');
 
-closePromotionDetailsModal();
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error rejecting promotion:', error);
-window.handleError(error, 'Failed to reject promotion');
-}
-}
-async function quickApprovePromotion(promotionId) {
-const confirmation = confirm('Approve this promotion request without modifications?');
-if (!confirmation) return;
-try {
-const doc = await db.collection('promotions').doc(promotionId).get();
-const data = doc.data();
-await executePromotion(
-  promotionId,
-  data.promotedPupils || [],
-  data.heldBackPupils || [],
-  []
-);
+  // Handle manual overrides
+  for (const override of manualOverrides) {
+    const pupilRef = db.collection('pupils').doc(override.pupilId);
 
-window.showToast?.('✓ Promotion approved and executed', 'success');
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error quick approving:', error);
-window.handleError(error, 'Failed to approve promotion');
-}
-}
-async function quickRejectPromotion(promotionId) {
-const confirmation = confirm('Reject this promotion request?');
-if (!confirmation) return;
-try {
-await db.collection('promotions').doc(promotionId).update({
-status: 'rejected',
-rejectedBy: auth.currentUser.uid,
-rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-});
-window.showToast?.('✓ Promotion request rejected', 'success');
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error quick rejecting:', error);
-window.handleError(error, 'Failed to reject promotion');
-}
-}
-async function approveAllPendingPromotions() {
-const confirmation = confirm(
-'Approve ALL pending promotion requests?\n\n' +
-'This will execute all promotions without modifications.\n' +
-'Continue?'
-);
-if (!confirmation) return;
-try {
-const snapshot = await db.collection('promotions')
-.where('status', '==', 'pending')
-.get();
-if (snapshot.empty) {
-  window.showToast?.('No pending requests to approve', 'info');
-  return;
-}
+    if (override.classId === 'alumni') {
+      // Move to alumni
+      const pupilDoc = await pupilRef.get();
+      if (pupilDoc.exists) {
+        const pupilData = pupilDoc.data();
 
-for (const doc of snapshot.docs) {
-  const data = doc.data();
-  await executePromotion(
-    doc.id,
-    data.promotedPupils || [],
-    data.heldBackPupils || [],
-    []
-  );
-}
+        await db.collection('alumni').doc(override.pupilId).set({
+          ...pupilData,
+          graduationSession: data.fromSession,
+          graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+          finalClass: data.fromClass.name
+        });
 
-window.showToast?.(
-  `✓ Approved and executed ${snapshot.size} promotion request(s)`,
-  'success',
-  6000
-);
+        batch.delete(pupilRef);
+      }
+    } else {
+      // Move to specific class
+      const classDoc = await db.collection('classes').doc(override.classId).get();
+      if (classDoc.exists) {
+        batch.update(pupilRef, {
+          class: {
+            id: override.classId,
+            name: classDoc.data().name
+          },
+          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+            session: data.fromSession,
+            fromClass: data.fromClass.name,
+            toClass: classDoc.data().name,
+            promoted: true,
+            manualOverride: true,
+            date: firebase.firestore.FieldValue.serverTimestamp()
+          })
+        });
+      }
+    }
+  }
 
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error approving all promotions:', error);
-window.handleError(error, 'Failed to approve all promotions');
-}
-}
-async function rejectAllPendingPromotions() {
-const confirmation = confirm(
-'Reject ALL pending promotion requests?\n\n' +
-'This action cannot be undone.\n' +
-'Continue?'
-);
-if (!confirmation) return;
-try {
-const snapshot = await db.collection('promotions')
-.where('status', '==', 'pending')
-.get();
-if (snapshot.empty) {
-  window.showToast?.('No pending requests to reject', 'info');
-  return;
-}
-
-const batch = db.batch();
-
-snapshot.forEach(doc => {
-  batch.update(doc.ref, {
-    status: 'rejected',
-    rejectedBy: auth.currentUser.uid,
-    rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    rejectionReason: 'Bulk rejection by admin'
+  // Mark promotion as completed
+  batch.update(promotionDoc.ref, {
+    status: 'completed',
+    approvedBy: auth.currentUser.uid,
+    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    executedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
-});
 
-await batch.commit();
-
-window.showToast?.(
-  `✓ Rejected ${snapshot.size} promotion request(s)`,
-  'success'
-);
-
-await loadPromotionRequests();
-} catch (error) {
-console.error('Error rejecting all promotions:', error);
-window.handleError(error, 'Failed to reject all promotions');
+  await batch.commit();
 }
+
+async function rejectPromotion() {
+  if (!currentPromotionId) {
+    window.showToast?.('No promotion selected', 'danger');
+    return;
+  }
+
+  const reason = prompt('Reason for rejection (optional):');
+
+  try {
+    await db.collection('promotions').doc(currentPromotionId).update({
+      status: 'rejected',
+      rejectedBy: auth.currentUser.uid,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: reason || 'No reason provided'
+    });
+
+    window.showToast?.('✓ Promotion request rejected', 'success');
+
+    closePromotionDetailsModal();
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error rejecting promotion:', error);
+    window.handleError(error, 'Failed to reject promotion');
+  }
 }
+
+async function quickApprovePromotion(promotionId) {
+  const confirmation = confirm('Approve this promotion request without modifications?');
+  if (!confirmation) return;
+
+  try {
+    const doc = await db.collection('promotions').doc(promotionId).get();
+    const data = doc.data();
+
+    await executePromotion(
+      promotionId,
+      data.promotedPupils || [],
+      data.heldBackPupils || [],
+      []
+    );
+
+    window.showToast?.('✓ Promotion approved and executed', 'success');
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error quick approving:', error);
+    window.handleError(error, 'Failed to approve promotion');
+  }
+}
+
+async function quickRejectPromotion(promotionId) {
+  const confirmation = confirm('Reject this promotion request?');
+  if (!confirmation) return;
+
+  try {
+    await db.collection('promotions').doc(promotionId).update({
+      status: 'rejected',
+      rejectedBy: auth.currentUser.uid,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    window.showToast?.('✓ Promotion request rejected', 'success');
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error quick rejecting:', error);
+    window.handleError(error, 'Failed to reject promotion');
+  }
+}
+
+async function approveAllPendingPromotions() {
+  const confirmation = confirm(
+    'Approve ALL pending promotion requests?\n\n' +
+      'This will execute all promotions without modifications.\n' +
+      'Continue?'
+  );
+  if (!confirmation) return;
+
+  try {
+    const snapshot = await db
+      .collection('promotions')
+      .where('status', '==', 'pending')
+      .get();
+
+    if (snapshot.empty) {
+      window.showToast?.('No pending requests to approve', 'info');
+      return;
+    }
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      await executePromotion(
+        doc.id,
+        data.promotedPupils || [],
+        data.heldBackPupils || [],
+        []
+      );
+    }
+
+    window.showToast?.(
+      `✓ Approved and executed ${snapshot.size} promotion request(s)`,
+      'success',
+      6000
+    );
+
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error approving all promotions:', error);
+    window.handleError(error, 'Failed to approve all promotions');
+  }
+}
+
+async function rejectAllPendingPromotions() {
+  const confirmation = confirm(
+    'Reject ALL pending promotion requests?\n\n' +
+      'This action cannot be undone.\n' +
+      'Continue?'
+  );
+  if (!confirmation) return;
+
+  try {
+    const snapshot = await db
+      .collection('promotions')
+      .where('status', '==', 'pending')
+      .get();
+
+    if (snapshot.empty) {
+      window.showToast?.('No pending requests to reject', 'info');
+      return;
+    }
+
+    const batch = db.batch();
+
+    snapshot.forEach(doc => {
+      batch.update(doc.ref, {
+        status: 'rejected',
+        rejectedBy: auth.currentUser.uid,
+        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        rejectionReason: 'Bulk rejection by admin'
+      });
+    });
+
+    await batch.commit();
+
+    window.showToast?.(
+      `✓ Rejected ${snapshot.size} promotion request(s)`,
+      'success'
+    );
+
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error rejecting all promotions:', error);
+    window.handleError(error, 'Failed to reject all promotions');
+  }
+}
+
 // Make functions globally available
 window.togglePromotionPeriod = togglePromotionPeriod;
 window.viewPromotionDetails = viewPromotionDetails;
