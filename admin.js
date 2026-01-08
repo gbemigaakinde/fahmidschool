@@ -1776,89 +1776,89 @@ CLASS HIERARCHY MANAGEMENT
 ======================================== */
 
 let currentHierarchy = null;
-let levelOrder = []; // This will hold the ordered list of level keys, e.g., ['creche', 'kg', 'primary', 'jss']
-
-// Helper to format hierarchy for confirmation dialogs
-function formatHierarchyForConfirmation(hierarchy, order) {
-  return order
-    .map(level => {
-      const classes = hierarchy[level];
-      if (!Array.isArray(classes) || classes.length === 0) return null;
-      if (classes.length === 1) return `• ${classes[0]}`;
-      return `• ${classes[0]} through ${classes[classes.length - 1]}`;
-    })
-    .filter(Boolean)
-    .join('\n');
-}
 
 async function loadClassHierarchyUI() {
   try {
-    const data = await window.classHierarchy.getClassHierarchy(); // Assume this returns { hierarchy, order }
-    
-    currentHierarchy = data.hierarchy;
-    levelOrder = data.order || Object.keys(currentHierarchy); // fallback to object keys if no order
-
-    renderHierarchyUI();
+    currentHierarchy = await window.classHierarchy.getClassHierarchy();
+    renderHierarchyUI(currentHierarchy);
   } catch (error) {
     console.error('Error loading class hierarchy UI:', error);
     window.showToast?.('Failed to load class hierarchy', 'danger');
   }
 }
 
-function renderHierarchyUI() {
-  let runningNumber = 1;
+function renderHierarchyUI(hierarchy) {
+  const nurseryContainer = document.getElementById('nursery-hierarchy');
+  const primaryContainer = document.getElementById('primary-hierarchy');
+  if (!nurseryContainer || !primaryContainer) return;
 
-  // Clear all containers first
-  levelOrder.forEach(level => {
-    const container = document.getElementById(`${level}-hierarchy`);
-    if (container) container.innerHTML = '';
-  });
+  nurseryContainer.innerHTML = '';
 
-  levelOrder.forEach(level => {
-    const container = document.getElementById(`${level}-hierarchy`);
-    if (!container) {
-      console.warn(`Container not found for level: ${level}-hierarchy`);
-      return;
-    }
-
-    const classes = currentHierarchy[level];
-    if (!Array.isArray(classes)) return;
-
-    classes.forEach((className, index) => {
+  if (hierarchy.nursery && Array.isArray(hierarchy.nursery)) {
+    hierarchy.nursery.forEach((className, index) => {
       const itemDiv = document.createElement('div');
       itemDiv.className = 'hierarchy-item';
       itemDiv.innerHTML = `
-        <span class="hierarchy-number">${runningNumber++}</span>
+        <span class="hierarchy-number">${index + 1}</span>
         <input
           type="text"
           class="hierarchy-input"
-          value="${className.replace(/"/g, '&quot;')}"
-          data-level="${level}"
+          value="${className}"
+          data-level="nursery"
           data-index="${index}"
         >
         <button
           class="btn-icon btn-danger"
-          onclick="removeHierarchyItem('${level}', ${index})"
+          onclick="removeHierarchyItem('nursery', ${index})"
           title="Remove"
         >✕</button>
       `;
-      container.appendChild(itemDiv);
+      nurseryContainer.appendChild(itemDiv);
     });
-  });
+  }
+
+  primaryContainer.innerHTML = '';
+
+  if (hierarchy.primary && Array.isArray(hierarchy.primary)) {
+    const startNumber = (hierarchy.nursery?.length || 0) + 1;
+
+    hierarchy.primary.forEach((className, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'hierarchy-item';
+      itemDiv.innerHTML = `
+        <span class="hierarchy-number">${startNumber + index}</span>
+        <input
+          type="text"
+          class="hierarchy-input"
+          value="${className}"
+          data-level="primary"
+          data-index="${index}"
+        >
+        <button
+          class="btn-icon btn-danger"
+          onclick="removeHierarchyItem('primary', ${index})"
+          title="Remove"
+        >✕</button>
+      `;
+      primaryContainer.appendChild(itemDiv);
+    });
+  }
 }
 
 function addHierarchyItem(level) {
-  if (!currentHierarchy || !Array.isArray(currentHierarchy[level])) return;
+  if (!currentHierarchy) return;
 
-  const nextNumber = currentHierarchy[level].length + 1;
-  const newClassName = `Class ${nextNumber}`;
+  const newClassName =
+    level === 'nursery'
+      ? `Nursery ${currentHierarchy.nursery.length + 1}`
+      : `Primary ${currentHierarchy.primary.length + 1}`;
 
   currentHierarchy[level].push(newClassName);
-  renderHierarchyUI();
+  renderHierarchyUI(currentHierarchy);
 }
 
 function removeHierarchyItem(level, index) {
-  if (!currentHierarchy || !Array.isArray(currentHierarchy[level])) return;
+  if (!currentHierarchy) return;
 
   if (currentHierarchy[level].length <= 1) {
     window.showToast?.('Cannot remove the last class in this section', 'warning');
@@ -1868,58 +1868,65 @@ function removeHierarchyItem(level, index) {
   const className = currentHierarchy[level][index];
 
   const confirmation = confirm(
-    `Remove "${className}" from ${level}?\n\n` +
-    'This will not delete the class data, but exclude it from automatic promotions.'
+    `Remove "${className}" from hierarchy?\n\n` +
+    'This will not delete the class, but it will be excluded from automatic promotions.'
   );
 
-  if (!confirmation) return;
-
-  currentHierarchy[level].splice(index, 1);
-  renderHierarchyUI();
+  if (confirmation) {
+    currentHierarchy[level].splice(index, 1);
+    renderHierarchyUI(currentHierarchy);
+  }
 }
 
 async function saveHierarchySettings() {
-  if (!currentHierarchy || levelOrder.length === 0) {
+  if (!currentHierarchy) {
     window.showToast?.('No hierarchy data to save', 'warning');
     return;
   }
 
-  const updatedHierarchy = {};
+  const nurseryInputs = document.querySelectorAll(
+    '.hierarchy-input[data-level="nursery"]'
+  );
+  const primaryInputs = document.querySelectorAll(
+    '.hierarchy-input[data-level="primary"]'
+  );
 
-  let totalClasses = 0;
-  const allClasses = [];
-
-  levelOrder.forEach(level => {
-    const inputs = document.querySelectorAll(`.hierarchy-input[data-level="${level}"]`);
-    const classList = Array.from(inputs)
+  const updatedHierarchy = {
+    nursery: Array.from(nurseryInputs)
       .map(input => input.value.trim())
-      .filter(Boolean);
+      .filter(Boolean),
+    primary: Array.from(primaryInputs)
+      .map(input => input.value.trim())
+      .filter(Boolean)
+  };
 
-    if (classList.length > 0) {
-      updatedHierarchy[level] = classList;
-      totalClasses += classList.length;
-      allClasses.push(...classList);
-    }
-  });
-
-  if (totalClasses === 0) {
+  if (
+    updatedHierarchy.nursery.length === 0 &&
+    updatedHierarchy.primary.length === 0
+  ) {
     window.showToast?.('At least one class must be defined', 'warning');
     return;
   }
 
-  // Check for duplicates across all levels
-  const duplicates = allClasses.filter((item, index) => allClasses.indexOf(item) !== index);
+  const allClasses = [
+    ...updatedHierarchy.nursery,
+    ...updatedHierarchy.primary
+  ];
+
+  const duplicates = allClasses.filter(
+    (item, index) => allClasses.indexOf(item) !== index
+  );
+
   if (duplicates.length > 0) {
-    window.showToast?.(`Duplicate class names found: ${[...new Set(duplicates)].join(', ')}`, 'warning');
+    window.showToast?.(
+      `Duplicate class names found: ${duplicates.join(', ')}`,
+      'warning'
+    );
     return;
   }
 
   try {
-    // Save both hierarchy and order
-    const result = await window.classHierarchy.saveClassHierarchy({
-      hierarchy: updatedHierarchy,
-      order: levelOrder
-    });
+    const result = await window.classHierarchy.saveClassHierarchy(updatedHierarchy);
 
     if (result.success) {
       currentHierarchy = updatedHierarchy;
@@ -1934,24 +1941,26 @@ async function saveHierarchySettings() {
 }
 
 async function resetHierarchyToDefault() {
+  const confirmation = confirm(
+    'Reset to default class hierarchy?\n\n' +
+    'This will restore:\n' +
+    '• Nursery 1, Nursery 2\n' +
+    '• Primary 1 through Primary 6\n\n' +
+    'Continue?'
+  );
+
+  if (!confirmation) return;
+
   try {
-    const defaultData = window.classHierarchy.DEFAULT_CLASS_HIERARCHY; // Should now include { hierarchy, order }
+    const defaultHierarchy =
+      window.classHierarchy.DEFAULT_CLASS_HIERARCHY;
 
-    const confirmation = confirm(
-      'Reset to default class hierarchy?\n\n' +
-      'This will restore:\n' +
-      formatHierarchyForConfirmation(defaultData.hierarchy, defaultData.order || Object.keys(defaultData.hierarchy)) +
-      '\n\nContinue?'
-    );
-
-    if (!confirmation) return;
-
-    const result = await window.classHierarchy.saveClassHierarchy(defaultData);
+    const result =
+      await window.classHierarchy.saveClassHierarchy(defaultHierarchy);
 
     if (result.success) {
-      currentHierarchy = defaultData.hierarchy;
-      levelOrder = defaultData.order || Object.keys(currentHierarchy);
-      renderHierarchyUI();
+      currentHierarchy = defaultHierarchy;
+      renderHierarchyUI(currentHierarchy);
       window.showToast?.('✓ Hierarchy reset to default', 'success');
     } else {
       window.showToast?.('Failed to reset hierarchy', 'danger');
@@ -1962,7 +1971,6 @@ async function resetHierarchyToDefault() {
   }
 }
 
-// Expose functions globally
 window.addHierarchyItem = addHierarchyItem;
 window.removeHierarchyItem = removeHierarchyItem;
 window.saveHierarchySettings = saveHierarchySettings;
