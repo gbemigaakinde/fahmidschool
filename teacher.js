@@ -267,8 +267,16 @@ async function loadTeacherDashboard() {
   const classCountEl = document.getElementById('my-class-count');
   const pupilCountEl = document.getElementById('my-pupil-count');
   
+  // Update dashboard stats
   if (classCountEl) classCountEl.textContent = assignedClasses.length;
   if (pupilCountEl) pupilCountEl.textContent = allPupils.length;
+  
+  // Update header stats (FIX: was missing)
+  const headerClassCount = document.getElementById('header-class-count');
+  const headerPupilCount = document.getElementById('header-pupil-count');
+  
+  if (headerClassCount) headerClassCount.textContent = assignedClasses.length;
+  if (headerPupilCount) headerPupilCount.textContent = allPupils.length;
 }
 
 /* ======================================== 
