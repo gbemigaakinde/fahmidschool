@@ -64,10 +64,10 @@
     --space-5: 1.25rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
-    --space-10: 2.5rem;
-    --space-12: 3rem;
-    --space-16: 4rem;
-    --space-20: 5rem;
+    --space-10: 1.5rem;
+    --space-12: 2rem;
+    --space-16: 2.5rem;
+    --space-20: 3rem;
     --space-24: 6rem;
     
     /* Border Radius */
@@ -211,7 +211,7 @@ main section > .container > h2 {
    SECTION SPACING - OPTIMIZED FOR BETTER FLOW
    ============================================ */
 section {
-    padding: var(--space-10) 0; /* Further reduced to 2.5rem (~40px) */
+    padding: var(--space-6) 0; /* Further reduced to 2.5rem (~40px) */
 }
 
 .programs-section,
@@ -452,10 +452,10 @@ section .container > p.lead {
 .hero {
     position: relative;
     width: 100vw;
-    height: 100vh;
-    min-height: 600px;
+    height: auto;
+    min-height: 500px;
     margin: 0;
-    padding: 0;
+    padding: var(--space-16) 0;
     overflow: hidden;
     color: var(--color-white);
     text-align: center;
