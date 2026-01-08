@@ -284,6 +284,179 @@
             border: 1px solid #2196F3;
             color: #0d47a1;
         }
+        /* Promotion Period Control */
+        .promotion-period-control {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-lg);
+            background: var(--color-gray-50);
+            border: 2px solid var(--color-gray-300);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-xl);
+            gap: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .control-info h3 {
+            margin: 0 0 var(--space-xs);
+            font-size: var(--text-lg);
+            color: var(--color-gray-900);
+        }
+
+        .control-info p {
+            margin: 0;
+            font-size: var(--text-sm);
+            color: var(--color-gray-600);
+        }
+
+        .control-info p.status-active {
+            color: var(--color-success);
+            font-weight: 600;
+        }
+
+        .control-info p.status-inactive {
+            color: var(--color-danger);
+            font-weight: 600;
+        }
+
+        .control-actions {
+            display: flex;
+            gap: var(--space-md);
+        }
+
+        /* Bulk Actions */
+        .bulk-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+            padding: var(--space-md);
+            background: var(--color-gray-50);
+            border-radius: var(--radius-md);
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        /* Status Badges */
+        .status-pending {
+            background: #ff9800;
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-approved {
+            background: #4CAF50;
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-rejected {
+            background: #f44336;
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-completed {
+            background: #2196F3;
+            color: white;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Modal Actions */
+        .modal-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--color-gray-300);
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        /* Promotion Details */
+        .promotion-details-section {
+            margin-bottom: var(--space-lg);
+            padding: var(--space-md);
+            background: var(--color-gray-50);
+            border-radius: var(--radius-md);
+        }
+
+        .promotion-details-section h3 {
+            margin: 0 0 var(--space-md);
+            font-size: var(--text-base);
+            color: var(--color-gray-700);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pupil-list {
+            display: grid;
+            gap: var(--space-xs);
+        }
+
+        .pupil-list-item {
+            padding: var(--space-sm);
+            background: white;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .pupil-list-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Override Options */
+        .override-section {
+            padding: var(--space-lg);
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: var(--radius-md);
+            margin-top: var(--space-lg);
+        }
+
+        .override-section h3 {
+            margin: 0 0 var(--space-md);
+            color: #856404;
+        }
+
+        .override-controls {
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+        }
+
+        .override-controls .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -306,6 +479,7 @@
         <a href="#classes" onclick="showSection('classes')">Classes</a>
         <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
         <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
+        <a href="#promotion-requests" onclick="showSection('promotion-requests')">Promotion Requests</a>
         <a href="#settings" onclick="showSection('settings')">School Settings</a>
         <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
         <hr class="sidebar-divider">
@@ -642,6 +816,87 @@
             </div>
         </div>
 
+<!-- Promotion Requests Section (NEW) -->
+        <div id="promotion-requests" class="admin-card" style="display:none;">
+            <h1>Promotion Requests</h1>
+            <p class="section-description">Review and approve teacher promotion recommendations</p>
+
+            <!-- Promotion Period Toggle -->
+            <div class="promotion-period-control">
+                <div class="control-info">
+                    <h3>Promotion Period Status</h3>
+                    <p id="promotion-period-status">Loading...</p>
+                </div>
+                <div class="control-actions">
+                    <button class="btn" id="toggle-promotion-period-btn" onclick="togglePromotionPeriod()">
+                        Enable Promotion Period
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div class="bulk-actions" id="bulk-actions" style="display:none;">
+                <button class="btn btn-success" onclick="approveAllPendingPromotions()">
+                    ✓ Approve All Pending
+                </button>
+                <button class="btn btn-danger" onclick="rejectAllPendingPromotions()">
+                    ✗ Reject All Pending
+                </button>
+            </div>
+
+            <!-- Promotion Requests Table -->
+            <div class="table-container">
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>From Class</th>
+                            <th>To Class</th>
+                            <th>Pupils to Promote</th>
+                            <th>Pupils to Hold</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="promotion-requests-table">
+                        <tr>
+                            <td colspan="7" class="table-loading">Loading promotion requests...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- No Requests Message -->
+            <div id="no-requests-message" style="display:none; text-align:center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                <p style="font-size: var(--text-lg); margin-bottom: var(--space-md);">📋 No promotion requests yet</p>
+                <p>Teachers will submit promotion requests when the promotion period is active.</p>
+            </div>
+        </div>
+
+        <!-- Promotion Details Modal (NEW) -->
+        <div id="promotion-details-modal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 800px;">
+                <span class="modal-close" onclick="closePromotionDetailsModal()">&times;</span>
+                <h2>Promotion Request Details</h2>
+                
+                <div id="promotion-details-content">
+                    <!-- Details will be loaded here -->
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-success" id="approve-promotion-btn" onclick="approvePromotion()">
+                        ✓ Approve & Execute
+                    </button>
+                    <button class="btn btn-danger" id="reject-promotion-btn" onclick="rejectPromotion()">
+                        ✗ Reject Request
+                    </button>
+                    <button class="btn btn-secondary" onclick="closePromotionDetailsModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Announcements Section -->
         <div id="announcements" class="admin-card" style="display:none;">
             <h1>Manage Announcements</h1>
