@@ -11,9 +11,10 @@
 'use strict';
 
 // Default class hierarchy - Empty by default, admin must configure
+// Default class hierarchy - COMPLETELY EMPTY until admin configures
+// Admin can name classes anything: "Apple", "Orange", "Goat 1", "Team A", etc.
 const DEFAULT_CLASS_HIERARCHY = {
   nursery: [],
-  kindergarten: [],
   primary: []
 };
 
@@ -139,20 +140,47 @@ async function saveClassHierarchy(hierarchy) {
  * Initialize class hierarchy if it doesn't exist
  * Does NOT auto-create - admin must configure manually
  */
+/**
+ * Initialize class hierarchy if it doesn't exist
+ * ALWAYS starts empty - admin must configure custom class names
+ */
 async function initializeClassHierarchy() {
   try {
     const doc = await db.collection('settings').doc('classHierarchy').get();
     
     if (!doc.exists) {
-      console.log('⚠️ Class hierarchy not configured. Admin must set it up in School Settings.');
-      // Create empty structure only
+      console.log('⚠️ Class hierarchy not configured. Admin MUST add classes in School Settings.');
+      console.log('Classes can be named anything: "Apple Class", "Goat 1", "Team Awesome", etc.');
+      
+      // Create completely empty structure
       await db.collection('settings').doc('classHierarchy').set({
-        hierarchy: DEFAULT_CLASS_HIERARCHY,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        hierarchy: {
+          nursery: [],
+          primary: []
+        },
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        instructions: 'Add your class names in School Settings > Class Progression Order'
       });
+      
+      return { success: true, isEmpty: true };
     }
+    
+    // Check if hierarchy exists but is empty
+    const data = doc.data();
+    const hierarchy = data.hierarchy || { nursery: [], primary: [] };
+    const totalClasses = (hierarchy.nursery?.length || 0) + (hierarchy.primary?.length || 0);
+    
+    if (totalClasses === 0) {
+      console.warn('⚠️ Class hierarchy is empty! Admin must configure it in School Settings.');
+      return { success: true, isEmpty: true };
+    }
+    
+    console.log(`✓ Class hierarchy loaded: ${totalClasses} classes configured`);
+    return { success: true, isEmpty: false };
+    
   } catch (error) {
     console.error('Error checking class hierarchy:', error);
+    return { success: false, error };
   }
 }
 
