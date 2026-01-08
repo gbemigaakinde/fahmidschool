@@ -207,6 +207,9 @@ async function loadDashboardStats() {
     if (headerPupilCount) headerPupilCount.textContent = '0';
     if (headerClassCount) headerClassCount.textContent = '0';
   }
+  // Check session status when dashboard loads
+  await checkSessionStatus();
+}
 }
 
 async function populateClassDropdown(selectedClass = '') {
