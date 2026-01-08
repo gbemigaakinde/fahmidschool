@@ -526,9 +526,10 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
+    // CRITICAL FIX: Send password reset BEFORE signing out
+    await secondaryAuth.sendPasswordResetEmail(email);
     await secondaryAuth.signOut();
-    await auth.sendPasswordResetEmail(email);
-    
+        
     window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 6000);
     cancelTeacherForm();
     loadTeachers();
@@ -1545,12 +1546,18 @@ async function checkSessionStatus() {
 /* ======================================== 
    LOAD CURRENT SETTINGS INTO FORM
 ======================================== */
+
 async function loadCurrentSettings() {
   try {
+    // CRITICAL FIX: Initialize class hierarchy FIRST
+    console.log('Initializing class hierarchy...');
+    await window.classHierarchy.initializeClassHierarchy();
+    console.log('✓ Class hierarchy ready');
+    
     const settingsDoc = await db.collection('settings').doc('current').get();
     
     if (!settingsDoc.exists) {
-      window.showToast?.('No settings found. Please configure.', 'warning');
+      window.showToast?.('No settings found. Please configure school settings.', 'warning');
       return;
     }
     
@@ -1634,6 +1641,8 @@ async function loadCurrentSettings() {
       document.getElementById('resumption-date').value = 
         data.resumptionDate.toDate().toISOString().split('T')[0];
     }
+    
+    console.log('✓ Settings loaded successfully');
     
   } catch (error) {
     console.error('Error loading settings:', error);
@@ -2520,7 +2529,20 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
-  const batch = db.batch();
+  // CRITICAL FIX: Batch size management
+  const BATCH_SIZE = 450; // Safety margin under Firestore's 500 limit
+  let batch = db.batch();
+  let operationCount = 0;
+  
+  async function commitBatchIfNeeded() {
+    if (operationCount >= BATCH_SIZE) {
+      console.log(`Committing batch with ${operationCount} operations...`);
+      await batch.commit();
+      batch = db.batch();
+      operationCount = 0;
+      console.log('✓ Batch committed, starting new batch');
+    }
+  }
 
   // Handle promoted pupils
   for (const pupilId of promotedPupils) {
@@ -2542,6 +2564,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
 
         // Delete from pupils collection
         batch.delete(pupilRef);
+        operationCount++;
+        await commitBatchIfNeeded();
       }
     } else {
       // Regular promotion
@@ -2558,6 +2582,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
           date: firebase.firestore.FieldValue.serverTimestamp()
         })
       });
+      operationCount++;
+      await commitBatchIfNeeded();
     }
   }
 
@@ -2574,6 +2600,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         date: firebase.firestore.FieldValue.serverTimestamp()
       })
     });
+    operationCount++;
+    await commitBatchIfNeeded();
   }
 
   // Handle manual overrides
@@ -2594,6 +2622,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         });
 
         batch.delete(pupilRef);
+        operationCount++;
+        await commitBatchIfNeeded();
       }
     } else {
       // Move to specific class
@@ -2613,6 +2643,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
             date: firebase.firestore.FieldValue.serverTimestamp()
           })
         });
+        operationCount++;
+        await commitBatchIfNeeded();
       }
     }
   }
@@ -2624,8 +2656,14 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
     executedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+  operationCount++;
 
-  await batch.commit();
+  // Commit any remaining operations
+  if (operationCount > 0) {
+    console.log(`Committing final batch with ${operationCount} operations...`);
+    await batch.commit();
+    console.log('✓ All promotion operations completed successfully');
+  }
 }
 
 async function rejectPromotion() {
