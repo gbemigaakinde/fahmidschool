@@ -2104,7 +2104,17 @@ async function approvePromotion() {
 
 async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
   const promotionDoc = await db.collection('promotions').doc(promotionId).get();
+  
+  if (!promotionDoc.exists) {
+    throw new Error('Promotion request not found');
+  }
+  
   const data = promotionDoc.data();
+  
+  if (!data.toClass || !data.toClass.id) {
+    throw new Error('Invalid promotion data: missing target class');
+  }
+  
   const batch = db.batch();
 
   // Handle promoted pupils
