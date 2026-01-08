@@ -260,8 +260,7 @@ window.classHierarchy = {
   isTerminalClass,
   getGradeLevel,
   saveClassHierarchy,
-  initializeClassHierarchy,
-  DEFAULT_CLASS_HIERARCHY
+  initializeClassHierarchy
 };
 
-console.log('✓ Class Hierarchy module loaded');
+console.log('✓ Class Hierarchy module loaded (v2.0 - Sources from Classes collection)');
