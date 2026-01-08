@@ -458,7 +458,7 @@ section .container > p.lead {
     padding: 0;
     overflow: hidden;
     color: var(--color-white);
-    text-align: left;
+    text-align: center;
     background-color: #1a1a1a; /* ADD THIS - dark fallback while images load */
 }
 
