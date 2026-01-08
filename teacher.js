@@ -1,13 +1,18 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Portal JavaScript - FIXED
+ * Teacher Portal JavaScript - DEBUGGED & FIXED
  * 
- * @version 8.0.0 - DUPLICATE CODE REMOVED
- * @date 2026-01-05
+ * @version 8.1.0 - RACE CONDITIONS FIXED
+ * @date 2026-01-08
+ * 
+ * FIXES:
+ * - Race condition in data loading resolved
+ * - Initialization order corrected
+ * - Defensive checks added for all data access
+ * - Proper loading state management
  */
 'use strict';
 
-// Use shared Firebase instances from firebase-auth.js
 const db = window.db;
 const auth = window.auth;
 
@@ -16,8 +21,12 @@ let assignedClasses = [];
 let allPupils = [];
 let allSubjects = [];
 
+// FIXED: Add initialization state flags
+let dataLoaded = false;
+let isLoadingData = false;
+
 /* ======================================== 
-   INITIALIZATION 
+   INITIALIZATION WITH PROPER ORDER
 ======================================== */
 
 window.checkRole('teacher')
@@ -26,9 +35,21 @@ window.checkRole('teacher')
     const info = document.getElementById('teacher-info');
     if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
     
-    await loadAssignedClasses();
-    await loadSubjects();
-    initTeacherPortal();
+    // FIXED: Load data first, then initialize
+    try {
+      isLoadingData = true;
+      await loadAssignedClasses();
+      await loadSubjects();
+      dataLoaded = true;
+      isLoadingData = false;
+      
+      // Now safe to initialize portal
+      initTeacherPortal();
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      isLoadingData = false;
+      window.showToast?.('Failed to load teacher data. Please refresh.', 'danger');
+    }
   })
   .catch(() => {});
 
@@ -38,10 +59,15 @@ document.getElementById('teacher-logout')?.addEventListener('click', e => {
 });
 
 /* ======================================== 
-   CORE DATA LOADING 
+   DATA LOADING WITH STATE MANAGEMENT
 ======================================== */
 
 async function loadAssignedClasses() {
+  if (!currentUser) {
+    console.warn('loadAssignedClasses called before user is set');
+    return;
+  }
+  
   try {
     const snap = await db.collection('classes')
       .where('teacherId', '==', currentUser.uid)
@@ -49,8 +75,8 @@ async function loadAssignedClasses() {
     
     assignedClasses = snap.docs.map(doc => ({
       id: doc.id,
-      name: doc.data().name,
-      subjects: doc.data().subjects || []  // NEW: Include subjects
+      name: doc.data().name || 'Unnamed Class',
+      subjects: Array.isArray(doc.data().subjects) ? doc.data().subjects : []
     }));
     
     assignedClasses.sort((a, b) => a.name.localeCompare(b.name));
@@ -58,11 +84,11 @@ async function loadAssignedClasses() {
     if (assignedClasses.length === 0) {
       window.showToast?.('No classes assigned yet. Contact admin.', 'warning', 8000);
       allPupils = [];
-      allSubjects = [];  // Clear subjects if no classes
+      allSubjects = [];
       return;
     }
     
-    // NEW: Collect all unique subjects from assigned classes
+    // Collect all unique subjects from assigned classes
     const subjectSet = new Set();
     assignedClasses.forEach(cls => {
       if (cls.subjects && Array.isArray(cls.subjects)) {
@@ -71,7 +97,7 @@ async function loadAssignedClasses() {
     });
     allSubjects = Array.from(subjectSet).sort();
     
-    // Load pupils in batches (Firestore 'in' limit = 10)
+    // Load pupils in batches
     const classIds = assignedClasses.map(c => c.id);
     allPupils = [];
 
@@ -89,35 +115,79 @@ async function loadAssignedClasses() {
       allPupils = allPupils.concat(batchPupils);
     }
     
-    allPupils.sort((a, b) => a.name.localeCompare(b.name));
+    allPupils.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     console.log(`✓ Loaded ${assignedClasses.length} class(es), ${allPupils.length} pupil(s), ${allSubjects.length} subject(s)`);
     
   } catch (err) {
     console.error('Error loading assigned classes:', err);
-    window.handleError(err, 'Failed to load your classes');
+    window.handleError?.(err, 'Failed to load your classes');
     assignedClasses = [];
     allPupils = [];
     allSubjects = [];
+    throw err; // Re-throw to stop initialization
   }
 }
 
 async function loadSubjects() {
   // Subjects are loaded from assigned classes in loadAssignedClasses()
-  // This function is kept for compatibility but does nothing
   console.log('✓ Subjects loaded from assigned classes:', allSubjects.length);
 }
 
 /* ======================================== 
-   PAGINATION 
+   DEFENSIVE DATA ACCESS HELPERS
+======================================== */
+
+function ensureDataLoaded(functionName) {
+  if (isLoadingData) {
+    console.log(`${functionName} called while data is loading - please wait`);
+    window.showToast?.('Loading data, please wait...', 'info', 2000);
+    return false;
+  }
+  
+  if (!dataLoaded) {
+    console.warn(`${functionName} called before data is loaded`);
+    window.showToast?.('Data not loaded yet. Please refresh the page.', 'warning');
+    return false;
+  }
+  
+  return true;
+}
+
+function getValidPupils() {
+  if (!ensureDataLoaded('getValidPupils')) return [];
+  return Array.isArray(allPupils) ? allPupils : [];
+}
+
+function getValidClasses() {
+  if (!ensureDataLoaded('getValidClasses')) return [];
+  return Array.isArray(assignedClasses) ? assignedClasses : [];
+}
+
+function getValidSubjects() {
+  if (!ensureDataLoaded('getValidSubjects')) return [];
+  return Array.isArray(allSubjects) ? allSubjects : [];
+}
+
+/* ======================================== 
+   PAGINATION WITH DEFENSIVE CHECKS
 ======================================== */
 
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
   const tbody = document.querySelector(`#${tbodyId} tbody`);
-  if (!tbody) return;
+  if (!tbody) {
+    console.error(`Tbody not found: #${tbodyId} tbody`);
+    return;
+  }
+  
+  if (!Array.isArray(data)) {
+    console.error('paginateTable: data must be an array');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--color-danger);">Invalid data format</td></tr>';
+    return;
+  }
   
   let currentPage = 1;
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
   
   function renderPage(page) {
     tbody.innerHTML = '';
@@ -130,7 +200,13 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
       return;
     }
     
-    pageData.forEach(item => renderRowCallback(item, tbody));
+    pageData.forEach(item => {
+      try {
+        renderRowCallback(item, tbody);
+      } catch (error) {
+        console.error('Error rendering row:', error);
+      }
+    });
     updatePaginationControls(page, totalPages);
   }
   
@@ -138,10 +214,13 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     let paginationContainer = document.getElementById(`pagination-${tbodyId}`);
     
     if (!paginationContainer) {
+      const table = tbody.parentElement;
+      if (!table || !table.parentElement) return;
+      
       paginationContainer = document.createElement('div');
       paginationContainer.className = 'pagination';
       paginationContainer.id = `pagination-${tbodyId}`;
-      tbody.parentElement.parentElement.appendChild(paginationContainer);
+      table.parentElement.appendChild(paginationContainer);
     }
     
     paginationContainer.innerHTML = `
@@ -161,7 +240,7 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
 }
 
 /* ======================================== 
-   SECTION NAVIGATION 
+   SECTION NAVIGATION WITH SAFETY CHECKS
 ======================================== */
 
 const sectionLoaders = {
@@ -175,17 +254,38 @@ const sectionLoaders = {
 };
 
 function showSection(sectionId) {
+  if (!sectionId) {
+    console.error('showSection called with no sectionId');
+    return;
+  }
+  
+  // FIXED: Check if data is loaded before showing sections
+  if (!dataLoaded && sectionId !== 'dashboard') {
+    window.showToast?.('Please wait for data to finish loading...', 'info', 3000);
+    return;
+  }
+  
   document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
   
   const section = document.getElementById(sectionId);
-  if (section) section.style.display = 'block';
+  if (section) {
+    section.style.display = 'block';
+  } else {
+    console.warn(`Section ${sectionId} not found`);
+  }
   
   document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
     link.classList.toggle('active', link.dataset.section === sectionId);
   });
   
+  // FIXED: Safe loader execution
   if (typeof sectionLoaders[sectionId] === 'function') {
-    sectionLoaders[sectionId]();
+    try {
+      sectionLoaders[sectionId]();
+    } catch (error) {
+      console.error(`Error loading section ${sectionId}:`, error);
+      window.showToast?.(`Failed to load ${sectionId}`, 'danger');
+    }
   }
   
   // Close mobile sidebar
@@ -200,10 +300,15 @@ function showSection(sectionId) {
 }
 
 /* ======================================== 
-   INITIALIZATION 
+   PORTAL INITIALIZATION
 ======================================== */
 
 function initTeacherPortal() {
+  if (!dataLoaded) {
+    console.error('initTeacherPortal called before data loaded');
+    return;
+  }
+  
   setupAllEventListeners();
   
   window.getCurrentSettings().then(settings => {
@@ -214,7 +319,7 @@ function initTeacherPortal() {
     });
     
     showSection('dashboard');
-    console.log('✓ Teacher portal ready (v8.0.0) - Current term:', settings.term);
+    console.log('✓ Teacher portal ready (v8.1.0) - Current term:', settings.term);
     
     // Setup sidebar navigation
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
@@ -231,78 +336,99 @@ function initTeacherPortal() {
 }
 
 function setupAllEventListeners() {
-  // Save buttons
-  document.getElementById('save-results-btn')?.addEventListener('click', saveAllResults);
-  document.getElementById('save-attendance-btn')?.addEventListener('click', saveAllAttendance);
-  document.getElementById('save-traits-btn')?.addEventListener('click', saveTraitsAndSkills);
-  document.getElementById('save-remarks-btn')?.addEventListener('click', saveRemarks);
+  // FIXED: Add existence checks for all elements
+  const saveResultsBtn = document.getElementById('save-results-btn');
+  const saveAttendanceBtn = document.getElementById('save-attendance-btn');
+  const saveTraitsBtn = document.getElementById('save-traits-btn');
+  const saveRemarksBtn = document.getElementById('save-remarks-btn');
+  
+  if (saveResultsBtn) saveResultsBtn.addEventListener('click', saveAllResults);
+  if (saveAttendanceBtn) saveAttendanceBtn.addEventListener('click', saveAllAttendance);
+  if (saveTraitsBtn) saveTraitsBtn.addEventListener('click', saveTraitsAndSkills);
+  if (saveRemarksBtn) saveRemarksBtn.addEventListener('click', saveRemarks);
   
   // Results
-  document.getElementById('result-term')?.addEventListener('change', loadResultsTable);
-  document.getElementById('result-subject')?.addEventListener('change', loadResultsTable);
+  const resultTerm = document.getElementById('result-term');
+  const resultSubject = document.getElementById('result-subject');
+  if (resultTerm) resultTerm.addEventListener('change', loadResultsTable);
+  if (resultSubject) resultSubject.addEventListener('change', loadResultsTable);
   
   // Traits
-  document.getElementById('traits-pupil')?.addEventListener('change', loadTraitsData);
-  document.getElementById('traits-term')?.addEventListener('change', () => {
-    if (document.getElementById('traits-pupil')?.value) loadTraitsData();
+  const traitsPupil = document.getElementById('traits-pupil');
+  const traitsTerm = document.getElementById('traits-term');
+  if (traitsPupil) traitsPupil.addEventListener('change', loadTraitsData);
+  if (traitsTerm) traitsTerm.addEventListener('change', () => {
+    if (traitsPupil?.value) loadTraitsData();
   });
   
   // Remarks
-  document.getElementById('remarks-pupil')?.addEventListener('change', loadRemarksData);
-  document.getElementById('remarks-term')?.addEventListener('change', () => {
-    if (document.getElementById('remarks-pupil')?.value) loadRemarksData();
+  const remarksPupil = document.getElementById('remarks-pupil');
+  const remarksTerm = document.getElementById('remarks-term');
+  if (remarksPupil) remarksPupil.addEventListener('change', loadRemarksData);
+  if (remarksTerm) remarksTerm.addEventListener('change', () => {
+    if (remarksPupil?.value) loadRemarksData();
   });
   
   // Attendance
-  document.getElementById('attendance-term')?.addEventListener('change', loadAttendanceSection);
+  const attendanceTerm = document.getElementById('attendance-term');
+  if (attendanceTerm) attendanceTerm.addEventListener('change', loadAttendanceSection);
   
-  console.log('✓ All event listeners connected');
+  console.log('✓ All event listeners connected with safety checks');
 }
 
 /* ======================================== 
-   DASHBOARD 
+   DASHBOARD WITH VALIDATION
 ======================================== */
 
 async function loadTeacherDashboard() {
   const classCountEl = document.getElementById('my-class-count');
   const pupilCountEl = document.getElementById('my-pupil-count');
-  
-  // Update dashboard stats
-  if (classCountEl) classCountEl.textContent = assignedClasses.length;
-  if (pupilCountEl) pupilCountEl.textContent = allPupils.length;
-  
-  // Update header stats (FIX: was missing)
   const headerClassCount = document.getElementById('header-class-count');
   const headerPupilCount = document.getElementById('header-pupil-count');
   
-  if (headerClassCount) headerClassCount.textContent = assignedClasses.length;
-  if (headerPupilCount) headerPupilCount.textContent = allPupils.length;
+  const classes = getValidClasses();
+  const pupils = getValidPupils();
+  
+  if (classCountEl) classCountEl.textContent = classes.length;
+  if (pupilCountEl) pupilCountEl.textContent = pupils.length;
+  if (headerClassCount) headerClassCount.textContent = classes.length;
+  if (headerPupilCount) headerPupilCount.textContent = pupils.length;
 }
 
 /* ======================================== 
-   MY CLASSES 
+   MY CLASSES WITH VALIDATION
 ======================================== */
 
 function loadMyClassesSection() {
   const table = document.getElementById('pupils-in-class-table');
-  if (!table) return;
+  if (!table) {
+    console.warn('pupils-in-class-table not found');
+    return;
+  }
   
   const tbody = table.querySelector('tbody');
+  if (!tbody) {
+    console.warn('tbody not found in pupils-in-class-table');
+    return;
+  }
   
-  if (assignedClasses.length === 0) {
+  const classes = getValidClasses();
+  const pupils = getValidPupils();
+  
+  if (classes.length === 0) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
     return;
   }
   
-  if (allPupils.length === 0) {
+  if (pupils.length === 0) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
     return;
   }
   
-  paginateTable(allPupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
+  paginateTable(pupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Name">${pupil.name}</td>
+      <td data-label="Name">${pupil.name || 'Unknown'}</td>
       <td data-label="Gender">${pupil.gender || '-'}</td>
       <td data-label="Admission No">${pupil.admissionNo || '-'}</td>
     `;
@@ -1115,4 +1241,4 @@ window.deselectAllForPromotion = deselectAllForPromotion;
 window.toggleAllPupilsPromotion = toggleAllPupilsPromotion;
 window.submitPromotionRequest = submitPromotionRequest;
 
-console.log('✓ Teacher portal v8.0.0 loaded - DUPLICATE CODE REMOVED');
+console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
