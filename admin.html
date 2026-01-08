@@ -191,6 +191,99 @@
         .alert li {
             margin-bottom: var(--space-xs);
         }
+        /* Class Hierarchy Editor Styles */
+        .class-hierarchy-editor {
+            background: var(--color-gray-50);
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-gray-300);
+        }
+
+        .hierarchy-section {
+            background: white;
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .hierarchy-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .hierarchy-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm);
+            background: var(--color-gray-50);
+            border-radius: var(--radius-sm);
+            transition: background 0.2s;
+        }
+
+        .hierarchy-item:hover {
+            background: var(--color-gray-100);
+        }
+
+        .hierarchy-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--color-primary);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: var(--text-sm);
+            flex-shrink: 0;
+        }
+
+        .hierarchy-input {
+            flex: 1;
+            padding: var(--space-sm) var(--space-md);
+            border: 1px solid var(--color-gray-300);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-base);
+            transition: border-color 0.2s;
+        }
+
+        .hierarchy-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        .btn-icon {
+            padding: var(--space-xs);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .btn-icon.btn-danger {
+            background: var(--color-danger);
+            color: white;
+        }
+
+        .btn-icon.btn-danger:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            border: 1px solid #2196F3;
+            color: #0d47a1;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -706,6 +799,112 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+            <!-- Class Hierarchy Management -->
+            <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+                <h3>📊 Class Progression Order</h3>
+                <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+                    Define the order of class progression for automatic promotions. 
+                    Pupils will be promoted from one class to the next in this order.
+                </p>
+
+                <div class="class-hierarchy-editor">
+                    <div class="hierarchy-section">
+                        <h4 style="color: var(--color-primary); margin-bottom: var(--space-md);">
+                            🧒 Nursery Classes
+                        </h4>
+                        <div id="nursery-hierarchy" class="hierarchy-list">
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">1</span>
+                                <input type="text" class="hierarchy-input" value="Nursery 1" data-level="nursery" data-index="0">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', 0)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">2</span>
+                                <input type="text" class="hierarchy-input" value="Nursery 2" data-level="nursery" data-index="1">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', 1)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-small" onclick="addHierarchyItem('nursery')" style="margin-top: var(--space-sm);">
+                            + Add Nursery Class
+                        </button>
+                    </div>
+
+                    <div class="hierarchy-section" style="margin-top: var(--space-xl);">
+                        <h4 style="color: var(--color-primary); margin-bottom: var(--space-md);">
+                            🎓 Primary Classes
+                        </h4>
+                        <div id="primary-hierarchy" class="hierarchy-list">
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">3</span>
+                                <input type="text" class="hierarchy-input" value="Primary 1" data-level="primary" data-index="0">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 0)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">4</span>
+                                <input type="text" class="hierarchy-input" value="Primary 2" data-level="primary" data-index="1">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 1)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">5</span>
+                                <input type="text" class="hierarchy-input" value="Primary 3" data-level="primary" data-index="2">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 2)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">6</span>
+                                <input type="text" class="hierarchy-input" value="Primary 4" data-level="primary" data-index="3">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 3)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">7</span>
+                                <input type="text" class="hierarchy-input" value="Primary 5" data-level="primary" data-index="4">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 4)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="hierarchy-item">
+                                <span class="hierarchy-number">8</span>
+                                <input type="text" class="hierarchy-input" value="Primary 6" data-level="primary" data-index="5">
+                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 5)" title="Remove">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-small" onclick="addHierarchyItem('primary')" style="margin-top: var(--space-sm);">
+                            + Add Primary Class
+                        </button>
+                    </div>
+
+                    <div class="alert alert-info" style="margin-top: var(--space-lg);">
+                        <strong>ℹ️ Note:</strong>
+                        <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
+                            <li>The last class (bottom) will be the terminal class (no promotion after this)</li>
+                            <li>Pupils in the terminal class will be marked as "Graduated" and moved to alumni</li>
+                            <li>Make sure class names match exactly with your existing classes</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: var(--space-xl);">
+                        <button class="btn" onclick="saveHierarchySettings()">
+                            💾 Save Class Order
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetHierarchyToDefault()">
+                            ↻ Reset to Default
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
