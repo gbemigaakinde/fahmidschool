@@ -1071,21 +1071,8 @@
                             🧒 Nursery Classes
                         </h4>
                         <div id="nursery-hierarchy" class="hierarchy-list">
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">1</span>
-                                <input type="text" class="hierarchy-input" value="Nursery 1" data-level="nursery" data-index="0">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', 0)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">2</span>
-                                <input type="text" class="hierarchy-input" value="Nursery 2" data-level="nursery" data-index="1">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', 1)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
+                                <!-- Classes will be loaded dynamically from Firestore -->
+                         </div>
                         <button class="btn btn-small" onclick="addHierarchyItem('nursery')" style="margin-top: var(--space-sm);">
                             + Add Nursery Class
                         </button>
@@ -1095,50 +1082,9 @@
                         <h4 style="color: var(--color-primary); margin-bottom: var(--space-md);">
                             🎓 Primary Classes
                         </h4>
-                        <div id="primary-hierarchy" class="hierarchy-list">
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">3</span>
-                                <input type="text" class="hierarchy-input" value="Primary 1" data-level="primary" data-index="0">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 0)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">4</span>
-                                <input type="text" class="hierarchy-input" value="Primary 2" data-level="primary" data-index="1">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 1)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">5</span>
-                                <input type="text" class="hierarchy-input" value="Primary 3" data-level="primary" data-index="2">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 2)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">6</span>
-                                <input type="text" class="hierarchy-input" value="Primary 4" data-level="primary" data-index="3">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 3)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">7</span>
-                                <input type="text" class="hierarchy-input" value="Primary 5" data-level="primary" data-index="4">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 4)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                            <div class="hierarchy-item">
-                                <span class="hierarchy-number">8</span>
-                                <input type="text" class="hierarchy-input" value="Primary 6" data-level="primary" data-index="5">
-                                <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', 5)" title="Remove">
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
+                       <div id="primary-hierarchy" class="hierarchy-list">
+                                <!-- Classes will be loaded dynamically from Firestore -->
+                         </div>
                         <button class="btn btn-small" onclick="addHierarchyItem('primary')" style="margin-top: var(--space-sm);">
                             + Add Primary Class
                         </button>
