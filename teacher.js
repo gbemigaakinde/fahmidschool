@@ -4,7 +4,7 @@
  * 
  * @version 8.1.0 - RACE CONDITIONS FIXED
  * @date 2026-01-08
- * 
+ *
  * FIXES:
  * - Race condition in data loading resolved
  * - Initialization order corrected
