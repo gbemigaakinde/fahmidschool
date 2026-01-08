@@ -866,6 +866,14 @@ async function loadSubjects() {
   }
 }
 
+function showSubjectForm() {
+  const form = document.getElementById('subject-form');
+  if (form) {
+    form.style.display = 'block';
+    document.getElementById('subject-name')?.focus();
+  }
+}
+
 /* ========================================
 SUBJECT ASSIGNMENT TO CLASSES
 ======================================== */
@@ -1009,6 +1017,16 @@ async function saveClassSubjects() {
     window.handleError(error, 'Failed to save subjects');
   }
 }
+
+/* ===============================
+   Global function declarations
+   =============================== */
+
+window.openSubjectAssignmentModal = openSubjectAssignmentModal;
+window.closeSubjectAssignmentModal = closeSubjectAssignmentModal;
+window.saveClassSubjects = saveClassSubjects;
+window.showSubjectForm = showSubjectForm;
+window.addSubject = addSubject;
 
 /* ========================================
 TEACHER ASSIGNMENT
