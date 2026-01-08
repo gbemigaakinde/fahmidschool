@@ -103,14 +103,9 @@ async function loadAssignedClasses() {
 }
 
 async function loadSubjects() {
-  try {
-    const snap = await db.collection('subjects').get();
-    allSubjects = snap.docs.map(d => d.data().name); // no hardcoded fallback
-    allSubjects.sort();
-  } catch (err) {
-    console.error('Error loading subjects:', err);
-    allSubjects = []; // empty array, teacher will see “no subjects”
-  }
+  // Subjects are loaded from assigned classes in loadAssignedClasses()
+  // This function is kept for compatibility but does nothing
+  console.log('✓ Subjects loaded from assigned classes:', allSubjects.length);
 }
 
 /* ======================================== 
