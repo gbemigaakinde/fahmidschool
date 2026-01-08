@@ -816,311 +816,316 @@ async function addSubject() {
 async function loadSubjects() {
   const tbody = document.getElementById('subjects-table');
   if (!tbody) return;
-  
-  tbody.innerHTML = '<tr><td colspan="2" class="table-loading">Loading subjects...</td></tr>';
-  
+
+  tbody.innerHTML =
+    '<tr><td colspan="2" class="table-loading">Loading subjects...</td></tr>';
+
   try {
     const snapshot = await db.collection('subjects').get();
     tbody.innerHTML = '';
-    
+
     if (snapshot.empty) {
-      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects created yet. Add one above.</td></tr>';
-return;
-} const subjects = [];
-snapshot.forEach(doc => {
-  subjects.push({ id: doc.id, name: doc.data().name });
-});
+      tbody.innerHTML =
+        '<tr><td colspan="2" style="text-align:center; color:var(--color-gray-600);">No subjects created yet. Add one above.</td></tr>';
+      return;
+    }
 
-subjects.sort((a, b) => a.name.localeCompare(b.name));
+    const subjects = [];
 
-paginateTable(subjects, 'subjects-table', 20, (subject, tbodyEl) => {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td data-label="Subject Name">${subject.name}</td>
-    <td data-label="Actions">
-      <button class="btn-small btn-danger" onclick="deleteItem('subjects', '${subject.id}')">Delete</button>
-    </td>
-  `;
-  tbodyEl.appendChild(tr);
-});
+    snapshot.forEach(doc => {
+      subjects.push({
+        id: doc.id,
+        name: doc.data().name
+      });
+    });
+
+    subjects.sort((a, b) => a.name.localeCompare(b.name));
+
+    paginateTable(subjects, 'subjects-table', 20, (subject, tbodyEl) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Subject Name">${subject.name}</td>
+        <td data-label="Actions">
+          <button class="btn-small btn-danger" onclick="deleteItem('subjects', '${subject.id}')">Delete</button>
+        </td>
+      `;
+      tbodyEl.appendChild(tr);
+    });
+
   } catch (error) {
-console.error('Error loading subjects:', error);
-window.showToast?.('Failed to load subjects list. Check connection and try again.', 'danger');
-tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading subjects - please refresh</td></tr>';
+    console.error('Error loading subjects:', error);
+    window.showToast?.(
+      'Failed to load subjects list. Check connection and try again.',
+      'danger'
+    );
+    tbody.innerHTML =
+      '<tr><td colspan="2" style="text-align:center; color:var(--color-danger);">Error loading subjects please refresh</td></tr>';
+  }
 }
-}
+
 /* ========================================
 SUBJECT ASSIGNMENT TO CLASSES
 ======================================== */
+
 let currentAssignmentClassId = null;
 let currentAssignmentClassName = null;
+
 async function openSubjectAssignmentModal(classId, className) {
-currentAssignmentClassId = classId;
-currentAssignmentClassName = className;
-const modal = document.getElementById('subject-assignment-modal');
-const classNameEl = document.getElementById('assignment-class-name');
-const checkboxContainer = document.getElementById('subject-checkboxes');
-if (!modal || !classNameEl || !checkboxContainer) {
-console.error('Modal elements not found');
-return;
-}
-classNameEl.textContent = Class: ${className};
-checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">Loading subjects...</p>';
-modal.style.display = 'block';
-try {
-// Get all available subjects
-const subjectsSnap = await db.collection('subjects').orderBy('name').get();
-if (subjectsSnap.empty) {
-  checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No subjects available. Create subjects first in the Subjects section.</p>';
-  return;
+  currentAssignmentClassId = classId;
+  currentAssignmentClassName = className;
+
+  const modal = document.getElementById('subject-assignment-modal');
+  const classNameEl = document.getElementById('assignment-class-name');
+  const checkboxContainer = document.getElementById('subject-checkboxes');
+
+  if (!modal || !classNameEl || !checkboxContainer) {
+    console.error('Modal elements not found');
+    return;
+  }
+
+  classNameEl.textContent = `Class: ${className}`;
+  checkboxContainer.innerHTML =
+    '<p style="text-align:center; color:var(--color-gray-600);">Loading subjects...</p>';
+
+  modal.style.display = 'block';
+
+  try {
+    const subjectsSnap = await db.collection('subjects').orderBy('name').get();
+
+    if (subjectsSnap.empty) {
+      checkboxContainer.innerHTML =
+        '<p style="text-align:center; color:var(--color-gray-600);">No subjects available. Create subjects first in the Subjects section.</p>';
+      return;
+    }
+
+    const classDoc = await db.collection('classes').doc(classId).get();
+    const currentSubjects = classDoc.exists ? (classDoc.data().subjects || []) : [];
+
+    checkboxContainer.innerHTML = '';
+
+    subjectsSnap.forEach(doc => {
+      const subjectName = doc.data().name;
+      const isChecked = currentSubjects.includes(subjectName);
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'subject-checkbox-item';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = `subject-${doc.id}`;
+      checkbox.value = subjectName;
+      checkbox.checked = isChecked;
+
+      const label = document.createElement('label');
+      label.htmlFor = checkbox.id;
+      label.textContent = subjectName;
+
+      itemDiv.appendChild(checkbox);
+      itemDiv.appendChild(label);
+      checkboxContainer.appendChild(itemDiv);
+    });
+
+  } catch (error) {
+    console.error('Error loading subjects for assignment:', error);
+    checkboxContainer.innerHTML =
+      '<p style="text-align:center; color:var(--color-danger);">Error loading subjects. Please try again.</p>';
+    window.showToast?.('Failed to load subjects', 'danger');
+  }
 }
 
-// Get current class subjects
-const classDoc = await db.collection('classes').doc(classId).get();
-const currentSubjects = classDoc.exists ? (classDoc.data().subjects || []) : [];
-
-// Render checkboxes
-checkboxContainer.innerHTML = '';
-
-subjectsSnap.forEach(doc => {
-  const subjectName = doc.data().name;
-  const isChecked = currentSubjects.includes(subjectName);
-  
-  const itemDiv = document.createElement('div');
-  itemDiv.className = 'subject-checkbox-item';
-  
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = `subject-${doc.id}`;
-  checkbox.value = subjectName;
-  checkbox.checked = isChecked;
-  
-  const label = document.createElement('label');
-  label.htmlFor = `subject-${doc.id}`;
-  label.textContent = subjectName;
-  
-  itemDiv.appendChild(checkbox);
-  itemDiv.appendChild(label);
-  checkboxContainer.appendChild(itemDiv);
-});
-} catch (error) {
-console.error('Error loading subjects for assignment:', error);
-checkboxContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading subjects. Please try again.</p>';
-window.showToast?.('Failed to load subjects', 'danger');
-}
-}
 function closeSubjectAssignmentModal() {
-const modal = document.getElementById('subject-assignment-modal');
-if (modal) modal.style.display = 'none';
-currentAssignmentClassId = null;
-currentAssignmentClassName = null;
+  const modal = document.getElementById('subject-assignment-modal');
+  if (modal) modal.style.display = 'none';
+
+  currentAssignmentClassId = null;
+  currentAssignmentClassName = null;
 }
+
 async function saveClassSubjects() {
-if (!currentAssignmentClassId) {
-window.showToast?.('No class selected', 'warning');
-return;
-}
-// Get selected subjects
-const checkboxes = document.querySelectorAll('#subject-checkboxes input[type="checkbox"]:checked');
-const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
-if (selectedSubjects.length === 0) {
-if (!confirm('No subjects selected. This will remove all subjects from this class. Continue?')) {
-return;
-}
-}
-try {
-// Step 1: Update the class document
-await db.collection('classes').doc(currentAssignmentClassId).update({
-subjects: selectedSubjects,
-updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-});
-// Step 2: Get class details for teacher info
-const classDoc = await db.collection('classes').doc(currentAssignmentClassId).get();
-const classData = classDoc.data();
+  if (!currentAssignmentClassId) {
+    window.showToast?.('No class selected', 'warning');
+    return;
+  }
 
-// Step 3: Get all pupils in this class
-const pupilsSnap = await db.collection('pupils')
-  .where('class.id', '==', currentAssignmentClassId)
-  .get();
+  const checkboxes = document.querySelectorAll(
+    '#subject-checkboxes input[type="checkbox"]:checked'
+  );
+  const selectedSubjects = Array.from(checkboxes).map(cb => cb.value);
 
-// Step 4: Update all pupils with the new subjects
-if (!pupilsSnap.empty) {
-  const batch = db.batch();
-  let updateCount = 0;
-  
-  pupilsSnap.forEach(pupilDoc => {
-    const pupilRef = db.collection('pupils').doc(pupilDoc.id);
-    batch.update(pupilRef, {
+  if (selectedSubjects.length === 0) {
+    if (!confirm('No subjects selected. This will remove all subjects from this class. Continue?')) {
+      return;
+    }
+  }
+
+  try {
+    await db.collection('classes').doc(currentAssignmentClassId).update({
       subjects: selectedSubjects,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    updateCount++;
-    
-    // Firestore batch limit is 500 operations
-    if (updateCount >= 500) {
-      console.warn('Batch limit reached. Some pupils may not be updated.');
+
+    const classDoc = await db.collection('classes').doc(currentAssignmentClassId).get();
+    const classData = classDoc.data();
+
+    const pupilsSnap = await db
+      .collection('pupils')
+      .where('class.id', '==', currentAssignmentClassId)
+      .get();
+
+    if (!pupilsSnap.empty) {
+      const batch = db.batch();
+      let updateCount = 0;
+
+      pupilsSnap.forEach(pupilDoc => {
+        batch.update(db.collection('pupils').doc(pupilDoc.id), {
+          subjects: selectedSubjects,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updateCount++;
+      });
+
+      await batch.commit();
+
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" and ${updateCount} pupil(s)`,
+        'success',
+        5000
+      );
+    } else {
+      window.showToast?.(
+        `✓ Subjects updated for class "${currentAssignmentClassName}" (no pupils in class yet)`,
+        'success'
+      );
     }
-  });
-  
-  await batch.commit();
-  
-  window.showToast?.(
-    `✓ Subjects updated for class "${currentAssignmentClassName}" and ${updateCount} pupil(s)`,
-    'success',
-    5000
-  );
-} else {
-  window.showToast?.(
-    `✓ Subjects updated for class "${currentAssignmentClassName}" (no pupils in class yet)`,
-    'success'
-  );
+
+    closeSubjectAssignmentModal();
+    loadClasses();
+
+  } catch (error) {
+    console.error('Error saving subjects:', error);
+    window.handleError(error, 'Failed to save subjects');
+  }
 }
 
-// Step 5: Update assigned teacher's view (if teacher exists)
-if (classData.teacherId) {
-  // Teacher will see the changes automatically when they reload or through real-time listeners
-  console.log(`Class teacher (${classData.teacherId}) will see updated subjects on next load`);
-}
-
-// Close modal and refresh
-closeSubjectAssignmentModal();
-loadClasses();
-} catch (error) {
-console.error('Error saving subjects:', error);
-window.handleError(error, 'Failed to save subjects');
-}
-}
-// Close modal when clicking outside
-window.addEventListener('click', (event) => {
-const modal = document.getElementById('subject-assignment-modal');
-if (event.target === modal) {
-closeSubjectAssignmentModal();
-}
-});
 /* ========================================
 TEACHER ASSIGNMENT
 ======================================== */
+
 async function loadTeacherAssignments() {
-const teacherSelect = document.getElementById('assign-teacher');
-const classSelect = document.getElementById('assign-class');
-const tbody = document.getElementById('assignments-table');
-if (!teacherSelect || !classSelect || !tbody) return;
-try {
-const teachers = await window.getAllTeachers();
-teacherSelect.innerHTML = '<option value="">-- Select Teacher --</option>';
-teachers.forEach(t => {
-  const opt = document.createElement('option');
-  opt.value = t.uid;
-  opt.textContent = `${t.name} (${t.email})`;
-  teacherSelect.appendChild(opt);
-});
+  const teacherSelect = document.getElementById('assign-teacher');
+  const classSelect = document.getElementById('assign-class');
+  const tbody = document.getElementById('assignments-table');
 
-if (teachers.length === 0) {
-  window.showToast?.('No teachers registered yet. Add some in the Teachers section.', 'warning', 6000);
-}
+  if (!teacherSelect || !classSelect || !tbody) return;
 
-const classesSnap = await db.collection('classes').get();
-classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+  try {
+    const teachers = await window.getAllTeachers();
 
-const classes = [];
-classesSnap.forEach(doc => {
-  const data = doc.data();
-  classes.push({
-    id: doc.id,
-    name: data.name,
-    teacherId: data.teacherId || null
-  });
-});
+    teacherSelect.innerHTML = '<option value="">-- Select Teacher --</option>';
 
-classes.sort((a, b) => a.name.localeCompare(b.name));
-
-classes.forEach(c => {
-  const opt = document.createElement('option');
-  opt.value = c.id;
-  opt.textContent = c.name;
-  classSelect.appendChild(opt);
-});
-
-tbody.innerHTML = '';
-
-if (classes.length === 0) {
-  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes created yet. Add some in the Classes section.</td></tr>';
-  return;
-}
-
-classes.forEach(cls => {
-  const assignedTeacher = teachers.find(t => t.uid === cls.teacherId);
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td data-label="Class">${cls.name}</td>
-    <td data-label="Assigned Teacher">${assignedTeacher ? assignedTeacher.name : '<em>None assigned</em>'}</td>
-    <td data-label="Actions">
-      ${cls.teacherId ? `<button class="btn-small btn-danger" onclick="unassignTeacher('${cls.id}')">Remove Assignment</button>` : ''}
-    </td>
-  `;
-  tbody.appendChild(tr);
-});
-} catch (error) {
-console.error('Error loading assignments:', error);
-window.showToast?.('Failed to load assignment data. Check connection and try again.', 'danger');
-tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading assignments - please refresh</td></tr>';
-}
-}
-async function assignTeacherToClass() {
-const teacherUid = document.getElementById('assign-teacher')?.value;
-const classId = document.getElementById('assign-class')?.value;
-if (!teacherUid || !classId) {
-window.showToast?.('Please select both a teacher and a class', 'warning');
-return;
-}
-try {
-const teacherDoc = await db.collection('teachers').doc(teacherUid).get();
-const teacherName = teacherDoc.exists ? teacherDoc.data().name : '';
-const classDoc = await db.collection('classes').doc(classId).get();
-const className = classDoc.exists ? classDoc.data().name : '';
-
-if (!className) {
-  window.showToast?.('Class not found', 'danger');
-  return;
-}
-
-// Get pupils first
-const pupilsSnap = await db.collection('pupils')
-  .where('class.id', '==', classId)
-  .get();
-
-// Use Firestore transaction for atomic update
-await db.runTransaction(async (transaction) => {
-  const classRef = db.collection('classes').doc(classId);
-  
-  transaction.update(classRef, {
-    teacherId: teacherUid,
-    teacherName: teacherName,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  
-  // Update all pupils in the same transaction
-  pupilsSnap.forEach(pupilDoc => {
-    const pupilRef = db.collection('pupils').doc(pupilDoc.id);
-    transaction.update(pupilRef, {
-      'assignedTeacher.id': teacherUid,
-      'assignedTeacher.name': teacherName,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    teachers.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.uid;
+      opt.textContent = `${t.name} (${t.email})`;
+      teacherSelect.appendChild(opt);
     });
-  });
-});
 
-window.showToast?.(
-  `Teacher assigned successfully! ${pupilsSnap.size} pupil(s) updated.`, 
-  'success', 
-  5000
-);
+    const classesSnap = await db.collection('classes').get();
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
 
-loadTeacherAssignments();
-} catch (error) {
-console.error('Error assigning teacher:', error);
-window.handleError(error, 'Failed to assign teacher');
+    const classes = [];
+
+    classesSnap.forEach(doc => {
+      const data = doc.data();
+      classes.push({
+        id: doc.id,
+        name: data.name,
+        teacherId: data.teacherId || null
+      });
+    });
+
+    classes.sort((a, b) => a.name.localeCompare(b.name));
+
+    classes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      classSelect.appendChild(opt);
+    });
+
+    tbody.innerHTML = '';
+
+    classes.forEach(cls => {
+      const assignedTeacher = teachers.find(t => t.uid === cls.teacherId);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Class">${cls.name}</td>
+        <td data-label="Assigned Teacher">${assignedTeacher ? assignedTeacher.name : '<em>None assigned</em>'}</td>
+        <td data-label="Actions">
+          ${cls.teacherId ? `<button class="btn-small btn-danger" onclick="unassignTeacher('${cls.id}')">Remove Assignment</button>` : ''}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (error) {
+    console.error('Error loading assignments:', error);
+    window.showToast?.(
+      'Failed to load assignment data. Check connection and try again.',
+      'danger'
+    );
+    tbody.innerHTML =
+      '<tr><td colspan="3" style="text-align:center; color:var(--color-danger);">Error loading assignments please refresh</td></tr>';
+  }
 }
+
+async function assignTeacherToClass() {
+  const teacherUid = document.getElementById('assign-teacher')?.value;
+  const classId = document.getElementById('assign-class')?.value;
+
+  if (!teacherUid || !classId) {
+    window.showToast?.('Please select both a teacher and a class', 'warning');
+    return;
+  }
+
+  try {
+    const teacherDoc = await db.collection('teachers').doc(teacherUid).get();
+    const teacherName = teacherDoc.exists ? teacherDoc.data().name : '';
+
+    const pupilsSnap = await db
+      .collection('pupils')
+      .where('class.id', '==', classId)
+      .get();
+
+    await db.runTransaction(async transaction => {
+      transaction.update(db.collection('classes').doc(classId), {
+        teacherId: teacherUid,
+        teacherName: teacherName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      pupilsSnap.forEach(pupilDoc => {
+        transaction.update(db.collection('pupils').doc(pupilDoc.id), {
+          'assignedTeacher.id': teacherUid,
+          'assignedTeacher.name': teacherName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+
+    window.showToast?.(
+      `Teacher assigned successfully! ${pupilsSnap.size} pupil(s) updated.`,
+      'success',
+      5000
+    );
+
+    loadTeacherAssignments();
+
+  } catch (error) {
+    console.error('Error assigning teacher:', error);
+    window.handleError(error, 'Failed to assign teacher');
+  }
 }
 async function unassignTeacher(classId) {
 if (!confirm('Remove teacher assignment from this class?')) return;
