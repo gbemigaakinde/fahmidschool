@@ -1204,40 +1204,143 @@ async function loadAdminAnnouncements() {
    SCHOOL SETTINGS 
 ======================================== */
 async function loadCurrentSettings() {
-  const termEl = document.getElementById('display-term');
-  const sessionEl = document.getElementById('display-session');
-  const resumptionEl = document.getElementById('display-resumption');
-  const termSelect = document.getElementById('current-term');
-  const sessionInput = document.getElementById('current-session');
-  const resumptionInput = document.getElementById('resumption-date');
+  const termEl = document.getElementById('display-current-term');
+  const sessionNameEl = document.getElementById('display-session-name');
+  const sessionStartEl = document.getElementById('display-session-start');
+  const sessionEndEl = document.getElementById('display-session-end');
+  const resumptionEl = document.getElementById('display-next-resumption');
+  const statusBadge = document.getElementById('session-status-badge');
+  const sessionAlert = document.getElementById('session-end-alert');
   
-  if (!termEl || !sessionEl || !resumptionEl || !termSelect || !sessionInput || !resumptionInput) return;
+  const termSelect = document.getElementById('current-term');
+  const startYearInput = document.getElementById('session-start-year');
+  const endYearInput = document.getElementById('session-end-year');
+  const startDateInput = document.getElementById('session-start-date');
+  const endDateInput = document.getElementById('session-end-date');
+  const resumptionInput = document.getElementById('resumption-date');
   
   try {
     const settingsDoc = await db.collection('settings').doc('current').get();
     
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
-      termEl.textContent = `Term: ${data.term || 'Not set'}`;
-      sessionEl.textContent = `Session: ${data.session || 'Not set'}`;
-      resumptionEl.textContent = `Resumption Date: ${data.resumptionDate || 'Not set'}`;
-      termSelect.value = data.term || 'First Term';
-      sessionInput.value = data.session || '';
-      resumptionInput.value = data.resumptionDate || '';
+      
+      // Handle both old format (string) and new format (object)
+      let sessionName = '';
+      let startYear = 2025;
+      let endYear = 2026;
+      let startDate = '';
+      let endDate = '';
+      
+      if (data.currentSession && typeof data.currentSession === 'object') {
+        // New format
+        sessionName = data.currentSession.name || `${data.currentSession.startYear}/${data.currentSession.endYear}`;
+        startYear = data.currentSession.startYear || 2025;
+        endYear = data.currentSession.endYear || 2026;
+        
+        if (data.currentSession.startDate) {
+          const startDateObj = data.currentSession.startDate.toDate ? data.currentSession.startDate.toDate() : new Date(data.currentSession.startDate);
+          startDate = startDateObj.toISOString().split('T')[0];
+          if (sessionStartEl) sessionStartEl.textContent = startDateObj.toLocaleDateString('en-GB');
+        }
+        
+        if (data.currentSession.endDate) {
+          const endDateObj = data.currentSession.endDate.toDate ? data.currentSession.endDate.toDate() : new Date(data.currentSession.endDate);
+          endDate = endDateObj.toISOString().split('T')[0];
+          if (sessionEndEl) sessionEndEl.textContent = endDateObj.toLocaleDateString('en-GB');
+          
+          // Check if session is ending soon (within 30 days)
+          const today = new Date();
+          const daysUntilEnd = Math.ceil((endDateObj - today) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntilEnd < 0) {
+            // Session has ended
+            if (statusBadge) {
+              statusBadge.textContent = 'Ended';
+              statusBadge.classList.add('ended');
+            }
+            if (sessionAlert) {
+              sessionAlert.style.display = 'block';
+              sessionAlert.innerHTML = '<strong>🚨 Session Has Ended!</strong><p>Please start a new academic session below.</p>';
+            }
+          } else if (daysUntilEnd <= 30) {
+            // Session ending soon
+            if (statusBadge) {
+              statusBadge.textContent = `Ending in ${daysUntilEnd} days`;
+              statusBadge.classList.add('ending-soon');
+            }
+            if (sessionAlert) {
+              sessionAlert.style.display = 'block';
+            }
+          } else {
+            // Session active
+            if (statusBadge) {
+              statusBadge.textContent = 'Active';
+              statusBadge.classList.remove('ending-soon', 'ended');
+            }
+            if (sessionAlert) {
+              sessionAlert.style.display = 'none';
+            }
+          }
+        }
+      } else if (data.session) {
+        // Old format - just a string like "2025/2026"
+        sessionName = data.session;
+        const years = data.session.split('/');
+        if (years.length === 2) {
+          startYear = parseInt(years[0]);
+          endYear = parseInt(years[1]);
+        }
+        if (sessionStartEl) sessionStartEl.textContent = 'Not set (old format)';
+        if (sessionEndEl) sessionEndEl.textContent = 'Not set (old format)';
+      }
+      
+      // Display current values
+      if (sessionNameEl) sessionNameEl.textContent = sessionName || 'Not set';
+      if (termEl) termEl.textContent = data.term || 'Not set';
+      
+      // Resumption date
+      let resumptionDate = '';
+      if (data.resumptionDate) {
+        if (data.resumptionDate.toDate) {
+          const resDate = data.resumptionDate.toDate();
+          resumptionDate = resDate.toISOString().split('T')[0];
+          if (resumptionEl) resumptionEl.textContent = resDate.toLocaleDateString('en-GB');
+        } else if (typeof data.resumptionDate === 'string') {
+          resumptionDate = data.resumptionDate;
+          if (resumptionEl) resumptionEl.textContent = new Date(data.resumptionDate).toLocaleDateString('en-GB');
+        }
+      } else {
+        if (resumptionEl) resumptionEl.textContent = 'Not set';
+      }
+      
+      // Populate form fields
+      if (termSelect) termSelect.value = data.term || 'First Term';
+      if (startYearInput) startYearInput.value = startYear;
+      if (endYearInput) endYearInput.value = endYear;
+      if (startDateInput) startDateInput.value = startDate;
+      if (endDateInput) endDateInput.value = endDate;
+      if (resumptionInput) resumptionInput.value = resumptionDate;
+      
     } else {
-      termEl.textContent = 'Term: Not set';
-      sessionEl.textContent = 'Session: Not set';
-      resumptionEl.textContent = 'Resumption Date: Not set';
-      termSelect.value = 'First Term';
-      sessionInput.value = '';
-      resumptionInput.value = '';
+      // No settings exist - create default
+      if (sessionNameEl) sessionNameEl.textContent = 'Not set';
+      if (termEl) termEl.textContent = 'Not set';
+      if (sessionStartEl) sessionStartEl.textContent = 'Not set';
+      if (sessionEndEl) sessionEndEl.textContent = 'Not set';
+      if (resumptionEl) resumptionEl.textContent = 'Not set';
+      
+      if (termSelect) termSelect.value = 'First Term';
+      if (startYearInput) startYearInput.value = new Date().getFullYear();
+      if (endYearInput) endYearInput.value = new Date().getFullYear() + 1;
     }
+    
+    // Load session history
+    await loadSessionHistory();
+    
   } catch (error) {
     console.error('Error loading settings:', error);
     window.showToast?.('Failed to load current settings', 'danger');
-    termEl.textContent = 'Error loading';
-    sessionEl.textContent = 'Error loading';
-    resumptionEl.textContent = 'Error loading';
   }
 }
 
@@ -1245,11 +1348,24 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   e.preventDefault();
   
   const term = document.getElementById('current-term')?.value;
-  const session = document.getElementById('current-session')?.value.trim();
+  const startYear = parseInt(document.getElementById('session-start-year')?.value);
+  const endYear = parseInt(document.getElementById('session-end-year')?.value);
+  const startDate = document.getElementById('session-start-date')?.value;
+  const endDate = document.getElementById('session-end-date')?.value;
   const resumptionDate = document.getElementById('resumption-date')?.value;
   
-  if (!term || !session || !resumptionDate) {
+  if (!term || !startYear || !endYear || !startDate || !endDate || !resumptionDate) {
     window.showToast?.('All fields are required', 'warning');
+    return;
+  }
+  
+  if (endYear <= startYear) {
+    window.showToast?.('End year must be after start year', 'warning');
+    return;
+  }
+  
+  if (new Date(endDate) <= new Date(startDate)) {
+    window.showToast?.('End date must be after start date', 'warning');
     return;
   }
   
@@ -1258,21 +1374,29 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    await db.collection('settings').doc('current').set({
+    const sessionData = {
       term,
-      session,
+      currentSession: {
+        name: `${startYear}/${endYear}`,
+        startYear,
+        endYear,
+        startDate: firebase.firestore.Timestamp.fromDate(new Date(startDate)),
+        endDate: firebase.firestore.Timestamp.fromDate(new Date(endDate))
+      },
       resumptionDate,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
     
-    window.showToast?.('School settings saved successfully!', 'success');
+    await db.collection('settings').doc('current').set(sessionData, { merge: true });
+    
+    window.showToast?.('✓ School settings saved successfully!', 'success');
     loadCurrentSettings();
   } catch (error) {
     console.error('Error saving settings:', error);
     window.handleError(error, 'Failed to save settings');
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Save Settings';
+    submitBtn.innerHTML = '💾 Save Settings';
   }
 });
 
@@ -1510,6 +1634,196 @@ window.addEventListener('click', (event) => {
     closeSubjectAssignmentModal();
   }
 });
+
+/* ======================================== 
+   SESSION MANAGEMENT & TRANSITIONS
+======================================== */
+
+async function loadSessionHistory() {
+  const tbody = document.getElementById('session-history-table');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading history...</td></tr>';
+  
+  try {
+    const sessionsSnap = await db.collection('sessions')
+      .orderBy('startDate', 'desc')
+      .limit(10)
+      .get();
+    
+    tbody.innerHTML = '';
+    
+    if (sessionsSnap.empty) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No session history yet</td></tr>';
+      return;
+    }
+    
+    sessionsSnap.forEach(doc => {
+      const data = doc.data();
+      const startDate = data.startDate?.toDate ? data.startDate.toDate().toLocaleDateString('en-GB') : 'N/A';
+      const endDate = data.endDate?.toDate ? data.endDate.toDate().toLocaleDateString('en-GB') : 'N/A';
+      const status = data.status === 'archived' ? '<span style="color:var(--color-gray-600);">Archived</span>' : '<span style="color:var(--color-success);font-weight:600;">Active</span>';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Session">${data.name || 'N/A'}</td>
+        <td data-label="Start Date">${startDate}</td>
+        <td data-label="End Date">${endDate}</td>
+        <td data-label="Status">${status}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (error) {
+    console.error('Error loading session history:', error);
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading history</td></tr>';
+  }
+}
+
+function confirmStartNewSession() {
+  const confirmation = confirm(
+    '🎓 START NEW ACADEMIC SESSION\n\n' +
+    'This will:\n' +
+    '✓ Archive the current session\n' +
+    '✓ Create a new session (next academic year)\n' +
+    '✓ Reset term to "First Term"\n' +
+    '✓ Enable class promotion period\n\n' +
+    '⚠️ This action should only be done at the end of the academic year.\n\n' +
+    'Are you sure you want to continue?'
+  );
+  
+  if (confirmation) {
+    startNewAcademicSession();
+  }
+}
+
+async function startNewAcademicSession() {
+  const startBtn = document.getElementById('start-new-session-btn');
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<span class="btn-loading">Starting new session...</span>';
+  }
+  
+  try {
+    // Step 1: Get current session
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) {
+      window.showToast?.('No current session found. Please set up session first.', 'warning');
+      return;
+    }
+    
+    const currentData = settingsDoc.data();
+    const currentSession = currentData.currentSession;
+    
+    if (!currentSession || typeof currentSession !== 'object') {
+      window.showToast?.('Current session format is invalid. Please update settings first.', 'warning');
+      return;
+    }
+    
+    // Step 2: Archive current session
+    await db.collection('sessions').doc(currentSession.name.replace('/', '-')).set({
+      name: currentSession.name,
+      startYear: currentSession.startYear,
+      endYear: currentSession.endYear,
+      startDate: currentSession.startDate,
+      endDate: currentSession.endDate,
+      status: 'archived',
+      archivedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Step 3: Calculate new session dates
+    const newStartYear = currentSession.endYear;
+    const newEndYear = currentSession.endYear + 1;
+    const newSessionName = `${newStartYear}/${newEndYear}`;
+    
+    // Set new session to start in September of the new year
+    const newStartDate = new Date(newStartYear, 8, 1); // September 1st
+    const newEndDate = new Date(newEndYear, 6, 31); // July 31st
+    
+    // Step 4: Update current session
+    await db.collection('settings').doc('current').set({
+      term: 'First Term',
+      currentSession: {
+        name: newSessionName,
+        startYear: newStartYear,
+        endYear: newEndYear,
+        startDate: firebase.firestore.Timestamp.fromDate(newStartDate),
+        endDate: firebase.firestore.Timestamp.fromDate(newEndDate)
+      },
+      resumptionDate: newStartDate.toISOString().split('T')[0],
+      promotionPeriodActive: true, // Enable promotion period
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    // Step 5: Create new session record
+    await db.collection('sessions').doc(newSessionName.replace('/', '-')).set({
+      name: newSessionName,
+      startYear: newStartYear,
+      endYear: newEndYear,
+      startDate: firebase.firestore.Timestamp.fromDate(newStartDate),
+      endDate: firebase.firestore.Timestamp.fromDate(newEndDate),
+      status: 'active',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    window.showToast?.(
+      `✓ New session "${newSessionName}" started successfully!\nPromotion period is now active for teachers.`,
+      'success',
+      8000
+    );
+    
+    // Reload settings
+    await loadCurrentSettings();
+    
+  } catch (error) {
+    console.error('Error starting new session:', error);
+    window.handleError(error, 'Failed to start new session');
+  } finally {
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.innerHTML = '🚀 Start New Session';
+    }
+  }
+}
+
+// Check session status on dashboard load
+async function checkSessionStatus() {
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) return;
+    
+    const data = settingsDoc.data();
+    const currentSession = data.currentSession;
+    
+    if (!currentSession || typeof currentSession !== 'object' || !currentSession.endDate) {
+      return;
+    }
+    
+    const endDate = currentSession.endDate.toDate();
+    const today = new Date();
+    const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+    
+    // Show notification if session has ended
+    if (daysUntilEnd < 0) {
+      window.showToast?.(
+        '🚨 Academic session has ended! Please start a new session in School Settings.',
+        'warning',
+        10000
+      );
+    } else if (daysUntilEnd <= 30 && daysUntilEnd > 0) {
+      window.showToast?.(
+        `⚠️ Academic session ending in ${daysUntilEnd} days. Prepare for new session and promotions.`,
+        'info',
+        8000
+      );
+    }
+    
+  } catch (error) {
+    console.error('Error checking session status:', error);
+  }
+}
   
   console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
 });
