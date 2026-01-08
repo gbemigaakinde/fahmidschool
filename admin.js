@@ -1348,6 +1348,340 @@ async function checkSessionStatus() {
   }
 }
 
+/* ======================================== 
+   LOAD CURRENT SETTINGS INTO FORM
+======================================== */
+async function loadCurrentSettings() {
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) {
+      window.showToast?.('No settings found. Please configure.', 'warning');
+      return;
+    }
+    
+    const data = settingsDoc.data();
+    
+    // Display current session info in status card
+    if (data.currentSession && typeof data.currentSession === 'object') {
+      const session = data.currentSession;
+      
+      document.getElementById('display-session-name').textContent = 
+        session.name || `${session.startYear}/${session.endYear}`;
+      
+      document.getElementById('display-current-term').textContent = 
+        data.term || 'First Term';
+      
+      if (session.startDate) {
+        const startDate = session.startDate.toDate();
+        document.getElementById('display-session-start').textContent = 
+          startDate.toLocaleDateString('en-GB');
+      }
+      
+      if (session.endDate) {
+        const endDate = session.endDate.toDate();
+        document.getElementById('display-session-end').textContent = 
+          endDate.toLocaleDateString('en-GB');
+      }
+      
+      // Check if session is ending soon
+      if (session.endDate) {
+        const endDate = session.endDate.toDate();
+        const today = new Date();
+        const daysUntilEnd = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+        
+        const statusBadge = document.getElementById('session-status-badge');
+        const alertDiv = document.getElementById('session-end-alert');
+        
+        if (daysUntilEnd < 0) {
+          statusBadge.textContent = 'Ended';
+          statusBadge.className = 'status-badge ended';
+          if (alertDiv) alertDiv.style.display = 'block';
+        } else if (daysUntilEnd <= 30) {
+          statusBadge.textContent = 'Ending Soon';
+          statusBadge.className = 'status-badge ending-soon';
+          if (alertDiv) alertDiv.style.display = 'block';
+        } else {
+          statusBadge.textContent = 'Active';
+          statusBadge.className = 'status-badge';
+          if (alertDiv) alertDiv.style.display = 'none';
+        }
+      }
+      
+      // Populate edit form
+      document.getElementById('session-start-year').value = session.startYear || '';
+      document.getElementById('session-end-year').value = session.endYear || '';
+      
+      if (session.startDate) {
+        const startDate = session.startDate.toDate();
+        document.getElementById('session-start-date').value = 
+          startDate.toISOString().split('T')[0];
+      }
+      
+      if (session.endDate) {
+        const endDate = session.endDate.toDate();
+        document.getElementById('session-end-date').value = 
+          endDate.toISOString().split('T')[0];
+      }
+    } else if (data.session) {
+      // Old format fallback
+      document.getElementById('display-session-name').textContent = data.session;
+      document.getElementById('display-current-term').textContent = data.term || 'First Term';
+    }
+    
+    // Current term
+    document.getElementById('current-term').value = data.term || 'First Term';
+    
+    // Resumption date
+    if (data.resumptionDate) {
+      document.getElementById('display-next-resumption').textContent = 
+        data.resumptionDate.toDate().toLocaleDateString('en-GB');
+      
+      document.getElementById('resumption-date').value = 
+        data.resumptionDate.toDate().toISOString().split('T')[0];
+    }
+    
+  } catch (error) {
+    console.error('Error loading settings:', error);
+    window.showToast?.('Failed to load settings', 'danger');
+  }
+}
+
+/* ======================================== 
+   START NEW ACADEMIC SESSION
+======================================== */
+async function confirmStartNewSession() {
+  const confirmation = confirm(
+    '⚠️ START NEW ACADEMIC SESSION?\n\n' +
+    'This will:\n' +
+    '• Archive the current session\n' +
+    '• Create a new session (next year)\n' +
+    '• Reset current term to "First Term"\n' +
+    '• Open promotion period for teachers\n\n' +
+    'IMPORTANT: Make sure all promotions are completed first!\n\n' +
+    'Continue?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Double confirmation for safety
+  const doubleCheck = prompt(
+    'Type "START NEW SESSION" (without quotes) to confirm:'
+  );
+  
+  if (doubleCheck !== 'START NEW SESSION') {
+    window.showToast?.('Action cancelled', 'info');
+    return;
+  }
+  
+  await startNewSession();
+}
+
+async function startNewSession() {
+  const btn = document.getElementById('start-new-session-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Starting new session...</span>';
+  }
+  
+  try {
+    // Get current session
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) {
+      window.showToast?.('No current session found', 'danger');
+      return;
+    }
+    
+    const currentData = settingsDoc.data();
+    const currentSession = currentData.currentSession;
+    
+    if (!currentSession || !currentSession.endYear) {
+      window.showToast?.('Invalid session data. Please configure settings first.', 'danger');
+      return;
+    }
+    
+    // Archive current session
+    const archiveId = `${currentSession.startYear}-${currentSession.endYear}`;
+    await db.collection('sessions').doc(archiveId).set({
+      ...currentSession,
+      status: 'archived',
+      archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      archivedBy: auth.currentUser.uid
+    });
+    
+    // Create new session
+    const newStartYear = currentSession.endYear;
+    const newEndYear = currentSession.endYear + 1;
+    
+    // Calculate new dates (September 1 to July 31)
+    const newStartDate = new Date(newStartYear, 8, 1); // September 1
+    const newEndDate = new Date(newEndYear, 6, 31); // July 31
+    const newResumptionDate = new Date(newStartYear, 8, 1); // September 1
+    
+    await db.collection('settings').doc('current').update({
+      currentSession: {
+        name: `${newStartYear}/${newEndYear}`,
+        startYear: newStartYear,
+        endYear: newEndYear,
+        startDate: firebase.firestore.Timestamp.fromDate(newStartDate),
+        endDate: firebase.firestore.Timestamp.fromDate(newEndDate)
+      },
+      session: `${newStartYear}/${newEndYear}`,
+      term: 'First Term',
+      resumptionDate: firebase.firestore.Timestamp.fromDate(newResumptionDate),
+      promotionPeriodActive: true, // Open promotion period
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    window.showToast?.(
+      `✓ New session ${newStartYear}/${newEndYear} started successfully!\n` +
+      `Promotion period is now ACTIVE for teachers.`,
+      'success',
+      8000
+    );
+    
+    // Reload settings display
+    await loadCurrentSettings();
+    await loadSessionHistory();
+    
+  } catch (error) {
+    console.error('Error starting new session:', error);
+    window.handleError(error, 'Failed to start new session');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🚀 Start New Session';
+    }
+  }
+}
+
+// Make function globally available
+window.confirmStartNewSession = confirmStartNewSession;
+
+/* ======================================== 
+   LOAD SESSION HISTORY
+======================================== */
+async function loadSessionHistory() {
+  const tbody = document.getElementById('session-history-table');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading history...</td></tr>';
+  
+  try {
+    const snapshot = await db.collection('sessions')
+      .orderBy('startYear', 'desc')
+      .limit(10)
+      .get();
+    
+    tbody.innerHTML = '';
+    
+    if (snapshot.empty) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No archived sessions yet</td></tr>';
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      const startDate = data.startDate 
+        ? data.startDate.toDate().toLocaleDateString('en-GB')
+        : '-';
+      
+      const endDate = data.endDate 
+        ? data.endDate.toDate().toLocaleDateString('en-GB')
+        : '-';
+      
+      const status = data.status === 'archived' 
+        ? '<span class="status-badge" style="background:#9e9e9e;">Archived</span>'
+        : '<span class="status-badge" style="background:#4CAF50;">Active</span>';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Session">${data.name}</td>
+        <td data-label="Start Date">${startDate}</td>
+        <td data-label="End Date">${endDate}</td>
+        <td data-label="Status">${status}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (error) {
+    console.error('Error loading session history:', error);
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading history</td></tr>';
+  }
+}
+
+/* ======================================== 
+   ALUMNI MANAGEMENT
+======================================== */
+async function loadAlumni() {
+  const tbody = document.getElementById('alumni-table');
+  if (!tbody) {
+    console.warn('Alumni table not found - will create section');
+    return;
+  }
+  
+  tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>';
+  
+  try {
+    const snapshot = await db.collection('alumni')
+      .orderBy('graduationDate', 'desc')
+      .get();
+    
+    tbody.innerHTML = '';
+    
+    if (snapshot.empty) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No alumni yet. Pupils will appear here after graduating from terminal class.</td></tr>';
+      return;
+    }
+    
+    const alumni = [];
+    snapshot.forEach(doc => {
+      alumni.push({ id: doc.id, ...doc.data() });
+    });
+    
+    paginateTable(alumni, 'alumni-table', 20, (alum, tbody) => {
+      const graduationDate = alum.graduationDate 
+        ? alum.graduationDate.toDate().toLocaleDateString('en-GB')
+        : '-';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Name">${alum.name}</td>
+        <td data-label="Final Class">${alum.finalClass || '-'}</td>
+        <td data-label="Graduation Session">${alum.graduationSession || '-'}</td>
+        <td data-label="Graduation Date">${graduationDate}</td>
+        <td data-label="Actions">
+          <button class="btn-small btn-danger" onclick="deleteAlumni('${alum.id}')">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (error) {
+    console.error('Error loading alumni:', error);
+    window.showToast?.('Failed to load alumni list', 'danger');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading alumni</td></tr>';
+  }
+}
+
+async function deleteAlumni(alumniId) {
+  if (!confirm('Delete this alumni record? This cannot be undone.')) return;
+  
+  try {
+    await db.collection('alumni').doc(alumniId).delete();
+    window.showToast?.('Alumni record deleted', 'success');
+    loadAlumni();
+  } catch (error) {
+    console.error('Error deleting alumni:', error);
+    window.handleError(error, 'Failed to delete alumni');
+  }
+}
+
+// Make function globally available
+window.deleteAlumni = deleteAlumni;
+
 /* ========================================
 CLASS HIERARCHY MANAGEMENT
 ======================================== */
@@ -2419,165 +2753,57 @@ document.addEventListener('DOMContentLoaded', async () => {
    CLASS HIERARCHY MANAGEMENT
 ======================================== */
 
-let currentHierarchy = null;
-
-async function loadClassHierarchyUI() {
-  try {
-    currentHierarchy = await window.classHierarchy.getClassHierarchy();
-    renderHierarchyUI(currentHierarchy);
-  } catch (error) {
-    console.error('Error loading class hierarchy UI:', error);
-    window.showToast?.('Failed to load class hierarchy', 'danger');
-  }
-}
-
-function renderHierarchyUI(hierarchy) {
-  const nurseryContainer = document.getElementById('nursery-hierarchy');
-  const primaryContainer = document.getElementById('primary-hierarchy');
+// Settings form submit handler
+document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
   
-  if (!nurseryContainer || !primaryContainer) return;
+  const startYear = parseInt(document.getElementById('session-start-year').value);
+  const endYear = parseInt(document.getElementById('session-end-year').value);
+  const startDate = document.getElementById('session-start-date').value;
+  const endDate = document.getElementById('session-end-date').value;
+  const currentTerm = document.getElementById('current-term').value;
+  const resumptionDate = document.getElementById('resumption-date').value;
   
-  // Render nursery classes
-  nurseryContainer.innerHTML = '';
-  if (hierarchy.nursery && Array.isArray(hierarchy.nursery)) {
-    hierarchy.nursery.forEach((className, index) => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'hierarchy-item';
-      itemDiv.innerHTML = `
-        <span class="hierarchy-number">${index + 1}</span>
-        <input type="text" class="hierarchy-input" value="${className}" data-level="nursery" data-index="${index}">
-        <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', ${index})" title="Remove">✕</button>
-      `;
-      nurseryContainer.appendChild(itemDiv);
-    });
-  }
-  
-  // Render primary classes
-  primaryContainer.innerHTML = '';
-  if (hierarchy.primary && Array.isArray(hierarchy.primary)) {
-    const startNumber = (hierarchy.nursery?.length || 0) + 1;
-    hierarchy.primary.forEach((className, index) => {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'hierarchy-item';
-      itemDiv.innerHTML = `
-        <span class="hierarchy-number">${startNumber + index}</span>
-        <input type="text" class="hierarchy-input" value="${className}" data-level="primary" data-index="${index}">
-        <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', ${index})" title="Remove">✕</button>
-      `;
-      primaryContainer.appendChild(itemDiv);
-    });
-  }
-}
-
-function addHierarchyItem(level) {
-  if (!currentHierarchy) return;
-  
-  const newClassName = level === 'nursery' 
-    ? `Nursery ${currentHierarchy.nursery.length + 1}`
-    : `Primary ${currentHierarchy.primary.length + 1}`;
-  
-  currentHierarchy[level].push(newClassName);
-  renderHierarchyUI(currentHierarchy);
-}
-
-function removeHierarchyItem(level, index) {
-  if (!currentHierarchy) return;
-  
-  if (currentHierarchy[level].length <= 1) {
-    window.showToast?.('Cannot remove the last class in this section', 'warning');
+  if (!startYear || !endYear || !startDate || !endDate || !currentTerm || !resumptionDate) {
+    window.showToast?.('Please fill all required fields', 'warning');
     return;
   }
   
-  const className = currentHierarchy[level][index];
-  const confirmation = confirm(
-    `Remove "${className}" from hierarchy?\n\n` +
-    `This won't delete the class, but it will be excluded from automatic promotions.`
-  );
-  
-  if (confirmation) {
-    currentHierarchy[level].splice(index, 1);
-    renderHierarchyUI(currentHierarchy);
-  }
-}
-
-async function saveHierarchySettings() {
-  if (!currentHierarchy) {
-    window.showToast?.('No hierarchy data to save', 'warning');
+  if (endYear <= startYear) {
+    window.showToast?.('End year must be after start year', 'warning');
     return;
   }
   
-  // Get current values from inputs
-  const nurseryInputs = document.querySelectorAll('.hierarchy-input[data-level="nursery"]');
-  const primaryInputs = document.querySelectorAll('.hierarchy-input[data-level="primary"]');
-  
-  const updatedHierarchy = {
-    nursery: Array.from(nurseryInputs).map(input => input.value.trim()).filter(v => v),
-    primary: Array.from(primaryInputs).map(input => input.value.trim()).filter(v => v)
-  };
-  
-  // Validation
-  if (updatedHierarchy.nursery.length === 0 && updatedHierarchy.primary.length === 0) {
-    window.showToast?.('At least one class must be defined', 'warning');
-    return;
-  }
-  
-  // Check for duplicates
-  const allClasses = [...updatedHierarchy.nursery, ...updatedHierarchy.primary];
-  const duplicates = allClasses.filter((item, index) => allClasses.indexOf(item) !== index);
-  
-  if (duplicates.length > 0) {
-    window.showToast?.(`Duplicate class names found: ${duplicates.join(', ')}`, 'warning');
-    return;
-  }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    const result = await window.classHierarchy.saveClassHierarchy(updatedHierarchy);
+    await db.collection('settings').doc('current').set({
+      currentSession: {
+        name: `${startYear}/${endYear}`,
+        startYear: startYear,
+        endYear: endYear,
+        startDate: firebase.firestore.Timestamp.fromDate(new Date(startDate)),
+        endDate: firebase.firestore.Timestamp.fromDate(new Date(endDate))
+      },
+      term: currentTerm,
+      session: `${startYear}/${endYear}`, // For backward compatibility
+      resumptionDate: firebase.firestore.Timestamp.fromDate(new Date(resumptionDate)),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
     
-    if (result.success) {
-      currentHierarchy = updatedHierarchy;
-      window.showToast?.('✓ Class progression order saved successfully!', 'success');
-    } else {
-      window.showToast?.('Failed to save class hierarchy', 'danger');
-    }
-  } catch (error) {
-    console.error('Error saving hierarchy:', error);
-    window.handleError(error, 'Failed to save class hierarchy');
-  }
-}
-
-async function resetHierarchyToDefault() {
-  const confirmation = confirm(
-    'Reset to default class hierarchy?\n\n' +
-    'This will restore:\n' +
-    '• Nursery 1, Nursery 2\n' +
-    '• Primary 1 through Primary 6\n\n' +
-    'Continue?'
-  );
-  
-  if (!confirmation) return;
-  
-  try {
-    const defaultHierarchy = window.classHierarchy.DEFAULT_CLASS_HIERARCHY;
-    const result = await window.classHierarchy.saveClassHierarchy(defaultHierarchy);
+    window.showToast?.('✓ Settings saved successfully!', 'success');
+    await loadCurrentSettings(); // Refresh display
     
-    if (result.success) {
-      currentHierarchy = defaultHierarchy;
-      renderHierarchyUI(currentHierarchy);
-      window.showToast?.('✓ Hierarchy reset to default', 'success');
-    } else {
-      window.showToast?.('Failed to reset hierarchy', 'danger');
-    }
   } catch (error) {
-    console.error('Error resetting hierarchy:', error);
-    window.handleError(error, 'Failed to reset hierarchy');
+    console.error('Error saving settings:', error);
+    window.handleError(error, 'Failed to save settings');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '💾 Save Settings';
   }
-}
-
-// Make functions globally available
-window.addHierarchyItem = addHierarchyItem;
-window.removeHierarchyItem = removeHierarchyItem;
-window.saveHierarchySettings = saveHierarchySettings;
-window.resetHierarchyToDefault = resetHierarchyToDefault;
+});
 
   console.log(
     '✓ Admin portal initialized (v6.2.0 PHASES 1 to 3 COMPLETE)'
