@@ -1616,6 +1616,170 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await window.classHierarchy.initializeClassHierarchy();
 
+/* ======================================== 
+   CLASS HIERARCHY MANAGEMENT
+======================================== */
+
+let currentHierarchy = null;
+
+async function loadClassHierarchyUI() {
+  try {
+    currentHierarchy = await window.classHierarchy.getClassHierarchy();
+    renderHierarchyUI(currentHierarchy);
+  } catch (error) {
+    console.error('Error loading class hierarchy UI:', error);
+    window.showToast?.('Failed to load class hierarchy', 'danger');
+  }
+}
+
+function renderHierarchyUI(hierarchy) {
+  const nurseryContainer = document.getElementById('nursery-hierarchy');
+  const primaryContainer = document.getElementById('primary-hierarchy');
+  
+  if (!nurseryContainer || !primaryContainer) return;
+  
+  // Render nursery classes
+  nurseryContainer.innerHTML = '';
+  if (hierarchy.nursery && Array.isArray(hierarchy.nursery)) {
+    hierarchy.nursery.forEach((className, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'hierarchy-item';
+      itemDiv.innerHTML = `
+        <span class="hierarchy-number">${index + 1}</span>
+        <input type="text" class="hierarchy-input" value="${className}" data-level="nursery" data-index="${index}">
+        <button class="btn-icon btn-danger" onclick="removeHierarchyItem('nursery', ${index})" title="Remove">✕</button>
+      `;
+      nurseryContainer.appendChild(itemDiv);
+    });
+  }
+  
+  // Render primary classes
+  primaryContainer.innerHTML = '';
+  if (hierarchy.primary && Array.isArray(hierarchy.primary)) {
+    const startNumber = (hierarchy.nursery?.length || 0) + 1;
+    hierarchy.primary.forEach((className, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'hierarchy-item';
+      itemDiv.innerHTML = `
+        <span class="hierarchy-number">${startNumber + index}</span>
+        <input type="text" class="hierarchy-input" value="${className}" data-level="primary" data-index="${index}">
+        <button class="btn-icon btn-danger" onclick="removeHierarchyItem('primary', ${index})" title="Remove">✕</button>
+      `;
+      primaryContainer.appendChild(itemDiv);
+    });
+  }
+}
+
+function addHierarchyItem(level) {
+  if (!currentHierarchy) return;
+  
+  const newClassName = level === 'nursery' 
+    ? `Nursery ${currentHierarchy.nursery.length + 1}`
+    : `Primary ${currentHierarchy.primary.length + 1}`;
+  
+  currentHierarchy[level].push(newClassName);
+  renderHierarchyUI(currentHierarchy);
+}
+
+function removeHierarchyItem(level, index) {
+  if (!currentHierarchy) return;
+  
+  if (currentHierarchy[level].length <= 1) {
+    window.showToast?.('Cannot remove the last class in this section', 'warning');
+    return;
+  }
+  
+  const className = currentHierarchy[level][index];
+  const confirmation = confirm(
+    `Remove "${className}" from hierarchy?\n\n` +
+    `This won't delete the class, but it will be excluded from automatic promotions.`
+  );
+  
+  if (confirmation) {
+    currentHierarchy[level].splice(index, 1);
+    renderHierarchyUI(currentHierarchy);
+  }
+}
+
+async function saveHierarchySettings() {
+  if (!currentHierarchy) {
+    window.showToast?.('No hierarchy data to save', 'warning');
+    return;
+  }
+  
+  // Get current values from inputs
+  const nurseryInputs = document.querySelectorAll('.hierarchy-input[data-level="nursery"]');
+  const primaryInputs = document.querySelectorAll('.hierarchy-input[data-level="primary"]');
+  
+  const updatedHierarchy = {
+    nursery: Array.from(nurseryInputs).map(input => input.value.trim()).filter(v => v),
+    primary: Array.from(primaryInputs).map(input => input.value.trim()).filter(v => v)
+  };
+  
+  // Validation
+  if (updatedHierarchy.nursery.length === 0 && updatedHierarchy.primary.length === 0) {
+    window.showToast?.('At least one class must be defined', 'warning');
+    return;
+  }
+  
+  // Check for duplicates
+  const allClasses = [...updatedHierarchy.nursery, ...updatedHierarchy.primary];
+  const duplicates = allClasses.filter((item, index) => allClasses.indexOf(item) !== index);
+  
+  if (duplicates.length > 0) {
+    window.showToast?.(`Duplicate class names found: ${duplicates.join(', ')}`, 'warning');
+    return;
+  }
+  
+  try {
+    const result = await window.classHierarchy.saveClassHierarchy(updatedHierarchy);
+    
+    if (result.success) {
+      currentHierarchy = updatedHierarchy;
+      window.showToast?.('✓ Class progression order saved successfully!', 'success');
+    } else {
+      window.showToast?.('Failed to save class hierarchy', 'danger');
+    }
+  } catch (error) {
+    console.error('Error saving hierarchy:', error);
+    window.handleError(error, 'Failed to save class hierarchy');
+  }
+}
+
+async function resetHierarchyToDefault() {
+  const confirmation = confirm(
+    'Reset to default class hierarchy?\n\n' +
+    'This will restore:\n' +
+    '• Nursery 1, Nursery 2\n' +
+    '• Primary 1 through Primary 6\n\n' +
+    'Continue?'
+  );
+  
+  if (!confirmation) return;
+  
+  try {
+    const defaultHierarchy = window.classHierarchy.DEFAULT_CLASS_HIERARCHY;
+    const result = await window.classHierarchy.saveClassHierarchy(defaultHierarchy);
+    
+    if (result.success) {
+      currentHierarchy = defaultHierarchy;
+      renderHierarchyUI(currentHierarchy);
+      window.showToast?.('✓ Hierarchy reset to default', 'success');
+    } else {
+      window.showToast?.('Failed to reset hierarchy', 'danger');
+    }
+  } catch (error) {
+    console.error('Error resetting hierarchy:', error);
+    window.handleError(error, 'Failed to reset hierarchy');
+  }
+}
+
+// Make functions globally available
+window.addHierarchyItem = addHierarchyItem;
+window.removeHierarchyItem = removeHierarchyItem;
+window.saveHierarchySettings = saveHierarchySettings;
+window.resetHierarchyToDefault = resetHierarchyToDefault;
+
   console.log(
     '✓ Admin portal initialized (v6.2.0 PHASES 1 to 3 COMPLETE)'
   );
