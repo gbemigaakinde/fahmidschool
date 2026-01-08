@@ -492,7 +492,6 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
-  // Check if email already exists
   try {
     const existingUsers = await db.collection('users')
       .where('email', '==', email)
@@ -540,6 +539,133 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = 'Save Teacher';
+  }
+});
+
+/* ===== PUPIL FORM HANDLER ADDED HERE ===== */
+
+document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const pupilId = document.getElementById('pupil-id').value;
+  const name = document.getElementById('pupil-name').value.trim();
+  const classId = document.getElementById('pupil-class').value;
+  const email = document.getElementById('pupil-email').value.trim();
+  const password = document.getElementById('pupil-password').value;
+  const parentEmail = document.getElementById('pupil-parent-email').value.trim();
+  
+  if (!name || !classId) {
+    window.showToast?.('Name and class are required', 'warning');
+    return;
+  }
+  
+  if (!pupilId && (!email || !password)) {
+    window.showToast?.('Email and password required for new pupils', 'warning');
+    return;
+  }
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="btn-loading">Saving pupil...</span>';
+  
+  try {
+    const classDoc = await db.collection('classes').doc(classId).get();
+    
+    if (!classDoc.exists) {
+      window.showToast?.('Selected class not found', 'danger');
+      return;
+    }
+    
+    const classData = classDoc.data();
+    
+    let teacherId = classData.teacherId || '';
+    let teacherName = classData.teacherName || '';
+    
+    if (teacherId && !teacherName) {
+      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+      if (teacherDoc.exists) {
+        teacherName = teacherDoc.data().name || '';
+      }
+    }
+    
+    const pupilData = {
+      name,
+      dob: document.getElementById('pupil-dob').value || '',
+      gender: document.getElementById('pupil-gender').value || '',
+      parentName: document.getElementById('pupil-parent-name').value.trim() || '',
+      parentEmail: parentEmail || '',
+      contact: document.getElementById('pupil-contact').value.trim() || '',
+      address: document.getElementById('pupil-address').value.trim() || '',
+      class: {
+        id: classId,
+        name: classData.name || 'Unknown Class'
+      },
+      subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+      assignedTeacher: {
+        id: teacherId,
+        name: teacherName
+      },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    if (pupilId) {
+      await db.collection('pupils').doc(pupilId).update(pupilData);
+      
+      if (email) {
+        const userDoc = await db.collection('users').doc(pupilId).get();
+        if (userDoc.exists && userDoc.data().email !== email) {
+          await db.collection('users').doc(pupilId).update({
+            email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+      
+      window.showToast?.(`✓ Pupil "${name}" updated successfully`, 'success');
+    } else {
+      const existingUsers = await db.collection('users')
+        .where('email', '==', email)
+        .get();
+      
+      if (!existingUsers.empty) {
+        window.showToast?.('This email is already registered', 'warning');
+        return;
+      }
+      
+      const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      const uid = userCredential.user.uid;
+      
+      await db.collection('users').doc(uid).set({
+        email,
+        role: 'pupil',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      pupilData.email = email;
+      pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      
+      await db.collection('pupils').doc(uid).set(pupilData);
+      
+      await secondaryAuth.sendPasswordResetEmail(email);
+      await secondaryAuth.signOut();
+      
+      window.showToast?.(
+        `✓ Pupil "${name}" added successfully!\nPassword reset email sent to ${email}`,
+        'success',
+        6000
+      );
+    }
+    
+    cancelPupilForm();
+    await loadPupils();
+    await loadDashboardStats();
+    
+  } catch (error) {
+    console.error('Error saving pupil:', error);
+    window.handleError(error, 'Failed to save pupil');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = pupilId ? 'Update Pupil' : 'Save Pupil';
   }
 });
 
