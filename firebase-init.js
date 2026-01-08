@@ -41,9 +41,20 @@ const ERROR_MESSAGES = {
   'auth/weak-password': 'Password should be at least 6 characters long.',
   'auth/user-not-found': 'No account found with this email address.',
   'auth/wrong-password': 'Incorrect password. Please try again.',
+  'auth/invalid-login-credentials': 'Invalid email or password. Please try again.',
+  'auth/invalid-credential': 'Invalid email or password. Please try again.',
+  'auth/user-disabled': 'This account has been disabled. Please contact support.',
+  'auth/operation-not-allowed': 'This sign-in method is not enabled.',
   'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+  'auth/network-request-failed': 'Network error. Please check your internet connection.',
+  'auth/popup-closed-by-user': 'Sign-in cancelled.',
+  'auth/cancelled-popup-request': 'Sign-in cancelled.',
+  'auth/missing-password': 'Please enter your password.',
+  'auth/internal-error': 'An internal error occurred. Please try again.',
   'permission-denied': 'Permission denied. Check your access rights.',
   'not-found': 'Resource not found.',
+  'unavailable': 'Service temporarily unavailable. Please try again.',
+  'deadline-exceeded': 'Request timeout. Please check your connection.',
   'unknown': 'An unexpected error occurred.'
 };
 
