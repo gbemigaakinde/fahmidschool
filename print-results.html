@@ -169,49 +169,50 @@
         }
 
         /* Attendance Section */
-        .attendance-section {
-            border: 1px solid #000;
-            margin-bottom: 3mm;
-        }
+.attendance-section {
+    border: 1px solid #000;
+    margin-bottom: 3mm;
+}
 
-        .section-title {
-            background: var(--color-primary);
-            color: white;
-            padding: 1.5mm 3mm;
-            font-weight: bold;
-            font-size: 9.5pt;
-            margin: 0;
-            text-align: center;
-        }
+/* Slimmer title for attendance only */
+.attendance-section .section-title {
+    background: var(--color-primary);
+    color: white;
+    padding: 1mm 2mm;
+    font-weight: bold;
+    font-size: 9pt;
+    margin: 0;
+    text-align: center;
+}
 
-        .attendance-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            font-size: 9pt;
-        }
+.attendance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    font-size: 8.8pt;
+}
 
-        .attendance-item {
-            padding: 2mm;
-            border-right: 1px solid #000;
-            text-align: center;
-        }
+.attendance-item {
+    padding: 1.2mm;
+    border-right: 1px solid #000;
+    text-align: center;
+}
 
-        .attendance-item:last-child { 
-            border-right: none; 
-        }
+.attendance-item:last-child {
+    border-right: none;
+}
 
-        .attendance-label {
-            font-size: 8.5pt;
-            color: #000;
-            margin-bottom: 1mm;
-            font-weight: 600;
-        }
+.attendance-label {
+    font-size: 8pt;
+    color: #000;
+    margin-bottom: 0.5mm;
+    font-weight: 600;
+}
 
-        .attendance-value {
-            font-weight: bold;
-            font-size: 12pt;
-            color: var(--color-primary);
-        }
+.attendance-value {
+    font-weight: bold;
+    font-size: 10.5pt;
+    color: var(--color-primary);
+}
 
         /* Academic Performance Section */
         .academic-section {
