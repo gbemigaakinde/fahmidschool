@@ -1591,22 +1591,27 @@ async function loadCurrentSettings() {
     if (data.currentSession && typeof data.currentSession === 'object') {
       const session = data.currentSession;
       
-      document.getElementById('display-session-name').textContent = 
-        session.name || `${session.startYear}/${session.endYear}`;
+      const displaySessionName = document.getElementById('display-session-name');
+      const displayCurrentTerm = document.getElementById('display-current-term');
+      const displaySessionStart = document.getElementById('display-session-start');
+      const displaySessionEnd = document.getElementById('display-session-end');
       
-      document.getElementById('display-current-term').textContent = 
-        data.term || 'First Term';
-      
-      if (session.startDate) {
-        const startDate = session.startDate.toDate();
-        document.getElementById('display-session-start').textContent = 
-          startDate.toLocaleDateString('en-GB');
+      if (displaySessionName) {
+        displaySessionName.textContent = session.name || `${session.startYear}/${session.endYear}`;
       }
       
-      if (session.endDate) {
+      if (displayCurrentTerm) {
+        displayCurrentTerm.textContent = data.term || 'First Term';
+      }
+      
+      if (session.startDate && displaySessionStart) {
+        const startDate = session.startDate.toDate();
+        displaySessionStart.textContent = startDate.toLocaleDateString('en-GB');
+      }
+      
+      if (session.endDate && displaySessionEnd) {
         const endDate = session.endDate.toDate();
-        document.getElementById('display-session-end').textContent = 
-          endDate.toLocaleDateString('en-GB');
+        displaySessionEnd.textContent = endDate.toLocaleDateString('en-GB');
       }
       
       // Check if session is ending soon
@@ -1618,15 +1623,15 @@ async function loadCurrentSettings() {
         const statusBadge = document.getElementById('session-status-badge');
         const alertDiv = document.getElementById('session-end-alert');
         
-        if (daysUntilEnd < 0) {
+        if (daysUntilEnd < 0 && statusBadge) {
           statusBadge.textContent = 'Ended';
           statusBadge.className = 'status-badge ended';
           if (alertDiv) alertDiv.style.display = 'block';
-        } else if (daysUntilEnd <= 30) {
+        } else if (daysUntilEnd <= 30 && statusBadge) {
           statusBadge.textContent = 'Ending Soon';
           statusBadge.className = 'status-badge ending-soon';
           if (alertDiv) alertDiv.style.display = 'block';
-        } else {
+        } else if (statusBadge) {
           statusBadge.textContent = 'Active';
           statusBadge.className = 'status-badge';
           if (alertDiv) alertDiv.style.display = 'none';
@@ -1634,36 +1639,62 @@ async function loadCurrentSettings() {
       }
       
       // Populate edit form
-      document.getElementById('session-start-year').value = session.startYear || '';
-      document.getElementById('session-end-year').value = session.endYear || '';
+      const startYearInput = document.getElementById('session-start-year');
+      const endYearInput = document.getElementById('session-end-year');
+      const startDateInput = document.getElementById('session-start-date');
+      const endDateInput = document.getElementById('session-end-date');
       
-      if (session.startDate) {
+      if (startYearInput) startYearInput.value = session.startYear || '';
+      if (endYearInput) endYearInput.value = session.endYear || '';
+      
+      if (session.startDate && startDateInput) {
         const startDate = session.startDate.toDate();
-        document.getElementById('session-start-date').value = 
-          startDate.toISOString().split('T')[0];
+        startDateInput.value = startDate.toISOString().split('T')[0];
       }
       
-      if (session.endDate) {
+      if (session.endDate && endDateInput) {
         const endDate = session.endDate.toDate();
-        document.getElementById('session-end-date').value = 
-          endDate.toISOString().split('T')[0];
+        endDateInput.value = endDate.toISOString().split('T')[0];
       }
     } else if (data.session) {
       // Old format fallback
-      document.getElementById('display-session-name').textContent = data.session;
-      document.getElementById('display-current-term').textContent = data.term || 'First Term';
+      const displaySessionName = document.getElementById('display-session-name');
+      const displayCurrentTerm = document.getElementById('display-current-term');
+      
+      if (displaySessionName) displaySessionName.textContent = data.session;
+      if (displayCurrentTerm) displayCurrentTerm.textContent = data.term || 'First Term';
     }
     
     // Current term
-    document.getElementById('current-term').value = data.term || 'First Term';
+    const currentTermSelect = document.getElementById('current-term');
+    if (currentTermSelect) {
+      currentTermSelect.value = data.term || 'First Term';
+    }
     
-    // Resumption date
+    // FIXED: Resumption date handling
+    const displayNextResumption = document.getElementById('display-next-resumption');
+    const resumptionDateInput = document.getElementById('resumption-date');
+    
     if (data.resumptionDate) {
-      document.getElementById('display-next-resumption').textContent = 
-        data.resumptionDate.toDate().toLocaleDateString('en-GB');
-      
-      document.getElementById('resumption-date').value = 
-        data.resumptionDate.toDate().toISOString().split('T')[0];
+      try {
+        const resumptionDate = data.resumptionDate.toDate();
+        
+        if (displayNextResumption) {
+          displayNextResumption.textContent = resumptionDate.toLocaleDateString('en-GB');
+        }
+        
+        if (resumptionDateInput) {
+          resumptionDateInput.value = resumptionDate.toISOString().split('T')[0];
+        }
+      } catch (error) {
+        console.error('Error parsing resumption date:', error);
+        if (displayNextResumption) displayNextResumption.textContent = 'Not set';
+        if (resumptionDateInput) resumptionDateInput.value = '';
+      }
+    } else {
+      // No resumption date set
+      if (displayNextResumption) displayNextResumption.textContent = 'Not set';
+      if (resumptionDateInput) resumptionDateInput.value = '';
     }
     
     console.log('✓ Settings loaded successfully');
