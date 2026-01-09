@@ -3296,6 +3296,574 @@ async function backfillSessionData() {
 // Make function globally available
 window.backfillSessionData = backfillSessionData;
 
+/* ========================================
+   ADMIN: VIEW PUPIL RESULTS BY SESSION
+======================================== */
+
+let currentResultsPupilId = null;
+let currentResultsSession = null;
+let currentResultsData = null;
+
+async function loadViewResultsSection() {
+  console.log('📊 Loading View Results section...');
+  
+  try {
+    // Populate session dropdown
+    await populateSessionFilter();
+    
+    // Reset filters
+    document.getElementById('filter-class').disabled = true;
+    document.getElementById('filter-pupil').disabled = true;
+    document.getElementById('view-results-btn').disabled = true;
+    
+    console.log('✓ View Results section ready');
+  } catch (error) {
+    console.error('Error loading View Results section:', error);
+    window.showToast?.('Failed to load results section', 'danger');
+  }
+}
+
+async function populateSessionFilter() {
+  const sessionSelect = document.getElementById('filter-session');
+  if (!sessionSelect) return;
+  
+  try {
+    // Get current session
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session || 'Current Session';
+    
+    // Clear and rebuild
+    sessionSelect.innerHTML = '<option value="">-- Select Session --</option>';
+    
+    // Add current session
+    const currentOpt = document.createElement('option');
+    currentOpt.value = 'current';
+    currentOpt.textContent = `Current Session (${currentSession})`;
+    sessionSelect.appendChild(currentOpt);
+    
+    // Get all archived sessions
+    const sessionsSnap = await db.collection('sessions')
+      .orderBy('startYear', 'desc')
+      .get();
+    
+    sessionsSnap.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = data.name;
+      opt.textContent = `${data.name} Session`;
+      sessionSelect.appendChild(opt);
+    });
+    
+    console.log(`✓ Session filter populated: Current + ${sessionsSnap.size} archived`);
+    
+  } catch (error) {
+    console.error('Error populating session filter:', error);
+    sessionSelect.innerHTML = '<option value="">Error loading sessions</option>';
+  }
+}
+
+async function loadFilteredClasses() {
+  const sessionSelect = document.getElementById('filter-session');
+  const classSelect = document.getElementById('filter-class');
+  const pupilSelect = document.getElementById('filter-pupil');
+  
+  if (!sessionSelect || !classSelect || !pupilSelect) return;
+  
+  const selectedSession = sessionSelect.value;
+  
+  // Reset dependent filters
+  classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+  classSelect.disabled = true;
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  pupilSelect.disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  if (!selectedSession) return;
+  
+  try {
+    // Get actual session name
+    let actualSession;
+    if (selectedSession === 'current') {
+      const settings = await window.getCurrentSettings();
+      actualSession = settings.session;
+    } else {
+      actualSession = selectedSession;
+    }
+    
+    currentResultsSession = actualSession;
+    
+    // Get all results for this session to find which classes have data
+    const resultsSnap = await db.collection('results')
+      .where('session', '==', actualSession)
+      .get();
+    
+    // Extract unique classes from results
+    const classesWithResults = new Set();
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      if (data.pupilId) {
+        classesWithResults.add(data.pupilId); // We'll use this to find classes
+      }
+    });
+    
+    // Get all classes
+    const classesSnap = await db.collection('classes')
+      .orderBy('name')
+      .get();
+    
+    const classOptions = [];
+    
+    for (const classDoc of classesSnap.docs) {
+      const className = classDoc.data().name;
+      const classId = classDoc.id;
+      
+      // Check if this class has pupils with results in this session
+      const pupilsInClassSnap = await db.collection('pupils')
+        .where('class.id', '==', classId)
+        .limit(1)
+        .get();
+      
+      if (!pupilsInClassSnap.empty) {
+        classOptions.push({
+          id: classId,
+          name: className
+        });
+      }
+    }
+    
+    if (classOptions.length === 0) {
+      classSelect.innerHTML = '<option value="">No classes with results in this session</option>';
+      window.showToast?.('No results found for this session', 'warning', 4000);
+      return;
+    }
+    
+    // Populate class dropdown
+    classOptions.forEach(cls => {
+      const opt = document.createElement('option');
+      opt.value = cls.id;
+      opt.textContent = cls.name;
+      classSelect.appendChild(opt);
+    });
+    
+    classSelect.disabled = false;
+    
+    console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
+    
+  } catch (error) {
+    console.error('Error loading classes:', error);
+    window.showToast?.('Failed to load classes', 'danger');
+  }
+}
+
+async function loadFilteredPupils() {
+  const classSelect = document.getElementById('filter-class');
+  const pupilSelect = document.getElementById('filter-pupil');
+  
+  if (!classSelect || !pupilSelect) return;
+  
+  const selectedClass = classSelect.value;
+  
+  // Reset pupil filter
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  pupilSelect.disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  if (!selectedClass || !currentResultsSession) return;
+  
+  try {
+    // Get all pupils in this class
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', selectedClass)
+      .get();
+    
+    if (pupilsSnap.empty) {
+      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
+      window.showToast?.('No pupils found in this class', 'warning', 3000);
+      return;
+    }
+    
+    // Check which pupils have results in the selected session
+    const pupilsWithResults = [];
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      
+      // Check if pupil has results in this session
+      const resultsSnap = await db.collection('results')
+        .where('pupilId', '==', pupilId)
+        .where('session', '==', currentResultsSession)
+        .limit(1)
+        .get();
+      
+      if (!resultsSnap.empty) {
+        pupilsWithResults.push({
+          id: pupilId,
+          name: pupilData.name || 'Unknown',
+          data: pupilData
+        });
+      }
+    }
+    
+    if (pupilsWithResults.length === 0) {
+      pupilSelect.innerHTML = '<option value="">No results found for pupils in this class</option>';
+      window.showToast?.('No results found for this class in selected session', 'warning', 4000);
+      return;
+    }
+    
+    // Sort by name
+    pupilsWithResults.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Populate pupil dropdown
+    pupilsWithResults.forEach(pupil => {
+      const opt = document.createElement('option');
+      opt.value = pupil.id;
+      opt.textContent = pupil.name;
+      opt.dataset.pupilData = JSON.stringify(pupil.data);
+      pupilSelect.appendChild(opt);
+    });
+    
+    pupilSelect.disabled = false;
+    document.getElementById('view-results-btn').disabled = false;
+    
+    console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
+    
+  } catch (error) {
+    console.error('Error loading pupils:', error);
+    window.showToast?.('Failed to load pupils', 'danger');
+  }
+}
+
+async function loadPupilResults() {
+  const pupilSelect = document.getElementById('filter-pupil');
+  const container = document.getElementById('results-display-container');
+  const infoCard = document.getElementById('pupil-info-card');
+  
+  if (!pupilSelect || !container) return;
+  
+  const selectedPupil = pupilSelect.value;
+  
+  if (!selectedPupil || !currentResultsSession) {
+    infoCard.style.display = 'none';
+    container.innerHTML = `
+      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+        <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+        <p>Select all filters to view results</p>
+      </div>
+    `;
+    return;
+  }
+  
+  currentResultsPupilId = selectedPupil;
+  
+  // Show loading
+  container.innerHTML = `
+    <div style="text-align: center; padding: var(--space-2xl);">
+      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+      <p style="color: var(--color-gray-600);">Loading results...</p>
+    </div>
+  `;
+  
+  try {
+    // Get pupil data
+    const pupilDoc = await db.collection('pupils').doc(selectedPupil).get();
+    
+    if (!pupilDoc.exists) {
+      throw new Error('Pupil not found');
+    }
+    
+    const pupilData = pupilDoc.data();
+    
+    // Get pupil's class name
+    let className = 'Unknown';
+    if (pupilData.class) {
+      if (typeof pupilData.class === 'object' && pupilData.class.name) {
+        className = pupilData.class.name;
+      } else if (typeof pupilData.class === 'string') {
+        className = pupilData.class;
+      }
+    }
+    
+    // Update info card
+    document.getElementById('pupil-info-name').textContent = pupilData.name || 'Unknown';
+    document.getElementById('pupil-info-class').textContent = className;
+    document.getElementById('pupil-info-session').textContent = currentResultsSession;
+    document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
+    infoCard.style.display = 'block';
+    
+    // Load results for this pupil and session
+    const resultsSnap = await db.collection('results')
+      .where('pupilId', '==', selectedPupil)
+      .where('session', '==', currentResultsSession)
+      .get();
+    
+    if (resultsSnap.empty) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+          <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
+          <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
+          <p>This pupil has no recorded results for session: ${currentResultsSession}</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Process results
+    const resultsData = [];
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      resultsData.push({
+        term: data.term || 'Unknown',
+        subject: data.subject || 'Unknown',
+        caScore: data.caScore || 0,
+        examScore: data.examScore || 0,
+        total: (data.caScore || 0) + (data.examScore || 0)
+      });
+    });
+    
+    currentResultsData = resultsData;
+    
+    // Group by term
+    const terms = {};
+    resultsData.forEach(r => {
+      if (!terms[r.term]) terms[r.term] = [];
+      terms[r.term].push(r);
+    });
+    
+    // Render results
+    container.innerHTML = '';
+    
+    let overallTotal = 0;
+    let overallCount = 0;
+    
+    ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
+      if (!terms[termName]) return;
+      
+      const termSection = document.createElement('div');
+      termSection.style.marginBottom = 'var(--space-2xl)';
+      
+      const heading = document.createElement('h3');
+      heading.textContent = termName;
+      heading.style.marginBottom = 'var(--space-md)';
+      heading.style.color = '#0f172a';
+      heading.style.fontSize = 'var(--text-xl)';
+      termSection.appendChild(heading);
+      
+      const table = document.createElement('table');
+      table.className = 'responsive-table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th style="text-align: center;">CA (40)</th>
+            <th style="text-align: center;">Exam (60)</th>
+            <th style="text-align: center;">Total (100)</th>
+            <th style="text-align: center;">Grade</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+      
+      const tbody = table.querySelector('tbody');
+      
+      let termTotal = 0;
+      let subjectCount = 0;
+      
+      // Sort by subject name
+      terms[termName].sort((a, b) => a.subject.localeCompare(b.subject));
+      
+      terms[termName].forEach(result => {
+        const grade = getGrade(result.total);
+        const gradeClass = `grade-${grade}`;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td data-label="Subject"><strong>${result.subject}</strong></td>
+          <td data-label="CA" style="text-align: center;">${result.caScore}</td>
+          <td data-label="Exam" style="text-align: center;">${result.examScore}</td>
+          <td data-label="Total" style="text-align: center; font-weight: 700;">${result.total}</td>
+          <td data-label="Grade" style="text-align: center;" class="${gradeClass}"><strong>${grade}</strong></td>
+        `;
+        tbody.appendChild(tr);
+        
+        termTotal += result.total;
+        subjectCount++;
+        overallTotal += result.total;
+        overallCount++;
+      });
+      
+      // Add term summary
+      if (subjectCount > 0) {
+        const average = (termTotal / subjectCount).toFixed(1);
+        const avgGrade = getGrade(parseFloat(average));
+        
+        tbody.innerHTML += `
+          <tr style="background: #f1f5f9; font-weight: 700;">
+            <td colspan="3"><strong>TERM TOTAL</strong></td>
+            <td colspan="2" style="text-align: center;"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
+          </tr>
+          <tr style="background: #e0f2fe; font-weight: 700; color: #0369a1;">
+            <td colspan="3"><strong>TERM AVERAGE</strong></td>
+            <td colspan="2" style="text-align: center;"><strong>${average}% (${avgGrade})</strong></td>
+          </tr>
+        `;
+      }
+      
+      termSection.appendChild(table);
+      container.appendChild(termSection);
+    });
+    
+    // Add overall session summary
+    if (overallCount > 0) {
+      const overallAverage = (overallTotal / overallCount).toFixed(1);
+      const overallGrade = getGrade(parseFloat(overallAverage));
+      
+      const summaryCard = document.createElement('div');
+      summaryCard.style.cssText = `
+        background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-lg);
+        margin-top: var(--space-2xl);
+        box-shadow: 0 4px 20px rgba(0, 178, 255, 0.3);
+      `;
+      
+      summaryCard.innerHTML = `
+        <h3 style="margin: 0 0 var(--space-lg); color: white; font-size: var(--text-xl);">
+          📊 Session Summary: ${currentResultsSession}
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
+          <div>
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Total Subjects</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallCount}</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Score</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallTotal} / ${overallCount * 100}</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session Average</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallAverage}%</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Grade</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallGrade}</div>
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(summaryCard);
+    }
+    
+    // Show session comparison button
+    const comparisonBtn = document.createElement('button');
+    comparisonBtn.className = 'btn';
+    comparisonBtn.style.cssText = 'margin-top: var(--space-xl);';
+    comparisonBtn.onclick = loadSessionComparison;
+    comparisonBtn.innerHTML = '📈 Compare Across Sessions';
+    container.appendChild(comparisonBtn);
+    
+    console.log(`✓ Loaded ${resultsData.length} results for pupil: ${pupilData.name}`);
+    
+  } catch (error) {
+    console.error('Error loading pupil results:', error);
+    container.innerHTML = `
+      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
+        <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
+        <p style="font-size: var(--text-lg); font-weight: 600;">Error loading results</p>
+        <p>${error.message}</p>
+      </div>
+    `;
+    window.showToast?.('Failed to load results', 'danger');
+  }
+}
+
+function getGrade(score) {
+  if (score >= 75) return 'A1';
+  if (score >= 70) return 'B2';
+  if (score >= 65) return 'B3';
+  if (score >= 60) return 'C4';
+  if (score >= 55) return 'C5';
+  if (score >= 50) return 'C6';
+  if (score >= 45) return 'D7';
+  if (score >= 40) return 'D8';
+  return 'F9';
+}
+
+function clearResultsFilter() {
+  document.getElementById('filter-session').value = '';
+  document.getElementById('filter-class').innerHTML = '<option value="">-- Select Class --</option>';
+  document.getElementById('filter-class').disabled = true;
+  document.getElementById('filter-pupil').innerHTML = '<option value="">-- Select Pupil --</option>';
+  document.getElementById('filter-pupil').disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  document.getElementById('pupil-info-card').style.display = 'none';
+  document.getElementById('results-display-container').innerHTML = `
+    <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+      <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+      <p style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
+        Select filters to view results
+      </p>
+      <p style="font-size: var(--text-sm);">
+        Choose session, class, and pupil from the filters above
+      </p>
+    </div>
+  `;
+  
+  currentResultsPupilId = null;
+  currentResultsSession = null;
+  currentResultsData = null;
+  
+  document.getElementById('session-comparison-section').style.display = 'none';
+}
+
+async function exportPupilResults() {
+  if (!currentResultsPupilId || !currentResultsSession || !currentResultsData) {
+    window.showToast?.('No results to export', 'warning');
+    return;
+  }
+  
+  try {
+    // Get pupil data
+    const pupilDoc = await db.collection('pupils').doc(currentResultsPupilId).get();
+    const pupilData = pupilDoc.data();
+    
+    // Create CSV content
+    let csv = 'Session,Term,Subject,CA Score,Exam Score,Total,Grade\n';
+    
+    currentResultsData.forEach(result => {
+      const grade = getGrade(result.total);
+      csv += `${currentResultsSession},${result.term},${result.subject},${result.caScore},${result.examScore},${result.total},${grade}\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pupilData.name}_${currentResultsSession}_Results.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    window.showToast?.('✓ Results exported successfully', 'success');
+    
+  } catch (error) {
+    console.error('Error exporting results:', error);
+    window.showToast?.('Failed to export results', 'danger');
+  }
+}
+
+// Make functions globally available
+window.loadViewResultsSection = loadViewResultsSection;
+window.loadFilteredClasses = loadFilteredClasses;
+window.loadFilteredPupils = loadFilteredPupils;
+window.loadPupilResults = loadPupilResults;
+window.clearResultsFilter = clearResultsFilter;
+window.exportPupilResults = exportPupilResults;
+
   console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
 
 /* ======================================== 
