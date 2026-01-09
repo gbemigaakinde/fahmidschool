@@ -400,10 +400,17 @@ function showSection(sectionId) {
         loadAlumni();
         break;
       case 'settings':
-        loadCurrentSettings();
-        loadClassHierarchyUI();
-        loadSessionHistory(); // ✅ Now safe to call
-        break;
+  // Load all settings components
+  loadCurrentSettings();
+  
+  // Load hierarchy with a small delay to ensure DOM is ready
+  setTimeout(async () => {
+    await loadClassHierarchyUI();
+  }, 200);
+  
+  // Load session history
+  loadSessionHistory();
+  break;
       default:
         console.warn(`Unknown section: ${sectionId}`);
     }
@@ -1962,10 +1969,15 @@ function renderHierarchyUI(orderedClasses) {
   console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
 }
 
+// Drag and drop handlers - FIXED
+let draggedElement = null;
+
 function handleDragStart(e) {
   draggedElement = this;
+  this.classList.add('dragging');
   this.style.opacity = '0.4';
   e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
 }
 
 function handleDragOver(e) {
@@ -1973,6 +1985,17 @@ function handleDragOver(e) {
     e.preventDefault();
   }
   e.dataTransfer.dropEffect = 'move';
+  
+  // Visual feedback
+  const afterElement = getDragAfterElement(this.parentElement, e.clientY);
+  const draggable = document.querySelector('.dragging');
+  
+  if (afterElement == null) {
+    this.parentElement.appendChild(draggable);
+  } else {
+    this.parentElement.insertBefore(draggable, afterElement);
+  }
+  
   return false;
 }
 
@@ -1982,17 +2005,19 @@ function handleDrop(e) {
   }
   
   if (draggedElement !== this) {
-    const allItems = Array.from(document.querySelectorAll('.draggable'));
+    // Get all items
+    const allItems = Array.from(document.querySelectorAll('.hierarchy-item'));
     const draggedIndex = allItems.indexOf(draggedElement);
     const targetIndex = allItems.indexOf(this);
     
+    // Reorder in DOM
     if (draggedIndex < targetIndex) {
       this.parentNode.insertBefore(draggedElement, this.nextSibling);
     } else {
       this.parentNode.insertBefore(draggedElement, this);
     }
     
-    // Update numbers
+    // Update numbers and terminal badge
     updateHierarchyNumbers();
   }
   
@@ -2001,10 +2026,26 @@ function handleDrop(e) {
 
 function handleDragEnd(e) {
   this.style.opacity = '1';
+  this.classList.remove('dragging');
   
-  document.querySelectorAll('.draggable').forEach(item => {
+  document.querySelectorAll('.hierarchy-item').forEach(item => {
     item.classList.remove('over');
   });
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.hierarchy-item:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function updateHierarchyNumbers() {
