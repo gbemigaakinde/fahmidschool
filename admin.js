@@ -3864,6 +3864,266 @@ window.loadPupilResults = loadPupilResults;
 window.clearResultsFilter = clearResultsFilter;
 window.exportPupilResults = exportPupilResults;
 
+/* ========================================
+   SESSION COMPARISON & PROGRESS TRACKING
+======================================== */
+
+async function loadSessionComparison() {
+  if (!currentResultsPupilId) {
+    window.showToast?.('No pupil selected', 'warning');
+    return;
+  }
+  
+  const section = document.getElementById('session-comparison-section');
+  const content = document.getElementById('session-comparison-content');
+  
+  if (!section || !content) return;
+  
+  section.style.display = 'block';
+  content.innerHTML = `
+    <div style="text-align: center; padding: var(--space-2xl);">
+      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+      <p style="color: var(--color-gray-600);">Loading comparison data...</p>
+    </div>
+  `;
+  
+  // Scroll to comparison section
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  try {
+    // Get all results for this pupil across all sessions
+    const allResultsSnap = await db.collection('results')
+      .where('pupilId', '==', currentResultsPupilId)
+      .get();
+    
+    if (allResultsSnap.empty) {
+      content.innerHTML = `
+        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+          <p>No results found for comparison</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Group by session
+    const sessionData = {};
+    
+    allResultsSnap.forEach(doc => {
+      const data = doc.data();
+      const session = data.session || 'Unknown';
+      
+      if (!sessionData[session]) {
+        sessionData[session] = {
+          results: [],
+          totalScore: 0,
+          subjectCount: 0
+        };
+      }
+      
+      const total = (data.caScore || 0) + (data.examScore || 0);
+      sessionData[session].results.push({
+        term: data.term,
+        subject: data.subject,
+        total: total
+      });
+      sessionData[session].totalScore += total;
+      sessionData[session].subjectCount++;
+    });
+    
+    // Calculate averages for each session
+    const sessions = [];
+    for (const [sessionName, data] of Object.entries(sessionData)) {
+      const average = data.subjectCount > 0 ? (data.totalScore / data.subjectCount).toFixed(1) : 0;
+      sessions.push({
+        name: sessionName,
+        average: parseFloat(average),
+        subjectCount: data.subjectCount,
+        totalScore: data.totalScore,
+        grade: getGrade(parseFloat(average))
+      });
+    }
+    
+    // Sort by session year (newest first)
+    sessions.sort((a, b) => {
+      const yearA = parseInt(a.name.split('/')[0]) || 0;
+      const yearB = parseInt(b.name.split('/')[0]) || 0;
+      return yearB - yearA;
+    });
+    
+    if (sessions.length < 2) {
+      content.innerHTML = `
+        <div class="alert alert-info">
+          <strong>ℹ️ Comparison Not Available</strong>
+          <p>This pupil only has results in one session (${sessions[0].name}). Comparison requires results from at least 2 sessions.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Calculate progress
+    const progressData = [];
+    for (let i = 1; i < sessions.length; i++) {
+      const current = sessions[i - 1];
+      const previous = sessions[i];
+      const change = current.average - previous.average;
+      const percentChange = previous.average > 0 ? ((change / previous.average) * 100).toFixed(1) : 0;
+      
+      progressData.push({
+        from: previous.name,
+        to: current.name,
+        change: change,
+        percentChange: percentChange,
+        improving: change > 0
+      });
+    }
+    
+    // Render comparison
+    content.innerHTML = `
+      <!-- Sessions Overview -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-2xl);">
+        ${sessions.map((session, index) => `
+          <div style="background: ${index === 0 ? 'linear-gradient(135deg, #00B2FF 0%, #0090CC 100%)' : 'white'}; 
+                      color: ${index === 0 ? 'white' : 'inherit'};
+                      padding: var(--space-xl); 
+                      border-radius: var(--radius-lg); 
+                      border: 2px solid ${index === 0 ? '#00B2FF' : '#e2e8f0'};
+                      position: relative;
+                      box-shadow: ${index === 0 ? '0 4px 20px rgba(0, 178, 255, 0.3)' : '0 2px 8px rgba(0,0,0,0.05)'};;">
+            ${index === 0 ? '<div style="position: absolute; top: var(--space-sm); right: var(--space-sm); background: rgba(255,255,255,0.3); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">LATEST</div>' : ''}
+            <div style="font-size: var(--text-sm); opacity: ${index === 0 ? '0.9' : '0.6'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">
+              Session
+            </div>
+            <div style="font-size: var(--text-xl); font-weight: 700; margin-bottom: var(--space-lg);">
+              ${session.name}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+              <div>
+                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Average</div>
+                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.average}%</div>
+              </div>
+              <div>
+                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Grade</div>
+                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.grade}</div>
+              </div>
+            </div>
+            <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'};">
+              ${session.subjectCount} subjects • ${session.totalScore} total points
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- Progress Analysis -->
+      <div style="background: #f8fafc; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-2xl);">
+        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📊 Progress Analysis</h4>
+        ${progressData.map(progress => `
+          <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-md); margin-bottom: var(--space-sm); border-left: 4px solid ${progress.improving ? '#10b981' : '#ef4444'};">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: var(--space-xs);">
+                ${progress.from} → ${progress.to}
+              </div>
+              <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
+                ${progress.improving ? 'Improvement' : 'Decline'}: ${progress.change > 0 ? '+' : ''}${progress.change.toFixed(1)} points (${progress.percentChange > 0 ? '+' : ''}${progress.percentChange}%)
+              </div>
+            </div>
+            <div style="font-size: var(--text-3xl);">
+              ${progress.improving ? '📈' : '📉'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- Performance Trend -->
+      <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
+        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📈 Performance Trend</h4>
+        <div style="display: flex; align-items: flex-end; gap: var(--space-sm); height: 200px; padding: var(--space-md) 0;">
+          ${sessions.slice().reverse().map((session, index) => {
+            const maxAverage = Math.max(...sessions.map(s => s.average));
+            const height = (session.average / maxAverage) * 100;
+            const isHighest = session.average === maxAverage;
+            
+            return `
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
+                <div style="font-weight: 700; font-size: var(--text-lg); color: ${isHighest ? '#00B2FF' : '#0f172a'};">
+                  ${session.average}%
+                </div>
+                <div style="width: 100%; height: ${height}%; background: ${isHighest ? 'linear-gradient(to top, #00B2FF, #0090CC)' : 'linear-gradient(to top, #cbd5e1, #94a3b8)'}; border-radius: var(--radius-sm); min-height: 20px; transition: all 0.3s ease;"></div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); text-align: center; margin-top: var(--space-xs);">
+                  ${session.name}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      
+      <!-- Summary Insights -->
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: var(--space-xl); border-radius: var(--radius-lg); margin-top: var(--space-2xl); border: 2px solid #10b981;">
+        <h4 style="margin: 0 0 var(--space-md); color: #065f46;">🎯 Summary Insights</h4>
+        ${generateInsights(sessions, progressData)}
+      </div>
+    `;
+    
+    console.log(`✓ Loaded comparison across ${sessions.length} sessions`);
+    
+  } catch (error) {
+    console.error('Error loading session comparison:', error);
+    content.innerHTML = `
+      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
+        <p style="font-weight: 600;">Error loading comparison data</p>
+        <p style="font-size: var(--text-sm);">${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+function generateInsights(sessions, progressData) {
+  const insights = [];
+  
+  // Find best and worst sessions
+  const sortedByAvg = [...sessions].sort((a, b) => b.average - a.average);
+  const bestSession = sortedByAvg[0];
+  const worstSession = sortedByAvg[sortedByAvg.length - 1];
+  
+  insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Best Performance:</strong> ${bestSession.name} with ${bestSession.average}% average (Grade ${bestSession.grade})</p>`);
+  
+  if (sessions.length > 1) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Lowest Performance:</strong> ${worstSession.name} with ${worstSession.average}% average (Grade ${worstSession.grade})</p>`);
+  }
+  
+  // Overall trend
+  const improvements = progressData.filter(p => p.improving).length;
+  const declines = progressData.filter(p => !p.improving).length;
+  
+  if (improvements > declines) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Generally improving (${improvements} improvement(s), ${declines} decline(s))</p>`);
+  } else if (declines > improvements) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Needs attention (${declines} decline(s), ${improvements} improvement(s))</p>`);
+  } else {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Stable performance with mixed results</p>`);
+  }
+  
+  // Average improvement
+  if (progressData.length > 0) {
+    const avgChange = progressData.reduce((sum, p) => sum + p.change, 0) / progressData.length;
+    const direction = avgChange > 0 ? 'improved' : 'declined';
+    insights.push(`<p style="margin: 0;"><strong>• Average Change:</strong> Performance has ${direction} by ${Math.abs(avgChange).toFixed(1)} points per session</p>`);
+  }
+  
+  return insights.join('');
+}
+
+function toggleSessionComparison() {
+  const section = document.getElementById('session-comparison-section');
+  if (section) {
+    section.style.display = 'none';
+  }
+}
+
+// Make functions globally available
+window.loadSessionComparison = loadSessionComparison;
+window.toggleSessionComparison = toggleSessionComparison;
+
   console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
 
 /* ======================================== 
