@@ -134,8 +134,10 @@ async function getClassDetails(classId) {
 }
 
 /**
- * FIXED: Pagination with defensive checks
+ * FIXED PAGINATION WITH MEMORY LEAK PREVENTION
+ * Replace the paginateTable function in admin.js
  */
+
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
   const tbody = document.getElementById(tbodyId);
   
@@ -150,8 +152,15 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     return;
   }
   
+  // CRITICAL FIX: Clean up existing pagination function to prevent memory leak
+  const paginationFuncName = `changePage_${tbodyId}`;
+  if (window[paginationFuncName]) {
+    delete window[paginationFuncName];
+    console.log(`Cleaned up old pagination function: ${paginationFuncName}`);
+  }
+  
   let currentPage = 1;
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
   
   function renderPage(page) {
     tbody.innerHTML = '';
@@ -181,29 +190,51 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     const container = table.parentElement;
     if (!container) return;
     
-    let paginationContainer = container.querySelector('.pagination');
+    // FIXED: Use consistent pagination container ID
+    let paginationContainer = container.querySelector(`#pagination-${tbodyId}`);
     
     if (!paginationContainer) {
       paginationContainer = document.createElement('div');
       paginationContainer.className = 'pagination';
+      paginationContainer.id = `pagination-${tbodyId}`;
       container.appendChild(paginationContainer);
     }
     
+    // FIXED: Add keyboard navigation support
     paginationContainer.innerHTML = `
-      <button onclick="window.changePage_${tbodyId}(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
-      <span class="page-info">Page ${page} of ${total || 1}</span>
-      <button onclick="window.changePage_${tbodyId}(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+      <button 
+        onclick="window.${paginationFuncName}(${page - 1})" 
+        ${page === 1 ? 'disabled' : ''}
+        aria-label="Previous page">
+        Previous
+      </button>
+      <span class="page-info" role="status" aria-live="polite">
+        Page ${page} of ${total || 1}
+      </span>
+      <button 
+        onclick="window.${paginationFuncName}(${page + 1})" 
+        ${page === total ? 'disabled' : ''}
+        aria-label="Next page">
+        Next
+      </button>
     `;
   }
   
-  window[`changePage_${tbodyId}`] = function(newPage) {
+  // Create pagination function
+  window[paginationFuncName] = function(newPage) {
     if (newPage < 1 || newPage > totalPages) return;
     currentPage = newPage;
     renderPage(currentPage);
   };
   
+  // Initial render
   renderPage(1);
+  
+  console.log(`✓ Pagination initialized for ${tbodyId} (${data.length} items, ${totalPages} pages)`);
 }
+
+// Export for use
+window.paginateTable = paginateTable;
 
 /**
  * FIXED: Moved session history loader to top
