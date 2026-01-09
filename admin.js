@@ -3028,4 +3028,11 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   }
 });
 
+// Export hierarchy functions globally
+window.loadClassHierarchyUI = loadClassHierarchyUI;
+window.refreshHierarchyUI = refreshHierarchyUI;
+window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
+window.renderHierarchyUI = renderHierarchyUI;
+window.showSection = showSection;
+
   console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
