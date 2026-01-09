@@ -201,12 +201,21 @@ async function saveClassHierarchy(orderedClassIds) {
 /**
  * Initialize class hierarchy if it doesn't exist
  * Auto-detects classes from 'classes' collection
+ * FIXED: Better error handling and status reporting
  */
 async function initializeClassHierarchy() {
   try {
+    // Check if db is available
+    if (!window.db) {
+      console.error('❌ Firebase not initialized - cannot check class hierarchy');
+      return { success: false, error: 'Firebase not initialized' };
+    }
+    
     const doc = await db.collection('settings').doc('classHierarchy').get();
     
     if (!doc.exists) {
+      console.log('📋 Class hierarchy not found - initializing...');
+      
       // Get all existing classes
       const classesSnapshot = await db.collection('classes').orderBy('name').get();
       
@@ -216,10 +225,11 @@ async function initializeClassHierarchy() {
         // Create empty structure
         await db.collection('settings').doc('classHierarchy').set({
           orderedClassIds: [],
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+          note: 'Empty - waiting for classes to be created'
         });
         
-        return { success: true, isEmpty: true };
+        return { success: true, isEmpty: true, message: 'Hierarchy initialized but empty' };
       }
       
       // Auto-initialize with alphabetical order
@@ -232,23 +242,71 @@ async function initializeClassHierarchy() {
       });
       
       console.log(`✓ Class hierarchy auto-initialized with ${classIds.length} classes in alphabetical order`);
-      return { success: true, isEmpty: false, autoInitialized: true };
+      return { 
+        success: true, 
+        isEmpty: false, 
+        autoInitialized: true,
+        classCount: classIds.length
+      };
     }
     
+    // Hierarchy exists - validate it
     const data = doc.data();
     const orderedIds = data.orderedClassIds || [];
     
     if (orderedIds.length === 0) {
       console.warn('⚠️ Class progression order is empty! Admin should arrange classes in School Settings.');
-      return { success: true, isEmpty: true };
+      return { 
+        success: true, 
+        isEmpty: true,
+        message: 'Hierarchy exists but is empty'
+      };
+    }
+    
+    // Verify classes still exist
+    const classesSnapshot = await db.collection('classes').get();
+    const currentClassIds = new Set(classesSnapshot.docs.map(d => d.id));
+    
+    // Check if any classes in hierarchy no longer exist
+    const orphanedIds = orderedIds.filter(id => !currentClassIds.has(id));
+    
+    if (orphanedIds.length > 0) {
+      console.warn(`⚠️ Found ${orphanedIds.length} class(es) in hierarchy that no longer exist`);
+      
+      // Auto-clean: remove orphaned classes from hierarchy
+      const cleanedIds = orderedIds.filter(id => currentClassIds.has(id));
+      
+      await db.collection('settings').doc('classHierarchy').update({
+        orderedClassIds: cleanedIds,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+        note: `Auto-cleaned ${orphanedIds.length} deleted class(es)`
+      });
+      
+      console.log(`✓ Cleaned hierarchy - removed ${orphanedIds.length} deleted class(es)`);
+      
+      return {
+        success: true,
+        isEmpty: cleanedIds.length === 0,
+        cleaned: true,
+        removedCount: orphanedIds.length,
+        classCount: cleanedIds.length
+      };
     }
     
     console.log(`✓ Class hierarchy loaded: ${orderedIds.length} classes in progression order`);
-    return { success: true, isEmpty: false };
+    return { 
+      success: true, 
+      isEmpty: false,
+      classCount: orderedIds.length
+    };
     
   } catch (error) {
-    console.error('Error checking class hierarchy:', error);
-    return { success: false, error };
+    console.error('❌ Error initializing class hierarchy:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Unknown error',
+      details: error
+    };
   }
 }
 
