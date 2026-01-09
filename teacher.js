@@ -424,19 +424,19 @@ function loadMyClassesSection() {
   const pupils = getValidPupils();
   
   if (classes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No classes assigned to you yet. Contact admin.</td></tr>';
     return;
   }
   
   if (pupils.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--color-gray-600);">No pupils in your assigned classes yet.</td></tr>';
     return;
   }
   
   paginateTable(pupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Name">${pupil.name || 'Unknown'}</td>
+      <td data-label="Pupil Name">${pupil.name || 'Unknown'}</td>
       <td data-label="Gender">${pupil.gender || '-'}</td>
       <td data-label="Admission No">${pupil.admissionNo || '-'}</td>
     `;
@@ -525,33 +525,99 @@ async function loadResultsTable() {
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${pupil.name}</td>
-        <td>
-          <input type="number" min="0" max="40" value="${existing.ca || ''}" 
-                 data-pupil="${pupil.id}" data-field="ca" style="width:90px;">
+        <td data-label="Pupil Name">${pupil.name}</td>
+        <td data-label="CA Score (40)">
+          <input type="number" min="0" max="40" step="0.5" value="${existing.ca || ''}" 
+                 data-pupil="${pupil.id}" data-field="ca" 
+                 style="width:100%; max-width:100px;"
+                 placeholder="0-40">
         </td>
-        <td>
-          <input type="number" min="0" max="60" value="${existing.exam || ''}" 
-                 data-pupil="${pupil.id}" data-field="exam" style="width:90px;">
+        <td data-label="Exam Score (60)">
+          <input type="number" min="0" max="60" step="0.5" value="${existing.exam || ''}" 
+                 data-pupil="${pupil.id}" data-field="exam" 
+                 style="width:100%; max-width:100px;"
+                 placeholder="0-60">
         </td>
-        <td>${total > 0 ? total : '-'}</td>
+        <td data-label="Total">${total > 0 ? total : '-'}</td>
       `;
       tbody.appendChild(tr);
     });
     
     if (saveBtn) saveBtn.hidden = false;
     
-    // Update totals on input change
-    container.querySelectorAll('input').forEach(input => {
-      input.addEventListener('input', () => {
-        const row = input.closest('tr');
-        const ca = parseFloat(row.querySelector('[data-field="ca"]')?.value) || 0;
-        const exam = parseFloat(row.querySelector('[data-field="exam"]')?.value) || 0;
-        row.querySelector('td:last-child').textContent = ca + exam > 0 ? ca + exam : '-';
+    // FIXED: Add validation and auto-update totals
+    container.querySelectorAll('input[type="number"]').forEach(input => {
+      // Validate on input
+      input.addEventListener('input', (e) => {
+        const field = e.target.dataset.field;
+        const max = field === 'ca' ? 40 : 60;
+        let value = parseFloat(e.target.value);
+        
+        // FIXED: Enforce max limits
+        if (value > max) {
+          e.target.value = max;
+          value = max;
+          window.showToast?.(
+            `Maximum score for ${field === 'ca' ? 'CA' : 'Exam'} is ${max}`,
+            'warning',
+            3000
+          );
+        }
+        
+        // FIXED: Prevent negative values
+        if (value < 0) {
+          e.target.value = 0;
+          value = 0;
+        }
+        
+        // Update total
+        const row = e.target.closest('tr');
+        const caInput = row.querySelector('[data-field="ca"]');
+        const examInput = row.querySelector('[data-field="exam"]');
+        const ca = parseFloat(caInput?.value) || 0;
+        const exam = parseFloat(examInput?.value) || 0;
+        const totalCell = row.querySelector('td:last-child');
+        
+        if (totalCell) {
+          const total = ca + exam;
+          totalCell.textContent = total > 0 ? total.toFixed(1) : '-';
+          
+          // FIXED: Visual feedback for score range
+          totalCell.style.fontWeight = 'bold';
+          if (total >= 75) {
+            totalCell.style.color = '#4CAF50'; // Green for excellent
+          } else if (total >= 50) {
+            totalCell.style.color = '#2196F3'; // Blue for good
+          } else if (total >= 40) {
+            totalCell.style.color = '#ff9800'; // Orange for pass
+          } else if (total > 0) {
+            totalCell.style.color = '#f44336'; // Red for fail
+          } else {
+            totalCell.style.color = 'inherit';
+            totalCell.style.fontWeight = 'normal';
+          }
+        }
+      });
+      
+      // FIXED: Validate on blur (when user leaves field)
+      input.addEventListener('blur', (e) => {
+        const field = e.target.dataset.field;
+        const max = field === 'ca' ? 40 : 60;
+        let value = parseFloat(e.target.value);
+        
+        if (value > max) {
+          e.target.value = max;
+          e.target.style.borderColor = '#f44336';
+          setTimeout(() => {
+            e.target.style.borderColor = '';
+          }, 2000);
+        }
       });
     });
+    
   } catch (err) {
-    window.handleError(err, 'Failed to load results');
+    console.error('Error loading results table:', err);
+    window.handleError?.(err, 'Failed to load results');
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
     if (saveBtn) saveBtn.hidden = true;
   }
