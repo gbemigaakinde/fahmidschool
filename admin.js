@@ -557,6 +557,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   
   const pupilId = document.getElementById('pupil-id').value;
   const name = document.getElementById('pupil-name').value.trim();
+  const admissionNo = document.getElementById('pupil-admission-no').value.trim();
   const classId = document.getElementById('pupil-class').value;
   const email = document.getElementById('pupil-email').value.trim();
   const password = document.getElementById('pupil-password').value;
@@ -597,24 +598,25 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     }
     
     const pupilData = {
-      name,
-      dob: document.getElementById('pupil-dob').value || '',
-      gender: document.getElementById('pupil-gender').value || '',
-      parentName: document.getElementById('pupil-parent-name').value.trim() || '',
-      parentEmail: parentEmail || '',
-      contact: document.getElementById('pupil-contact').value.trim() || '',
-      address: document.getElementById('pupil-address').value.trim() || '',
-      class: {
-        id: classId,
-        name: classData.name || 'Unknown Class'
-      },
-      subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
-      assignedTeacher: {
-        id: teacherId,
-        name: teacherName
-      },
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+  admissionNo,
+  name,
+  dob: document.getElementById('pupil-dob').value || '',
+  gender: document.getElementById('pupil-gender').value || '',
+  parentName: document.getElementById('pupil-parent-name').value.trim() || '',
+  parentEmail: parentEmail || '',
+  contact: document.getElementById('pupil-contact').value.trim() || '',
+  address: document.getElementById('pupil-address').value.trim() || '',
+  class: {
+    id: classId,
+    name: classData.name || 'Unknown Class'
+  },
+  subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+  assignedTeacher: {
+    id: teacherId,
+    name: teacherName
+  },
+  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+};
     
     if (pupilId) {
       await db.collection('pupils').doc(pupilId).update(pupilData);
