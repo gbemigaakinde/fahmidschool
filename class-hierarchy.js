@@ -102,7 +102,7 @@ async function getAllClassesInOrder() {
   }
 }
 
-/**/**
+/**
  * Get the next class in progression
  * @param {string} currentClassName - Current class name (e.g., "Apple Class", "Team A", etc.)
  * @returns {string|null} - Next class name or null if terminal class
