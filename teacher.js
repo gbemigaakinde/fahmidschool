@@ -567,67 +567,84 @@ async function saveAllResults() {
     return;
   }
   
-  // CRITICAL: Get current session information
-  const settings = await window.getCurrentSettings();
-  const currentSession = settings.session || 'Unknown';
-  const sessionStartYear = settings.currentSession?.startYear;
-  const sessionEndYear = settings.currentSession?.endYear;
+  // FIXED: Get button and manage state properly
+  const saveBtn = document.getElementById('save-results-btn');
+  const btnText = saveBtn?.querySelector('.btn-text');
+  const btnLoading = saveBtn?.querySelector('.btn-loading');
   
-  const batch = db.batch();
-  let hasChanges = false;
-  
-  inputs.forEach(input => {
-    const pupilId = input.dataset.pupil;
-    const field = input.dataset.field;
-    const value = parseFloat(input.value) || 0;
-    
-    if (value > 0) hasChanges = true;
-    
-    const docId = `${pupilId}_${term}_${subject}`;
-    const ref = db.collection('results').doc(docId);
-    
-    // NEW: Create composite session-term field for efficient querying
-    const sessionTerm = `${currentSession}_${term}`;
-    
-    if (field === 'ca') {
-      batch.set(ref, {
-        pupilId, 
-        term, 
-        subject,
-        caScore: value,
-        // NEW FIELDS: Add session context
-        session: currentSession,
-        sessionStartYear: sessionStartYear,
-        sessionEndYear: sessionEndYear,
-        sessionTerm: sessionTerm,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    } else {
-      batch.set(ref, {
-        pupilId, 
-        term, 
-        subject,
-        examScore: value,
-        // NEW FIELDS: Add session context
-        session: currentSession,
-        sessionStartYear: sessionStartYear,
-        sessionEndYear: sessionEndYear,
-        sessionTerm: sessionTerm,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    }
-  });
-  
-  if (!hasChanges) {
-    window.showToast?.('No scores entered', 'warning');
-    return;
-  }
+  // FIXED: Disable button and show loading
+  if (saveBtn) saveBtn.disabled = true;
+  if (btnText) btnText.hidden = true;
+  if (btnLoading) btnLoading.hidden = false;
   
   try {
+    // CRITICAL: Get current session information
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session || 'Unknown';
+    const sessionStartYear = settings.currentSession?.startYear;
+    const sessionEndYear = settings.currentSession?.endYear;
+    
+    const batch = db.batch();
+    let hasChanges = false;
+    
+    inputs.forEach(input => {
+      const pupilId = input.dataset.pupil;
+      const field = input.dataset.field;
+      const value = parseFloat(input.value) || 0;
+      
+      if (value > 0) hasChanges = true;
+      
+      const docId = `${pupilId}_${term}_${subject}`;
+      const ref = db.collection('results').doc(docId);
+      
+      // Create composite session-term field for efficient querying
+      const sessionTerm = `${currentSession}_${term}`;
+      
+      if (field === 'ca') {
+        batch.set(ref, {
+          pupilId, 
+          term, 
+          subject,
+          caScore: value,
+          // Add session context
+          session: currentSession,
+          sessionStartYear: sessionStartYear,
+          sessionEndYear: sessionEndYear,
+          sessionTerm: sessionTerm,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } else {
+        batch.set(ref, {
+          pupilId, 
+          term, 
+          subject,
+          examScore: value,
+          // Add session context
+          session: currentSession,
+          sessionStartYear: sessionStartYear,
+          sessionEndYear: sessionEndYear,
+          sessionTerm: sessionTerm,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+    });
+    
+    if (!hasChanges) {
+      window.showToast?.('No scores entered', 'warning');
+      return;
+    }
+    
     await batch.commit();
     window.showToast?.('✓ All results saved successfully', 'success');
+    
   } catch (err) {
-    window.handleError(err, 'Failed to save results');
+    console.error('Error saving results:', err);
+    window.handleError?.(err, 'Failed to save results');
+  } finally {
+    // FIXED: Always restore button state
+    if (saveBtn) saveBtn.disabled = false;
+    if (btnText) btnText.hidden = false;
+    if (btnLoading) btnLoading.hidden = true;
   }
 }
 
