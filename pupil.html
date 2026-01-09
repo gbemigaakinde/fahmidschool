@@ -670,6 +670,31 @@ body.pupil-portal {
                 <h2>Academic Results</h2>
                 <p>Your performance record for the current academic session</p>
             </div>
+            <!-- Session Selector -->
+<div class="session-selector" style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: #f8fafc; border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
+    <div style="display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px;">
+            <label for="pupil-session-select" style="display: block; font-weight: 600; color: #334155; margin-bottom: var(--space-xs); font-size: 0.875rem;">
+                <i data-lucide="calendar" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                Select Academic Session:
+            </label>
+            <select id="pupil-session-select" onchange="loadSessionResults()" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-size: 0.9375rem; background: white;">
+                <option value="current">Current Session (Loading...)</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: flex-end; gap: var(--space-sm);">
+            <button onclick="loadSessionResults()" class="btn-secondary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
+                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                Refresh Results
+            </button>
+        </div>
+    </div>
+    <div id="session-info" style="margin-top: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
+        <p style="margin: 0; font-size: 0.875rem; color: #64748b;">
+            <strong>Viewing:</strong> <span id="selected-session-name">Current Session</span>
+        </p>
+    </div>
+</div>
         </div>
 
         <div class="results-table-wrapper" id="results-container">
