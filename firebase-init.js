@@ -63,39 +63,112 @@ const ERROR_MESSAGES = {
 // ============================================
 
 /**
- * Handle errors with user-friendly messages
+ * REPLACE the existing handleError function in firebase-init.js
+ * Enhanced version with better error handling
  */
+
 window.handleError = function(error, fallbackMessage = 'An error occurred') {
   console.error('Error details:', error);
-  const errorCode = error.code || 'unknown';
-  const userMessage = ERROR_MESSAGES[errorCode] || `${fallbackMessage}: ${error.message || error.code}`;
   
+  // Get error code
+  const errorCode = error.code || 'unknown';
+  
+  // ENHANCED: Better error message logic
+  let userMessage = fallbackMessage;
+  
+  // Check if we have a predefined message
+  if (ERROR_MESSAGES[errorCode]) {
+    userMessage = ERROR_MESSAGES[errorCode];
+  } else if (error.message) {
+    // Use the error message if available
+    userMessage = `${fallbackMessage}: ${error.message}`;
+  }
+  
+  // ENHANCED: Handle authentication errors specially
+  if (errorCode === 'unauthenticated' || errorCode === 'auth/unauthenticated') {
+    userMessage = '🔒 You must be logged in to perform this action.';
+    if (window.showToast) {
+      window.showToast(userMessage, 'danger', 3000);
+    } else {
+      alert(userMessage);
+    }
+    // Redirect to login after 2 seconds
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 2000);
+    return userMessage;
+  }
+  
+  // ENHANCED: Show toast or alert
   if (window.showToast) {
-    window.showToast(userMessage, 'danger', 5000);
+    window.showToast(userMessage, 'danger', 6000);
   } else {
     alert(userMessage);
   }
+  
+  return userMessage;
 };
 
+console.log('✓ handleError enhanced with better Firebase error handling');
+
 /**
- * Get current school settings
+ * REPLACE the existing getCurrentSettings function in firebase-init.js
+ * This version returns ALL settings fields your code expects
  */
+
 window.getCurrentSettings = async function() {
   try {
     const settingsDoc = await window.db.collection('settings').doc('current').get();
+    
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
+      
+      // FIXED: Extract session info properly
+      let sessionName = '2025/2026';
+      let sessionData = null;
+
+      if (data.currentSession && typeof data.currentSession === 'object') {
+        sessionName =
+          data.currentSession.name ||
+          `${data.currentSession.startYear}/${data.currentSession.endYear}`;
+        sessionData = data.currentSession;
+      } else if (data.session) {
+        sessionName = data.session;
+      }
+
+      // FIXED: Return ALL fields that code expects
       return {
         term: data.term || 'First Term',
-        session: data.session || '2025/2026'
+        session: sessionName,
+        currentSession: sessionData,  // Full session object
+        resumptionDate: data.resumptionDate || null,
+        promotionPeriodActive: data.promotionPeriodActive || false
       };
     }
-    return { term: 'First Term', session: '2025/2026' };
+    
+    // FIXED: Return complete default structure
+    return {
+      term: 'First Term',
+      session: '2025/2026',
+      currentSession: null,
+      resumptionDate: null,
+      promotionPeriodActive: false
+    };
   } catch (error) {
     console.error('Error getting settings:', error);
-    return { term: 'First Term', session: '2025/2026' };
+    
+    // FIXED: Return complete default structure on error
+    return {
+      term: 'First Term',
+      session: '2025/2026',
+      currentSession: null,
+      resumptionDate: null,
+      promotionPeriodActive: false
+    };
   }
 };
+
+console.log('✓ getCurrentSettings updated with full fields');
 
 /**
  * Get user role from Firestore
