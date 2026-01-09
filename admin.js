@@ -1785,18 +1785,82 @@ CLASS HIERARCHY MANAGEMENT
 let currentHierarchy = null;
 
 async function loadClassHierarchyUI() {
+  const container = document.getElementById('hierarchy-container');
+  
+  if (!container) {
+    console.error('❌ hierarchy-container element not found in DOM');
+    return;
+  }
+  
+  console.log('📋 Loading class hierarchy UI...');
+  
   try {
-    // Get all classes in current order
-    const orderedClasses = await window.classHierarchy.getAllClassesInOrder();
+    // FIRST: Get all classes from the "classes" collection
+    const classesSnapshot = await db.collection('classes').orderBy('name').get();
     
-    if (orderedClasses.length === 0) {
+    if (classesSnapshot.empty) {
+      console.warn('⚠️ No classes found in classes collection');
       renderEmptyHierarchyUI();
       return;
     }
     
+    console.log(`✓ Found ${classesSnapshot.size} classes in database`);
+    
+    // Get all classes as objects
+    const allClasses = [];
+    classesSnapshot.forEach(doc => {
+      allClasses.push({
+        id: doc.id,
+        name: doc.data().name || 'Unnamed Class'
+      });
+    });
+    
+    // Get saved hierarchy order from settings
+    const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+    
+    let orderedClasses = [];
+    
+    if (hierarchyDoc.exists && hierarchyDoc.data().orderedClassIds) {
+      const savedOrder = hierarchyDoc.data().orderedClassIds;
+      console.log(`✓ Found saved order with ${savedOrder.length} classes`);
+      
+      // Sort classes according to saved order
+      savedOrder.forEach(classId => {
+        const found = allClasses.find(c => c.id === classId);
+        if (found) {
+          orderedClasses.push(found);
+        }
+      });
+      
+      // Add any NEW classes that aren't in the saved order yet (append to end)
+      allClasses.forEach(cls => {
+        if (!savedOrder.includes(cls.id)) {
+          orderedClasses.push(cls);
+          console.log(`➕ Adding new class "${cls.name}" to hierarchy`);
+        }
+      });
+    } else {
+      // No saved order - use alphabetical order from classes
+      console.log('ℹ️ No saved order found, using alphabetical order');
+      orderedClasses = allClasses.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    console.log(`✓ Rendering ${orderedClasses.length} classes in hierarchy UI`);
     renderHierarchyUI(orderedClasses);
+    
   } catch (error) {
-    console.error('Error loading class hierarchy UI:', error);
+    console.error('❌ Error loading class hierarchy UI:', error);
+    if (container) {
+      container.innerHTML = `
+        <div style="padding:var(--space-lg); text-align:center; color:var(--color-danger);">
+          <p><strong>Error Loading Classes</strong></p>
+          <p>${error.message}</p>
+          <button class="btn btn-primary" onclick="window.refreshHierarchyUI()">
+            🔄 Retry
+          </button>
+        </div>
+      `;
+    }
     window.showToast?.('Failed to load class hierarchy', 'danger');
   }
 }
@@ -1805,14 +1869,16 @@ function renderEmptyHierarchyUI() {
   const container = document.getElementById('hierarchy-container');
   if (!container) return;
   
+  console.log('📭 Rendering empty hierarchy UI');
+  
   container.innerHTML = `
     <div style="text-align:center; padding:var(--space-2xl); background:var(--color-gray-100); border-radius:var(--radius-md);">
       <h3 style="color:var(--color-gray-600); margin-bottom:var(--space-md);">📚 No Classes Created Yet</h3>
       <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
-        Create classes first in the <strong>"Classes"</strong> section above, then come back here to arrange them in progression order.
+        You need to create classes first in the <strong>"Classes"</strong> section above, then return here to arrange them in progression order.
       </p>
-      <button class="btn btn-primary" onclick="showSection('classes')">
-        Go to Classes Section
+      <button class="btn btn-primary" onclick="window.showSection('classes')">
+        ➕ Go to Classes Section
       </button>
     </div>
   `;
@@ -1821,32 +1887,52 @@ function renderEmptyHierarchyUI() {
 function renderHierarchyUI(orderedClasses) {
   const container = document.getElementById('hierarchy-container');
   if (!container) {
-    console.error('Hierarchy container not found in DOM');
+    console.error('❌ hierarchy-container element not found in DOM');
     return;
   }
   
+  if (!Array.isArray(orderedClasses) || orderedClasses.length === 0) {
+    console.warn('⚠️ No classes provided to renderHierarchyUI');
+    renderEmptyHierarchyUI();
+    return;
+  }
+  
+  console.log(`🎨 Rendering ${orderedClasses.length} classes in UI`);
+  
   container.innerHTML = `
     <div class="hierarchy-instructions">
-      <p><strong>📋 Class Progression Order</strong></p>
-      <p>Drag classes to rearrange the order. The last class is the terminal/graduation class.</p>
-      <p style="color:var(--color-gray-600); font-size:var(--text-sm);">
-        💡 Tip: To add/remove classes, go to the "Classes" section above. Changes will appear here automatically.
+      <p><strong>📋 Class Progression Order (${orderedClasses.length} classes found)</strong></p>
+      <p>Drag classes to rearrange the order from lowest to highest level. The <strong>last class</strong> is the terminal/graduation class.</p>
+      <p style="color:var(--color-gray-600); font-size:var(--text-sm); margin-top:var(--space-sm);">
+        💡 <strong>Tip:</strong> To add/remove classes, go to the "Classes" section above, then click "🔄 Refresh from Classes" below.
       </p>
     </div>
     
     <div id="sortable-class-list" class="sortable-list"></div>
     
-    <div style="margin-top:var(--space-lg); display:flex; gap:var(--space-md);">
-      <button class="btn btn-primary" onclick="saveHierarchyOrder()">
+    <div style="margin-top:var(--space-lg); display:flex; gap:var(--space-md); flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="window.saveHierarchyOrder()">
         💾 Save Progression Order
       </button>
-      <button class="btn btn-secondary" onclick="refreshHierarchyUI()">
+      <button class="btn btn-secondary" onclick="window.refreshHierarchyUI()">
         🔄 Refresh from Classes
       </button>
+    </div>
+    
+    <div style="margin-top:var(--space-lg); padding:var(--space-md); background:var(--color-info-light); border-radius:var(--radius-sm);">
+      <p style="margin:0; color:var(--color-info-dark); font-size:var(--text-sm);">
+        ℹ️ <strong>Currently showing ${orderedClasses.length} class(es)</strong> from your Classes section.
+        If you added new classes, click "🔄 Refresh from Classes" to see them here.
+      </p>
     </div>
   `;
   
   const listContainer = document.getElementById('sortable-class-list');
+  
+  if (!listContainer) {
+    console.error('❌ sortable-class-list not found after innerHTML update');
+    return;
+  }
   
   orderedClasses.forEach((cls, index) => {
     const itemDiv = document.createElement('div');
@@ -1873,11 +1959,8 @@ function renderHierarchyUI(orderedClasses) {
     listContainer.appendChild(itemDiv);
   });
   
-  console.log(`✓ Rendered ${orderedClasses.length} classes in hierarchy UI`);
+  console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
 }
-
-// Drag and drop handlers
-let draggedElement = null;
 
 function handleDragStart(e) {
   draggedElement = this;
@@ -1968,16 +2051,32 @@ async function saveHierarchyOrder() {
 }
 
 async function refreshHierarchyUI() {
+  console.log('🔄 Refreshing hierarchy from classes...');
+  
+  const btn = event?.target;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Refreshing...</span>';
+  }
+  
   try {
+    // Re-initialize hierarchy from classes collection
     await window.classHierarchy.initializeClassHierarchy();
+    
+    // Reload the UI
     await loadClassHierarchyUI();
+    
     window.showToast?.('✓ Refreshed from Classes section', 'success');
   } catch (error) {
-    console.error('Error refreshing hierarchy:', error);
-    window.showToast?.('Failed to refresh', 'danger');
+    console.error('❌ Error refreshing hierarchy:', error);
+    window.showToast?.('Failed to refresh hierarchy', 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 Refresh from Classes';
+    }
   }
 }
-
 // Make functions globally available
 window.saveHierarchyOrder = saveHierarchyOrder;
 window.refreshHierarchyUI = refreshHierarchyUI;
