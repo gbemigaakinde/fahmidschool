@@ -417,64 +417,202 @@ function renderSubjects(subjects, teacher) {
 }
 
 // ============================================
-// RESULTS DISPLAY
+// LOAD RESULTS WITH SESSION SUPPORT
 // ============================================
+
 async function loadResults() {
     if (!currentPupilId) return;
 
     const container = document.getElementById('results-container');
     if (!container) return;
 
+    // Show loading skeleton
     container.innerHTML = `
         <div class="skeleton-container">
             <div class="skeleton" style="height:40px;width:60%;margin:var(--space-xl) auto;"></div>
-            <div class="skeleton" style="height:30px;margin:var(--space-lg) 0 var(--space-sm;"></div>
+            <div class="skeleton" style="height:30px;margin:var(--space-lg) 0 var(--space-sm);"></div>
             <div class="skeleton" style="height:30px;margin-bottom:var(--space-sm);"></div>
         </div>
     `;
 
     try {
-        const resultsSnap = await db.collection('results').get();
-        const pupilResults = [];
+        // Populate session selector first
+        await populateSessionSelector();
+        
+        // Get selected session (defaults to current)
+        const sessionSelect = document.getElementById('pupil-session-select');
+        const selectedSession = sessionSelect?.value || 'current';
+        
+        // Load results for selected session
+        await loadSessionResults();
 
+    } catch (error) {
+        console.error('Error loading results:', error);
+        container.innerHTML = `<p style="text-align:center;color:var(--color-danger); padding:var(--space-2xl);">
+            ⚠️ Unable to load results. Try again later.
+        </p>`;
+    }
+}
+
+async function populateSessionSelector() {
+    const selector = document.getElementById('pupil-session-select');
+    if (!selector) {
+        console.warn('Session selector not found');
+        return;
+    }
+    
+    try {
+        // Get current session settings
+        const settings = await window.getCurrentSettings();
+        const currentSession = settings.session || 'Current Session';
+        
+        // Clear and rebuild selector
+        selector.innerHTML = '';
+        
+        // Add current session option (always first)
+        const currentOpt = document.createElement('option');
+        currentOpt.value = 'current';
+        currentOpt.textContent = `Current Session (${currentSession})`;
+        selector.appendChild(currentOpt);
+        
+        // Query all results for this pupil to find unique sessions
+        const resultsSnap = await db.collection('results')
+            .where('pupilId', '==', currentPupilId)
+            .get();
+        
+        // Extract unique sessions
+        const sessions = new Set();
         resultsSnap.forEach(doc => {
-            const docId = doc.id;
-            if (docId.startsWith(currentPupilId + '_')) {
-                const data = doc.data();
-                const parts = docId.split('_');
-                if (parts.length >= 3) {
-                    const term = parts[1];
-                    const subject = parts.slice(2).join('_');
-                    pupilResults.push({
-                        term,
-                        subject,
-                        caScore: data.caScore || 0,
-                        examScore: data.examScore || 0,
-                        total: (data.caScore || 0) + (data.examScore || 0)
-                    });
-                }
+            const data = doc.data();
+            if (data.session && data.session !== currentSession) {
+                sessions.add(data.session);
             }
         });
+        
+        // Add historical sessions (sorted newest to oldest)
+        const sortedSessions = Array.from(sessions).sort((a, b) => {
+            // Extract years from session format "2023/2024"
+            const yearA = parseInt(a.split('/')[0]);
+            const yearB = parseInt(b.split('/')[0]);
+            return yearB - yearA; // Descending order
+        });
+        
+        sortedSessions.forEach(session => {
+            const opt = document.createElement('option');
+            opt.value = session;
+            opt.textContent = `${session} Session`;
+            selector.appendChild(opt);
+        });
+        
+        console.log(`✓ Session selector populated: 1 current + ${sortedSessions.length} historical`);
+        
+    } catch (error) {
+        console.error('Error populating session selector:', error);
+        selector.innerHTML = '<option value="current">Current Session (Error loading)</option>';
+    }
+}
 
+async function loadSessionResults() {
+    if (!currentPupilId) return;
+    
+    const container = document.getElementById('results-container');
+    const sessionSelect = document.getElementById('pupil-session-select');
+    const sessionInfo = document.getElementById('session-info');
+    const selectedSessionName = document.getElementById('selected-session-name');
+    
+    if (!container) return;
+    
+    // Show loading
+    container.innerHTML = `
+        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+            <p>Loading results...</p>
+        </div>
+    `;
+    
+    try {
+        const selectedSession = sessionSelect?.value || 'current';
+        
+        // Build query based on selection
+        let resultsSnap;
+        
+        if (selectedSession === 'current') {
+            // Load current session results
+            const settings = await window.getCurrentSettings();
+            const currentSessionName = settings.session;
+            
+            resultsSnap = await db.collection('results')
+                .where('pupilId', '==', currentPupilId)
+                .where('session', '==', currentSessionName)
+                .get();
+            
+            // Update info display
+            if (selectedSessionName) {
+                selectedSessionName.textContent = `Current Session (${currentSessionName})`;
+            }
+            
+        } else {
+            // Load historical session results
+            resultsSnap = await db.collection('results')
+                .where('pupilId', '==', currentPupilId)
+                .where('session', '==', selectedSession)
+                .get();
+            
+            // Update info display
+            if (selectedSessionName) {
+                selectedSessionName.textContent = `${selectedSession} Session`;
+            }
+        }
+        
+        // Show session info
+        if (sessionInfo) {
+            sessionInfo.style.display = 'block';
+        }
+        
+        // Process and display results
+        const pupilResults = [];
+        
+        resultsSnap.forEach(doc => {
+            const data = doc.data();
+            pupilResults.push({
+                term: data.term || 'Unknown Term',
+                subject: data.subject || 'Unknown Subject',
+                caScore: data.caScore || 0,
+                examScore: data.examScore || 0,
+                total: (data.caScore || 0) + (data.examScore || 0)
+            });
+        });
+        
+        // Clear container
         container.innerHTML = '';
-
-        if (!pupilResults.length) {
+        
+        if (pupilResults.length === 0) {
             container.innerHTML = `<p style="text-align:center; padding:var(--space-2xl); font-size:var(--text-lg); color:var(--color-gray-600);">
-                📚 No results have been entered yet.<br>Your teachers will upload scores soon.
+                📚 No results found for this session.<br>
+                ${selectedSession === 'current' ? 'Your teachers will upload scores soon.' : 'No historical data available.'}
             </p>`;
             return;
         }
-
+        
+        // Group results by term
         const terms = {};
-        pupilResults.forEach(r => { if (!terms[r.term]) terms[r.term] = []; terms[r.term].push(r); });
-
+        pupilResults.forEach(r => { 
+            if (!terms[r.term]) terms[r.term] = []; 
+            terms[r.term].push(r); 
+        });
+        
+        // Display results for each term
         ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
             if (!terms[termName]) return;
 
             const termSection = document.createElement('div');
             termSection.className = 'results-term-section';
+            termSection.style.marginBottom = 'var(--space-2xl)';
+            
             const heading = document.createElement('h3');
             heading.textContent = termName;
+            heading.style.marginBottom = 'var(--space-md)';
+            heading.style.color = '#0f172a';
             termSection.appendChild(heading);
 
             const table = document.createElement('table');
@@ -482,7 +620,11 @@ async function loadResults() {
             table.innerHTML = `
                 <thead>
                     <tr>
-                        <th>SUBJECT</th><th>CA (40)</th><th>EXAM (60)</th><th>TOTAL (100)</th><th>GRADE</th>
+                        <th>SUBJECT</th>
+                        <th>CA (40)</th>
+                        <th>EXAM (60)</th>
+                        <th>TOTAL (100)</th>
+                        <th>GRADE</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -523,14 +665,19 @@ async function loadResults() {
             termSection.appendChild(table);
             container.appendChild(termSection);
         });
+        
+        console.log(`✓ Loaded ${pupilResults.length} results for session: ${selectedSession}`);
 
     } catch (error) {
-        console.error('Error loading results:', error);
+        console.error('Error loading session results:', error);
         container.innerHTML = `<p style="text-align:center;color:var(--color-danger); padding:var(--space-2xl);">
-            ⚠️ Unable to load results. Try again later.
+            ⚠️ Unable to load results. Please try again.
         </p>`;
     }
 }
+
+// Make function globally available
+window.loadSessionResults = loadSessionResults;
 
 // ============================================
 // GRADE CALCULATION
