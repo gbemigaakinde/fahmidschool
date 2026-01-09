@@ -1756,6 +1756,23 @@ etc.
     background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
 }
 
+/* Export Button Styles */
+.btn-success {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.btn-success:active {
+    transform: translateY(0);
+}
+
 /* Portal Header Section */
 .portal-header {
     background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
