@@ -340,6 +340,11 @@ window.deleteAlumni = deleteAlumni;
 /* ======================================== 
    SECTION NAVIGATION - FIXED ORDER
 ======================================== */
+/**
+ * SECTION NAVIGATION - FIXED WITH PROPER VIEW-RESULTS SUPPORT
+ * Replace the existing showSection() function in admin.js
+ */
+
 function showSection(sectionId) {
   if (!sectionId) {
     console.error('showSection called with no sectionId');
@@ -364,53 +369,68 @@ function showSection(sectionId) {
     a.classList.remove('active');
   });
   
-  const activeLink = document.querySelector(`.admin-sidebar a[onclick*="${sectionId}"]`);
+  const activeLink = document.querySelector(`.admin-sidebar a[onclick*="${sectionId}"], .admin-sidebar a[data-section="${sectionId}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
   }
   
-  // FIXED: All functions are now defined, safe to call
+  // FIXED: All section loaders properly mapped
   try {
     switch(sectionId) {
       case 'dashboard':
         loadDashboardStats();
         break;
+      
       case 'teachers':
         loadTeachers();
         break;
+      
       case 'pupils':
         loadPupils();
         break;
+      
       case 'classes':
         loadClasses();
         break;
+      
       case 'subjects':
         loadSubjects();
         break;
+      
       case 'assign-teachers':
         loadTeacherAssignments();
         break;
+      
       case 'promotion-requests':
         loadPromotionRequests();
         break;
+      
       case 'announcements':
         loadAdminAnnouncements();
         break;
+      
       case 'alumni':
         loadAlumni();
         break;
+      
+      case 'view-results':
+        // FIXED: Add view-results section loader
+        loadViewResultsSection();
+        break;
+      
       case 'settings':
-  // Load all settings components
-  loadCurrentSettings();
-  
-  // Load hierarchy with a small delay to ensure DOM is ready
-  setTimeout(async () => {
-    await loadClassHierarchyUI();
-  }, 200);
-  
-  // Load session history
-  loadSessionHistory();
-  break;
+        // Load all settings components
+        loadCurrentSettings();
+        
+        // Load hierarchy with a small delay to ensure DOM is ready
+        setTimeout(async () => {
+          await loadClassHierarchyUI();
+        }, 200);
+        
+        // Load session history
+        loadSessionHistory();
+        break;
+      
       default:
         console.warn(`Unknown section: ${sectionId}`);
     }
@@ -431,6 +451,9 @@ function showSection(sectionId) {
     document.body.style.overflow = '';
   }
 }
+
+// Make globally available
+window.showSection = showSection;
 
 /* ======================================== 
    DASHBOARD STATS 
