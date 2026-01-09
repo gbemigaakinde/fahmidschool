@@ -35,7 +35,7 @@ window.auth = firebase.auth();
 // ERROR MESSAGES
 // ============================================
 
-const ERROR_MESSAGES = {
+window.ERROR_MESSAGES = {
   'auth/email-already-in-use': 'This email is already registered.',
   'auth/invalid-email': 'Please enter a valid email address.',
   'auth/weak-password': 'Password should be at least 6 characters long.',
@@ -55,7 +55,42 @@ const ERROR_MESSAGES = {
   'not-found': 'Resource not found.',
   'unavailable': 'Service temporarily unavailable. Please try again.',
   'deadline-exceeded': 'Request timeout. Please check your connection.',
+  'unauthenticated': 'You must be logged in to perform this action.',
+  'auth/unauthenticated': 'You must be logged in to perform this action.',
   'unknown': 'An unexpected error occurred.'
+};
+
+/**
+ * Then update handleError to use window.ERROR_MESSAGES
+ */
+window.handleError = function(error, fallbackMessage = 'An error occurred') {
+  console.error('Error details:', error);
+  const errorCode = error.code || 'unknown';
+  
+  // Use window.ERROR_MESSAGES to ensure it's accessible
+  const userMessage = window.ERROR_MESSAGES[errorCode] || 
+                      `${fallbackMessage}: ${error.message || error.code}`;
+  
+  // Handle authentication errors specially
+  if (errorCode === 'unauthenticated' || errorCode === 'auth/unauthenticated') {
+    if (window.showToast) {
+      window.showToast(userMessage, 'danger', 3000);
+    } else {
+      alert(userMessage);
+    }
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 2000);
+    return userMessage;
+  }
+  
+  if (window.showToast) {
+    window.showToast(userMessage, 'danger', 5000);
+  } else {
+    alert(userMessage);
+  }
+  
+  return userMessage;
 };
 
 // ============================================
