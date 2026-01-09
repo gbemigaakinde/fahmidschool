@@ -661,7 +661,11 @@
        <!-- Pupils Section -->
 <div id="pupils" class="admin-card" style="display:none;">
     <h1>Manage Pupils</h1>
-    <button class="btn" onclick="showPupilForm()">+ Add / Edit Pupil</button>
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-lg);">
+        <button class="btn" onclick="showPupilForm()">+ Add / Edit Pupil</button>
+        <button class="btn btn-success" onclick="exportPupilsToExcel()">📊 Export to Excel</button>
+        <button class="btn btn-primary" onclick="exportPupilsToPDF()">📄 Export to PDF</button>
+    </div>
 
     <div id="pupil-form" class="form-section" style="display:none;">
         <h3 id="pupil-form-title">Add / Edit Pupil</h3>
@@ -1214,8 +1218,17 @@
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- jsPDF for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- School Scripts -->
     <script src="firebase-init.js"></script>
     <script src="class-hierarchy.js"></script>
+    <script src="pupils-export.js"></script>
     <script src="admin.js"></script>
     <script src="script.js"></script>
 </body>
