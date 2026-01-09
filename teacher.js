@@ -567,6 +567,12 @@ async function saveAllResults() {
     return;
   }
   
+  // CRITICAL: Get current session information
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session || 'Unknown';
+  const sessionStartYear = settings.currentSession?.startYear;
+  const sessionEndYear = settings.currentSession?.endYear;
+  
   const batch = db.batch();
   let hasChanges = false;
   
@@ -580,16 +586,33 @@ async function saveAllResults() {
     const docId = `${pupilId}_${term}_${subject}`;
     const ref = db.collection('results').doc(docId);
     
+    // NEW: Create composite session-term field for efficient querying
+    const sessionTerm = `${currentSession}_${term}`;
+    
     if (field === 'ca') {
       batch.set(ref, {
-        pupilId, term, subject,
+        pupilId, 
+        term, 
+        subject,
         caScore: value,
+        // NEW FIELDS: Add session context
+        session: currentSession,
+        sessionStartYear: sessionStartYear,
+        sessionEndYear: sessionEndYear,
+        sessionTerm: sessionTerm,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
     } else {
       batch.set(ref, {
-        pupilId, term, subject,
+        pupilId, 
+        term, 
+        subject,
         examScore: value,
+        // NEW FIELDS: Add session context
+        session: currentSession,
+        sessionStartYear: sessionStartYear,
+        sessionEndYear: sessionEndYear,
+        sessionTerm: sessionTerm,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
     }
