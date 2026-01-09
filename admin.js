@@ -34,6 +34,294 @@ try {
 }
 
 /* ======================================== 
+   CLASS HIERARCHY MODULE (ADMIN ONLY)
+======================================== */
+
+window.classHierarchy = {
+  /**
+   * Initialize class hierarchy from classes collection
+   */
+  async initializeClassHierarchy() {
+    try {
+      console.log('🔧 Initializing class hierarchy...');
+      
+      // Check if hierarchy already exists
+      const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+      
+      if (hierarchyDoc.exists && hierarchyDoc.data().orderedClassIds) {
+        const orderedIds = hierarchyDoc.data().orderedClassIds;
+        console.log(`✓ Class hierarchy loaded: ${orderedIds.length} classes`);
+        return {
+          success: true,
+          isEmpty: orderedIds.length === 0,
+          message: 'Hierarchy already exists'
+        };
+      }
+      
+      // Get all classes from classes collection
+      const classesSnapshot = await db.collection('classes').orderBy('name').get();
+      
+      if (classesSnapshot.empty) {
+        console.log('⚠️ No classes found - hierarchy empty');
+        
+        // Create empty hierarchy document
+        await db.collection('settings').doc('classHierarchy').set({
+          orderedClassIds: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        return {
+          success: true,
+          isEmpty: true,
+          message: 'No classes to initialize'
+        };
+      }
+      
+      // Create ordered list (alphabetical by default)
+      const orderedClassIds = [];
+      classesSnapshot.forEach(doc => {
+        orderedClassIds.push(doc.id);
+      });
+      
+      // Save to database
+      await db.collection('settings').doc('classHierarchy').set({
+        orderedClassIds: orderedClassIds,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log(`✓ Class hierarchy initialized with ${orderedClassIds.length} classes`);
+      
+      return {
+        success: true,
+        isEmpty: false,
+        count: orderedClassIds.length,
+        message: 'Hierarchy initialized successfully'
+      };
+      
+    } catch (error) {
+      console.error('❌ Error initializing class hierarchy:', error);
+      return {
+        success: false,
+        isEmpty: true,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Get the next class in progression
+   */
+  async getNextClass(currentClassName) {
+    try {
+      const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+      
+      if (!hierarchyDoc.exists || !hierarchyDoc.data().orderedClassIds) {
+        console.warn('Class hierarchy not initialized');
+        return null;
+      }
+      
+      const orderedClassIds = hierarchyDoc.data().orderedClassIds;
+      
+      if (orderedClassIds.length === 0) {
+        console.warn('Class hierarchy is empty');
+        return null;
+      }
+      
+      // Get all classes to map IDs to names
+      const classesSnapshot = await db.collection('classes').get();
+      const classesMap = {};
+      
+      classesSnapshot.forEach(doc => {
+        classesMap[doc.id] = doc.data().name;
+      });
+      
+      // Find current class ID by name
+      let currentClassId = null;
+      for (const [id, name] of Object.entries(classesMap)) {
+        if (name === currentClassName) {
+          currentClassId = id;
+          break;
+        }
+      }
+      
+      if (!currentClassId) {
+        console.warn(`Class "${currentClassName}" not found in database`);
+        return null;
+      }
+      
+      // Find current position in hierarchy
+      const currentIndex = orderedClassIds.indexOf(currentClassId);
+      
+      if (currentIndex === -1) {
+        console.warn(`Class "${currentClassName}" not in hierarchy order`);
+        return null;
+      }
+      
+      // Check if this is the last class (terminal)
+      if (currentIndex === orderedClassIds.length - 1) {
+        console.log(`Class "${currentClassName}" is terminal class`);
+        return null;
+      }
+      
+      // Get next class name
+      const nextClassId = orderedClassIds[currentIndex + 1];
+      const nextClassName = classesMap[nextClassId];
+      
+      console.log(`Next class after "${currentClassName}": "${nextClassName}"`);
+      
+      return nextClassName || null;
+      
+    } catch (error) {
+      console.error('Error getting next class:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Check if a class is the terminal (last) class
+   */
+  async isTerminalClass(className) {
+    try {
+      const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+      
+      if (!hierarchyDoc.exists || !hierarchyDoc.data().orderedClassIds) {
+        console.warn('Class hierarchy not initialized');
+        return false;
+      }
+      
+      const orderedClassIds = hierarchyDoc.data().orderedClassIds;
+      
+      if (orderedClassIds.length === 0) {
+        return false;
+      }
+      
+      // Get the last class in hierarchy
+      const lastClassId = orderedClassIds[orderedClassIds.length - 1];
+      
+      // Get class name
+      const classDoc = await db.collection('classes').doc(lastClassId).get();
+      
+      if (!classDoc.exists) {
+        console.warn(`Terminal class ${lastClassId} not found`);
+        return false;
+      }
+      
+      const lastClassName = classDoc.data().name;
+      
+      const isTerminal = className === lastClassName;
+      
+      console.log(`Class "${className}" is terminal: ${isTerminal}`);
+      
+      return isTerminal;
+      
+    } catch (error) {
+      console.error('Error checking terminal class:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Save class hierarchy order
+   */
+  async saveClassHierarchy(orderedClassIds) {
+    try {
+      if (!Array.isArray(orderedClassIds)) {
+        throw new Error('orderedClassIds must be an array');
+      }
+      
+      if (orderedClassIds.length === 0) {
+        throw new Error('Cannot save empty class hierarchy');
+      }
+      
+      // Validate all class IDs exist
+      const classesSnapshot = await db.collection('classes').get();
+      const validClassIds = new Set();
+      
+      classesSnapshot.forEach(doc => {
+        validClassIds.add(doc.id);
+      });
+      
+      const invalidIds = orderedClassIds.filter(id => !validClassIds.has(id));
+      
+      if (invalidIds.length > 0) {
+        throw new Error(`Invalid class IDs: ${invalidIds.join(', ')}`);
+      }
+      
+      // Save to database
+      await db.collection('settings').doc('classHierarchy').set({
+        orderedClassIds: orderedClassIds,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      
+      console.log(`✓ Class hierarchy saved: ${orderedClassIds.length} classes`);
+      
+      return {
+        success: true,
+        count: orderedClassIds.length
+      };
+      
+    } catch (error) {
+      console.error('Error saving class hierarchy:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Get full hierarchy as ordered list
+   */
+  async getHierarchy() {
+    try {
+      const hierarchyDoc = await db.collection('settings').doc('classHierarchy').get();
+      
+      if (!hierarchyDoc.exists || !hierarchyDoc.data().orderedClassIds) {
+        console.warn('Class hierarchy not initialized');
+        return [];
+      }
+      
+      const orderedClassIds = hierarchyDoc.data().orderedClassIds;
+      
+      if (orderedClassIds.length === 0) {
+        return [];
+      }
+      
+      // Get all classes
+      const classesSnapshot = await db.collection('classes').get();
+      
+      const classesMap = {};
+      classesSnapshot.forEach(doc => {
+        classesMap[doc.id] = {
+          id: doc.id,
+          name: doc.data().name || 'Unnamed Class'
+        };
+      });
+      
+      // Build ordered list with names
+      const hierarchy = [];
+      orderedClassIds.forEach(classId => {
+        if (classesMap[classId]) {
+          hierarchy.push(classesMap[classId]);
+        }
+      });
+      
+      console.log(`✓ Retrieved hierarchy: ${hierarchy.length} classes`);
+      
+      return hierarchy;
+      
+    } catch (error) {
+      console.error('Error getting hierarchy:', error);
+      return [];
+    }
+  }
+};
+
+console.log('✓ Class hierarchy module initialized (admin only)');
+
+/* ======================================== 
    HELPER FUNCTIONS - DECLARED FIRST!
 ======================================== */
 
