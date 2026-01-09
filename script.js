@@ -276,6 +276,53 @@ window.showToast = function (message, type = 'info', duration = 3000) {
     }, duration);
 };
 
+/* =====================================================
+   LOADING INDICATOR
+===================================================== */
+
+window.showLoading = function(elementId, message = 'Loading...') {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.innerHTML = `
+      <div style="text-align:center; padding:3rem; color:#666;">
+        <div class="spinner" style="
+          width: 40px;
+          height: 40px;
+          margin: 0 auto 1rem;
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid #2196F3;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        "></div>
+        <p style="margin:0; font-size:14px;">${message}</p>
+      </div>
+    `;
+  }
+};
+
+window.hideLoading = function(elementId) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.innerHTML = '';
+  }
+};
+
+/* =====================================================
+   NETWORK RETRY HELPER
+===================================================== */
+
+window.retryOperation = async function(operation, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      console.log(`Retry ${i + 1}/${maxRetries}...`);
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+};
+
 async function getCurrentSettings() {
   try {
     const doc = await db.collection('settings').doc('current').get();
