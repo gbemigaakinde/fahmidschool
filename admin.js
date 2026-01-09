@@ -3107,4 +3107,191 @@ window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
 window.renderHierarchyUI = renderHierarchyUI;
 window.showSection = showSection;
 
+/* ========================================
+   DATA MIGRATION: BACKFILL SESSION INFO
+======================================== */
+
+async function backfillSessionData() {
+  const btn = document.getElementById('backfill-btn');
+  const statusDiv = document.getElementById('migration-status');
+  const statusText = statusDiv?.querySelector('p');
+  
+  // Confirm with admin
+  const confirmation = confirm(
+    '⚠️ DATA MIGRATION CONFIRMATION\n\n' +
+    'This will add session information to all existing results.\n\n' +
+    'What will happen:\n' +
+    '✓ All results without session data will be updated\n' +
+    '✓ They will be assigned to the CURRENT session\n' +
+    '✓ Existing data will NOT be deleted\n' +
+    '✓ This is a ONE-TIME operation\n\n' +
+    'Continue with migration?'
+  );
+  
+  if (!confirmation) return;
+  
+  // Disable button and show status
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Migrating data...</span>';
+  }
+  
+  if (statusDiv) {
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = '#fff3cd';
+    statusDiv.style.border = '1px solid #ffc107';
+  }
+  
+  if (statusText) {
+    statusText.innerHTML = '🔄 <strong>Starting migration...</strong>';
+  }
+  
+  try {
+    // Get current session settings
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) {
+      throw new Error('Settings not found. Please configure school settings first.');
+    }
+    
+    const settings = settingsDoc.data();
+    const currentSession = settings.session || 'Unknown';
+    const sessionStartYear = settings.currentSession?.startYear;
+    const sessionEndYear = settings.currentSession?.endYear;
+    
+    if (!currentSession || !sessionStartYear || !sessionEndYear) {
+      throw new Error('Invalid session configuration. Please check school settings.');
+    }
+    
+    if (statusText) {
+      statusText.innerHTML = `🔄 <strong>Current session:</strong> ${currentSession}<br>Loading results...`;
+    }
+    
+    // Query results that don't have session field
+    const resultsSnap = await db.collection('results')
+      .where('session', '==', null)
+      .get();
+    
+    const totalResults = resultsSnap.size;
+    
+    if (totalResults === 0) {
+      if (statusText) {
+        statusText.innerHTML = '✓ <strong>No results need migration.</strong><br>All results already have session data.';
+      }
+      if (statusDiv) {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.border = '1px solid #28a745';
+      }
+      
+      window.showToast?.('✓ All results already have session data', 'success');
+      
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Migrate Existing Results';
+      }
+      
+      return;
+    }
+    
+    if (statusText) {
+      statusText.innerHTML = `🔄 <strong>Found ${totalResults} result(s) to migrate</strong><br>Processing in batches...`;
+    }
+    
+    // Process in batches of 450 (safety margin under Firestore's 500 limit)
+    const BATCH_SIZE = 450;
+    let processed = 0;
+    let batch = db.batch();
+    let batchCount = 0;
+    
+    for (const doc of resultsSnap.docs) {
+      const data = doc.data();
+      const term = data.term || 'Unknown Term';
+      
+      // Create composite session-term field
+      const sessionTerm = `${currentSession}_${term}`;
+      
+      // Update document with session information
+      batch.update(doc.ref, {
+        session: currentSession,
+        sessionStartYear: sessionStartYear,
+        sessionEndYear: sessionEndYear,
+        sessionTerm: sessionTerm,
+        migrated: true,
+        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      batchCount++;
+      processed++;
+      
+      // Commit batch when it reaches size limit
+      if (batchCount >= BATCH_SIZE) {
+        if (statusText) {
+          statusText.innerHTML = `🔄 <strong>Processing...</strong><br>Migrated ${processed} of ${totalResults} results`;
+        }
+        
+        await batch.commit();
+        console.log(`✓ Committed batch: ${processed}/${totalResults}`);
+        
+        // Start new batch
+        batch = db.batch();
+        batchCount = 0;
+        
+        // Small delay to avoid overwhelming Firestore
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    // Commit any remaining operations
+    if (batchCount > 0) {
+      await batch.commit();
+      console.log(`✓ Committed final batch: ${processed}/${totalResults}`);
+    }
+    
+    // Success!
+    if (statusText) {
+      statusText.innerHTML = `✓ <strong>Migration completed successfully!</strong><br>Updated ${totalResults} result(s) with session: ${currentSession}`;
+    }
+    
+    if (statusDiv) {
+      statusDiv.style.background = '#d4edda';
+      statusDiv.style.border = '1px solid #28a745';
+    }
+    
+    window.showToast?.(
+      `✓ Migration completed!\n${totalResults} result(s) updated with session information.`,
+      'success',
+      8000
+    );
+    
+    console.log(`✓ Successfully migrated ${totalResults} results to session: ${currentSession}`);
+    
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    
+    if (statusText) {
+      statusText.innerHTML = `❌ <strong>Migration failed:</strong><br>${error.message}`;
+    }
+    
+    if (statusDiv) {
+      statusDiv.style.background = '#f8d7da';
+      statusDiv.style.border = '1px solid #dc3545';
+    }
+    
+    window.showToast?.(
+      `Migration failed: ${error.message}\nPlease contact support.`,
+      'danger',
+      10000
+    );
+    
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 Migrate Existing Results';
+    }
+  }
+}
+
+// Make function globally available
+window.backfillSessionData = backfillSessionData;
+
   console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
