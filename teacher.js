@@ -688,7 +688,7 @@ async function loadAttendanceSection() {
           <thead>
             <tr>
               <th>Pupil Name</th>
-              <th>Times Opened</th>
+              <th>Times School Opened</th>
               <th>Times Present</th>
               <th>Times Absent</th>
             </tr>
@@ -703,18 +703,24 @@ async function loadAttendanceSection() {
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${pupil.name}</td>
-        <td>
+        <td data-label="Pupil Name">${pupil.name}</td>
+        <td data-label="Times School Opened">
           <input type="number" min="0" value="${existing.timesOpened || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesOpened" style="width:80px;">
+                 data-pupil="${pupil.id}" data-field="timesOpened" 
+                 style="width:100%; max-width:100px;"
+                 placeholder="0">
         </td>
-        <td>
+        <td data-label="Times Present">
           <input type="number" min="0" value="${existing.timesPresent || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesPresent" style="width:80px;">
+                 data-pupil="${pupil.id}" data-field="timesPresent" 
+                 style="width:100%; max-width:100px;"
+                 placeholder="0">
         </td>
-        <td>
+        <td data-label="Times Absent">
           <input type="number" min="0" value="${existing.timesAbsent || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesAbsent" style="width:80px;">
+                 data-pupil="${pupil.id}" data-field="timesAbsent" 
+                 style="width:100%; max-width:100px;"
+                 placeholder="0">
         </td>
       `;
       tbody.appendChild(tr);
@@ -722,7 +728,8 @@ async function loadAttendanceSection() {
     
     saveBtn.hidden = false;
   } catch (err) {
-    window.handleError(err, 'Failed to load attendance');
+    console.error('Error loading attendance:', err);
+    window.handleError?.(err, 'Failed to load attendance');
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading attendance</p>';
     saveBtn.hidden = true;
   }
