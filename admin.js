@@ -3297,3 +3297,29 @@ async function backfillSessionData() {
 window.backfillSessionData = backfillSessionData;
 
   console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
+
+/* ======================================== 
+   SESSION VALIDATION ON LOAD
+======================================== */
+
+window.addEventListener('load', async () => {
+  try {
+    const settings = await window.getCurrentSettings();
+    
+    // Check if session is configured
+    if (!settings.session || !settings.currentSession) {
+      window.showToast?.(
+        '⚠️ School settings incomplete. Please configure session details in School Settings.',
+        'warning',
+        8000
+      );
+      console.warn('Session not configured properly:', settings);
+    } else {
+      console.log('✓ Session validated:', settings.session);
+    }
+  } catch (error) {
+    console.error('Error validating session:', error);
+  }
+});
+
+console.log('✓ Session validation loaded');
