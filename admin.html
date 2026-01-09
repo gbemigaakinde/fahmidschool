@@ -1022,166 +1022,161 @@
         </div>
         
        <!-- School Settings Section -->
-        <div id="settings" class="admin-card" style="display:none;">
-            <h1>School Settings</h1>
-            <p class="section-description">Manage academic session, term, and system settings</p>
+<div id="settings" class="admin-card" style="display:none;">
+    <h1>School Settings</h1>
+    <p class="section-description">Manage academic session, term, and system settings</p>
 
-            <!-- Session Status Card -->
-            <div class="session-status-card" id="session-status-card">
-                <div class="status-header">
-                    <h3>📅 Current Academic Session</h3>
-                    <span class="status-badge" id="session-status-badge">Active</span>
+    <!-- Session Status Card -->
+    <div class="session-status-card" id="session-status-card">
+        <div class="status-header">
+            <h3>📅 Current Academic Session</h3>
+            <span class="status-badge" id="session-status-badge">Active</span>
+        </div>
+        <div class="status-body">
+            <div class="status-item">
+                <span class="status-label">Session:</span>
+                <span class="status-value" id="display-session-name">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Current Term:</span>
+                <span class="status-value" id="display-current-term">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Session Starts:</span>
+                <span class="status-value" id="display-session-start">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Session Ends:</span>
+                <span class="status-value" id="display-session-end">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Next Resumption:</span>
+                <span class="status-value" id="display-next-resumption">Loading...</span>
+            </div>
+        </div>
+        <div class="status-alert" id="session-end-alert" style="display:none;">
+            <strong>⚠️ Session Ending Soon!</strong>
+            <p>This academic session will end soon. Prepare for promotion and new session.</p>
+        </div>
+    </div>
+
+    <!-- Edit Session Form -->
+    <div class="form-section" style="margin-top: var(--space-xl);">
+        <h3>📝 Update Session Settings</h3>
+        <form id="settings-form" class="admin-form">
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="session-start-year">Session Start Year <span class="required">*</span></label>
+                    <input type="number" id="session-start-year" placeholder="2025" required min="2020" max="2100">
                 </div>
-                <div class="status-body">
-                    <div class="status-item">
-                        <span class="status-label">Session:</span>
-                        <span class="status-value" id="display-session-name">Loading...</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Current Term:</span>
-                        <span class="status-value" id="display-current-term">Loading...</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Session Starts:</span>
-                        <span class="status-value" id="display-session-start">Loading...</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Session Ends:</span>
-                        <span class="status-value" id="display-session-end">Loading...</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">Next Resumption:</span>
-                        <span class="status-value" id="display-next-resumption">Loading...</span>
-                    </div>
-                </div>
-                <div class="status-alert" id="session-end-alert" style="display:none;">
-                    <strong>⚠️ Session Ending Soon!</strong>
-                    <p>This academic session will end soon. Prepare for promotion and new session.</p>
+                <div class="form-group">
+                    <label for="session-end-year">Session End Year <span class="required">*</span></label>
+                    <input type="number" id="session-end-year" placeholder="2026" required min="2020" max="2100">
                 </div>
             </div>
 
-            <!-- Class Hierarchy Management -->
-<div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-    <h3>📊 Class Progression Order</h3>
-    <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-        Arrange your classes in order from lowest to highest level. The last class in the list will be the terminal/graduation class.
-    </p>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="session-start-date">Session Start Date <span class="required">*</span></label>
+                    <input type="date" id="session-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="session-end-date">Session End Date <span class="required">*</span></label>
+                    <input type="date" id="session-end-date" required>
+                </div>
+            </div>
 
-    <div class="alert alert-info" style="margin-bottom: var(--space-lg);">
-        <strong>ℹ️ How it works:</strong>
-        <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
-            <li><strong>Classes are automatically loaded from the "Classes" section</strong></li>
-            <li>Drag and drop to rearrange the order</li>
-            <li>The last class (bottom) will be the terminal/graduation class</li>
-            <li>Pupils in the terminal class will graduate and move to alumni</li>
-            <li>To add/remove classes, go to the "Classes" section above</li>
-        </ul>
+            <div class="form-group">
+                <label for="current-term">Current Term <span class="required">*</span></label>
+                <select id="current-term" required>
+                    <option value="First Term">First Term</option>
+                    <option value="Second Term">Second Term</option>
+                    <option value="Third Term">Third Term</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
+                <input type="date" id="resumption-date" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">💾 Save Settings</button>
+                <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">↻ Refresh</button>
+            </div>
+        </form>
     </div>
 
-    <div class="class-hierarchy-editor">
-        <!-- This single container will hold ALL classes -->
-        <div id="hierarchy-container">
-            <!-- Classes will be loaded here dynamically -->
+    <!-- Start New Session Section -->
+    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+        <h3 style="color: var(--color-primary);">🎓 Start New Academic Session</h3>
+        <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+            Use this when the current session ends. This will archive the current session and create a new one.
+        </p>
+        
+        <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
+            <strong>⚠️ Important:</strong> Starting a new session will:
+            <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
+                <li>Archive the current session</li>
+                <li>Create a new session (next year)</li>
+                <li>Reset current term to "First Term"</li>
+                <li>Enable promotion period for teachers</li>
+            </ul>
+        </div>
+
+        <button type="button" class="btn btn-danger" onclick="confirmStartNewSession()" id="start-new-session-btn">
+            🚀 Start New Session
+        </button>
+    </div>
+
+    <!-- Session History -->
+    <div class="form-section" style="margin-top: var(--space-2xl);">
+        <h3>📚 Session History</h3>
+        <div id="session-history-container" class="table-container">
+            <table class="responsive-table">
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="session-history-table">
+                    <tr>
+                        <td colspan="4" class="table-loading">Loading history...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Class Hierarchy Management -->
+    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+        <h3>📊 Class Progression Order</h3>
+        <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+            Arrange your classes in order from lowest to highest level. The last class in the list will be the terminal/graduation class.
+        </p>
+
+        <div class="alert alert-info" style="margin-bottom: var(--space-lg);">
+            <strong>ℹ️ How it works:</strong>
+            <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
+                <li><strong>Classes are automatically loaded from the "Classes" section</strong></li>
+                <li>Drag and drop to rearrange the order</li>
+                <li>The last class (bottom) will be the terminal/graduation class</li>
+                <li>Pupils in the terminal class will graduate and move to alumni</li>
+                <li>To add/remove classes, go to the "Classes" section above</li>
+            </ul>
+        </div>
+
+        <div class="class-hierarchy-editor">
+            <!-- This single container will hold ALL classes -->
+            <div id="hierarchy-container">
+                <!-- Classes will be loaded here dynamically -->
+            </div>
         </div>
     </div>
 </div>
-
-            <!-- Start New Session Section -->
-            <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-                <h3 style="color: var(--color-primary);">🎓 Start New Academic Session</h3>
-                <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-                    Use this when the current session ends. This will archive the current session and create a new one.
-                </p>
-                
-                <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
-                    <strong>⚠️ Important:</strong> Starting a new session will:
-                    <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
-                        <li>Archive the current session (2025/2026)</li>
-                        <li>Create a new session (2026/2027)</li>
-                        <li>Reset current term to "First Term"</li>
-                        <li>Enable promotion period for teachers</li>
-                    </ul>
-                </div>
-
-                <button type="button" class="btn btn-danger" onclick="confirmStartNewSession()" id="start-new-session-btn">
-                    🚀 Start New Session
-                </button>
-            </div>
-
-            <!-- Session History -->
-            <div class="form-section" style="margin-top: var(--space-2xl);">
-                <h3>📚 Session History</h3>
-                <div id="session-history-container" class="table-container">
-                    <table class="responsive-table">
-                        <thead>
-                            <tr>
-                                <th>Session</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="session-history-table">
-                            <tr>
-                                <td colspan="4" class="table-loading">Loading history...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <!-- Class Hierarchy Management -->
-            <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-                <h3>📊 Class Progression Order</h3>
-                <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-                    Define the order of class progression for automatic promotions. 
-                    Pupils will be promoted from one class to the next in this order.
-                </p>
-
-                <div class="class-hierarchy-editor">
-                    <div class="hierarchy-section">
-                        <h4 style="color: var(--color-primary); margin-bottom: var(--space-md);">
-                            🧒 Nursery Classes
-                        </h4>
-                        <div id="hierarchy-container"></div>
-                                <!-- Classes will be loaded dynamically from Firestore -->
-                         </div>
-                        <button class="btn btn-small" onclick="addHierarchyItem('nursery')" style="margin-top: var(--space-sm);">
-                            + Add Nursery Class
-                        </button>
-                    </div>
-
-                    <div class="hierarchy-section" style="margin-top: var(--space-xl);">
-                        <h4 style="color: var(--color-primary); margin-bottom: var(--space-md);">
-                            🎓 Primary Classes
-                        </h4>
-                       <div id="hierarchy-container"></div>
-                                <!-- Classes will be loaded dynamically from Firestore -->
-                         </div>
-                        <button class="btn btn-small" onclick="addHierarchyItem('primary')" style="margin-top: var(--space-sm);">
-                            + Add Primary Class
-                        </button>
-                    </div>
-
-                    <div class="alert alert-info" style="margin-top: var(--space-lg);">
-                        <strong>ℹ️ Note:</strong>
-                        <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
-                            <li>The last class (bottom) will be the terminal class (no promotion after this)</li>
-                            <li>Pupils in the terminal class will be marked as "Graduated" and moved to alumni</li>
-                            <li>Make sure class names match exactly with your existing classes</li>
-                        </ul>
-                    </div>
-
-                    <div class="form-actions" style="margin-top: var(--space-xl);">
-                        <button class="btn" onclick="saveHierarchySettings()">
-                            💾 Save Class Order
-                        </button>
-                        <button class="btn btn-secondary" onclick="resetHierarchyToDefault()">
-                            ↻ Reset to Default
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
 </div> <!-- Close content-wrapper -->
     </main>
 
