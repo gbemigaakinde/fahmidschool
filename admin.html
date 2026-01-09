@@ -571,6 +571,7 @@
         <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
        <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
         <a href="#alumni" onclick="showSection('alumni')">Alumni</a>
+        <a href="#view-results" onclick="showSection('view-results')">View Results</a>
         <a href="#classes" onclick="showSection('classes')">Classes</a>
         <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
         <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
@@ -783,6 +784,128 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- View Results Section (NEW) -->
+<div id="view-results" class="admin-card" style="display:none;">
+    <h1>View Pupil Results</h1>
+    <p class="section-description">Search and view academic results by session, class, and pupil</p>
+
+    <!-- Filter Controls -->
+    <div class="form-section" style="background: #f8fafc; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+        <h3 style="margin-top: 0; margin-bottom: var(--space-lg); color: var(--color-primary);">
+            🔍 Filter Results
+        </h3>
+        
+        <div class="form-row form-row-3">
+            <div class="form-group">
+                <label for="filter-session">
+                    <strong>1. Select Session</strong> <span class="required">*</span>
+                </label>
+                <select id="filter-session" onchange="loadFilteredClasses()">
+                    <option value="">-- Select Session --</option>
+                    <option value="current">Current Session</option>
+                </select>
+                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
+                    Choose academic session to view
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="filter-class">
+                    <strong>2. Select Class</strong> <span class="required">*</span>
+                </label>
+                <select id="filter-class" onchange="loadFilteredPupils()" disabled>
+                    <option value="">-- Select Class --</option>
+                </select>
+                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
+                    Filter by class
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="filter-pupil">
+                    <strong>3. Select Pupil</strong> <span class="required">*</span>
+                </label>
+                <select id="filter-pupil" onchange="loadPupilResults()" disabled>
+                    <option value="">-- Select Pupil --</option>
+                </select>
+                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
+                    View individual results
+                </small>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg); flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="clearResultsFilter()">
+                🔄 Clear Filters
+            </button>
+            <button class="btn" onclick="loadPupilResults()" id="view-results-btn" disabled>
+                👁️ View Results
+            </button>
+        </div>
+    </div>
+
+    <!-- Pupil Info Card -->
+    <div id="pupil-info-card" class="form-section" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: var(--space-xl);">
+        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: var(--space-lg);">
+            <div style="flex: 1; min-width: 250px;">
+                <h3 style="margin: 0 0 var(--space-sm); color: white;">
+                    <span id="pupil-info-name">Pupil Name</span>
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md); margin-top: var(--space-md);">
+                    <div>
+                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Class</div>
+                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-class">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session</div>
+                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-session">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Gender</div>
+                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-gender">-</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button class="btn" onclick="exportPupilResults()" style="background: rgba(255,255,255,0.2); border: 2px solid white;">
+                    📥 Export Results
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Display -->
+    <div id="results-display-container">
+        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+            <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+            <p style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
+                Select filters to view results
+            </p>
+            <p style="font-size: var(--text-sm);">
+                Choose session, class, and pupil from the filters above
+            </p>
+        </div>
+    </div>
+
+    <!-- Session Comparison -->
+    <div id="session-comparison-section" style="display: none; margin-top: var(--space-2xl); padding-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xl);">
+            <div>
+                <h2 style="margin: 0;">📈 Session Comparison</h2>
+                <p style="color: var(--color-gray-600); margin: var(--space-xs) 0 0;">
+                    Compare this pupil's performance across different sessions
+                </p>
+            </div>
+            <button class="btn btn-secondary" onclick="toggleSessionComparison()">
+                Hide Comparison
+            </button>
+        </div>
+        <div id="session-comparison-content">
+            <!-- Comparison data will be loaded here -->
+        </div>
     </div>
 </div>
 
