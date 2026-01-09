@@ -457,6 +457,100 @@
             flex: 1;
             min-width: 200px;
         }
+        /* Hierarchy Container and List */
+.hierarchy-instructions {
+    padding: var(--space-lg);
+    background: var(--color-gray-100);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-lg);
+}
+
+.hierarchy-instructions p {
+    margin: 0 0 var(--space-sm);
+    color: var(--color-gray-700);
+}
+
+.hierarchy-instructions p:last-child {
+    margin: 0;
+}
+
+.sortable-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: white;
+    border: 2px dashed var(--color-gray-300);
+    border-radius: var(--radius-md);
+    min-height: 200px;
+}
+
+.hierarchy-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    cursor: grab;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.hierarchy-item:hover {
+    background: white;
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
+
+.hierarchy-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.drag-handle {
+    font-size: 24px;
+    color: var(--color-gray-500);
+    cursor: grab;
+}
+
+.hierarchy-item:active .drag-handle {
+    cursor: grabbing;
+}
+
+.hierarchy-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: var(--text-base);
+    flex-shrink: 0;
+}
+
+.class-name {
+    flex: 1;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-gray-900);
+}
+
+.terminal-badge {
+    padding: var(--space-xs) var(--space-md);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -966,52 +1060,31 @@
                 </div>
             </div>
 
-            <!-- Edit Session Form -->
-            <div class="form-section" style="margin-top: var(--space-xl);">
-                <h3>Update Session Settings</h3>
-                <form id="settings-form" class="admin-form">
-                    <div class="form-row form-row-2">
-                        <div class="form-group">
-                            <label for="session-start-year">Session Start Year <span class="required">*</span></label>
-                            <input type="number" id="session-start-year" placeholder="2025" required min="2020" max="2100">
-                        </div>
-                        <div class="form-group">
-                            <label for="session-end-year">Session End Year <span class="required">*</span></label>
-                            <input type="number" id="session-end-year" placeholder="2026" required min="2020" max="2100">
-                        </div>
-                    </div>
+            <!-- Class Hierarchy Management -->
+<div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+    <h3>📊 Class Progression Order</h3>
+    <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+        Arrange your classes in order from lowest to highest level. The last class in the list will be the terminal/graduation class.
+    </p>
 
-                    <div class="form-row form-row-2">
-                        <div class="form-group">
-                            <label for="session-start-date">Session Start Date <span class="required">*</span></label>
-                            <input type="date" id="session-start-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="session-end-date">Session End Date <span class="required">*</span></label>
-                            <input type="date" id="session-end-date" required>
-                        </div>
-                    </div>
+    <div class="alert alert-info" style="margin-bottom: var(--space-lg);">
+        <strong>ℹ️ How it works:</strong>
+        <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
+            <li><strong>Classes are automatically loaded from the "Classes" section</strong></li>
+            <li>Drag and drop to rearrange the order</li>
+            <li>The last class (bottom) will be the terminal/graduation class</li>
+            <li>Pupils in the terminal class will graduate and move to alumni</li>
+            <li>To add/remove classes, go to the "Classes" section above</li>
+        </ul>
+    </div>
 
-                    <div class="form-group">
-                        <label for="current-term">Current Term <span class="required">*</span></label>
-                        <select id="current-term" required>
-                            <option value="First Term">First Term</option>
-                            <option value="Second Term">Second Term</option>
-                            <option value="Third Term">Third Term</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
-                        <input type="date" id="resumption-date" required>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" class="btn">💾 Save Settings</button>
-                        <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">↻ Refresh</button>
-                    </div>
-                </form>
-            </div>
+    <div class="class-hierarchy-editor">
+        <!-- This single container will hold ALL classes -->
+        <div id="hierarchy-container">
+            <!-- Classes will be loaded here dynamically -->
+        </div>
+    </div>
+</div>
 
             <!-- Start New Session Section -->
             <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
