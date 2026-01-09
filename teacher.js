@@ -801,6 +801,9 @@ async function loadAttendanceSection() {
   }
 }
 
+/* ======================================== 
+   FIXED: Save Attendance with Session Context
+======================================== */
 async function saveAllAttendance() {
   const inputs = document.querySelectorAll('#attendance-form-container input[type="number"]');
   const term = document.getElementById('attendance-term')?.value;
@@ -809,6 +812,13 @@ async function saveAllAttendance() {
     window.showToast?.('No data to save', 'warning');
     return;
   }
+  
+  // FIXED: Get current session
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session || 'Unknown';
+  const sessionStartYear = settings.currentSession?.startYear;
+  const sessionEndYear = settings.currentSession?.endYear;
+  const sessionTerm = `${currentSession}_${term}`;
   
   const batch = db.batch();
   const pupilData = {};
@@ -828,6 +838,11 @@ async function saveAllAttendance() {
       pupilId,
       term,
       teacherId: currentUser.uid,
+      // FIXED: Add session context
+      session: currentSession,
+      sessionStartYear: sessionStartYear,
+      sessionEndYear: sessionEndYear,
+      sessionTerm: sessionTerm,
       ...data,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
@@ -837,7 +852,8 @@ async function saveAllAttendance() {
     await batch.commit();
     window.showToast?.('✓ Attendance saved successfully', 'success');
   } catch (err) {
-    window.handleError(err, 'Failed to save attendance');
+    console.error('Error saving attendance:', err);
+    window.handleError?.(err, 'Failed to save attendance');
   }
 }
 
@@ -904,6 +920,9 @@ async function loadTraitsData() {
   }
 }
 
+/* ======================================== 
+   FIXED: Save Traits & Skills with Session Context
+======================================== */
 async function saveTraitsAndSkills() {
   const pupilId = document.getElementById('traits-pupil')?.value;
   const term = document.getElementById('traits-term')?.value;
@@ -913,16 +932,43 @@ async function saveTraitsAndSkills() {
     return;
   }
   
+  // FIXED: Get current session
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session || 'Unknown';
+  const sessionStartYear = settings.currentSession?.startYear;
+  const sessionEndYear = settings.currentSession?.endYear;
+  const sessionTerm = `${currentSession}_${term}`;
+  
   const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
   const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
   
-  const traitsData = { pupilId, term, teacherId: currentUser.uid };
+  const traitsData = { 
+    pupilId, 
+    term, 
+    teacherId: currentUser.uid,
+    // FIXED: Add session context
+    session: currentSession,
+    sessionStartYear: sessionStartYear,
+    sessionEndYear: sessionEndYear,
+    sessionTerm: sessionTerm
+  };
+  
   traitFields.forEach(f => {
     traitsData[f] = document.getElementById(`trait-${f}`).value.trim();
   });
   traitsData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
   
-  const skillsData = { pupilId, term, teacherId: currentUser.uid };
+  const skillsData = { 
+    pupilId, 
+    term, 
+    teacherId: currentUser.uid,
+    // FIXED: Add session context
+    session: currentSession,
+    sessionStartYear: sessionStartYear,
+    sessionEndYear: sessionEndYear,
+    sessionTerm: sessionTerm
+  };
+  
   skillFields.forEach(f => {
     skillsData[f] = document.getElementById(`skill-${f}`).value.trim();
   });
@@ -931,9 +977,10 @@ async function saveTraitsAndSkills() {
   try {
     await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).set(traitsData, { merge: true });
     await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).set(skillsData, { merge: true });
-    window.showToast?.('✓ Traits & skills saved', 'success');
+    window.showToast?.('✓ Traits & skills saved successfully', 'success');
   } catch (err) {
-    window.handleError(err, 'Failed to save traits & skills');
+    console.error('Error saving traits & skills:', err);
+    window.handleError?.(err, 'Failed to save traits & skills');
   }
 }
 
@@ -1004,20 +1051,33 @@ async function saveRemarks() {
     return;
   }
   
+  // FIXED: Get current session
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session || 'Unknown';
+  const sessionStartYear = settings.currentSession?.startYear;
+  const sessionEndYear = settings.currentSession?.endYear;
+  const sessionTerm = `${currentSession}_${term}`;
+  
   const data = {
     pupilId,
     term,
     teacherId: currentUser.uid,
     teacherRemark,
     headRemark,
+    // FIXED: Add session context
+    session: currentSession,
+    sessionStartYear: sessionStartYear,
+    sessionEndYear: sessionEndYear,
+    sessionTerm: sessionTerm,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   
   try {
     await db.collection('remarks').doc(`${pupilId}_${term}`).set(data, { merge: true });
-    window.showToast?.('✓ Remarks saved', 'success');
+    window.showToast?.('✓ Remarks saved successfully', 'success');
   } catch (err) {
-    window.handleError(err, 'Failed to save remarks');
+    console.error('Error saving remarks:', err);
+    window.handleError?.(err, 'Failed to save remarks');
   }
 }
 
@@ -1186,17 +1246,23 @@ async function calculatePupilAverage(pupilId, term) {
     
     resultsSnap.forEach(doc => {
       const data = doc.data();
-      const score = (data.caScore || 0) + (data.examScore || 0);
+      // FIXED: Parse as float to support decimal scores
+      const ca = parseFloat(data.caScore) || 0;
+      const exam = parseFloat(data.examScore) || 0;
+      const score = ca + exam;
+      
       totalScore += score;
       subjectCount++;
     });
     
-    const average = subjectCount > 0 ? totalScore / subjectCount : 0;
+    // FIXED: Calculate average with proper rounding
+    const average = subjectCount > 0 ? Math.round((totalScore / subjectCount) * 10) / 10 : 0;
     const grade = getGradeFromScore(average);
     
     return { average, grade };
+    
   } catch (error) {
-    console.error('Error calculating average:', error);
+    console.error('Error calculating average for pupil:', pupilId, error);
     return { average: 0, grade: null };
   }
 }
