@@ -214,155 +214,186 @@ async function loadPupilProfile(user) {
         // Load results
         await loadResults();
 
-    // FIXED: Set up listeners with improved re-entry prevention
-        pupilListener = db.collection('pupils').doc(currentPupilId)
-            .onSnapshot(
-                async snap => {
-                    // CRITICAL: Prevent recursive updates
-                    if (window.isUpdatingProfile) {
-                        console.log('Profile update in progress, skipping listener callback');
-                        return;
-                    }
-                    
-                    window.isUpdatingProfile = true;
-                    
-                    try {
-                        if (snap.exists) {
-                            const updatedData = snap.data();
-                            currentPupilData = updatedData;
-                            
-                            // FIXED: Safely extract updated class info
-                            const updatedClassId = getClassIdFromPupilData(updatedData.class);
-                            const updatedClassName = getClassNameFromPupilData(updatedData.class);
-                            
-                            currentClassInfo.name = updatedClassName;
-                            currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
-                            currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
-                            
-                            // CRITICAL: Only update UI directly, do NOT call loadPupilProfile
-                            renderProfile({
-                                name: updatedData.name || '-',
-                                dob: updatedData.dob || '-',
-                                gender: updatedData.gender || '-',
-                                contact: updatedData.contact || '-',
-                                address: updatedData.address || '-',
-                                email: updatedData.email || '-',
-                                class: currentClassInfo.name,
-                                teacher: currentClassInfo.teacher,
-                                subjects: currentClassInfo.subjects
-                            });
+    /**
+ * FIXED PUPIL PROFILE LISTENER
+ * Replace the listener setup in loadPupilProfile() function
+ */
 
-                            // Update header information
-                            const settings = await getCurrentSettings();
-                            const welcomeEl = document.getElementById('pupil-welcome');
-                            const classEl = document.getElementById('student-class');
-                            const sessionEl = document.getElementById('student-session');
-                            
-                            if (welcomeEl) {
-                                welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
-                            }
-                            if (classEl) {
-                                classEl.textContent = currentClassInfo.name;
-                            }
-                            if (sessionEl) {
-                                sessionEl.textContent = settings.session;
-                            }
+// CRITICAL FIX: Set up listeners with proper debouncing
+let pupilUpdateTimeout = null;
 
-                            // Reload results in case they changed
-                            await loadResults();
-                            
-                            console.log('✓ Profile updated from listener');
-                        }
-                    } catch (error) {
-                        console.error('Error in pupil listener:', error);
-                    } finally {
-                        // CRITICAL: Clear flag after delay to prevent rapid re-entry
-                        setTimeout(() => {
-                            window.isUpdatingProfile = false;
-                        }, 500);
-                    }
-                },
-                error => {
-                    console.error('Pupil listener error:', error);
-                    window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
-                }
-            );
-            
-        // Live update: watch class doc for subject changes (only if we have a class ID)
-        if (classId) {
-            classListener = db.collection('classes').doc(classId)
-                .onSnapshot(
-                    async snap => {
-                        // FIXED: Prevent recursive updates
-                        if (window.isUpdatingClass) {
-                            console.log('Class update in progress, skipping listener callback');
-                            return;
-                        }
-                        
-                        window.isUpdatingClass = true;
-                        
-                        try {
-                            if (snap.exists) {
-                                const classData = snap.data();
-                                currentClassInfo.name = classData.name || currentClassInfo.name;
-                                currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
-                                
-                                // Fetch teacher name if needed
-                                if (classData.teacherName) {
-                                    currentClassInfo.teacher = classData.teacherName;
-                                } else if (classData.teacherId) {
-                                    try {
-                                        const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                                        currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-                                    } catch (teacherError) {
-                                        console.error('Error fetching teacher:', teacherError);
-                                    }
-                                } else {
-                                    currentClassInfo.teacher = '-';
-                                }
-                                
-                                // Update profile with new class info
-                                renderProfile({
-                                    name: currentPupilData.name || '-',
-                                    dob: currentPupilData.dob || '-',
-                                    gender: currentPupilData.gender || '-',
-                                    contact: currentPupilData.contact || '-',
-                                    address: currentPupilData.address || '-',
-                                    email: currentPupilData.email || '-',
-                                    class: currentClassInfo.name,
-                                    teacher: currentClassInfo.teacher,
-                                    subjects: currentClassInfo.subjects
-                                });
+pupilListener = db.collection('pupils').doc(currentPupilId)
+  .onSnapshot(
+    async snap => {
+      // CRITICAL: Prevent recursive updates with debouncing
+      if (pupilUpdateTimeout) {
+        clearTimeout(pupilUpdateTimeout);
+      }
+      
+      pupilUpdateTimeout = setTimeout(async () => {
+        try {
+          if (!snap.exists) return;
+          
+          const updatedData = snap.data();
+          
+          // Check if data actually changed
+          const hasChanges = JSON.stringify(currentPupilData) !== JSON.stringify(updatedData);
+          
+          if (!hasChanges) {
+            console.log('No changes detected, skipping update');
+            return;
+          }
+          
+          console.log('Pupil data changed, updating UI...');
+          
+          currentPupilData = updatedData;
+          
+          // Extract class info safely
+          const updatedClassId = getClassIdFromPupilData(updatedData.class);
+          const updatedClassName = getClassNameFromPupilData(updatedData.class);
+          
+          currentClassInfo.name = updatedClassName;
+          currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
+          currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
+          
+          // Update UI directly without calling loadPupilProfile
+          renderProfile({
+            name: updatedData.name || '-',
+            dob: updatedData.dob || '-',
+            gender: updatedData.gender || '-',
+            contact: updatedData.contact || '-',
+            address: updatedData.address || '-',
+            email: updatedData.email || '-',
+            class: currentClassInfo.name,
+            teacher: currentClassInfo.teacher,
+            subjects: currentClassInfo.subjects
+          });
 
-                                // Update header information
-                                const settings = await getCurrentSettings();
-                                const welcomeEl = document.getElementById('pupil-welcome');
-                                const classEl = document.getElementById('student-class');
-                                const sessionEl = document.getElementById('student-session');
-                                
-                                if (welcomeEl) {
-                                    welcomeEl.innerHTML = `Hello, <strong>${currentPupilData.name}</strong>!`;
-                                }
-                                if (classEl) {
-                                    classEl.textContent = currentClassInfo.name;
-                                }
-                                if (sessionEl) {
-                                    sessionEl.textContent = settings.session;
-                                }
+          // Update header information
+          const settings = await getCurrentSettings();
+          const welcomeEl = document.getElementById('pupil-welcome');
+          const classEl = document.getElementById('student-class');
+          const sessionEl = document.getElementById('student-session');
+          
+          if (welcomeEl) {
+            welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+          }
+          if (classEl) {
+            classEl.textContent = currentClassInfo.name;
+          }
+          if (sessionEl) {
+            sessionEl.textContent = settings.session;
+          }
 
-                                renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
-                            }
-                        } finally {
-                            window.isUpdatingClass = false;
-                        }
-                    },
-                    error => {
-                        console.error('Class listener error:', error);
-                        window.showToast?.('Lost connection to class updates. Please refresh the page.', 'warning');
-                    }
-                );
+          // Reload results in case they changed
+          await loadResults();
+          
+          console.log('✓ Profile updated from listener');
+          
+        } catch (error) {
+          console.error('Error in pupil listener:', error);
+        } finally {
+          pupilUpdateTimeout = null;
         }
+      }, 500); // 500ms debounce
+    },
+    error => {
+      console.error('Pupil listener error:', error);
+      window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
+    }
+  );
 
+// FIXED: Class listener with debouncing
+let classUpdateTimeout = null;
+
+if (classId) {
+  classListener = db.collection('classes').doc(classId)
+    .onSnapshot(
+      async snap => {
+        // CRITICAL: Prevent recursive updates with debouncing
+        if (classUpdateTimeout) {
+          clearTimeout(classUpdateTimeout);
+        }
+        
+        classUpdateTimeout = setTimeout(async () => {
+          try {
+            if (!snap.exists) return;
+            
+            const classData = snap.data();
+            
+            // Check if data actually changed
+            const hasChanges = 
+              currentClassInfo.name !== classData.name ||
+              JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
+            
+            if (!hasChanges) {
+              console.log('No class changes detected, skipping update');
+              return;
+            }
+            
+            console.log('Class data changed, updating UI...');
+            
+            currentClassInfo.name = classData.name || currentClassInfo.name;
+            currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+            
+            // Fetch teacher name if needed
+            if (classData.teacherName) {
+              currentClassInfo.teacher = classData.teacherName;
+            } else if (classData.teacherId) {
+              try {
+                const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+              } catch (teacherError) {
+                console.error('Error fetching teacher:', teacherError);
+              }
+            } else {
+              currentClassInfo.teacher = '-';
+            }
+            
+            // Update profile with new class info
+            renderProfile({
+              name: currentPupilData.name || '-',
+              dob: currentPupilData.dob || '-',
+              gender: currentPupilData.gender || '-',
+              contact: currentPupilData.contact || '-',
+              address: currentPupilData.address || '-',
+              email: currentPupilData.email || '-',
+              class: currentClassInfo.name,
+              teacher: currentClassInfo.teacher,
+              subjects: currentClassInfo.subjects
+            });
+
+            // Update header information
+            const settings = await getCurrentSettings();
+            const welcomeEl = document.getElementById('pupil-welcome');
+            const classEl = document.getElementById('student-class');
+            const sessionEl = document.getElementById('student-session');
+            
+            if (welcomeEl) {
+              welcomeEl.innerHTML = `Hello, <strong>${currentPupilData.name}</strong>!`;
+            }
+            if (classEl) {
+              classEl.textContent = currentClassInfo.name;
+            }
+            if (sessionEl) {
+              sessionEl.textContent = settings.session;
+            }
+
+            renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
+            
+          } catch (error) {
+            console.error('Error in class listener:', error);
+          } finally {
+            classUpdateTimeout = null;
+          }
+        }, 500); // 500ms debounce
+      },
+      error => {
+        console.error('Class listener error:', error);
+        window.showToast?.('Lost connection to class updates. Please refresh the page.', 'warning');
+      }
+    );
+}
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         window.handleError?.(error, 'Failed to load pupil profile');
