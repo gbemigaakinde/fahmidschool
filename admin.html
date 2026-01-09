@@ -1149,6 +1149,33 @@
                 </tbody>
             </table>
         </div>
+        <!-- Data Migration Section -->
+<div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+    <h3 style="color: #f59e0b;">⚙️ Data Migration Tools</h3>
+    <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
+        <strong>One-time operation:</strong> Update existing results to include session information.
+    </p>
+    
+    <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
+        <strong>⚠️ Important Instructions:</strong>
+        <ul style="margin: var(--space-sm) 0 0 var(--space-lg); line-height: 1.8;">
+            <li>This operation will add session context to all existing results that don't have it</li>
+            <li>All existing results will be assigned to the <strong>current session</strong></li>
+            <li>This is safe and will NOT delete or overwrite any existing data</li>
+            <li>The operation may take a few minutes if you have many results</li>
+            <li>Only run this ONCE when you first enable the session system</li>
+        </ul>
+    </div>
+    
+    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-warning" onclick="backfillSessionData()" id="backfill-btn">
+            🔄 Migrate Existing Results
+        </button>
+        <div id="migration-status" style="flex: 1; min-width: 300px; padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
+            <p style="margin: 0; font-size: 0.875rem;"></p>
+        </div>
+    </div>
+</div>
     </div>
 
     <!-- Class Hierarchy Management -->
