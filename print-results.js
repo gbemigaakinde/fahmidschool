@@ -193,11 +193,17 @@ function setupTermSelector() {
     }
 
     console.log('✓ Setting up term selector, current term:', currentSettings.term);
+    
+    // CRITICAL FIX: Set the default value to current term BEFORE cloning
     select.value = currentSettings.term;
     setText('current-term', currentSettings.term);
 
-    // CRITICAL FIX: Remove any existing listeners first
+    // Remove any existing listeners first
     const newSelect = select.cloneNode(true);
+    
+    // IMPORTANT: Preserve the selected value after cloning
+    newSelect.value = currentSettings.term;
+    
     select.parentNode.replaceChild(newSelect, select);
 
     newSelect.addEventListener('change', async e => {
@@ -208,7 +214,7 @@ function setupTermSelector() {
         await loadReportData();
     });
     
-    console.log('✓ Term selector ready with event listener');
+    console.log('✓ Term selector ready with event listener, default:', newSelect.value);
 }
 
 /* ===============================
