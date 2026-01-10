@@ -1429,4 +1429,16 @@ window.deselectAllForPromotion = deselectAllForPromotion;
 window.toggleAllPupilsPromotion = toggleAllPupilsPromotion;
 window.submitPromotionRequest = submitPromotionRequest;
 
+// Export all functions used by HTML
+window.loadResultsTable = loadResultsTable;
+window.saveAllResults = saveAllResults;
+window.saveAllAttendance = saveAllAttendance;
+window.loadTraitsData = loadTraitsData;
+window.saveTraitsAndSkills = saveTraitsAndSkills;
+window.loadRemarksData = loadRemarksData;
+window.saveRemarks = saveRemarks;
+window.loadAttendanceSection = loadAttendanceSection;
+
+console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
+
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
