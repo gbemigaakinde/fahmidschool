@@ -1,6 +1,6 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Main JavaScript File – Phases 4–7 Complete + Enhancements
+ * Main JavaScript File – FIXED VERSION
  *
  * Handles:
  * - Hamburger menu toggle (public, admin, teacher portals)
@@ -11,8 +11,8 @@
  * - Keyboard navigation & accessibility
  * - Global error handling
  *
- * @version 2.3.0
- * @date 2026-01-04
+ * @version 2.4.0 - FIXED
+ * @date 2026-01-10
  */
 
 'use strict';
@@ -103,9 +103,6 @@ function initHeroSlideshow() {
         slides[index].classList.add('visible');
     }, 6000);
 }
-
-// Call on DOMContentLoaded (faster than 'load')
-document.addEventListener('DOMContentLoaded', initHeroSlideshow);
 
 /* =====================================================
    GALLERY LIGHTBOX
@@ -200,8 +197,6 @@ function initGalleryCarousel() {
         carousel.addEventListener('mouseleave', () => { speed = 0.5; });
     });
 }
-
-window.addEventListener('DOMContentLoaded', initGalleryCarousel);
 
 /* =====================================================
    SMOOTH SCROLLING
@@ -480,46 +475,10 @@ function initTestimonialsCarousel() {
     });
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', initTestimonialsCarousel);
-
 /* =====================================================
-   INITIALIZATION
+   OFFLINE/ONLINE DETECTION
 ===================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
-    initHamburgerMenu();
-    initGalleryLightbox();
-    initSmoothScroll();
-    initTestimonialsCarousel();
-
-    // ADD THESE LINES:
-    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            const section = link.dataset.section;
-            if (section && typeof showSection === 'function') {
-                showSection(section);
-            }
-        });
-    });
-
-    console.log('✓ Fahmid School website initialized successfully (v2.3.0)');
-});
-
-    // ← Add this here
-    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            const section = link.dataset.section;
-            if (section) showSection(section);
-        });
-    });
-
-    console.log('✓ Fahmid School website initialized successfully (v2.3.0)');
-});
-
-// Offline/Online Detection
 window.addEventListener('online', () => {
     if (window.showToast) {
         window.showToast('✓ Internet connection restored', 'success', 3000);
@@ -532,4 +491,31 @@ window.addEventListener('offline', () => {
     }
 });
 
-console.log('✓ Offline detection enabled');
+/* =====================================================
+   INITIALIZATION - MAIN ENTRY POINT
+===================================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize all features
+    initHamburgerMenu();
+    initHeroSlideshow();
+    initGalleryLightbox();
+    initGalleryCarousel();
+    initSmoothScroll();
+    initTestimonialsCarousel();
+
+    // Admin/Teacher portal section navigation
+    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            const section = link.dataset.section;
+            if (section && typeof window.showSection === 'function') {
+                window.showSection(section);
+            }
+        });
+    });
+
+    console.log('✓ Fahmid School website initialized successfully (v2.4.0 - FIXED)');
+});
+
+console.log('✓ Script.js loaded successfully');
