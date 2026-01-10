@@ -249,14 +249,20 @@ async function loadAcademicResults() {
   tbody.innerHTML = loadingRow();
 
   try {
-    // FIXED: Check if currentPupilId exists
+    // CRITICAL FIX: Validate all required data
     if (!currentPupilId) {
       console.error('No pupil ID available');
       tbody.innerHTML = emptyRow('Unable to load results: Pupil not identified');
       return;
     }
     
-    // FIXED: Check permissions first with a simple test query
+    if (!currentSettings || !currentSettings.term) {
+      console.error('No term data available');
+      tbody.innerHTML = emptyRow('Unable to load results: Term not identified');
+      return;
+    }
+    
+    // Check permissions first with a simple test query
     try {
       await db.collection('results').limit(1).get();
     } catch (permissionError) {
@@ -275,21 +281,14 @@ async function loadAcademicResults() {
     }
     
     const results = [];
-    const currentPupilUid = currentPupilId; // Store in local variable
+    const currentPupilUid = currentPupilId;
     const currentTermValue = currentSettings.term;
-    
-    if (!currentTermValue) {
-      console.error('No term value available');
-      tbody.innerHTML = emptyRow('Unable to determine current term');
-      return;
-    }
     
     // Check every document
     allResultsSnap.forEach(doc => {
       const docId = doc.id;
       const data = doc.data();
       
-      // FIXED: Validate data exists
       if (!data) {
         console.warn(`Document ${docId} has no data`);
         return;
@@ -323,7 +322,6 @@ async function loadAcademicResults() {
       
       // If match found, add to results
       if (matchFound && subject) {
-        // FIXED: Check if this subject is already in results (avoid duplicates)
         const existingIndex = results.findIndex(r => r.subject === subject);
         if (existingIndex === -1) {
           results.push({
@@ -389,7 +387,6 @@ async function loadAcademicResults() {
   } catch (error) {
     console.error('Error loading results:', error);
     
-    // FIXED: Handle specific error types
     let errorMessage = 'Error loading results';
     
     if (error.code === 'permission-denied') {
