@@ -17,6 +17,13 @@
 
 'use strict';
 
+(function () {
+  const el = document.getElementById('copyright-year');
+  if (!el) return;
+
+  el.textContent = new Date().getFullYear();
+})();
+
 /* =====================================================
    HAMBURGER MENU FUNCTIONALITY (ALL PORTALS)
 ===================================================== */
