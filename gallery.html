@@ -6,96 +6,307 @@
     <meta name="description" content="View photos and memories from school events, activities, and daily life at Fahmid School.">
     <title>Gallery - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html" aria-current="page">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html" aria-current="page"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>Gallery</h1>
-                <p class="lead">Memories from school events and daily life.</p>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>Our Gallery</h1>
+            <p class="lead">
+                Moments of learning, growth, and joy captured at Fahmid School
+            </p>
+        </div>
+    </section>
 
-            <section aria-label="Photo gallery">
-                <div class="gallery-grid">
-                    <button class="gallery-item" aria-label="View school event photo">
-                        <img src="https://source.unsplash.com/random/400x300/?school-event" alt="School event with students and teachers">
+    <main id="main-content" class="main-content">
+
+        <!-- GALLERY CATEGORIES -->
+        <section class="container section">
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-16);">
+                <button class="gallery-filter active" data-filter="all" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-primary); background: var(--color-primary); color: white; border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
+                    <i data-lucide="grid-3x3" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                    All Photos
+                </button>
+                <button class="gallery-filter" data-filter="classroom" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
+                    <i data-lucide="book-open" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                    Classroom
+                </button>
+                <button class="gallery-filter" data-filter="events" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
+                    <i data-lucide="party-popper" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                    Events
+                </button>
+                <button class="gallery-filter" data-filter="sports" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
+                    <i data-lucide="trophy" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                    Sports
+                </button>
+                <button class="gallery-filter" data-filter="activities" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
+                    <i data-lucide="palette" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
+                    Activities
+                </button>
+            </div>
+
+            <!-- GALLERY GRID -->
+            <div class="gallery-grid">
+                <!-- Classroom Photos -->
+                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
+                    <img src="images/gallery/IMG_4623.jpeg" alt="Students in classroom learning activity" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
+                    <img src="images/gallery/IMG_4624.jpeg" alt="Teacher with students in class" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
+                    <img src="images/gallery/IMG_4625.jpeg" alt="Students working on assignments" loading="lazy">
+                </button>
+
+                <!-- Events Photos -->
+                <button class="gallery-item" data-category="events" aria-label="View event photo">
+                    <img src="images/gallery/IMG_4626.jpeg" alt="School event celebration" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="events" aria-label="View event photo">
+                    <img src="images/gallery/IMG_4627.jpeg" alt="Cultural day celebration" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="events" aria-label="View event photo">
+                    <img src="images/gallery/IMG_4635.jpeg" alt="End of year ceremony" loading="lazy">
+                </button>
+
+                <!-- Sports Photos -->
+                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
+                    <img src="https://source.unsplash.com/random/400x300/?children-sports" alt="Students participating in sports" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
+                    <img src="https://source.unsplash.com/random/400x300/?kids-running" alt="Sports day activities" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
+                    <img src="https://source.unsplash.com/random/400x300/?children-playing" alt="Outdoor games" loading="lazy">
+                </button>
+
+                <!-- Activities Photos -->
+                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
+                    <img src="https://source.unsplash.com/random/400x300/?art-class" alt="Art and crafts session" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
+                    <img src="https://source.unsplash.com/random/400x300/?kids-painting" alt="Creative art activities" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
+                    <img src="https://source.unsplash.com/random/400x300/?science-kids" alt="Science experiment" loading="lazy">
+                </button>
+
+                <!-- More Mixed Photos -->
+                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
+                    <img src="https://source.unsplash.com/random/400x300/?children-reading" alt="Reading time" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
+                    <img src="https://source.unsplash.com/random/400x300/?kids-music" alt="Music class" loading="lazy">
+                </button>
+                <button class="gallery-item" data-category="events" aria-label="View event photo">
+                    <img src="https://source.unsplash.com/random/400x300/?graduation-kids" alt="Graduation ceremony" loading="lazy">
+                </button>
+            </div>
+        </section>
+
+        <!-- PHOTO HIGHLIGHTS -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Recent Highlights</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Special moments from our school community
+            </p>
+
+            <div class="grid">
+                <article class="card">
+                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="trophy" style="width: 64px; height: 64px; color: white;"></i>
+                    </div>
+                    <h3>Sports Day 2025</h3>
+                    <p>Students showcased their athletic talents in our annual sports competition with exciting races and team events.</p>
+                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
+                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
+                        March 2025
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="palette" style="width: 64px; height: 64px; color: white;"></i>
+                    </div>
+                    <h3>Art Exhibition</h3>
+                    <p>Our young artists displayed their creative masterpieces in a colorful exhibition celebrating imagination and talent.</p>
+                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
+                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
+                        February 2025
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="book-open" style="width: 64px; height: 64px; color: white;"></i>
+                    </div>
+                    <h3>Reading Week</h3>
+                    <p>A week dedicated to fostering love for reading with story sessions, book fairs, and special author visits.</p>
+                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
+                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
+                        January 2025
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- VIDEO SECTION -->
+        <section class="container section">
+            <h2 class="section-title">School Life in Motion</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Watch our students learn, play, and grow
+            </p>
+
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg); border: 1px solid var(--color-gray-200); text-align: center;">
+                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-8); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="video" style="width: 60px; height: 60px; color: white;"></i>
+                    </div>
+                    <h3 style="margin-bottom: var(--space-4);">School Tour Video</h3>
+                    <p style="color: var(--color-gray-700); margin-bottom: var(--space-8); line-height: 1.8;">
+                        Take a virtual tour of our school and see what makes Fahmid special. Experience our classrooms, facilities, and vibrant learning environment.
+                    </p>
+                    <button class="btn">
+                        <i data-lucide="play-circle" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;"></i>
+                        Watch Video
                     </button>
-                    <button class="gallery-item" aria-label="View children playing photo">
-                        <img src="https://source.unsplash.com/random/400x300/?kids-playing" alt="Children playing outdoors">
-                    </button>
-                    <button class="gallery-item" aria-label="View class activity photo">
-                        <img src="https://source.unsplash.com/random/400x300/?class-activity" alt="Students engaged in class activity">
-                    </button>
-                    <button class="gallery-item" aria-label="View sports day photo">
-                        <img src="https://source.unsplash.com/random/400x300/?sports-day" alt="Students participating in sports day">
-                    </button>
-                    <button class="gallery-item" aria-label="View graduation photo">
-                        <img src="https://source.unsplash.com/random/400x300/?graduation" alt="Graduation ceremony">
-                    </button>
-                    <button class="gallery-item" aria-label="View art class photo">
-                        <img src="https://source.unsplash.com/random/400x300/?art-class" alt="Students in art class">
-                    </button>
+                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin-top: var(--space-4);">Coming Soon</p>
                 </div>
-            </section>
-        </article>
+            </div>
+        </section>
+
+        <!-- CTA SECTION -->
+        <section class="container section cta-section">
+            <h2>Visit Us in Person</h2>
+            <p class="lead">
+                See our beautiful campus and vibrant learning environment firsthand
+            </p>
+            <a href="contact.html" class="btn">Schedule a Tour</a>
+            <a href="about.html" class="btn btn-secondary">Learn About Us</a>
+        </section>
+
     </main>
 
-    <!-- Footer -->
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <!-- Lightbox -->
+    <!-- LIGHTBOX -->
     <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
         <button class="lightbox-close" aria-label="Close image viewer">&times;</button>
         <img id="lightbox-img" src="" alt="">
     </div>
 
-    <!-- Toast Container -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
+                    <i data-lucide="facebook"></i>
+                </a>
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
+                    <i data-lucide="instagram"></i>
+                </a>
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <i data-lucide="message-circle"></i>
+                </a>
+            </div>
+
+            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+        </div>
+    </footer>
+
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            // Gallery Filter
+            const filterButtons = document.querySelectorAll('.gallery-filter');
+            const galleryItems = document.querySelectorAll('.gallery-item');
+
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.filter;
+
+                    // Update active button
+                    filterButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.background = 'white';
+                        btn.style.color = 'var(--color-gray-700)';
+                        btn.style.borderColor = 'var(--color-gray-300)';
+                    });
+                    button.classList.add('active');
+                    button.style.background = 'var(--color-primary)';
+                    button.style.color = 'white';
+                    button.style.borderColor = 'var(--color-primary)';
+
+                    // Filter items
+                    galleryItems.forEach(item => {
+                        if (filter === 'all' || item.dataset.category === filter) {
+                            item.style.display = 'block';
+                            setTimeout(() => {
+                                item.style.opacity = '1';
+                                item.style.transform = 'scale(1)';
+                            }, 10);
+                        } else {
+                            item.style.opacity = '0';
+                            item.style.transform = 'scale(0.8)';
+                            setTimeout(() => {
+                                item.style.display = 'none';
+                            }, 300);
+                        }
+                    });
+                });
+            });
+
+            // Add transition styles to gallery items
+            galleryItems.forEach(item => {
+                item.style.transition = 'opacity 0.3s, transform 0.3s';
+            });
+        });
+    </script>
 </body>
 </html>
