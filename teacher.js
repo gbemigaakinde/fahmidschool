@@ -29,30 +29,59 @@ let isLoadingData = false;
    INITIALIZATION WITH PROPER ORDER
 ======================================== */
 
+/**
+ * FIXED: Teacher Portal Initialization with Guaranteed Data Load
+ * Replace the initialization block at the top of teacher.js (lines 15-32)
+ */
+
 window.checkRole('teacher')
   .then(async user => {
     currentUser = user;
     const info = document.getElementById('teacher-info');
     if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
     
-    // FIXED: Load data first, then initialize
+    // CRITICAL FIX: Sequential loading with error handling
     try {
+      console.log('Starting teacher data load...');
+      
+      // Step 1: Load classes and pupils
       isLoadingData = true;
       await loadAssignedClasses();
+      console.log('✓ Classes loaded:', assignedClasses.length);
+      
+      // Step 2: Load subjects (depends on classes)
       await loadSubjects();
+      console.log('✓ Subjects loaded:', allSubjects.length);
+      
+      // Step 3: Mark data as loaded
       dataLoaded = true;
       isLoadingData = false;
+      console.log('✓ All teacher data loaded successfully');
       
-      // Now safe to initialize portal
+      // Step 4: Now safe to initialize portal
       initTeacherPortal();
+      
     } catch (error) {
-      console.error('Error during initialization:', error);
+      console.error('❌ Failed to load teacher data:', error);
       isLoadingData = false;
-      window.showToast?.('Failed to load teacher data. Please refresh.', 'danger');
+      dataLoaded = false;
+      
+      // Show error to user
+      window.showToast?.(
+        'Failed to load your teaching data. Please refresh the page.',
+        'danger',
+        10000
+      );
+      
+      // Still try to show dashboard with empty data
+      showSection('dashboard');
     }
   })
-  .catch(() => {});
-
+  .catch(err => {
+    console.error('Authentication check failed:', err);
+    // Will redirect to login
+  });
+  
 document.getElementById('teacher-logout')?.addEventListener('click', e => {
   e.preventDefault();
   window.logout();
