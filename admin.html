@@ -631,17 +631,44 @@ button[onclick="exportPupilResults()"]:hover {
 
     <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
         <h2>Admin Panel</h2>
-        <a href="#dashboard" class="active" onclick="showSection('dashboard')">Dashboard</a>
-        <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
-       <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
-        <a href="#alumni" onclick="showSection('alumni')">Alumni</a>
-        <a href="#view-results" onclick="showSection('view-results')">View Results</a>
-        <a href="#classes" onclick="showSection('classes')">Classes</a>
-        <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
-        <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
-        <a href="#promotion-requests" onclick="showSection('promotion-requests')">Promotion Requests</a>
-        <a href="#settings" onclick="showSection('settings')">School Settings</a>
-        <a href="#announcements" onclick="showSection('announcements')">Announcements</a>
+        <a href="#dashboard" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
+        
+        <!-- User Management Group -->
+        <div class="sidebar-group">
+            <button class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)">
+                <span class="toggle-icon">▼</span>
+                <span>👥 User Management</span>
+            </button>
+            <div class="sidebar-group-content active">
+                <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
+                <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
+                <a href="#alumni" onclick="showSection('alumni')">Alumni</a>
+            </div>
+        </div>
+        
+        <!-- Academic Tasks Group -->
+        <div class="sidebar-group">
+            <button class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)">
+                <span class="toggle-icon">▼</span>
+                <span>📚 Academic Tasks</span>
+            </button>
+            <div class="sidebar-group-content active">
+                <a href="#classes" onclick="showSection('classes')">Classes</a>
+                <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
+                <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
+                <a href="#promotion-requests" onclick="showSection('promotion-requests')">Promotion Requests</a>
+            </div>
+        </div>
+        
+        <!-- Reports & Results -->
+        <a href="#view-results" onclick="showSection('view-results')">📈 View Results</a>
+        
+        <!-- Communications -->
+        <a href="#announcements" onclick="showSection('announcements')">📢 Announcements</a>
+        
+        <!-- System -->
+        <a href="#settings" onclick="showSection('settings')">⚙️ School Settings</a>
+        
         <hr class="sidebar-divider">
         <a href="index.html">← Back to Public Site</a>
         <a href="#" id="admin-logout" class="logout-link">Logout</a>
