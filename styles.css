@@ -340,8 +340,9 @@ section .container > p.lead {
     font-weight: var(--weight-bold);
     color: var(--color-black);
     letter-spacing: -0.03em;
-    text-align: center; /* Center the logo text */
-    width: 100%; /* Ensure full width for proper centering */
+    text-align: right;
+    width: 100%;
+    padding-right: 1.5rem;
 }
 
 .sidebar-content {
