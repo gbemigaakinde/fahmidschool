@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript - FIXED
+ * Pupil Portal JavaScript - FIXED SESSION SELECTOR
  * 
- * @version 4.3.0 - CLASS HANDLING FIXED
- * @date 2026-01-06
+ * @version 4.4.0 - SESSION SELECTOR FIXED
+ * @date 2026-01-10
  */
 
 'use strict';
@@ -184,17 +184,17 @@ async function loadPupilProfile(user) {
 
         // Display pupil profile
         renderProfile({
-    name: data.name || '-',
-    dob: data.dob || '-',
-    admissionNo: data.admissionNo || '-',
-    gender: data.gender || '-',
-    contact: data.contact || '-',
-    address: data.address || '-',
-    email: data.email || '-',
-    class: currentClassInfo.name,
-    teacher: currentClassInfo.teacher,
-    subjects: currentClassInfo.subjects
-});
+            name: data.name || '-',
+            dob: data.dob || '-',
+            admissionNo: data.admissionNo || '-',
+            gender: data.gender || '-',
+            contact: data.contact || '-',
+            address: data.address || '-',
+            email: data.email || '-',
+            class: currentClassInfo.name,
+            teacher: currentClassInfo.teacher,
+            subjects: currentClassInfo.subjects
+        });
 
         // Update header information
         const settings = await getCurrentSettings();
@@ -215,252 +215,155 @@ async function loadPupilProfile(user) {
         // Load results
         await loadResults();
 
-    /**
- * FIXED PUPIL PROFILE LISTENER
- * Replace the listener setup in loadPupilProfile() function
- */
+        // FIXED: Setup real-time listeners with debouncing
+        let pupilUpdateTimeout = null;
+        let classUpdateTimeout = null;
 
-// FIXED: Debounced listeners to prevent infinite loops
-let pupilUpdateTimeout = null;
-let classUpdateTimeout = null;
+        // Pupil data listener with debouncing
+        pupilListener = db.collection('pupils').doc(currentPupilId)
+          .onSnapshot(
+            async snap => {
+              if (pupilUpdateTimeout) {
+                clearTimeout(pupilUpdateTimeout);
+              }
+              
+              pupilUpdateTimeout = setTimeout(async () => {
+                try {
+                  if (!snap.exists) return;
+                  
+                  const updatedData = snap.data();
+                  
+                  // CRITICAL: Check if data actually changed
+                  const hasChanges = JSON.stringify(currentPupilData) !== JSON.stringify(updatedData);
+                  
+                  if (!hasChanges) {
+                    console.log('No changes detected, skipping update');
+                    return;
+                  }
+                  
+                  console.log('Pupil data changed, updating...');
+                  currentPupilData = updatedData;
+                  
+                  // Extract class info
+                  const updatedClassId = getClassIdFromPupilData(updatedData.class);
+                  const updatedClassName = getClassNameFromPupilData(updatedData.class);
+                  
+                  currentClassInfo.name = updatedClassName;
+                  currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
+                  currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
+                  
+                  // Update UI
+                  renderProfile({
+                    name: updatedData.name || '-',
+                    dob: updatedData.dob || '-',
+                    admissionNo: updatedData.admissionNo || '-',
+                    gender: updatedData.gender || '-',
+                    contact: updatedData.contact || '-',
+                    address: updatedData.address || '-',
+                    email: updatedData.email || '-',
+                    class: currentClassInfo.name,
+                    teacher: currentClassInfo.teacher,
+                    subjects: currentClassInfo.subjects
+                  });
 
-// Pupil data listener with debouncing
-pupilListener = db.collection('pupils').doc(currentPupilId)
-  .onSnapshot(
-    async snap => {
-      if (pupilUpdateTimeout) {
-        clearTimeout(pupilUpdateTimeout);
-      }
-      
-      pupilUpdateTimeout = setTimeout(async () => {
-        try {
-          if (!snap.exists) return;
-          
-          const updatedData = snap.data();
-          
-          // CRITICAL: Check if data actually changed
-          const hasChanges = JSON.stringify(currentPupilData) !== JSON.stringify(updatedData);
-          
-          if (!hasChanges) {
-            console.log('No changes detected, skipping update');
-            return;
-          }
-          
-          console.log('Pupil data changed, updating...');
-          currentPupilData = updatedData;
-          
-          // Extract class info
-          const updatedClassId = getClassIdFromPupilData(updatedData.class);
-          const updatedClassName = getClassNameFromPupilData(updatedData.class);
-          
-          currentClassInfo.name = updatedClassName;
-          currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
-          currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
-          
-          // Update UI
-          renderProfile({
-            name: updatedData.name || '-',
-            dob: updatedData.dob || '-',
-            admissionNo: updatedData.admissionNo || '-',
-            gender: updatedData.gender || '-',
-            contact: updatedData.contact || '-',
-            address: updatedData.address || '-',
-            email: updatedData.email || '-',
-            class: currentClassInfo.name,
-            teacher: currentClassInfo.teacher,
-            subjects: currentClassInfo.subjects
-          });
+                  // Update header
+                  const settings = await getCurrentSettings();
+                  const welcomeEl = document.getElementById('pupil-welcome');
+                  const classEl = document.getElementById('student-class');
+                  const sessionEl = document.getElementById('student-session');
+                  
+                  if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+                  if (classEl) classEl.textContent = currentClassInfo.name;
+                  if (sessionEl) sessionEl.textContent = settings.session;
 
-          // Update header
-          const settings = await getCurrentSettings();
-          const welcomeEl = document.getElementById('pupil-welcome');
-          const classEl = document.getElementById('student-class');
-          const sessionEl = document.getElementById('student-session');
-          
-          if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
-          if (classEl) classEl.textContent = currentClassInfo.name;
-          if (sessionEl) sessionEl.textContent = settings.session;
+                  await loadResults();
+                  console.log('✓ Profile updated');
+                  
+                } catch (error) {
+                  console.error('Error in pupil listener:', error);
+                } finally {
+                  pupilUpdateTimeout = null;
+                }
+              }, 500); // 500ms debounce
+            },
+            error => {
+              console.error('Pupil listener error:', error);
+              window.showToast?.('Connection lost. Please refresh.', 'warning');
+            }
+          );
 
-          await loadResults();
-          console.log('✓ Profile updated');
-          
-        } catch (error) {
-          console.error('Error in pupil listener:', error);
-        } finally {
-          pupilUpdateTimeout = null;
-        }
-      }, 500); // 500ms debounce
-    },
-    error => {
-      console.error('Pupil listener error:', error);
-      window.showToast?.('Connection lost. Please refresh.', 'warning');
-    }
-  );
+        // Class listener with debouncing
+        if (classId) {
+          classListener = db.collection('classes').doc(classId)
+            .onSnapshot(
+              async snap => {
+                if (classUpdateTimeout) {
+                  clearTimeout(classUpdateTimeout);
+                }
+                
+                classUpdateTimeout = setTimeout(async () => {
+                  try {
+                    if (!snap.exists) return;
+                    
+                    const classData = snap.data();
+                    
+                    // Check if data actually changed
+                    const hasChanges = 
+                      currentClassInfo.name !== classData.name ||
+                      JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
+                    
+                    if (!hasChanges) {
+                      console.log('No class changes, skipping');
+                      return;
+                    }
+                    
+                    console.log('Class data changed, updating...');
+                    
+                    currentClassInfo.name = classData.name || currentClassInfo.name;
+                    currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+                    
+                    // Get teacher name
+                    if (classData.teacherName) {
+                      currentClassInfo.teacher = classData.teacherName;
+                    } else if (classData.teacherId) {
+                      try {
+                        const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                        currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
+                      } catch (err) {
+                        console.error('Error fetching teacher:', err);
+                      }
+                    }
+                    
+                    // Update profile
+                    renderProfile({
+                      name: currentPupilData.name || '-',
+                      dob: currentPupilData.dob || '-',
+                      admissionNo: currentPupilData.admissionNo || '-',
+                      gender: currentPupilData.gender || '-',
+                      contact: currentPupilData.contact || '-',
+                      address: currentPupilData.address || '-',
+                      email: currentPupilData.email || '-',
+                      class: currentClassInfo.name,
+                      teacher: currentClassInfo.teacher,
+                      subjects: currentClassInfo.subjects
+                    });
 
-// Class listener with debouncing
-if (classId) {
-  classListener = db.collection('classes').doc(classId)
-    .onSnapshot(
-      async snap => {
-        if (classUpdateTimeout) {
-          clearTimeout(classUpdateTimeout);
+                    renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
+                    console.log('✓ Class info updated');
+                    
+                  } catch (error) {
+                    console.error('Error in class listener:', error);
+                  } finally {
+                    classUpdateTimeout = null;
+                  }
+                }, 500); // 500ms debounce
+              },
+              error => {
+                console.error('Class listener error:', error);
+              }
+            );
         }
         
-        classUpdateTimeout = setTimeout(async () => {
-          try {
-            if (!snap.exists) return;
-            
-            const classData = snap.data();
-            
-            // Check if data actually changed
-            const hasChanges = 
-              currentClassInfo.name !== classData.name ||
-              JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
-            
-            if (!hasChanges) {
-              console.log('No class changes, skipping');
-              return;
-            }
-            
-            console.log('Class data changed, updating...');
-            
-            currentClassInfo.name = classData.name || currentClassInfo.name;
-            currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
-            
-            // Get teacher name
-            if (classData.teacherName) {
-              currentClassInfo.teacher = classData.teacherName;
-            } else if (classData.teacherId) {
-              try {
-                const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-              } catch (err) {
-                console.error('Error fetching teacher:', err);
-              }
-            }
-            
-            // Update profile
-            renderProfile({
-              name: currentPupilData.name || '-',
-              dob: currentPupilData.dob || '-',
-              admissionNo: currentPupilData.admissionNo || '-',
-              gender: currentPupilData.gender || '-',
-              contact: currentPupilData.contact || '-',
-              address: currentPupilData.address || '-',
-              email: currentPupilData.email || '-',
-              class: currentClassInfo.name,
-              teacher: currentClassInfo.teacher,
-              subjects: currentClassInfo.subjects
-            });
-
-            renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
-            console.log('✓ Class info updated');
-            
-          } catch (error) {
-            console.error('Error in class listener:', error);
-          } finally {
-            classUpdateTimeout = null;
-          }
-        }, 500); // 500ms debounce
-      },
-      error => {
-        console.error('Class listener error:', error);
-      }
-    );
-}
-
-// FIXED: Class listener with debouncing
-let classUpdateTimeout = null;
-
-if (classId) {
-  classListener = db.collection('classes').doc(classId)
-    .onSnapshot(
-      async snap => {
-        // CRITICAL: Prevent recursive updates with debouncing
-        if (classUpdateTimeout) {
-          clearTimeout(classUpdateTimeout);
-        }
-        
-        classUpdateTimeout = setTimeout(async () => {
-          try {
-            if (!snap.exists) return;
-            
-            const classData = snap.data();
-            
-            // Check if data actually changed
-            const hasChanges = 
-              currentClassInfo.name !== classData.name ||
-              JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
-            
-            if (!hasChanges) {
-              console.log('No class changes detected, skipping update');
-              return;
-            }
-            
-            console.log('Class data changed, updating UI...');
-            
-            currentClassInfo.name = classData.name || currentClassInfo.name;
-            currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
-            
-            // Fetch teacher name if needed
-            if (classData.teacherName) {
-              currentClassInfo.teacher = classData.teacherName;
-            } else if (classData.teacherId) {
-              try {
-                const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-              } catch (teacherError) {
-                console.error('Error fetching teacher:', teacherError);
-              }
-            } else {
-              currentClassInfo.teacher = '-';
-            }
-            
-            // Update profile with new class info
-            renderProfile({
-    name: currentPupilData.name || '-',
-    dob: currentPupilData.dob || '-',
-    admissionNo: currentPupilData.admissionNo || '-',
-    gender: currentPupilData.gender || '-',
-    contact: currentPupilData.contact || '-',
-    address: currentPupilData.address || '-',
-    email: currentPupilData.email || '-',
-    class: currentClassInfo.name,
-    teacher: currentClassInfo.teacher,
-    subjects: currentClassInfo.subjects
-});
-
-            // Update header information
-            const settings = await getCurrentSettings();
-            const welcomeEl = document.getElementById('pupil-welcome');
-            const classEl = document.getElementById('student-class');
-            const sessionEl = document.getElementById('student-session');
-            
-            if (welcomeEl) {
-              welcomeEl.innerHTML = `Hello, <strong>${currentPupilData.name}</strong>!`;
-            }
-            if (classEl) {
-              classEl.textContent = currentClassInfo.name;
-            }
-            if (sessionEl) {
-              sessionEl.textContent = settings.session;
-            }
-
-            renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
-            
-          } catch (error) {
-            console.error('Error in class listener:', error);
-          } finally {
-            classUpdateTimeout = null;
-          }
-        }, 500); // 500ms debounce
-      },
-      error => {
-        console.error('Class listener error:', error);
-        window.showToast?.('Lost connection to class updates. Please refresh the page.', 'warning');
-      }
-    );
-}
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         window.handleError?.(error, 'Failed to load pupil profile');
@@ -517,7 +420,7 @@ function renderSubjects(subjects, teacher) {
 }
 
 // ============================================
-// LOAD RESULTS WITH SESSION SUPPORT
+// LOAD RESULTS WITH SESSION SUPPORT - FIXED
 // ============================================
 
 async function loadResults() {
@@ -539,9 +442,19 @@ async function loadResults() {
         // Populate session selector first
         await populateSessionSelector();
         
-        // Get selected session (defaults to current)
+        // CRITICAL FIX: Add event listener for session selector
         const sessionSelect = document.getElementById('pupil-session-select');
-        const selectedSession = sessionSelect?.value || 'current';
+        if (sessionSelect) {
+            // Remove any existing listeners to prevent duplicates
+            const newSessionSelect = sessionSelect.cloneNode(true);
+            sessionSelect.parentNode.replaceChild(newSessionSelect, sessionSelect);
+            
+            // Add new listener
+            newSessionSelect.addEventListener('change', async () => {
+                console.log('Session changed to:', newSessionSelect.value);
+                await loadSessionResults();
+            });
+        }
         
         // Load results for selected session
         await loadSessionResults();
@@ -625,7 +538,7 @@ async function loadSessionResults() {
     // Show loading
     container.innerHTML = `
         <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
-            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+            <div class="spinner" style="margin: 0 auto var(--space-md); width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
             <p>Loading results...</p>
         </div>
     `;
@@ -635,33 +548,32 @@ async function loadSessionResults() {
         
         // Build query based on selection
         let resultsSnap;
+        let displaySessionName;
         
         if (selectedSession === 'current') {
             // Load current session results
             const settings = await window.getCurrentSettings();
             const currentSessionName = settings.session;
+            displaySessionName = `Current Session (${currentSessionName})`;
             
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', currentSessionName)
                 .get();
             
-            // Update info display
-            if (selectedSessionName) {
-                selectedSessionName.textContent = `Current Session (${currentSessionName})`;
-            }
-            
         } else {
             // Load historical session results
+            displaySessionName = `${selectedSession} Session`;
+            
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', selectedSession)
                 .get();
-            
-            // Update info display
-            if (selectedSessionName) {
-                selectedSessionName.textContent = `${selectedSession} Session`;
-            }
+        }
+        
+        // Update info display
+        if (selectedSessionName) {
+            selectedSessionName.textContent = displaySessionName;
         }
         
         // Show session info
@@ -794,4 +706,14 @@ function getGrade(score) {
     return 'F9';
 }
 
-console.log('✓ Pupil portal initialized (v4.3.0 - CLASS HANDLING FIXED)');
+// Add CSS for spinner animation if not already in styles.css
+const style = document.createElement('style');
+style.textContent = `
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);
+
+console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
