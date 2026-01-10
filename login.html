@@ -345,6 +345,18 @@
         color: var(--color-gray-600);
     }
 
+.label-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.label-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--color-gray-500);
+}
     /* Mobile responsiveness */
     @media (max-width: 640px) {
         .login-container {
@@ -399,19 +411,28 @@
             </div>
 
             <!-- Body -->
-            <div class="auth-body">
-                <!-- Tabs -->
-                <div class="auth-tabs">
-                    <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
-                        Login
-                    </button>
-                    <button class="auth-tab" data-mode="register" onclick="switchAuthMode('register')">
-                        Register
-                    </button>
-                </div>
+           <div class="auth-body">
+    <!-- Tabs -->
+    <div class="auth-tabs">
+        <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
+            Login
+        </button>
+        <button class="auth-tab" data-mode="register" disabled>
+            Register
+        </button>
+    </div>
 
-                <!-- Form -->
-<form id="auth-form" novalidate>
+    <!-- Registration Locked Notice -->
+    <div id="registration-locked" style="display:none; text-align:center; margin-bottom:20px;">
+        <i data-lucide="lock" style="width:32px; height:32px; color:#d32f2f;"></i>
+        <p style="margin-top:10px; font-size:14px; color:#444;">
+            Registration is currently locked.<br>
+            Please contact the school administrator to be registered.
+        </p>
+    </div>
+
+    <!-- Form -->
+    <form id="auth-form" novalidate>
 
     <!-- Email Field -->
     <div class="form-group">
@@ -530,13 +551,15 @@
                 roleDiv.style.display = 'none';
                 forgotLink.style.display = 'block';
                 passwordInput.setAttribute('autocomplete', 'current-password');
+                document.getElementById('registration-locked').style.display = 'none';
+                button.style.display = 'block';
             } else {
-                title.textContent = 'Create Account';
-                subtitle.textContent = 'Register to get started';
-                button.textContent = 'Create Account';
-                roleDiv.style.display = 'block';
-                forgotLink.style.display = 'none';
-                passwordInput.setAttribute('autocomplete', 'new-password');
+               title.textContent = 'Registration Locked';
+               subtitle.textContent = 'Contact the administrator to get access';
+               button.style.display = 'none';
+               roleDiv.style.display = 'none';
+               forgotLink.style.display = 'none';
+               document.getElementById('registration-locked').style.display = 'block';
             }
 
             // Clear validation states
