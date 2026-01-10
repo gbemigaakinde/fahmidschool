@@ -409,6 +409,7 @@ function renderProfile(profile) {
     // Update the existing profile table fields
     const nameDisplay = document.getElementById('pupil-name-display');
     const dobDisplay = document.getElementById('pupil-dob-display');
+    const admissionDisplay = document.getElementById('pupil-admission-display');
     const genderDisplay = document.getElementById('pupil-gender-display');
     const contactDisplay = document.getElementById('pupil-contact-display');
     const addressDisplay = document.getElementById('pupil-address-display');
@@ -418,6 +419,7 @@ function renderProfile(profile) {
 
     if (nameDisplay) nameDisplay.textContent = profile.name;
     if (dobDisplay) dobDisplay.textContent = profile.dob;
+    if (admissionDisplay) admissionDisplay.textContent = profile.admissionNo || '-';
     if (genderDisplay) genderDisplay.textContent = profile.gender;
     if (contactDisplay) contactDisplay.textContent = profile.contact;
     if (addressDisplay) addressDisplay.textContent = profile.address;
