@@ -1038,7 +1038,7 @@ button[onclick="exportPupilResults()"]:hover {
             <!-- NEW: Subject Assignment Modal -->
             <div id="subject-assignment-modal" class="modal" style="display:none;">
                 <div class="modal-content" style="max-width: 600px;">
-                    <span class="modal-close" onclick="closeSubjectAssignmentModal()">&times;</span>
+                    <button class="modal-close" onclick="closeSubjectAssignmentModal()" aria-label="Close subject assignment modal">&times;</button>
                     <h2>Assign Subjects to Class</h2>
                     <p id="assignment-class-name" style="font-weight:600; margin-bottom: var(--space-lg);"></p>
 
@@ -1193,7 +1193,7 @@ button[onclick="exportPupilResults()"]:hover {
         <!-- Promotion Details Modal (NEW) -->
         <div id="promotion-details-modal" class="modal" style="display:none;">
             <div class="modal-content" style="max-width: 800px;">
-                <span class="modal-close" onclick="closePromotionDetailsModal()">&times;</span>
+                <button class="modal-close" onclick="closePromotionDetailsModal()" aria-label="Close promotion details modal">&times;</button>
                 <h2>Promotion Request Details</h2>
                 
                 <div id="promotion-details-content">
