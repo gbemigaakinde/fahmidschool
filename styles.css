@@ -454,17 +454,15 @@ section .container > p.lead {
    ============================================ */
 .hero {
     position: relative;
-    width: 100%;  /* Changed from 100vw to 100% */
+    width: 100vw;
     height: auto;
     min-height: 500px;
     margin: 0;
-    margin-left: calc(-1 * var(--sidebar-width)); /* Offset to align with viewport */
-    width: calc(100% + var(--sidebar-width)); /* Extend to full viewport width */
     padding: var(--space-16) 0;
     overflow: hidden;
     color: var(--color-white);
     text-align: center;
-    background-color: #1a1a1a;
+    background-color: #1a1a1a; /* ADD THIS - dark fallback while images load */
 }
 
 /* Hero slideshow container */
@@ -545,14 +543,6 @@ section .container > p.lead {
     line-height: 1.6;
     margin: 0 auto var(--space-16) auto; /* Center with auto margins */
     text-align: center; /* Added explicit center alignment */
-}
-
-/* Hero responsive alignment fix */
-@media (max-width: 1024px) {
-    .hero {
-        margin-left: 0; /* Remove offset on mobile */
-        width: 100%; /* Full width without sidebar */
-    }
 }
 
 /* Apply Now button - centered */
