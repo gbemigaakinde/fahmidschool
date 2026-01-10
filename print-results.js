@@ -274,7 +274,7 @@ async function loadReportData() {
 ================================ */
 
 /**
- * FIXED: Academic Results Loading with Initialization Guards
+ * FIXED: Academic Results Loading with Proper Initialization Wait
  * Replace the loadAcademicResults function in print-results.js
  */
 
@@ -286,33 +286,46 @@ async function loadAcademicResults() {
         return;
     }
     
-    // CRITICAL FIX: Wait for initialization to complete
-    if (!isInitialized) {
-        console.log('Waiting for initialization to complete...');
+    // CRITICAL FIX: Properly wait for ALL initialization to complete
+    if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
+        console.log('Waiting for complete initialization...', {
+            isInitialized,
+            hasPupilId: !!currentPupilId,
+            hasSession: !!currentSettings.session,
+            hasTerm: !!currentSettings.term
+        });
+        
         tbody.innerHTML = loadingRow();
         
-        // Wait up to 5 seconds for initialization
-        for (let i = 0; i < 50; i++) {
+        // Wait up to 10 seconds for ALL data to be ready
+        let attempts = 0;
+        const maxAttempts = 100; // 10 seconds (100 * 100ms)
+        
+        while (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 100));
-            if (isInitialized) break;
+            
+            // Check if ALL required data is now available
+            if (isInitialized && currentPupilId && currentSettings.session && currentSettings.term) {
+                console.log('✓ All data ready, proceeding with results load');
+                break;
+            }
+            
+            attempts++;
         }
         
-        if (!isInitialized) {
-            tbody.innerHTML = emptyRow('Initialization timeout. Please refresh the page.');
+        // Final validation after waiting
+        if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
+            const missingData = [];
+            if (!isInitialized) missingData.push('initialization incomplete');
+            if (!currentPupilId) missingData.push('pupil ID missing');
+            if (!currentSettings.session) missingData.push('session missing');
+            if (!currentSettings.term) missingData.push('term missing');
+            
+            tbody.innerHTML = emptyRow(
+                `Unable to load results: ${missingData.join(', ')}. Please refresh the page.`
+            );
             return;
         }
-    }
-    
-    if (!currentPupilId) {
-        console.error('No pupil ID available');
-        tbody.innerHTML = emptyRow('Unable to load: Pupil not identified');
-        return;
-    }
-    
-    if (!currentSettings || !currentSettings.term || !currentSettings.session) {
-        console.error('Settings not loaded properly:', currentSettings);
-        tbody.innerHTML = emptyRow('Unable to load: Settings incomplete');
-        return;
     }
     
     console.log('Loading academic results for:', {
@@ -336,18 +349,19 @@ async function loadAcademicResults() {
         if (resultsSnap.empty) {
             console.log('No results found with query. Trying alternative method...');
             
-            // FALLBACK: Try document ID format
-            const allResultsSnap = await db.collection('results').get();
+            // FALLBACK: Try loading all results for this pupil and filter
+            const allResultsSnap = await db.collection('results')
+                .where('pupilId', '==', currentPupilId)
+                .get();
+            
             const results = [];
             
             allResultsSnap.forEach(doc => {
                 const data = doc.data();
                 
-                if (data.pupilId === currentPupilId && 
-                    data.term === currentSettings.term &&
-                    data.session === currentSettings.session) {
+                if (data.term === currentSettings.term && data.session === currentSettings.session) {
                     results.push({
-                        subject: data.subject,
+                        subject: data.subject || 'Unknown Subject',
                         caScore: typeof data.caScore === 'number' ? data.caScore : 0,
                         examScore: typeof data.examScore === 'number' ? data.examScore : 0
                     });
@@ -357,7 +371,9 @@ async function loadAcademicResults() {
             console.log(`Fallback method found ${results.length} results`);
             
             if (results.length === 0) {
-                tbody.innerHTML = emptyRow(`No results for ${currentSettings.term}, ${currentSettings.session}`);
+                tbody.innerHTML = emptyRow(
+                    `No results available for ${currentSettings.term}, ${currentSettings.session} session`
+                );
                 return;
             }
             
