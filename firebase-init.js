@@ -1,10 +1,10 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Shared Authentication
- * SHARED CODE ONLY - No portal-specific logic
+ * CORRECTED - All duplicates removed
  * 
- * @version 3.0.0 - FIXED
- * @date 2026-01-05
+ * @version 3.1.0 - FIXED
+ * @date 2026-01-10
  */
 'use strict';
 
@@ -30,9 +30,10 @@ if (!firebase.apps.length) {
 // Export to window for global access
 window.db = firebase.firestore();
 window.auth = firebase.auth();
+window.firebase = firebase;
 
 // ============================================
-// ERROR MESSAGES
+// ERROR MESSAGES - DEFINED ONCE
 // ============================================
 
 window.ERROR_MESSAGES = {
@@ -60,66 +61,25 @@ window.ERROR_MESSAGES = {
   'unknown': 'An unexpected error occurred.'
 };
 
-/**
- * Then update handleError to use window.ERROR_MESSAGES
- */
-window.handleError = function(error, fallbackMessage = 'An error occurred') {
-  console.error('Error details:', error);
-  const errorCode = error.code || 'unknown';
-  
-  // Use window.ERROR_MESSAGES to ensure it's accessible
-  const userMessage = window.ERROR_MESSAGES[errorCode] || 
-                      `${fallbackMessage}: ${error.message || error.code}`;
-  
-  // Handle authentication errors specially
-  if (errorCode === 'unauthenticated' || errorCode === 'auth/unauthenticated') {
-    if (window.showToast) {
-      window.showToast(userMessage, 'danger', 3000);
-    } else {
-      alert(userMessage);
-    }
-    setTimeout(() => {
-      window.location.href = 'login.html';
-    }, 2000);
-    return userMessage;
-  }
-  
-  if (window.showToast) {
-    window.showToast(userMessage, 'danger', 5000);
-  } else {
-    alert(userMessage);
-  }
-  
-  return userMessage;
-};
-
 // ============================================
-// SHARED HELPER FUNCTIONS
+// ERROR HANDLER - DEFINED ONCE
 // ============================================
-
-/**
- * REPLACE the existing handleError function in firebase-init.js
- * Enhanced version with better error handling
- */
 
 window.handleError = function(error, fallbackMessage = 'An error occurred') {
   console.error('Error details:', error);
   
-  // Get error code
   const errorCode = error.code || 'unknown';
   
-  // ENHANCED: Better error message logic
   let userMessage = fallbackMessage;
   
   // Check if we have a predefined message
-  if (ERROR_MESSAGES[errorCode]) {
-    userMessage = ERROR_MESSAGES[errorCode];
+  if (window.ERROR_MESSAGES[errorCode]) {
+    userMessage = window.ERROR_MESSAGES[errorCode];
   } else if (error.message) {
-    // Use the error message if available
     userMessage = `${fallbackMessage}: ${error.message}`;
   }
   
-  // ENHANCED: Handle authentication errors specially
+  // Handle authentication errors specially
   if (errorCode === 'unauthenticated' || errorCode === 'auth/unauthenticated') {
     userMessage = '🔒 You must be logged in to perform this action.';
     if (window.showToast) {
@@ -127,14 +87,13 @@ window.handleError = function(error, fallbackMessage = 'An error occurred') {
     } else {
       alert(userMessage);
     }
-    // Redirect to login after 2 seconds
     setTimeout(() => {
       window.location.href = 'login.html';
     }, 2000);
     return userMessage;
   }
   
-  // ENHANCED: Show toast or alert
+  // Show toast or alert
   if (window.showToast) {
     window.showToast(userMessage, 'danger', 6000);
   } else {
@@ -144,12 +103,9 @@ window.handleError = function(error, fallbackMessage = 'An error occurred') {
   return userMessage;
 };
 
-console.log('✓ handleError enhanced with better Firebase error handling');
-
-/**
- * REPLACE the existing getCurrentSettings function in firebase-init.js
- * This version returns ALL settings fields your code expects
- */
+// ============================================
+// GET CURRENT SETTINGS - DEFINED ONCE
+// ============================================
 
 window.getCurrentSettings = async function() {
   try {
@@ -158,7 +114,7 @@ window.getCurrentSettings = async function() {
     if (settingsDoc.exists) {
       const data = settingsDoc.data();
       
-      // FIXED: Extract session info properly
+      // Extract session info properly
       let sessionName = '2025/2026';
       let sessionData = null;
 
@@ -171,17 +127,17 @@ window.getCurrentSettings = async function() {
         sessionName = data.session;
       }
 
-      // FIXED: Return ALL fields that code expects
+      // Return ALL fields that code expects
       return {
         term: data.term || 'First Term',
         session: sessionName,
-        currentSession: sessionData,  // Full session object
+        currentSession: sessionData,
         resumptionDate: data.resumptionDate || null,
         promotionPeriodActive: data.promotionPeriodActive || false
       };
     }
     
-    // FIXED: Return complete default structure
+    // Return complete default structure
     return {
       term: 'First Term',
       session: '2025/2026',
@@ -192,7 +148,7 @@ window.getCurrentSettings = async function() {
   } catch (error) {
     console.error('Error getting settings:', error);
     
-    // FIXED: Return complete default structure on error
+    // Return complete default structure on error
     return {
       term: 'First Term',
       session: '2025/2026',
@@ -203,7 +159,9 @@ window.getCurrentSettings = async function() {
   }
 };
 
-console.log('✓ getCurrentSettings updated with full fields');
+// ============================================
+// SHARED HELPER FUNCTIONS
+// ============================================
 
 /**
  * Get user role from Firestore
@@ -310,4 +268,4 @@ window.getAllTeachers = async function() {
   }
 };
 
-console.log('✓ Firebase initialized (shared v3.0.0)');
+console.log('✓ Firebase initialized (shared v3.1.0 - FIXED)');
