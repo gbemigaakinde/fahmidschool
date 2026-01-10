@@ -6,91 +6,291 @@
     <meta name="description" content="Explore our comprehensive nursery and primary academic programs designed to nurture young learners.">
     <title>Academics - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html" aria-current="page">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html" aria-current="page"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>Academics</h1>
-                <p class="lead">We offer a balanced curriculum for Nursery and Primary levels, combining play-based learning with structured academics.</p>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>Our Academic Programs</h1>
+            <p class="lead">
+                A comprehensive curriculum designed to build strong foundations and inspire lifelong learning
+            </p>
+        </div>
+    </section>
 
-            <section aria-labelledby="nursery-heading">
-                <h2 id="nursery-heading">Nursery Program</h2>
-                <p>Focus on foundational skills: literacy, numeracy, social interaction, and creative play.</p>
-            </section>
+    <main id="main-content" class="main-content">
 
-            <section aria-labelledby="primary-heading">
-                <h2 id="primary-heading">Primary Program</h2>
-                <p>Core subjects including English, Mathematics, Science, Social Studies, Arts, and Physical Education.</p>
-            </section>
+        <!-- OVERVIEW SECTION -->
+        <section class="container section">
+            <h2 class="section-title">Academic Excellence at Fahmid</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Our curriculum is carefully designed to provide age-appropriate learning experiences that develop intellectual curiosity, critical thinking, and a love for learning.
+            </p>
 
-            <section aria-labelledby="gallery-heading">
-                <h2 id="gallery-heading" class="visually-hidden">Learning Environments</h2>
-                <div class="grid">
-                    <figure>
-                        <img src="https://source.unsplash.com/random/400x300/?classroom" alt="Students engaged in classroom learning" loading="lazy">
-                        <figcaption>Interactive classroom sessions</figcaption>
-                    </figure>
-                    <figure>
-                        <img src="https://source.unsplash.com/random/400x300/?children-reading" alt="Children reading together" loading="lazy">
-                        <figcaption>Developing literacy skills</figcaption>
-                    </figure>
+            <div class="grid">
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="book-open"></i>
+                    </div>
+                    <h3>Balanced Curriculum</h3>
+                    <p>
+                        We combine academic rigor with creative expression, ensuring well-rounded development across all subject areas.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="users"></i>
+                    </div>
+                    <h3>Small Class Sizes</h3>
+                    <p>
+                        Our low student-to-teacher ratio ensures personalized attention and support for every child's learning journey.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <i data-lucide="trophy"></i>
+                    </div>
+                    <h3>Proven Results</h3>
+                    <p>
+                        Our students consistently achieve excellent results and transition smoothly to secondary education with confidence.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- NURSERY PROGRAM -->
+        <section class="container section" id="nursery">
+            <h2 class="section-title">Nursery Program (Ages 2-5)</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Our nursery program provides a warm, nurturing environment where young children develop foundational skills through play-based learning.
+            </p>
+
+            <div class="grid">
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="pen-tool" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Early Literacy</h3>
+                    <p>Introduction to letters, sounds, and simple words through songs, stories, and interactive activities.</p>
                 </div>
-            </section>
-        </article>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="calculator" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Numeracy Skills</h3>
+                    <p>Learning numbers, counting, shapes, and basic mathematical concepts through hands-on exploration.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="palette" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Creative Arts</h3>
+                    <p>Developing creativity and fine motor skills through art, music, and imaginative play activities.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="heart" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Social Development</h3>
+                    <p>Building friendships, learning to share, and developing emotional intelligence in a supportive environment.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRIMARY PROGRAM -->
+        <section class="container section" id="primary" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Primary Program (Primary 1-6)</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Our primary curriculum builds strong academic foundations while fostering critical thinking, creativity, and character development.
+            </p>
+
+            <div style="max-width: 900px; margin: 0 auto;">
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #2196F3;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="book-text" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">English Language</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">Reading comprehension, writing skills, grammar, vocabulary development, and oral communication through engaging literature and activities.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #4CAF50;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="calculator" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">Mathematics</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">Number operations, problem-solving, mental mathematics, geometry, measurement, and practical application of mathematical concepts.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #9C27B0;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="flask-conical" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">Science</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">Biology, chemistry, and physics concepts through hands-on experiments, observation, and exploration of the natural world.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #FF9800;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="globe" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">Social Studies</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">History, geography, citizenship, and cultural awareness to develop informed, responsible global citizens.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #00BCD4;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="palette" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">Creative Arts</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">Visual arts, music, drama, and crafts to nurture creativity, self-expression, and artistic appreciation.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border-left: 4px solid #F44336;">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="bike" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-3) 0;">Physical Education</h3>
+                            <p style="margin: 0; color: var(--color-gray-700);">Sports, games, and physical activities promoting fitness, teamwork, and healthy lifestyle habits.</p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- ASSESSMENT & REPORTING -->
+        <section class="container section">
+            <h2 class="section-title">Assessment & Progress Tracking</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                We use comprehensive assessment methods to monitor each child's progress and provide regular feedback to parents.
+            </p>
+
+            <div class="grid">
+                <div class="card">
+                    <h3><i data-lucide="clipboard-list" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Continuous Assessment</h3>
+                    <p>Regular classroom observations and evaluations to track daily learning progress and identify areas for support.</p>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="file-text" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Termly Reports</h3>
+                    <p>Detailed report cards three times per year showing academic performance, behavior, and personal development.</p>
+                </div>
+
+                <div class="card">
+                    <h3><i data-lucide="users-round" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Parent Meetings</h3>
+                    <p>Regular parent-teacher conferences to discuss progress, celebrate achievements, and address any concerns.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA SECTION -->
+        <section class="container section cta-section">
+            <h2>Discover Our Academic Programs</h2>
+            <p class="lead">
+                Schedule a school tour to see our classrooms in action and learn more about our curriculum
+            </p>
+            <a href="contact.html" class="btn">Schedule a Visit</a>
+            <a href="admissions.html" class="btn btn-secondary">View Admissions</a>
+        </section>
+
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
+                    <i data-lucide="facebook"></i>
+                </a>
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
+                    <i data-lucide="instagram"></i>
+                </a>
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <i data-lucide="message-circle"></i>
+                </a>
+            </div>
+
+            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
         </div>
     </footer>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
