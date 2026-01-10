@@ -774,6 +774,26 @@ function showSection(sectionId) {
 // Make globally available
 window.showSection = showSection;
 
+/* ========================================
+   SIDEBAR GROUP TOGGLE
+======================================== */
+
+function toggleSidebarGroup(button) {
+  const content = button.nextElementSibling;
+  const isCollapsed = button.classList.contains('collapsed');
+  
+  if (isCollapsed) {
+    button.classList.remove('collapsed');
+    content.classList.add('active');
+  } else {
+    button.classList.add('collapsed');
+    content.classList.remove('active');
+  }
+}
+
+// Make globally available
+window.toggleSidebarGroup = toggleSidebarGroup;
+
 /* ======================================== 
    DASHBOARD STATS 
 ======================================== */
