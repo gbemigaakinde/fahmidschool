@@ -6,269 +6,437 @@
     <meta name="description" content="Contact Fahmid Nursery & Primary School. Send us a message or visit our campus.">
     <title>Contact Us - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html" aria-current="page">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html" aria-current="page"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>Contact Us</h1>
-                <p class="lead">We'd love to hear from you. Fill out the form below or visit us.</p>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>Get in Touch</h1>
+            <p class="lead">
+                We'd love to hear from you. Contact us for inquiries, admissions, or to schedule a visit
+            </p>
+        </div>
+    </section>
 
-            <section aria-labelledby="contact-form-heading">
-                <h2 id="contact-form-heading">Send Us a Message</h2>
-                <form id="contact-form" action="https://formspree.io/f/your-email" method="POST" class="contact-form" novalidate>
+    <main id="main-content" class="main-content">
+
+        <!-- CONTACT METHODS -->
+        <section class="container section">
+            <div class="grid">
+                <article style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-10); border-radius: var(--radius-2xl); text-align: center; box-shadow: var(--shadow-lg);">
+                    <div style="background: rgba(255,255,255,0.2); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-6);">
+                        <i data-lucide="phone" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 style="color: white; margin-bottom: var(--space-3);">Call Us</h3>
+                    <p style="margin-bottom: var(--space-4); opacity: 0.9;">Speak directly with our team</p>
+                    <a href="tel:+2348061427297" style="color: white; font-size: var(--text-lg); font-weight: var(--weight-semibold); text-decoration: underline;">
+                        +234 806 142 7297
+                    </a>
+                </article>
+
+                <article style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: var(--space-10); border-radius: var(--radius-2xl); text-align: center; box-shadow: var(--shadow-lg);">
+                    <div style="background: rgba(255,255,255,0.2); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-6);">
+                        <i data-lucide="message-circle" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 style="color: white; margin-bottom: var(--space-3);">WhatsApp</h3>
+                    <p style="margin-bottom: var(--space-4); opacity: 0.9;">Quick response via messaging</p>
+                    <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" style="color: white; font-size: var(--text-lg); font-weight: var(--weight-semibold); text-decoration: underline;">
+                        Chat with Us
+                    </a>
+                </article>
+
+                <article style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); color: white; padding: var(--space-10); border-radius: var(--radius-2xl); text-align: center; box-shadow: var(--shadow-lg);">
+                    <div style="background: rgba(255,255,255,0.2); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-6);">
+                        <i data-lucide="mail" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <h3 style="color: white; margin-bottom: var(--space-3);">Email Us</h3>
+                    <p style="margin-bottom: var(--space-4); opacity: 0.9;">Send us a detailed message</p>
+                    <a href="mailto:info@fahmidschool.edu" style="color: white; font-size: var(--text-lg); font-weight: var(--weight-semibold); text-decoration: underline;">
+                        info@fahmidschool.edu
+                    </a>
+                </article>
+            </div>
+        </section>
+
+        <!-- CONTACT FORM -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Send Us a Message</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Fill out the form below and we'll get back to you as soon as possible
+            </p>
+
+            <div style="max-width: 700px; margin: 0 auto;">
+                <form id="contact-form" action="https://formspree.io/f/your-email" method="POST" style="background: white; padding: var(--space-10); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
                     <div class="form-group">
-                        <label for="name">Your Name <span class="required">*</span></label>
-                        <input type="text" id="name" name="name" required aria-required="true">
+                        <label for="name">
+                            <i data-lucide="user" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                            Your Name <span class="required">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" placeholder="Enter your full name" required aria-required="true">
                         <span class="error-message" id="name-error">Please enter your name</span>
                     </div>
                     
                     <div class="form-group">
-                        <label for="email">Your Email <span class="required">*</span></label>
-                        <input type="email" id="email" name="email" required aria-required="true">
+                        <label for="email">
+                            <i data-lucide="mail" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                            Email Address <span class="required">*</span>
+                        </label>
+                        <input type="email" id="email" name="email" placeholder="your.email@example.com" required aria-required="true">
                         <span class="error-message" id="email-error">Please enter a valid email address</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">
+                            <i data-lucide="phone" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                            Phone Number
+                        </label>
+                        <input type="tel" id="phone" name="phone" placeholder="+234 XXX XXX XXXX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subject">
+                            <i data-lucide="tag" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                            Subject
+                        </label>
+                        <select id="subject" name="subject" style="width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-gray-300); border-radius: var(--radius-md); font-family: var(--font-primary); font-size: var(--text-base);">
+                            <option value="">Select a subject</option>
+                            <option value="admissions">Admissions Inquiry</option>
+                            <option value="visit">Schedule a Visit</option>
+                            <option value="general">General Information</option>
+                            <option value="feedback">Feedback</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">
-                        <label for="message">Your Message <span class="required">*</span></label>
-                        <textarea id="message" name="message" rows="6" required aria-required="true"></textarea>
+                        <label for="message">
+                            <i data-lucide="message-square" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                            Your Message <span class="required">*</span>
+                        </label>
+                        <textarea id="message" name="message" rows="6" placeholder="Tell us how we can help you..." required aria-required="true"></textarea>
                         <span class="error-message" id="message-error">Please enter your message</span>
                     </div>
                     
-                    <button type="submit" class="btn" id="submit-btn">
-                        <span class="btn-text">Send Message</span>
+                    <button type="submit" class="btn" id="submit-btn" style="width: 100%;">
+                        <span class="btn-text">
+                            <i data-lucide="send" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;"></i>
+                            Send Message
+                        </span>
                         <span class="btn-loading" style="display:none;">Sending...</span>
                     </button>
                 </form>
-            </section>
+            </div>
+        </section>
 
-            <section aria-labelledby="visit-heading">
-                <h2 id="visit-heading">Visit Us</h2>
-                <address>
-                    <p><strong>Address:</strong> [Insert School Address Here]</p>
-                    <p><strong>Phone:</strong> <a href="tel:+234">[Insert Phone]</a></p>
-                    <p><strong>Email:</strong> <a href="mailto:info@fahmidschool.edu">info@fahmidschool.edu</a></p>
-                </address>
+        <!-- VISIT US -->
+        <section class="container section">
+            <h2 class="section-title">Visit Our School</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Come see our facilities and meet our team in person
+            </p>
 
-                <div class="map-container">
-                    <iframe 
-                        src="https://www.google.com/maps/embed?pb=..." 
-                        width="100%" 
-                        height="400" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy"
-                        title="Fahmid School location map">
-                    </iframe>
+            <div class="grid" style="max-width: 1100px; margin: 0 auto;">
+                <div style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 50px; height: 50px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="map-pin" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-2) 0;">Address</h3>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                [Insert School Address Here]<br>
+                                Lagos, Nigeria
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 50px; height: 50px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="clock" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-2) 0;">Office Hours</h3>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Monday - Friday: 8:00 AM - 4:00 PM<br>
+                                Saturday: By Appointment<br>
+                                Sunday: Closed
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: flex-start; gap: var(--space-4);">
+                        <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 50px; height: 50px; border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i data-lucide="car" style="color: white; width: 24px; height: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 var(--space-2) 0;">Getting Here</h3>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Easily accessible by car or public transport<br>
+                                Parking available on premises
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </section>
-        </article>
+
+                <div style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
+                    <h3 style="margin: 0 0 var(--space-6) 0; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="calendar" style="width: 24px; height: 24px; color: var(--color-primary);"></i>
+                        Schedule a Tour
+                    </h3>
+                    <p style="margin-bottom: var(--space-6); color: var(--color-gray-700); line-height: 1.8;">
+                        We welcome prospective parents to visit our school and see our programs in action. Tours are available during school hours by appointment.
+                    </p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: var(--space-8);">
+                        <li style="padding: var(--space-3) 0; border-bottom: 1px solid var(--color-gray-200); display: flex; align-items: center; gap: var(--space-3);">
+                            <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--color-success);"></i>
+                            <span>See our classrooms and facilities</span>
+                        </li>
+                        <li style="padding: var(--space-3) 0; border-bottom: 1px solid var(--color-gray-200); display: flex; align-items: center; gap: var(--space-3);">
+                            <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--color-success);"></i>
+                            <span>Meet our teachers and staff</span>
+                        </li>
+                        <li style="padding: var(--space-3) 0; border-bottom: 1px solid var(--color-gray-200); display: flex; align-items: center; gap: var(--space-3);">
+                            <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--color-success);"></i>
+                            <span>Learn about our curriculum</span>
+                        </li>
+                        <li style="padding: var(--space-3) 0; display: flex; align-items: center; gap: var(--space-3);">
+                            <i data-lucide="check-circle" style="width: 20px; height: 20px; color: var(--color-success);"></i>
+                            <span>Ask questions about admissions</span>
+                        </li>
+                    </ul>
+                    <a href="tel:+2348061427297" class="btn" style="width: 100%; text-align: center;">
+                        <i data-lucide="phone" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;"></i>
+                        Call to Schedule
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAP -->
+        <section class="container section">
+            <div style="border-radius: var(--radius-2xl); overflow: hidden; box-shadow: var(--shadow-lg); border: 1px solid var(--color-gray-200);">
+                <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.0!2d3.3792!3d6.5244!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMzEnMjcuOCJOIDPCsDIyJzQ1LjEiRQ!5e0!3m2!1sen!2sng!4v1234567890" 
+                    width="100%" 
+                    height="450" 
+                    style="border:0;" 
+                    allowfullscreen="" 
+                    loading="lazy"
+                    title="Fahmid School location map">
+                </iframe>
+            </div>
+        </section>
+
+        <!-- SOCIAL MEDIA -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Connect With Us</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Follow us on social media for updates, photos, and school news
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: var(--space-6); flex-wrap: wrap;">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" style="background: #1877F2; color: white; padding: var(--space-6) var(--space-8); border-radius: var(--radius-xl); display: flex; align-items: center; gap: var(--space-4); text-decoration: none; font-weight: var(--weight-semibold); transition: all 0.3s; box-shadow: var(--shadow-md);">
+                    <i data-lucide="facebook" style="width: 28px; height: 28px;"></i>
+                    <span>Facebook</span>
+                </a>
+
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); color: white; padding: var(--space-6) var(--space-8); border-radius: var(--radius-xl); display: flex; align-items: center; gap: var(--space-4); text-decoration: none; font-weight: var(--weight-semibold); transition: all 0.3s; box-shadow: var(--shadow-md);">
+                    <i data-lucide="instagram" style="width: 28px; height: 28px;"></i>
+                    <span>Instagram</span>
+                </a>
+
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" style="background: #25D366; color: white; padding: var(--space-6) var(--space-8); border-radius: var(--radius-xl); display: flex; align-items: center; gap: var(--space-4); text-decoration: none; font-weight: var(--weight-semibold); transition: all 0.3s; box-shadow: var(--shadow-md);">
+                    <i data-lucide="message-circle" style="width: 28px; height: 28px;"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </div>
+        </section>
+
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
+                    <i data-lucide="facebook"></i>
+                </a>
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
+                    <i data-lucide="instagram"></i>
+                </a>
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <i data-lucide="message-circle"></i>
+                </a>
+            </div>
+
+            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
         </div>
     </footer>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
     <script>
-        /**
-         * Contact Form Validation and Submission
-         */
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('contact-form');
-            const nameInput = document.getElementById('name');
-            const emailInput = document.getElementById('email');
-            const messageInput = document.getElementById('message');
-            const submitBtn = document.getElementById('submit-btn');
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
 
-            /**
-             * Validate email format
-             * @param {string} email - Email address to validate
-             * @returns {boolean} True if valid email format
-             */
-            function isValidEmail(email) {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return emailRegex.test(email);
+        // Contact Form Validation
+        const form = document.getElementById('contact-form');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const messageInput = document.getElementById('message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function showError(input, errorElement) {
+            input.classList.add('error');
+            input.classList.remove('success');
+            errorElement.classList.add('visible');
+            input.setAttribute('aria-invalid', 'true');
+        }
+
+        function showSuccess(input, errorElement) {
+            input.classList.remove('error');
+            input.classList.add('success');
+            errorElement.classList.remove('visible');
+            input.setAttribute('aria-invalid', 'false');
+        }
+
+        function validateField(input) {
+            const errorElement = document.getElementById(`${input.id}-error`);
+            const value = input.value.trim();
+
+            if (!value) {
+                showError(input, errorElement);
+                return false;
             }
 
-            /**
-             * Show validation error for a field
-             * @param {HTMLElement} input - Input element
-             * @param {HTMLElement} errorElement - Error message element
-             */
-            function showError(input, errorElement) {
-                input.classList.add('error');
-                input.classList.remove('success');
-                errorElement.classList.add('visible');
-                input.setAttribute('aria-invalid', 'true');
+            if (input.type === 'email' && !isValidEmail(value)) {
+                showError(input, errorElement);
+                return false;
             }
 
-            /**
-             * Show validation success for a field
-             * @param {HTMLElement} input - Input element
-             * @param {HTMLElement} errorElement - Error message element
-             */
-            function showSuccess(input, errorElement) {
-                input.classList.remove('error');
-                input.classList.add('success');
-                errorElement.classList.remove('visible');
-                input.setAttribute('aria-invalid', 'false');
-            }
+            showSuccess(input, errorElement);
+            return true;
+        }
 
-            /**
-             * Validate individual field
-             * @param {HTMLElement} input - Input element to validate
-             * @returns {boolean} True if field is valid
-             */
-            function validateField(input) {
-                const errorElement = document.getElementById(`${input.id}-error`);
-                const value = input.value.trim();
+        nameInput.addEventListener('blur', () => validateField(nameInput));
+        emailInput.addEventListener('blur', () => validateField(emailInput));
+        messageInput.addEventListener('blur', () => validateField(messageInput));
 
-                if (!value) {
-                    showError(input, errorElement);
-                    return false;
+        [nameInput, emailInput, messageInput].forEach(input => {
+            input.addEventListener('input', () => {
+                if (input.classList.contains('error')) {
+                    const errorElement = document.getElementById(`${input.id}-error`);
+                    input.classList.remove('error');
+                    errorElement.classList.remove('visible');
                 }
+            });
+        });
 
-                if (input.type === 'email' && !isValidEmail(value)) {
-                    showError(input, errorElement);
-                    return false;
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const isNameValid = validateField(nameInput);
+            const isEmailValid = validateField(emailInput);
+            const isMessageValid = validateField(messageInput);
+
+            if (!isNameValid || !isEmailValid || !isMessageValid) {
+                if (window.showToast) {
+                    window.showToast('Please fill in all required fields correctly', 'warning');
                 }
-
-                showSuccess(input, errorElement);
-                return true;
+                if (!isNameValid) nameInput.focus();
+                else if (!isEmailValid) emailInput.focus();
+                else if (!isMessageValid) messageInput.focus();
+                return;
             }
 
-            // Real-time validation on blur
-            nameInput.addEventListener('blur', () => validateField(nameInput));
-            emailInput.addEventListener('blur', () => validateField(emailInput));
-            messageInput.addEventListener('blur', () => validateField(messageInput));
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            submitBtn.querySelector('.btn-text').style.display = 'none';
+            submitBtn.querySelector('.btn-loading').style.display = 'inline';
 
-            // Clear error on input
-            [nameInput, emailInput, messageInput].forEach(input => {
-                input.addEventListener('input', () => {
-                    if (input.classList.contains('error')) {
-                        const errorElement = document.getElementById(`${input.id}-error`);
-                        input.classList.remove('error');
-                        errorElement.classList.remove('visible');
-                    }
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'Accept': 'application/json' }
                 });
-            });
 
-            /**
-             * Handle form submission
-             * @param {Event} e - Submit event
-             */
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                // Validate all fields
-                const isNameValid = validateField(nameInput);
-                const isEmailValid = validateField(emailInput);
-                const isMessageValid = validateField(messageInput);
-
-                if (!isNameValid || !isEmailValid || !isMessageValid) {
+                if (response.ok) {
                     if (window.showToast) {
-                        window.showToast('Please fill in all required fields correctly', 'warning');
+                        window.showToast('Message sent successfully! We\'ll get back to you soon.', 'success');
+                    } else {
+                        alert('Message sent successfully!');
                     }
-                    // Focus first invalid field
-                    if (!isNameValid) nameInput.focus();
-                    else if (!isEmailValid) emailInput.focus();
-                    else if (!isMessageValid) messageInput.focus();
-                    return;
-                }
-
-                // Show loading state
-                submitBtn.disabled = true;
-                submitBtn.classList.add('loading');
-                submitBtn.querySelector('.btn-text').style.display = 'none';
-                submitBtn.querySelector('.btn-loading').style.display = 'inline';
-
-                try {
-                    // Submit form using Fetch API
-                    const response = await fetch(form.action, {
-                        method: 'POST',
-                        body: new FormData(form),
-                        headers: {
-                            'Accept': 'application/json'
-                        }
+                    form.reset();
+                    [nameInput, emailInput, messageInput].forEach(input => {
+                        input.classList.remove('success');
                     });
-
-                    if (response.ok) {
-                        // Success
-                        if (window.showToast) {
-                            window.showToast('Message sent successfully! We\'ll get back to you soon.', 'success');
-                        } else {
-                            alert('Message sent successfully!');
-                        }
-                        form.reset();
-                        [nameInput, emailInput, messageInput].forEach(input => {
-                            input.classList.remove('success');
-                        });
-                    } else {
-                        throw new Error('Form submission failed');
-                    }
-                } catch (error) {
-                    console.error('Form submission error:', error);
-                    if (window.showToast) {
-                        window.showToast('Failed to send message. Please try again or email us directly.', 'danger');
-                    } else {
-                        alert('Failed to send message. Please try again.');
-                    }
-                } finally {
-                    // Reset button state
-                    submitBtn.disabled = false;
-                    submitBtn.classList.remove('loading');
-                    submitBtn.querySelector('.btn-text').style.display = 'inline';
-                    submitBtn.querySelector('.btn-loading').style.display = 'none';
+                } else {
+                    throw new Error('Form submission failed');
                 }
-            });
+            } catch (error) {
+                console.error('Form submission error:', error);
+                if (window.showToast) {
+                    window.showToast('Failed to send message. Please try again or email us directly.', 'danger');
+                } else {
+                    alert('Failed to send message. Please try again.');
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                submitBtn.querySelector('.btn-text').style.display = 'inline';
+                submitBtn.querySelector('.btn-loading').style.display = 'none';
+            }
         });
     </script>
 </body>
