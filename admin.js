@@ -4486,7 +4486,27 @@ function toggleSessionComparison() {
 window.loadSessionComparison = loadSessionComparison;
 window.toggleSessionComparison = toggleSessionComparison;
 
-  console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
+// Make all UI functions globally available
+window.showTeacherForm = showTeacherForm;
+window.cancelTeacherForm = cancelTeacherForm;
+window.showPupilForm = showPupilForm;
+window.cancelPupilForm = cancelPupilForm;
+window.editPupil = editPupil;
+window.showClassForm = showClassForm;
+window.addClass = addClass;
+window.showSubjectForm = showSubjectForm;
+window.addSubject = addSubject;
+window.deleteUser = deleteUser;
+window.deleteItem = deleteItem;
+window.assignTeacherToClass = assignTeacherToClass;
+window.unassignTeacher = unassignTeacher;
+window.showAnnounceForm = showAnnounceForm;
+window.addAnnouncement = addAnnouncement;
+window.loadCurrentSettings = loadCurrentSettings;
+window.loadAlumni = loadAlumni;
+window.loadViewResultsSection = loadViewResultsSection;
+
+console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
 
 /* ======================================== 
    SESSION VALIDATION ON LOAD
