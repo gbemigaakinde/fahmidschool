@@ -10,7 +10,7 @@
  * Version: 6.2.0 - ACADEMIC RESULTS LOADING FIXED
  * Date: 2026-01-10
  */
-
+ 
 'use strict';
 
 let currentPupilId = null;
