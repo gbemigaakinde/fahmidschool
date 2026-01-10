@@ -272,7 +272,6 @@
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const article = document.createElement('article');
-                    article.className = 'animate-on-scroll animate-fadeInUp';
                     article.style.cssText = 'background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); margin-bottom: var(--space-8); border: 1px solid var(--color-gray-200); transition: all 0.3s ease;';
                     
                     article.addEventListener('mouseenter', function() {
