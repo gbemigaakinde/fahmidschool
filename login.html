@@ -411,40 +411,55 @@
                 </div>
 
                 <!-- Form -->
-                <form id="auth-form" novalidate>
-                    <!-- Email Field -->
-                    <div class="form-group">
-                        <label for="email">Email Address <span class="required">*</span></label>
-                        <div class="input-wrapper">
-                            <i data-lucide="mail" class="input-icon"></i>
-                            <input 
-                                type="email" 
-                                id="email" 
-                                class="auth-input"
-                                placeholder="your.email@example.com" 
-                                required 
-                                aria-required="true" 
-                                autocomplete="email">
-                        </div>
-                        <span class="error-message" id="email-error">Please enter a valid email address</span>
-                    </div>
+<form id="auth-form" novalidate>
 
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <label for="password">Password <span class="required">*</span></label>
-                        <div class="input-wrapper">
-                            <i data-lucide="lock" class="input-icon"></i>
-                            <input 
-                                type="password" 
-                                id="password" 
-                                class="auth-input"
-                                placeholder="Enter your password" 
-                                required 
-                                aria-required="true" 
-                                autocomplete="current-password">
-                        </div>
-                        <span class="error-message" id="password-error">Password must be at least 6 characters</span>
-                    </div>
+    <!-- Email Field -->
+    <div class="form-group">
+        <div class="label-wrapper">
+            <label for="email">
+                Email Address <span class="required">*</span>
+            </label>
+            <i data-lucide="mail" class="label-icon"></i>
+        </div>
+
+        <input 
+            type="email" 
+            id="email" 
+            class="auth-input"
+            placeholder="your.email@example.com" 
+            required 
+            aria-required="true" 
+            autocomplete="email">
+
+        <span class="error-message" id="email-error">
+            Please enter a valid email address
+        </span>
+    </div>
+
+    <!-- Password Field -->
+    <div class="form-group">
+        <div class="label-wrapper">
+            <label for="password">
+                Password <span class="required">*</span>
+            </label>
+            <i data-lucide="lock" class="label-icon"></i>
+        </div>
+
+        <input 
+            type="password" 
+            id="password" 
+            class="auth-input"
+            placeholder="Enter your password" 
+            required 
+            aria-required="true" 
+            autocomplete="current-password">
+
+        <span class="error-message" id="password-error">
+            Password must be at least 6 characters
+        </span>
+    </div>
+
+</form>
 
                     <!-- Role Selection (Register Only) -->
                     <div id="role-selection" class="role-selection" style="display:none;">
