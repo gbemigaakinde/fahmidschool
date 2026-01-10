@@ -479,9 +479,6 @@
             Password must be at least 6 characters
         </span>
     </div>
-
-</form>
-
                     <!-- Role Selection (Register Only) -->
                     <div id="role-selection" class="role-selection" style="display:none;">
                         <fieldset>
@@ -682,38 +679,40 @@
 
             // Form submission
             document.getElementById('auth-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
+    e.preventDefault();
 
-                const isEmailValid = validateEmail();
-                const isPasswordValid = validatePassword();
+    if (!isLoginMode) {
+        window.showToast(
+            'Registration is locked. Contact the administrator.',
+            'warning'
+        );
+        return;
+    }
 
-                if (!isEmailValid || !isPasswordValid) {
-                    window.showToast('Please fix the errors before submitting', 'warning');
-                    return;
-                }
+    const isEmailValid = validateEmail();
+    const isPasswordValid = validatePassword();
 
-                const email = document.getElementById('email').value.trim();
-                const password = document.getElementById('password').value;
-                const btn = document.getElementById('auth-btn');
+    if (!isEmailValid || !isPasswordValid) {
+        window.showToast('Please fix the errors before submitting', 'warning');
+        return;
+    }
 
-                // Show loading state
-                btn.disabled = true;
-                btn.classList.add('loading');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('auth-btn');
 
-                try {
-                    if (isLoginMode) {
-                        await login(email, password);
-                    } else {
-                        const role = document.querySelector('input[name="role"]:checked').value;
-                        await register(email, password, role);
-                    }
-                } catch (error) {
-                    console.error('Auth error:', error);
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('loading');
-                }
-            });
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+        await login(email, password);
+    } catch (error) {
+        console.error('Auth error:', error);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    }
+});
         });
     </script>
 </body>
