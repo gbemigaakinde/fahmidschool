@@ -423,6 +423,11 @@ function renderSubjects(subjects, teacher) {
 // LOAD RESULTS WITH SESSION SUPPORT - FIXED
 // ============================================
 
+/**
+ * FIXED: Load Results with Working Session Selector
+ * Replace the loadResults function in pupil.js
+ */
+
 async function loadResults() {
     if (!currentPupilId) return;
 
@@ -442,18 +447,38 @@ async function loadResults() {
         // Populate session selector first
         await populateSessionSelector();
         
-        // CRITICAL FIX: Add event listener for session selector
+        // CRITICAL FIX: Add event listener AFTER selector is in DOM and wait for next frame
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        
         const sessionSelect = document.getElementById('pupil-session-select');
         if (sessionSelect) {
+            console.log('✓ Session selector found in DOM');
+            
             // Remove any existing listeners to prevent duplicates
             const newSessionSelect = sessionSelect.cloneNode(true);
             sessionSelect.parentNode.replaceChild(newSessionSelect, sessionSelect);
             
-            // Add new listener
-            newSessionSelect.addEventListener('change', async () => {
-                console.log('Session changed to:', newSessionSelect.value);
+            // Add new listener with proper logging
+            newSessionSelect.addEventListener('change', async function() {
+                const selectedValue = this.value;
+                console.log('Session changed to:', selectedValue);
+                
+                // Show loading state
+                container.innerHTML = `
+                    <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+                        <div class="spinner" style="margin: 0 auto var(--space-md); width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <p>Loading results for ${selectedValue === 'current' ? 'current session' : selectedValue}...</p>
+                    </div>
+                `;
+                
+                // Load results with small delay for visual feedback
+                await new Promise(resolve => setTimeout(resolve, 300));
                 await loadSessionResults();
             });
+            
+            console.log('✓ Session selector event listener attached');
+        } else {
+            console.error('❌ Session selector not found after populateSessionSelector()');
         }
         
         // Load results for selected session
