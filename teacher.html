@@ -160,27 +160,66 @@
     </button>
 
     <!-- Sidebar -->
-    <nav
-        class="admin-sidebar teacher-sidebar"
-        id="teacher-sidebar"
-        aria-label="Teacher navigation">
+    <nav class="admin-sidebar teacher-sidebar" id="teacher-sidebar" aria-label="Teacher navigation">
+    <!-- Sidebar Header -->
+    <div class="sidebar-header-modern">
+        <div class="sidebar-logo">
+            <i data-lucide="graduation-cap" class="sidebar-logo-icon"></i>
+            <span class="sidebar-logo-text">Teacher Portal</span>
+        </div>
+    </div>
 
-        <h2>Teacher Portal</h2>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar-nav-modern">
+        <a href="#dashboard" data-section="dashboard" class="sidebar-link active">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+        </a>
+        
+        <a href="#my-classes" data-section="my-classes" class="sidebar-link">
+            <i data-lucide="users-2"></i>
+            <span>My Classes</span>
+        </a>
+        
+        <a href="#enter-results" data-section="enter-results" class="sidebar-link">
+            <i data-lucide="clipboard-list"></i>
+            <span>Enter Results</span>
+        </a>
+        
+        <a href="#attendance" data-section="attendance" class="sidebar-link">
+            <i data-lucide="calendar-check"></i>
+            <span>Attendance</span>
+        </a>
+        
+        <a href="#traits-skills" data-section="traits-skills" class="sidebar-link">
+            <i data-lucide="award"></i>
+            <span>Traits & Skills</span>
+        </a>
+        
+        <a href="#remarks" data-section="remarks" class="sidebar-link">
+            <i data-lucide="message-square-text"></i>
+            <span>Remarks</span>
+        </a>
+        
+        <a href="#promotions" data-section="promotions" class="sidebar-link">
+            <i data-lucide="trending-up"></i>
+            <span>Class Promotion</span>
+        </a>
+    </div>
 
-        <a href="#dashboard" data-section="dashboard" class="active">Dashboard</a>
-        <a href="#my-classes" data-section="my-classes">My Classes</a>
-        <a href="#enter-results" data-section="enter-results">Enter Results</a>
-        <a href="#attendance" data-section="attendance">Attendance</a>
-        <a href="#traits-skills" data-section="traits-skills">Traits & Skills</a>
-        <a href="#remarks" data-section="remarks">Remarks</a>
-        <a href="#promotions" data-section="promotions">Class Promotion</a>
-        <hr class="sidebar-divider">
-
-        <a href="index.html">← Back to Public Site</a>
-        <a href="#" id="teacher-logout" class="logout-link">Logout</a>
-
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer-modern">
+        <a href="index.html" class="sidebar-link sidebar-link-secondary">
+            <i data-lucide="arrow-left"></i>
+            <span>Back to Site</span>
+        </a>
+        <a href="#" id="teacher-logout" class="sidebar-link sidebar-link-danger">
+            <i data-lucide="log-out"></i>
+            <span>Logout</span>
+        </a>
         <div class="teacher-info" id="teacher-info">Loading...</div>
-    </nav>
+    </div>
+</nav>
 
     <!-- Main -->
     <main class="admin-main" id="main-content" role="main" tabindex="-1">
