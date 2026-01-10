@@ -3896,225 +3896,319 @@ async function loadFilteredPupils() {
   }
 }
 
+/**
+ * FIXED: Load Pupil Results with Session Validation
+ * Replace the loadPupilResults function in admin.js
+ */
+
 async function loadPupilResults() {
-  const pupilSelect = document.getElementById('filter-pupil');
-  const container = document.getElementById('results-display-container');
-  const infoCard = document.getElementById('pupil-info-card');
-  
-  if (!pupilSelect || !container) return;
-  
-  const selectedPupil = pupilSelect.value;
-  
-  if (!selectedPupil || !currentResultsSession) {
-    infoCard.style.display = 'none';
+    const pupilSelect = document.getElementById('filter-pupil');
+    const container = document.getElementById('results-display-container');
+    const infoCard = document.getElementById('pupil-info-card');
+    
+    if (!pupilSelect || !container) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    const selectedPupil = pupilSelect.value;
+    
+    // CRITICAL FIX: Validate all required data before proceeding
+    if (!selectedPupil) {
+        infoCard.style.display = 'none';
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+                <p>Select a pupil to view results</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (!currentResultsSession) {
+        console.error('Session not selected');
+        infoCard.style.display = 'none';
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-warning);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
+                <p style="font-weight: 600;">Session not selected</p>
+                <p>Please select a session from the filter above</p>
+            </div>
+        `;
+        return;
+    }
+    
+    currentResultsPupilId = selectedPupil;
+    
+    // Show loading
     container.innerHTML = `
-      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-        <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
-        <p>Select all filters to view results</p>
-      </div>
-    `;
-    return;
-  }
-  
-  currentResultsPupilId = selectedPupil;
-  
-  // Show loading
-  container.innerHTML = `
-    <div style="text-align: center; padding: var(--space-2xl);">
-      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
-      <p style="color: var(--color-gray-600);">Loading results...</p>
-    </div>
-  `;
-  
-  try {
-    // Get pupil data
-    const pupilDoc = await db.collection('pupils').doc(selectedPupil).get();
-    
-    if (!pupilDoc.exists) {
-      throw new Error('Pupil not found');
-    }
-    
-    const pupilData = pupilDoc.data();
-    
-    // Get pupil's class name
-    let className = 'Unknown';
-    if (pupilData.class) {
-      if (typeof pupilData.class === 'object' && pupilData.class.name) {
-        className = pupilData.class.name;
-      } else if (typeof pupilData.class === 'string') {
-        className = pupilData.class;
-      }
-    }
-    
-    // Update info card
-    document.getElementById('pupil-info-name').textContent = pupilData.name || 'Unknown';
-    document.getElementById('pupil-info-class').textContent = className;
-    document.getElementById('pupil-info-session').textContent = currentResultsSession;
-    document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
-    infoCard.style.display = 'block';
-    
-    // Load results for this pupil and session
-    const resultsSnap = await db.collection('results')
-      .where('pupilId', '==', selectedPupil)
-      .where('session', '==', currentResultsSession)
-      .get();
-    
-    if (resultsSnap.empty) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-          <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
-          <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
-          <p>This pupil has no recorded results for session: ${currentResultsSession}</p>
+        <div style="text-align: center; padding: var(--space-2xl);">
+            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+            <p style="color: var(--color-gray-600);">Loading results for session: ${currentResultsSession}</p>
         </div>
-      `;
-      return;
+    `;
+    
+    try {
+        // Get pupil data
+        const pupilDoc = await db.collection('pupils').doc(selectedPupil).get();
+        
+        if (!pupilDoc.exists) {
+            throw new Error('Pupil not found');
+        }
+        
+        const pupilData = pupilDoc.data();
+        
+        // Get pupil's class name
+        let className = 'Unknown';
+        if (pupilData.class) {
+            if (typeof pupilData.class === 'object' && pupilData.class.name) {
+                className = pupilData.class.name;
+            } else if (typeof pupilData.class === 'string') {
+                className = pupilData.class;
+            }
+        }
+        
+        // Update info card
+        document.getElementById('pupil-info-name').textContent = pupilData.name || 'Unknown';
+        document.getElementById('pupil-info-class').textContent = className;
+        document.getElementById('pupil-info-session').textContent = currentResultsSession;
+        document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
+        infoCard.style.display = 'block';
+        
+        console.log('Querying results with:', {
+            pupilId: selectedPupil,
+            session: currentResultsSession
+        });
+        
+        // Load results for this pupil and session
+        const resultsSnap = await db.collection('results')
+            .where('pupilId', '==', selectedPupil)
+            .where('session', '==', currentResultsSession)
+            .get();
+        
+        console.log(`Query returned ${resultsSnap.size} results`);
+        
+        if (resultsSnap.empty) {
+            console.log('No results found, trying fallback method...');
+            
+            // Fallback: Try loading all results and filtering
+            const allResultsSnap = await db.collection('results')
+                .where('pupilId', '==', selectedPupil)
+                .get();
+            
+            const results = [];
+            allResultsSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.session === currentResultsSession) {
+                    results.push({
+                        term: data.term || 'Unknown',
+                        subject: data.subject || 'Unknown',
+                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                    });
+                }
+            });
+            
+            console.log(`Fallback found ${results.length} results`);
+            
+            if (results.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                        <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
+                        <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
+                        <p>This pupil has no recorded results for session: <strong>${currentResultsSession}</strong></p>
+                        <p style="font-size: var(--text-sm); margin-top: var(--space-md); color: var(--color-gray-500);">
+                            Make sure results have been entered by the class teacher.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            currentResultsData = results;
+            renderResultsDisplay(results, container);
+        } else {
+            // Process results from query
+            const results = [];
+            
+            resultsSnap.forEach(doc => {
+                const data = doc.data();
+                results.push({
+                    term: data.term || 'Unknown',
+                    subject: data.subject || 'Unknown',
+                    caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                    examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                });
+            });
+            
+            currentResultsData = results;
+            renderResultsDisplay(results, container);
+        }
+
+    } catch (error) {
+        console.error('Error loading pupil results:', error);
+        
+        let errorMessage = 'Error loading results';
+        let errorDetails = error.message || 'Unknown error';
+        
+        if (error.code === 'permission-denied') {
+            errorMessage = 'Permission denied';
+            errorDetails = 'You do not have permission to view this data';
+        } else if (error.code === 'unavailable') {
+            errorMessage = 'Service unavailable';
+            errorDetails = 'Cannot connect to server. Check your internet connection.';
+        }
+        
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
+                <p style="font-size: var(--text-lg); font-weight: 600;">${errorMessage}</p>
+                <p>${errorDetails}</p>
+                <button class="btn btn-primary" onclick="loadPupilResults()" style="margin-top: var(--space-lg);">
+                    🔄 Retry
+                </button>
+            </div>
+        `;
     }
-    
-    // Process results
-    const resultsData = [];
-    resultsSnap.forEach(doc => {
-      const data = doc.data();
-      resultsData.push({
-        term: data.term || 'Unknown',
-        subject: data.subject || 'Unknown',
-        caScore: data.caScore || 0,
-        examScore: data.examScore || 0,
-        total: (data.caScore || 0) + (data.examScore || 0)
-      });
-    });
-    
-    currentResultsData = resultsData;
+}
+
+/**
+ * Helper function to render results display
+ */
+function renderResultsDisplay(results, container) {
+    container.innerHTML = '';
     
     // Group by term
     const terms = {};
-    resultsData.forEach(r => {
-      if (!terms[r.term]) terms[r.term] = [];
-      terms[r.term].push(r);
+    results.forEach(r => {
+        if (!terms[r.term]) terms[r.term] = [];
+        terms[r.term].push(r);
     });
-    
-    // Render results
-    container.innerHTML = '';
     
     let overallTotal = 0;
     let overallCount = 0;
     
     ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
-      if (!terms[termName]) return;
-      
-      const termSection = document.createElement('div');
-      termSection.style.marginBottom = 'var(--space-2xl)';
-      
-      const heading = document.createElement('h3');
-      heading.textContent = termName;
-      heading.style.marginBottom = 'var(--space-md)';
-      heading.style.color = '#0f172a';
-      heading.style.fontSize = 'var(--text-xl)';
-      termSection.appendChild(heading);
-      
-      const table = document.createElement('table');
-      table.className = 'responsive-table';
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>Subject</th>
-            <th style="text-align: center;">CA (40)</th>
-            <th style="text-align: center;">Exam (60)</th>
-            <th style="text-align: center;">Total (100)</th>
-            <th style="text-align: center;">Grade</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      `;
-      
-      const tbody = table.querySelector('tbody');
-      
-      let termTotal = 0;
-      let subjectCount = 0;
-      
-      // Sort by subject name
-      terms[termName].sort((a, b) => a.subject.localeCompare(b.subject));
-      
-      terms[termName].forEach(result => {
-        const grade = getGrade(result.total);
-        const gradeClass = `grade-${grade}`;
+        if (!terms[termName]) return;
         
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td data-label="Subject"><strong>${result.subject}</strong></td>
-          <td data-label="CA" style="text-align: center;">${result.caScore}</td>
-          <td data-label="Exam" style="text-align: center;">${result.examScore}</td>
-          <td data-label="Total" style="text-align: center; font-weight: 700;">${result.total}</td>
-          <td data-label="Grade" style="text-align: center;" class="${gradeClass}"><strong>${grade}</strong></td>
+        const termSection = document.createElement('div');
+        termSection.style.marginBottom = 'var(--space-2xl)';
+        
+        const heading = document.createElement('h3');
+        heading.textContent = termName;
+        heading.style.marginBottom = 'var(--space-md)';
+        heading.style.color = '#0f172a';
+        heading.style.fontSize = 'var(--text-xl)';
+        termSection.appendChild(heading);
+        
+        const table = document.createElement('table');
+        table.className = 'responsive-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th style="text-align: center;">CA (40)</th>
+                    <th style="text-align: center;">Exam (60)</th>
+                    <th style="text-align: center;">Total (100)</th>
+                    <th style="text-align: center;">Grade</th>
+                    <th style="text-align: center;">Remark</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
         `;
-        tbody.appendChild(tr);
         
-        termTotal += result.total;
-        subjectCount++;
-        overallTotal += result.total;
-        overallCount++;
-      });
-      
-      // Add term summary
-      if (subjectCount > 0) {
-        const average = (termTotal / subjectCount).toFixed(1);
-        const avgGrade = getGrade(parseFloat(average));
+        const tbody = table.querySelector('tbody');
         
-        tbody.innerHTML += `
-          <tr style="background: #f1f5f9; font-weight: 700;">
-            <td colspan="3"><strong>TERM TOTAL</strong></td>
-            <td colspan="2" style="text-align: center;"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
-          </tr>
-          <tr style="background: #e0f2fe; font-weight: 700; color: #0369a1;">
-            <td colspan="3"><strong>TERM AVERAGE</strong></td>
-            <td colspan="2" style="text-align: center;"><strong>${average}% (${avgGrade})</strong></td>
-          </tr>
-        `;
-      }
-      
-      termSection.appendChild(table);
-      container.appendChild(termSection);
+        let termTotal = 0;
+        let subjectCount = 0;
+        
+        // Sort by subject name
+        terms[termName].sort((a, b) => a.subject.localeCompare(b.subject));
+        
+        terms[termName].forEach(result => {
+            const total = result.caScore + result.examScore;
+            const grade = getGrade(total);
+            const remark = getRemark(total);
+            const gradeClass = `grade-${grade}`;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Subject"><strong>${result.subject}</strong></td>
+                <td data-label="CA" style="text-align: center;">${result.caScore}</td>
+                <td data-label="Exam" style="text-align: center;">${result.examScore}</td>
+                <td data-label="Total" style="text-align: center; font-weight: 700;">${total}</td>
+                <td data-label="Grade" style="text-align: center;" class="${gradeClass}"><strong>${grade}</strong></td>
+                <td data-label="Remark" style="text-align: center;">${remark}</td>
+            `;
+            tbody.appendChild(tr);
+            
+            termTotal += total;
+            subjectCount++;
+            overallTotal += total;
+            overallCount++;
+        });
+        
+        // Add term summary
+        if (subjectCount > 0) {
+            const average = (termTotal / subjectCount).toFixed(1);
+            const avgGrade = getGrade(parseFloat(average));
+            
+            tbody.innerHTML += `
+                <tr style="background: #f1f5f9; font-weight: 700;">
+                    <td colspan="3"><strong>TERM TOTAL</strong></td>
+                    <td colspan="3" style="text-align: center;"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
+                </tr>
+                <tr style="background: #e0f2fe; font-weight: 700; color: #0369a1;">
+                    <td colspan="3"><strong>TERM AVERAGE</strong></td>
+                    <td colspan="3" style="text-align: center;"><strong>${average}% (${avgGrade})</strong></td>
+                </tr>
+            `;
+        }
+        
+        termSection.appendChild(table);
+        container.appendChild(termSection);
     });
     
     // Add overall session summary
     if (overallCount > 0) {
-      const overallAverage = (overallTotal / overallCount).toFixed(1);
-      const overallGrade = getGrade(parseFloat(overallAverage));
-      
-      const summaryCard = document.createElement('div');
-      summaryCard.style.cssText = `
-        background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-lg);
-        margin-top: var(--space-2xl);
-        box-shadow: 0 4px 20px rgba(0, 178, 255, 0.3);
-      `;
-      
-      summaryCard.innerHTML = `
-        <h3 style="margin: 0 0 var(--space-lg); color: white; font-size: var(--text-xl);">
-          📊 Session Summary: ${currentResultsSession}
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
-          <div>
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Total Subjects</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallCount}</div>
-          </div>
-          <div>
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Score</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallTotal} / ${overallCount * 100}</div>
-          </div>
-          <div>
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session Average</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallAverage}%</div>
-          </div>
-          <div>
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Grade</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallGrade}</div>
-          </div>
-        </div>
-      `;
-      
-      container.appendChild(summaryCard);
+        const overallAverage = (overallTotal / overallCount).toFixed(1);
+        const overallGrade = getGrade(parseFloat(overallAverage));
+        
+        const summaryCard = document.createElement('div');
+        summaryCard.style.cssText = `
+            background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+            color: white;
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            margin-top: var(--space-2xl);
+            box-shadow: 0 4px 20px rgba(0, 178, 255, 0.3);
+        `;
+        
+        summaryCard.innerHTML = `
+            <h3 style="margin: 0 0 var(--space-lg); color: white; font-size: var(--text-xl);">
+                📊 Session Summary: ${currentResultsSession}
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Total Subjects</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallCount}</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Score</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallTotal} / ${overallCount * 100}</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session Average</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallAverage}%</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Grade</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallGrade}</div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(summaryCard);
     }
     
     // Show session comparison button
@@ -4125,19 +4219,17 @@ async function loadPupilResults() {
     comparisonBtn.innerHTML = '📈 Compare Across Sessions';
     container.appendChild(comparisonBtn);
     
-    console.log(`✓ Loaded ${resultsData.length} results for pupil: ${pupilData.name}`);
-    
-  } catch (error) {
-    console.error('Error loading pupil results:', error);
-    container.innerHTML = `
-      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
-        <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
-        <p style="font-size: var(--text-lg); font-weight: 600;">Error loading results</p>
-        <p>${error.message}</p>
-      </div>
-    `;
-    window.showToast?.('Failed to load results', 'danger');
-  }
+    console.log(`✓ Rendered ${results.length} results successfully`);
+}
+
+function getRemark(score) {
+    if (score >= 75) return 'Excellent';
+    if (score >= 70) return 'Very Good';
+    if (score >= 65) return 'Good';
+    if (score >= 60) return 'Credit';
+    if (score >= 50) return 'Credit';
+    if (score >= 45) return 'Pass';
+    return 'Fail';
 }
 
 function getGrade(score) {
