@@ -96,7 +96,7 @@
             </p>
 
             <div class="grid">
-                <article class="card">
+                <article class="card animate-on-scroll animate-scaleIn">
                     <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
                         <i data-lucide="calendar" style="width: 40px; height: 40px; color: white;"></i>
                     </div>
@@ -110,7 +110,7 @@
                     </p>
                 </article>
 
-                <article class="card">
+                <article class="card animate-on-scroll animate-scaleIn">
                     <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
                         <i data-lucide="users" style="width: 40px; height: 40px; color: white;"></i>
                     </div>
@@ -124,7 +124,7 @@
                     </p>
                 </article>
 
-                <article class="card">
+                <article class="card animate-on-scroll animate-scaleIn">
                     <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
                         <i data-lucide="trophy" style="width: 40px; height: 40px; color: white;"></i>
                     </div>
@@ -148,7 +148,7 @@
             </p>
 
             <div class="grid">
-                <div class="card">
+                <div class="card animate-on-scroll animate-fadeInUp">
                     <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
                         <i data-lucide="facebook" style="width: 28px; height: 28px; color: white;"></i>
                     </div>
@@ -159,7 +159,7 @@
                     </a>
                 </div>
 
-                <div class="card">
+                <div class="card animate-on-scroll animate-fadeInUp">
                     <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
                         <i data-lucide="instagram" style="width: 28px; height: 28px; color: white;"></i>
                     </div>
@@ -272,6 +272,7 @@
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const article = document.createElement('article');
+                    article.className = 'animate-on-scroll animate-fadeInUp';
                     article.style.cssText = 'background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); margin-bottom: var(--space-8); border: 1px solid var(--color-gray-200); transition: all 0.3s ease;';
                     
                     article.addEventListener('mouseenter', function() {
