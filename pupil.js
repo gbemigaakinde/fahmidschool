@@ -184,16 +184,17 @@ async function loadPupilProfile(user) {
 
         // Display pupil profile
         renderProfile({
-            name: data.name || '-',
-            dob: data.dob || '-',
-            gender: data.gender || '-',
-            contact: data.contact || '-',
-            address: data.address || '-',
-            email: data.email || '-',
-            class: currentClassInfo.name,
-            teacher: currentClassInfo.teacher,
-            subjects: currentClassInfo.subjects
-        });
+    name: data.name || '-',
+    dob: data.dob || '-',
+    admissionNo: data.admissionNo || '-',
+    gender: data.gender || '-',
+    contact: data.contact || '-',
+    address: data.address || '-',
+    email: data.email || '-',
+    class: currentClassInfo.name,
+    teacher: currentClassInfo.teacher,
+    subjects: currentClassInfo.subjects
+});
 
         // Update header information
         const settings = await getCurrentSettings();
@@ -258,16 +259,17 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
           
           // Update UI directly without calling loadPupilProfile
           renderProfile({
-            name: updatedData.name || '-',
-            dob: updatedData.dob || '-',
-            gender: updatedData.gender || '-',
-            contact: updatedData.contact || '-',
-            address: updatedData.address || '-',
-            email: updatedData.email || '-',
-            class: currentClassInfo.name,
-            teacher: currentClassInfo.teacher,
-            subjects: currentClassInfo.subjects
-          });
+    name: updatedData.name || '-',
+    dob: updatedData.dob || '-',
+    admissionNo: updatedData.admissionNo || '-',
+    gender: updatedData.gender || '-',
+    contact: updatedData.contact || '-',
+    address: updatedData.address || '-',
+    email: updatedData.email || '-',
+    class: currentClassInfo.name,
+    teacher: currentClassInfo.teacher,
+    subjects: currentClassInfo.subjects
+});
 
           // Update header information
           const settings = await getCurrentSettings();
@@ -352,16 +354,17 @@ if (classId) {
             
             // Update profile with new class info
             renderProfile({
-              name: currentPupilData.name || '-',
-              dob: currentPupilData.dob || '-',
-              gender: currentPupilData.gender || '-',
-              contact: currentPupilData.contact || '-',
-              address: currentPupilData.address || '-',
-              email: currentPupilData.email || '-',
-              class: currentClassInfo.name,
-              teacher: currentClassInfo.teacher,
-              subjects: currentClassInfo.subjects
-            });
+    name: currentPupilData.name || '-',
+    dob: currentPupilData.dob || '-',
+    admissionNo: currentPupilData.admissionNo || '-',
+    gender: currentPupilData.gender || '-',
+    contact: currentPupilData.contact || '-',
+    address: currentPupilData.address || '-',
+    email: currentPupilData.email || '-',
+    class: currentClassInfo.name,
+    teacher: currentClassInfo.teacher,
+    subjects: currentClassInfo.subjects
+});
 
             // Update header information
             const settings = await getCurrentSettings();
