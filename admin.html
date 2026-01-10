@@ -629,49 +629,106 @@ button[onclick="exportPupilResults()"]:hover {
         <span></span>
     </button>
 
-    <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
-        <h2>Admin Panel</h2>
-        <a href="#dashboard" class="active" onclick="showSection('dashboard')">📊 Dashboard</a>
-        
-        <!-- User Management Group -->
-        <div class="sidebar-group">
-            <button class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)">
-                <span class="toggle-icon">▼</span>
-                <span>👥 User Management</span>
-            </button>
-            <div class="sidebar-group-content active">
-                <a href="#teachers" onclick="showSection('teachers')">Teachers</a>
-                <a href="#pupils" onclick="showSection('pupils')">Pupils</a>
-                <a href="#alumni" onclick="showSection('alumni')">Alumni</a>
+       <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
+        <!-- Sidebar Header -->
+        <div class="sidebar-header-modern">
+            <div class="sidebar-logo">
+                <i data-lucide="graduation-cap" class="sidebar-logo-icon"></i>
+                <span class="sidebar-logo-text">Fahmid Admin</span>
             </div>
         </div>
-        
-        <!-- Academic Tasks Group -->
-        <div class="sidebar-group">
-            <button class="sidebar-group-toggle" onclick="toggleSidebarGroup(this)">
-                <span class="toggle-icon">▼</span>
-                <span>📚 Academic Tasks</span>
-            </button>
-            <div class="sidebar-group-content active">
-                <a href="#classes" onclick="showSection('classes')">Classes</a>
-                <a href="#subjects" onclick="showSection('subjects')">Subjects</a>
-                <a href="#assign-teachers" onclick="showSection('assign-teachers')">Assign Teachers</a>
-                <a href="#promotion-requests" onclick="showSection('promotion-requests')">Promotion Requests</a>
+
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-nav-modern">
+            <a href="#dashboard" class="sidebar-link active" data-section="dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
+            </a>
+            
+            <!-- User Management Group -->
+            <div class="sidebar-group-modern">
+                <button class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="true">
+                    <div class="group-header-content">
+                        <i data-lucide="users"></i>
+                        <span>User Management</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern active">
+                    <a href="#teachers" class="sidebar-link" data-section="teachers">
+                        <i data-lucide="user-check"></i>
+                        <span>Teachers</span>
+                    </a>
+                    <a href="#pupils" class="sidebar-link" data-section="pupils">
+                        <i data-lucide="users-2"></i>
+                        <span>Pupils</span>
+                    </a>
+                    <a href="#alumni" class="sidebar-link" data-section="alumni">
+                        <i data-lucide="award"></i>
+                        <span>Alumni</span>
+                    </a>
+                </div>
             </div>
+            
+            <!-- Academic Tasks Group -->
+            <div class="sidebar-group-modern">
+                <button class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="true">
+                    <div class="group-header-content">
+                        <i data-lucide="book-open"></i>
+                        <span>Academic Tasks</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern active">
+                    <a href="#classes" class="sidebar-link" data-section="classes">
+                        <i data-lucide="school"></i>
+                        <span>Classes</span>
+                    </a>
+                    <a href="#subjects" class="sidebar-link" data-section="subjects">
+                        <i data-lucide="book"></i>
+                        <span>Subjects</span>
+                    </a>
+                    <a href="#assign-teachers" class="sidebar-link" data-section="assign-teachers">
+                        <i data-lucide="user-plus"></i>
+                        <span>Assign Teachers</span>
+                    </a>
+                    <a href="#promotion-requests" class="sidebar-link" data-section="promotion-requests">
+                        <i data-lucide="trending-up"></i>
+                        <span>Promotion Requests</span>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Reports & Results -->
+            <a href="#view-results" class="sidebar-link" data-section="view-results">
+                <i data-lucide="bar-chart-3"></i>
+                <span>View Results</span>
+            </a>
+            
+            <!-- Communications -->
+            <a href="#announcements" class="sidebar-link" data-section="announcements">
+                <i data-lucide="megaphone"></i>
+                <span>Announcements</span>
+            </a>
+            
+            <!-- System -->
+            <a href="#settings" class="sidebar-link" data-section="settings">
+                <i data-lucide="settings"></i>
+                <span>School Settings</span>
+            </a>
         </div>
-        
-        <!-- Reports & Results -->
-        <a href="#view-results" onclick="showSection('view-results')">📈 View Results</a>
-        
-        <!-- Communications -->
-        <a href="#announcements" onclick="showSection('announcements')">📢 Announcements</a>
-        
-        <!-- System -->
-        <a href="#settings" onclick="showSection('settings')">⚙️ School Settings</a>
-        
-        <hr class="sidebar-divider">
-        <a href="index.html">← Back to Public Site</a>
-        <a href="#" id="admin-logout" class="logout-link">Logout</a>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer-modern">
+            <a href="index.html" class="sidebar-link sidebar-link-secondary">
+                <i data-lucide="arrow-left"></i>
+                <span>Back to Site</span>
+            </a>
+            <a href="#" id="admin-logout" class="sidebar-link sidebar-link-danger">
+                <i data-lucide="log-out"></i>
+                <span>Logout</span>
+            </a>
+        </div>
     </nav>
 
     <main class="admin-main" id="main-content">
