@@ -17,13 +17,6 @@
 
 'use strict';
 
-(function () {
-  const el = document.getElementById('copyright-year');
-  if (!el) return;
-
-  el.textContent = new Date().getFullYear();
-})();
-
 /* =====================================================
    HAMBURGER MENU FUNCTIONALITY (ALL PORTALS)
 ===================================================== */
@@ -503,7 +496,11 @@ window.addEventListener('offline', () => {
 ===================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize all features
+    const yearEl = document.getElementById('copyright-year');
+    if (yearEl) {
+        yearEl.textContent = new Date().getFullYear();
+    }
+
     initHamburgerMenu();
     initHeroSlideshow();
     initGalleryLightbox();
@@ -511,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initSmoothScroll();
     initTestimonialsCarousel();
 
-    // Admin/Teacher portal section navigation
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
         link.addEventListener('click', e => {
             e.preventDefault();
