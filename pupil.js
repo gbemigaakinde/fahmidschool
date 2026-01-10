@@ -220,13 +220,14 @@ async function loadPupilProfile(user) {
  * Replace the listener setup in loadPupilProfile() function
  */
 
-// CRITICAL FIX: Set up listeners with proper debouncing
+// FIXED: Debounced listeners to prevent infinite loops
 let pupilUpdateTimeout = null;
+let classUpdateTimeout = null;
 
+// Pupil data listener with debouncing
 pupilListener = db.collection('pupils').doc(currentPupilId)
   .onSnapshot(
     async snap => {
-      // CRITICAL: Prevent recursive updates with debouncing
       if (pupilUpdateTimeout) {
         clearTimeout(pupilUpdateTimeout);
       }
@@ -237,7 +238,7 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
           
           const updatedData = snap.data();
           
-          // Check if data actually changed
+          // CRITICAL: Check if data actually changed
           const hasChanges = JSON.stringify(currentPupilData) !== JSON.stringify(updatedData);
           
           if (!hasChanges) {
@@ -245,11 +246,10 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
             return;
           }
           
-          console.log('Pupil data changed, updating UI...');
-          
+          console.log('Pupil data changed, updating...');
           currentPupilData = updatedData;
           
-          // Extract class info safely
+          // Extract class info
           const updatedClassId = getClassIdFromPupilData(updatedData.class);
           const updatedClassName = getClassNameFromPupilData(updatedData.class);
           
@@ -257,7 +257,7 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
           currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
           currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
           
-          // Update UI directly without calling loadPupilProfile
+          // Update UI
           renderProfile({
             name: updatedData.name || '-',
             dob: updatedData.dob || '-',
@@ -271,26 +271,18 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
             subjects: currentClassInfo.subjects
           });
 
-          // Update header information
+          // Update header
           const settings = await getCurrentSettings();
           const welcomeEl = document.getElementById('pupil-welcome');
           const classEl = document.getElementById('student-class');
           const sessionEl = document.getElementById('student-session');
           
-          if (welcomeEl) {
-            welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
-          }
-          if (classEl) {
-            classEl.textContent = currentClassInfo.name;
-          }
-          if (sessionEl) {
-            sessionEl.textContent = settings.session;
-          }
+          if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+          if (classEl) classEl.textContent = currentClassInfo.name;
+          if (sessionEl) sessionEl.textContent = settings.session;
 
-          // Reload results in case they changed
           await loadResults();
-          
-          console.log('✓ Profile updated from listener');
+          console.log('✓ Profile updated');
           
         } catch (error) {
           console.error('Error in pupil listener:', error);
@@ -301,13 +293,11 @@ pupilListener = db.collection('pupils').doc(currentPupilId)
     },
     error => {
       console.error('Pupil listener error:', error);
-      window.showToast?.('Lost connection to server. Please refresh the page.', 'warning');
+      window.showToast?.('Connection lost. Please refresh.', 'warning');
     }
   );
 
-// FIXED: Class listener with debouncing
-let classUpdateTimeout = null;
-
+// Class listener with debouncing
 if (classId) {
   classListener = db.collection('classes').doc(classId)
     .onSnapshot(
@@ -328,30 +318,28 @@ if (classId) {
               JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
             
             if (!hasChanges) {
-              console.log('No class changes detected, skipping update');
+              console.log('No class changes, skipping');
               return;
             }
             
-            console.log('Class data changed, updating UI...');
+            console.log('Class data changed, updating...');
             
             currentClassInfo.name = classData.name || currentClassInfo.name;
             currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
             
-            // Fetch teacher name if needed
+            // Get teacher name
             if (classData.teacherName) {
               currentClassInfo.teacher = classData.teacherName;
             } else if (classData.teacherId) {
               try {
                 const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
                 currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
-              } catch (teacherError) {
-                console.error('Error fetching teacher:', teacherError);
+              } catch (err) {
+                console.error('Error fetching teacher:', err);
               }
-            } else {
-              currentClassInfo.teacher = '-';
             }
             
-            // Update profile with new class info
+            // Update profile
             renderProfile({
               name: currentPupilData.name || '-',
               dob: currentPupilData.dob || '-',
@@ -365,23 +353,8 @@ if (classId) {
               subjects: currentClassInfo.subjects
             });
 
-            // Update header information
-            const settings = await getCurrentSettings();
-            const welcomeEl = document.getElementById('pupil-welcome');
-            const classEl = document.getElementById('student-class');
-            const sessionEl = document.getElementById('student-session');
-            
-            if (welcomeEl) {
-              welcomeEl.innerHTML = `Hello, <strong>${currentPupilData.name}</strong>!`;
-            }
-            if (classEl) {
-              classEl.textContent = currentClassInfo.name;
-            }
-            if (sessionEl) {
-              sessionEl.textContent = settings.session;
-            }
-
             renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
+            console.log('✓ Class info updated');
             
           } catch (error) {
             console.error('Error in class listener:', error);
@@ -392,7 +365,6 @@ if (classId) {
       },
       error => {
         console.error('Class listener error:', error);
-        window.showToast?.('Lost connection to class updates. Please refresh the page.', 'warning');
       }
     );
 }
