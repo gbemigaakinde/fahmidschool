@@ -4644,3 +4644,15 @@ window.toggleSidebarGroup = function(button) {
         content.classList.add('active');
     }
 };
+
+/* ========================================
+   INITIALIZE LUCIDE ICONS
+======================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+        console.log('✓ Lucide icons initialized');
+    }
+});
