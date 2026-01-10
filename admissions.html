@@ -6,89 +6,402 @@
     <meta name="description" content="Learn about the admissions process, requirements, and how to enroll your child at Fahmid School.">
     <title>Admissions - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html" aria-current="page">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html" aria-current="page"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>Admissions</h1>
-                <p class="lead">We welcome new students throughout the year. Contact us for availability.</p>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>Admissions</h1>
+            <p class="lead">
+                Join the Fahmid family and give your child the foundation for lifelong success
+            </p>
+        </div>
+    </section>
 
-            <section aria-labelledby="process-heading">
-                <h2 id="process-heading">Admissions Process</h2>
-                <ol>
-                    <li>Submit inquiry form</li>
-                    <li>School tour and assessment</li>
-                    <li>Registration and fee payment</li>
-                </ol>
-            </section>
+    <main id="main-content" class="main-content">
 
-            <section aria-labelledby="requirements-heading">
-                <h2 id="requirements-heading">Requirements</h2>
-                <ul>
-                    <li>Birth certificate</li>
-                    <li>Previous school records (if applicable)</li>
-                    <li>Passport photos</li>
-                </ul>
-            </section>
-
-            <div class="cta-section">
-                <a href="contact.html" class="btn">Inquire Now</a>
+        <!-- ADMISSIONS OPEN -->
+        <section class="container section">
+            <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(69, 160, 73, 0.1) 100%); padding: var(--space-12); border-radius: var(--radius-2xl); text-align: center; border: 2px solid rgba(76, 175, 80, 0.3); margin-bottom: var(--space-16);">
+                <div style="display: inline-flex; align-items: center; gap: var(--space-3); background: var(--color-success); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); margin-bottom: var(--space-6); font-weight: var(--weight-semibold);">
+                    <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+                    <span>Now Accepting Applications</span>
+                </div>
+                <h2 style="margin: 0 0 var(--space-4) 0;">Admissions Currently Open</h2>
+                <p style="font-size: var(--text-lg); max-width: 700px; margin: 0 auto; color: var(--color-gray-700); line-height: 1.8;">
+                    We are currently accepting applications for the new academic session. Limited spaces available across all classes.
+                </p>
             </div>
-        </article>
+        </section>
+
+        <!-- HOW TO APPLY -->
+        <section class="container section">
+            <h2 class="section-title">How to Apply</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Our admissions process is simple and straightforward
+            </p>
+
+            <div style="max-width: 900px; margin: 0 auto;">
+                <!-- Step 1 -->
+                <article style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">1</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-primary);">
+                            <i data-lucide="phone" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
+                            Initial Inquiry
+                        </h3>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
+                            Contact us via phone, WhatsApp, or visit our school to express your interest. Our admissions team will provide you with detailed information about available spaces and next steps.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Step 2 -->
+                <article style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">2</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-success);">
+                            <i data-lucide="school" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
+                            School Tour & Assessment
+                        </h3>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
+                            Schedule a tour to see our facilities and meet our teachers. For primary classes, your child will have a brief, friendly assessment to help us understand their current level and learning needs.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Step 3 -->
+                <article style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">3</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-warning);">
+                            <i data-lucide="file-text" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
+                            Complete Registration
+                        </h3>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
+                            Submit required documents and complete the registration form. Pay the registration fee and first term fees to secure your child's place.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Step 4 -->
+                <article style="display: flex; gap: var(--space-8); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">4</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-3) 0; color: #9C27B0;">
+                            <i data-lucide="party-popper" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
+                            Welcome to Fahmid!
+                        </h3>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
+                            Receive your admission pack including uniforms information, school calendar, and parent handbook. Your child is now ready to begin their journey at Fahmid School!
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- REQUIREMENTS -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Required Documents</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Please prepare the following documents for registration
+            </p>
+
+            <div class="grid" style="max-width: 1000px; margin: 0 auto;">
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="file" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Birth Certificate</h3>
+                    <p>Original or certified copy of your child's birth certificate for age verification.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="image" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Passport Photos</h3>
+                    <p>Four recent passport-size photographs of your child on white background.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="clipboard" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Medical Records</h3>
+                    <p>Immunization card and any relevant medical information or special needs documentation.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="school" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Previous School Records</h3>
+                    <p>Last report card and transfer certificate (if transferring from another school).</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="user-check" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Parent/Guardian ID</h3>
+                    <p>Valid identification (National ID, Driver's License, or International Passport).</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="map-pin" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Proof of Address</h3>
+                    <p>Utility bill or any document showing your current residential address.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- AGE REQUIREMENTS -->
+        <section class="container section">
+            <h2 class="section-title">Age Requirements</h2>
+            <div style="max-width: 800px; margin: 0 auto;">
+                <div style="background: white; border-radius: var(--radius-2xl); overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
+                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0 0 var(--space-2) 0;">Pre-Nursery</h3>
+                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Early learners program</p>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
+                                2-3 years
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0 0 var(--space-2) 0;">Nursery 1</h3>
+                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Foundation skills development</p>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
+                                3-4 years
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0 0 var(--space-2) 0;">Nursery 2</h3>
+                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">School readiness preparation</p>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
+                                4-5 years
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: var(--space-8);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin: 0 0 var(--space-2) 0;">Primary 1-6</h3>
+                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Full primary education program</p>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
+                                5-11 years
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(33, 150, 243, 0.1); padding: var(--space-6); border-radius: var(--radius-lg); margin-top: var(--space-8); border: 1px solid rgba(33, 150, 243, 0.2);">
+                    <p style="margin: 0; text-align: center; color: var(--color-gray-700); font-size: var(--text-sm);">
+                        <i data-lucide="info" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; color: var(--color-primary);"></i>
+                        <strong>Note:</strong> Age requirements are based on the child's age as of September 1st of the academic year.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FEES -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Tuition & Fees</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Affordable quality education with flexible payment options
+            </p>
+
+            <div class="grid" style="max-width: 1000px; margin: 0 auto;">
+                <div class="card">
+                    <div style="text-align: center; margin-bottom: var(--space-6);">
+                        <i data-lucide="wallet" style="width: 48px; height: 48px; color: var(--color-primary);"></i>
+                    </div>
+                    <h3>Registration Fee</h3>
+                    <p style="margin-bottom: var(--space-4);">One-time non-refundable fee paid at admission</p>
+                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
+                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Contact us for current rates</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="text-align: center; margin-bottom: var(--space-6);">
+                        <i data-lucide="calendar" style="width: 48px; height: 48px; color: var(--color-success);"></i>
+                    </div>
+                    <h3>Tuition Fees</h3>
+                    <p style="margin-bottom: var(--space-4);">Termly fees covering instruction and learning materials</p>
+                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
+                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Varies by grade level</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="text-align: center; margin-bottom: var(--space-6);">
+                        <i data-lucide="shopping-bag" style="width: 48px; height: 48px; color: var(--color-warning);"></i>
+                    </div>
+                    <h3>Additional Costs</h3>
+                    <p style="margin-bottom: var(--space-4);">Uniforms, books, and extracurricular activities</p>
+                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
+                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Details provided at registration</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="max-width: 700px; margin: var(--space-12) auto 0; text-align: center;">
+                <p style="color: var(--color-gray-700); margin-bottom: var(--space-6); line-height: 1.8;">
+                    For detailed fee information and payment plans, please contact our admissions office. We offer flexible payment schedules to accommodate different family situations.
+                </p>
+                <a href="contact.html" class="btn">Contact Admissions Office</a>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="container section">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            
+            <div style="max-width: 900px; margin: 0 auto;">
+                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
+                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
+                        When does the academic year start?
+                    </summary>
+                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
+                        The academic year typically begins in September and runs through July, divided into three terms with breaks for holidays.
+                    </p>
+                </details>
+
+                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
+                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
+                        Can I visit the school before enrolling?
+                    </summary>
+                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
+                        Absolutely! We encourage all prospective parents to schedule a tour. Contact us to arrange a visit at a convenient time.
+                    </p>
+                </details>
+
+                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
+                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
+                        Do you accept mid-year admissions?
+                    </summary>
+                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
+                        Yes, we accept students throughout the year subject to space availability. Contact us to check current openings.
+                    </p>
+                </details>
+
+                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
+                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
+                        What is your class size?
+                    </summary>
+                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
+                        We maintain small class sizes to ensure personalized attention. Classes typically have 15-20 students with dedicated teachers.
+                    </p>
+                </details>
+
+                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); cursor: pointer;">
+                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
+                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
+                        Do you provide transportation?
+                    </summary>
+                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
+                        School bus services are available for select routes. Please inquire about availability and costs for your area.
+                    </p>
+                </details>
+            </div>
+        </section>
+
+        <!-- CTA SECTION -->
+        <section class="container section cta-section">
+            <h2>Ready to Enroll Your Child?</h2>
+            <p class="lead">
+                Take the first step towards your child's bright future at Fahmid School
+            </p>
+            <a href="contact.html" class="btn">Contact Us Now</a>
+            <a href="index.html" class="btn btn-secondary">Learn More About Us</a>
+        </section>
+
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
-        </div>
-    </footer>
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-
-    <script src="script.js"></script>
-</body>
-</html>
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool"
