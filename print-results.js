@@ -274,6 +274,22 @@ async function loadAcademicResults() {
     return;
   }
   
+  if (!currentPupilId) {
+    tbody.innerHTML = emptyRow('Unable to load: Pupil not identified');
+    return;
+  }
+  
+  if (!currentSettings || !currentSettings.term) {
+    tbody.innerHTML = emptyRow('Unable to load: Term not configured');
+    return;
+  }
+  
+  // Check if initialized
+  if (!isInitialized) {
+    tbody.innerHTML = emptyRow('Loading report card...');
+    return;
+  }
+  
   tbody.innerHTML = loadingRow();
 
   try {
