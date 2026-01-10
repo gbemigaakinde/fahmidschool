@@ -1,14 +1,14 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Print Results JavaScript
+ * Print Results JavaScript - FIXED
  *
  * Purpose:
  * - Generate dynamic termly report card
  * - Pull live pupil bio, class, teacher, subjects
  * - Reflect admin changes instantly
  *
- * Version: 6.1.0
- * Date: 2026-01-06
+ * Version: 6.2.0 - ACADEMIC RESULTS LOADING FIXED
+ * Date: 2026-01-10
  */
 
 'use strict';
@@ -25,87 +25,71 @@ let currentSettings = {
 /* ===============================
    INITIALIZATION WITH PROPER ORDER
 ================================ */
-// Add loading state flag
+// Add initialization state flag
 let isInitialized = false;
 
 checkRole('pupil')
     .then(async user => {
         try {
+            console.log('=== Starting Report Card Initialization ===');
+            
             // STEP 1: Load settings FIRST
             console.log('Step 1: Loading settings...');
             await fetchSchoolSettings();
+            console.log('✓ Settings loaded:', currentSettings);
             
             // STEP 2: Load pupil profile SECOND
             console.log('Step 2: Loading pupil profile...');
             await fetchPupilProfile(user.uid);
+            console.log('✓ Profile loaded for:', pupilProfile?.name);
             
             // STEP 3: Setup UI THIRD
             console.log('Step 3: Setting up UI...');
             setupTermSelector();
             updateReportHeader();
+            console.log('✓ UI ready');
             
-            // STEP 4: Load report data LAST
+            // STEP 4: Mark as initialized BEFORE loading data
+            isInitialized = true;
+            console.log('✓ Initialization complete, ready to load data');
+            
+            // STEP 5: Load report data LAST
             console.log('Step 4: Loading report data...');
             await loadReportData();
+            console.log('✓ Report data loaded');
             
-            isInitialized = true;
-            console.log('✓ Report card initialized successfully');
+            console.log('=== Report Card Initialization Complete ===');
             
         } catch (error) {
-            console.error('Initialization failed:', error);
+            console.error('=== Initialization failed ===', error);
             window.showToast?.('Failed to load report card. Please refresh.', 'danger');
         }
     })
     .catch(() => window.location.href = 'login.html');
-    
-/* ===============================
-   MAIN INITIALIZER
-================================ */
-
-async function initReport(user) {
-    try {
-        console.log('=== Initializing Report (Fixed) ===');
-        
-        // STEP 1: Load school settings FIRST (needed by everything)
-        console.log('Step 1: Loading school settings...');
-        await fetchSchoolSettings();
-        console.log('✓ Settings loaded:', currentSettings);
-        
-        // STEP 2: Load pupil profile SECOND (needs settings to be ready)
-        console.log('Step 2: Loading pupil profile...');
-        await fetchPupilProfile(user.uid);
-        console.log('✓ Profile loaded for:', pupilProfile?.name);
-        
-        // STEP 3: Setup UI components (now safe with loaded data)
-        console.log('Step 3: Setting up UI...');
-        setupTermSelector();
-        updateReportHeader();
-        console.log('✓ UI ready');
-        
-        // STEP 4: Load report data LAST (needs profile and settings)
-        console.log('Step 4: Loading report data...');
-        await loadReportData();
-        console.log('✓ Report data loaded');
-        
-        console.log('=== Report Initialization Complete ===');
-    } catch (error) {
-        console.error('=== Report Initialization Failed ===', error);
-        window.showToast?.('Unable to load report card. Please refresh the page.', 'danger');
-    }
-}
 
 /* ===============================
    FETCH SCHOOL SETTINGS
 ================================ */
 
 async function fetchSchoolSettings() {
-    const doc = await db.collection('settings').doc('current').get();
-    if (!doc.exists) return;
+    try {
+        const doc = await db.collection('settings').doc('current').get();
+        
+        if (!doc.exists) {
+            console.warn('Settings document not found');
+            return;
+        }
 
-    const data = doc.data();
-    currentSettings.term = data.term || currentSettings.term;
-    currentSettings.session = data.session || '';
-    currentSettings.resumptionDate = data.resumptionDate || '-';
+        const data = doc.data();
+        currentSettings.term = data.term || currentSettings.term;
+        currentSettings.session = data.session || '';
+        currentSettings.resumptionDate = data.resumptionDate || '-';
+        
+        console.log('Settings loaded successfully:', currentSettings);
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        throw error;
+    }
 }
 
 /* ===============================
@@ -113,78 +97,88 @@ async function fetchSchoolSettings() {
 ================================ */
 
 async function fetchPupilProfile(uid) {
-    const doc = await db.collection('pupils').doc(uid).get();
-    if (!doc.exists) throw new Error('Pupil record not found');
+    try {
+        const doc = await db.collection('pupils').doc(uid).get();
+        
+        if (!doc.exists) {
+            throw new Error('Pupil record not found');
+        }
 
-    pupilProfile = doc.data();
-    currentPupilId = doc.id;
+        pupilProfile = doc.data();
+        currentPupilId = doc.id;
 
-    /* ===============================
-       BIO
-    ================================== */
-    setText('student-name', pupilProfile.name || '-');
-    setText('student-gender', pupilProfile.gender || '-');
-    setText('admission-no', pupilProfile.admissionNo || '-');
+        /* ===============================
+           BIO
+        ================================== */
+        setText('student-name', pupilProfile.name || '-');
+        setText('student-gender', pupilProfile.gender || '-');
+        setText('admission-no', pupilProfile.admissionNo || '-');
 
-    /* ===============================
-       HANDLE CLASS DATA (OLD & NEW)
-    ================================== */
-    let classId = null;
-    let className = '-';
+        /* ===============================
+           HANDLE CLASS DATA (OLD & NEW)
+        ================================== */
+        let classId = null;
+        let className = '-';
 
-    if (pupilProfile.class) {
-        if (typeof pupilProfile.class === 'object') {
-            // New format
-            classId = pupilProfile.class.id;
-            className = pupilProfile.class.name || '-';
-        } else if (typeof pupilProfile.class === 'string') {
-            // Old format
-            className = pupilProfile.class;
+        if (pupilProfile.class) {
+            if (typeof pupilProfile.class === 'object') {
+                // New format
+                classId = pupilProfile.class.id;
+                className = pupilProfile.class.name || '-';
+            } else if (typeof pupilProfile.class === 'string') {
+                // Old format
+                className = pupilProfile.class;
 
-            // Try to find class by name
-            const classSnap = await db.collection('classes')
-                .where('name', '==', className)
-                .limit(1)
-                .get();
+                // Try to find class by name
+                const classSnap = await db.collection('classes')
+                    .where('name', '==', className)
+                    .limit(1)
+                    .get();
 
-            if (!classSnap.empty) {
-                const classDoc = classSnap.docs[0];
-                classId = classDoc.id;
-                className = classDoc.data().name || className;
+                if (!classSnap.empty) {
+                    const classDoc = classSnap.docs[0];
+                    classId = classDoc.id;
+                    className = classDoc.data().name || className;
+                }
             }
         }
-    }
 
-    setText('student-class', className);
+        setText('student-class', className);
 
-    /* ===============================
-       FETCH CLASS TEACHER AND SUBJECTS
-    ================================== */
-    let teacherName = '-';
-    let subjectsList = '-';
+        /* ===============================
+           FETCH CLASS TEACHER AND SUBJECTS
+        ================================== */
+        let teacherName = '-';
+        let subjectsList = '-';
 
-    if (classId) {
-        const classDoc = await db.collection('classes').doc(classId).get();
-        if (classDoc.exists) {
-            const classData = classDoc.data();
+        if (classId) {
+            const classDoc = await db.collection('classes').doc(classId).get();
+            if (classDoc.exists) {
+                const classData = classDoc.data();
 
-            // Teacher
-            if (classData.teacherName) {
-                teacherName = classData.teacherName;
-            } else if (classData.teacherId) {
-                const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                if (teacherDoc.exists) teacherName = teacherDoc.data().name;
-            }
+                // Teacher
+                if (classData.teacherName) {
+                    teacherName = classData.teacherName;
+                } else if (classData.teacherId) {
+                    const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
+                    if (teacherDoc.exists) teacherName = teacherDoc.data().name;
+                }
 
-            // Subjects
-            if (Array.isArray(classData.subjects) && classData.subjects.length > 0) {
-                subjectsList = classData.subjects.join(', ');
+                // Subjects
+                if (Array.isArray(classData.subjects) && classData.subjects.length > 0) {
+                    subjectsList = classData.subjects.join(', ');
+                }
             }
         }
-    }
 
-    setText('class-teacher', teacherName);
-    setText('subjects-list', subjectsList);
+        setText('class-teacher', teacherName);
+        setText('subjects-list', subjectsList);
+        
+        console.log('Pupil profile loaded successfully');
+    } catch (error) {
+        console.error('Error loading pupil profile:', error);
+        throw error;
+    }
 }
 
 /* ===============================
@@ -202,13 +196,19 @@ function setupTermSelector() {
     select.value = currentSettings.term;
     setText('current-term', currentSettings.term);
 
-    select.addEventListener('change', async e => {
+    // CRITICAL FIX: Remove any existing listeners first
+    const newSelect = select.cloneNode(true);
+    select.parentNode.replaceChild(newSelect, select);
+
+    newSelect.addEventListener('change', async e => {
         currentSettings.term = e.target.value;
         console.log('Term changed to:', currentSettings.term);
         setText('current-term', currentSettings.term);
         updateReportHeader();
         await loadReportData();
     });
+    
+    console.log('✓ Term selector ready with event listener');
 }
 
 /* ===============================
@@ -244,6 +244,7 @@ async function loadReportData() {
     console.log('Pupil ID:', currentPupilId);
     console.log('Term:', currentSettings.term);
     console.log('Session:', currentSettings.session);
+    console.log('Initialized:', isInitialized);
     
     resetTraitsAndRemarks();
 
@@ -267,124 +268,123 @@ async function loadReportData() {
 ================================ */
 
 async function loadAcademicResults() {
-  const tbody = document.getElementById('academic-tbody');
-  
-  if (!tbody) {
-    console.error('Academic tbody element not found');
-    return;
-  }
-  
-  if (!currentPupilId) {
-    tbody.innerHTML = emptyRow('Unable to load: Pupil not identified');
-    return;
-  }
-  
-  if (!currentSettings || !currentSettings.term) {
-    tbody.innerHTML = emptyRow('Unable to load: Term not configured');
-    return;
-  }
-  
-  // Check if initialized
-  if (!isInitialized) {
-    tbody.innerHTML = emptyRow('Loading report card...');
-    return;
-  }
-  
-  tbody.innerHTML = loadingRow();
-
-  try {
-    // CRITICAL FIX: Validate all required data
-    if (!currentPupilId) {
-      console.error('No pupil ID available');
-      tbody.innerHTML = emptyRow('Unable to load results: Pupil not identified');
-      return;
-    }
+    const tbody = document.getElementById('academic-tbody');
     
-    if (!currentSettings || !currentSettings.term) {
-      console.error('No term data available');
-      tbody.innerHTML = emptyRow('Unable to load results: Term not identified');
-      return;
-    }
-    
-    // Check permissions first with a simple test query
-    try {
-      await db.collection('results').limit(1).get();
-    } catch (permissionError) {
-      console.error('Permission denied for results collection:', permissionError);
-      tbody.innerHTML = emptyRow('Permission denied. Contact administrator.');
-      window.showToast?.('You do not have permission to view results', 'danger');
-      return;
-    }
-    
-    // Get all results documents
-    const allResultsSnap = await db.collection('results').get();
-    
-    if (allResultsSnap.empty) {
-      tbody.innerHTML = emptyRow('No results in system yet. Teacher must enter scores.');
-      return;
-    }
-    
-    const results = [];
-    const currentPupilUid = currentPupilId;
-    const currentTermValue = currentSettings.term;
-    
-    // Check every document
-    allResultsSnap.forEach(doc => {
-      const docId = doc.id;
-      const data = doc.data();
-      
-      if (!data) {
-        console.warn(`Document ${docId} has no data`);
+    if (!tbody) {
+        console.error('Academic tbody element not found');
         return;
-      }
-      
-      let matchFound = false;
-      let subject = '';
-      
-      // METHOD 1: Document ID format (pupilId_term_subject)
-      if (typeof docId === 'string' && docId.includes('_')) {
-        const parts = docId.split('_');
-        if (parts.length >= 3) {
-          const idPupilId = parts[0];
-          const idTerm = parts[1];
-          const idSubject = parts.slice(2).join('_');
-          
-          if (idPupilId === currentPupilUid && idTerm === currentTermValue) {
-            matchFound = true;
-            subject = idSubject;
-          }
-        }
-      }
-      
-      // METHOD 2: Field-based format (backup)
-      if (!matchFound && data.pupilId && data.term && data.subject) {
-        if (data.pupilId === currentPupilUid && data.term === currentTermValue) {
-          matchFound = true;
-          subject = data.subject;
-        }
-      }
-      
-      // If match found, add to results
-      if (matchFound && subject) {
-        const existingIndex = results.findIndex(r => r.subject === subject);
-        if (existingIndex === -1) {
-          results.push({
-            subject: subject,
-            caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-            examScore: typeof data.examScore === 'number' ? data.examScore : 0
-          });
-        }
-      }
-    });
-
-    tbody.innerHTML = '';
-
-    if (results.length === 0) {
-      tbody.innerHTML = emptyRow(`No results for ${currentTermValue}`);
-      return;
     }
+    
+    // CRITICAL FIX: Remove the premature initialization check
+    // The check was preventing results from loading on first page load
+    
+    if (!currentPupilId) {
+        console.error('No pupil ID available');
+        tbody.innerHTML = emptyRow('Unable to load: Pupil not identified');
+        return;
+    }
+    
+    if (!currentSettings || !currentSettings.term || !currentSettings.session) {
+        console.error('Settings not loaded properly:', currentSettings);
+        tbody.innerHTML = emptyRow('Unable to load: Settings incomplete');
+        return;
+    }
+    
+    console.log('Loading academic results for:', {
+        pupilId: currentPupilId,
+        term: currentSettings.term,
+        session: currentSettings.session
+    });
+    
+    tbody.innerHTML = loadingRow();
 
-    // Sort alphabetically
+    try {
+        // CRITICAL FIX: Query by BOTH pupilId AND session AND term
+        const resultsSnap = await db.collection('results')
+            .where('pupilId', '==', currentPupilId)
+            .where('term', '==', currentSettings.term)
+            .where('session', '==', currentSettings.session)
+            .get();
+        
+        console.log(`Query returned ${resultsSnap.size} results`);
+        
+        if (resultsSnap.empty) {
+            console.log('No results found with query. Trying alternative method...');
+            
+            // FALLBACK: Try document ID format (pupilId_term_subject)
+            const allResultsSnap = await db.collection('results').get();
+            const results = [];
+            
+            allResultsSnap.forEach(doc => {
+                const docId = doc.id;
+                const data = doc.data();
+                
+                // Check if this result matches our criteria
+                if (data.pupilId === currentPupilId && 
+                    data.term === currentSettings.term &&
+                    data.session === currentSettings.session) {
+                    results.push({
+                        subject: data.subject,
+                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                    });
+                }
+            });
+            
+            console.log(`Fallback method found ${results.length} results`);
+            
+            if (results.length === 0) {
+                tbody.innerHTML = emptyRow(`No results for ${currentSettings.term}, ${currentSettings.session}`);
+                return;
+            }
+            
+            renderResults(results, tbody);
+        } else {
+            // Process results from query
+            const results = [];
+            
+            resultsSnap.forEach(doc => {
+                const data = doc.data();
+                results.push({
+                    subject: data.subject || 'Unknown Subject',
+                    caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                    examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                });
+            });
+            
+            renderResults(results, tbody);
+        }
+
+    } catch (error) {
+        console.error('Error loading results:', error);
+        
+        let errorMessage = 'Error loading results';
+        
+        if (error.code === 'permission-denied') {
+            errorMessage = 'Permission denied. Contact administrator.';
+            window.showToast?.('You do not have permission to view results', 'danger');
+        } else if (error.code === 'unavailable') {
+            errorMessage = 'Service unavailable. Check your internet connection.';
+            window.showToast?.('Cannot connect to server. Please check your internet.', 'warning');
+        } else if (error.code === 'not-found') {
+            errorMessage = 'Results data not found.';
+        } else {
+            errorMessage = `Error: ${error.message || 'Unknown error'}`;
+        }
+        
+        tbody.innerHTML = emptyRow(errorMessage);
+    }
+}
+
+function renderResults(results, tbody) {
+    tbody.innerHTML = '';
+    
+    if (results.length === 0) {
+        tbody.innerHTML = emptyRow('No results available');
+        return;
+    }
+    
+    // Sort alphabetically by subject
     results.sort((a, b) => a.subject.localeCompare(b.subject));
 
     let totalScore = 0;
@@ -392,61 +392,43 @@ async function loadAcademicResults() {
 
     // Display each result
     results.forEach(r => {
-      const ca = r.caScore;
-      const exam = r.examScore;
-      const score = ca + exam;
+        const ca = r.caScore;
+        const exam = r.examScore;
+        const score = ca + exam;
 
-      totalScore += score;
-      subjectCount++;
+        totalScore += score;
+        subjectCount++;
 
-      tbody.insertAdjacentHTML('beforeend', `
-        <tr>
-          <td>${r.subject}</td>
-          <td>${ca}</td>
-          <td>${exam}</td>
-          <td><strong>${score}</strong></td>
-          <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
-          <td>${getRemark(score)}</td>
-        </tr>
-      `);
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr>
+                <td>${r.subject}</td>
+                <td>${ca}</td>
+                <td>${exam}</td>
+                <td><strong>${score}</strong></td>
+                <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
+                <td>${getRemark(score)}</td>
+            </tr>
+        `);
     });
 
     // Add summary
     if (subjectCount > 0) {
-      const average = (totalScore / subjectCount).toFixed(1);
-      const avgGrade = getGrade(parseFloat(average));
+        const average = (totalScore / subjectCount).toFixed(1);
+        const avgGrade = getGrade(parseFloat(average));
 
-      tbody.insertAdjacentHTML('beforeend', `
-        <tr class="summary-row">
-          <td colspan="3"><strong>TOTAL SCORE</strong></td>
-          <td colspan="3"><strong>${totalScore} / ${subjectCount * 100}</strong></td>
-        </tr>
-        <tr class="summary-row">
-          <td colspan="3"><strong>AVERAGE</strong></td>
-          <td colspan="3"><strong>${average}% (${avgGrade})</strong></td>
-        </tr>
-      `);
-    }
-
-  } catch (error) {
-    console.error('Error loading results:', error);
-    
-    let errorMessage = 'Error loading results';
-    
-    if (error.code === 'permission-denied') {
-      errorMessage = 'Permission denied. Contact administrator.';
-      window.showToast?.('You do not have permission to view results', 'danger');
-    } else if (error.code === 'unavailable') {
-      errorMessage = 'Service unavailable. Check your internet connection.';
-      window.showToast?.('Cannot connect to server. Please check your internet.', 'warning');
-    } else if (error.code === 'not-found') {
-      errorMessage = 'Results data not found.';
-    } else {
-      errorMessage = `Error: ${error.message || 'Unknown error'}`;
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr class="summary-row">
+                <td colspan="3"><strong>TOTAL SCORE</strong></td>
+                <td colspan="3"><strong>${totalScore} / ${subjectCount * 100}</strong></td>
+            </tr>
+            <tr class="summary-row">
+                <td colspan="3"><strong>AVERAGE</strong></td>
+                <td colspan="3"><strong>${average}% (${avgGrade})</strong></td>
+            </tr>
+        `);
     }
     
-    tbody.innerHTML = emptyRow(errorMessage);
-  }
+    console.log(`✓ Rendered ${results.length} results successfully`);
 }
 
 /* ===============================
@@ -454,81 +436,50 @@ async function loadAcademicResults() {
 ================================ */
 
 async function loadAttendance() {
-  try {
-    // FIXED: Check if required data exists
-    if (!currentPupilId) {
-      console.warn('No pupil ID for attendance');
-      setText('times-opened', '-');
-      setText('times-present', '-');
-      setText('times-absent', '-');
-      return;
-    }
-    
-    if (!currentSettings || !currentSettings.term) {
-      console.warn('No term data for attendance');
-      setText('times-opened', '-');
-      setText('times-present', '-');
-      setText('times-absent', '-');
-      return;
-    }
-    
-    const docId = `${currentPupilId}_${currentSettings.term}`;
-    console.log('Loading attendance for:', docId);
-    
-    // FIXED: Check permissions first
     try {
-      await db.collection('attendance').limit(1).get();
-    } catch (permissionError) {
-      console.error('Permission denied for attendance:', permissionError);
-      setText('times-opened', 'N/A');
-      setText('times-present', 'N/A');
-      setText('times-absent', 'N/A');
-      return;
-    }
-    
-    const doc = await db.collection('attendance').doc(docId).get();
+        if (!currentPupilId || !currentSettings.term) {
+            console.warn('Missing data for attendance');
+            setText('times-opened', '-');
+            setText('times-present', '-');
+            setText('times-absent', '-');
+            return;
+        }
+        
+        const docId = `${currentPupilId}_${currentSettings.term}`;
+        console.log('Loading attendance for:', docId);
+        
+        const doc = await db.collection('attendance').doc(docId).get();
 
-    if (!doc.exists) {
-      console.log('No attendance data found for:', docId);
-      setText('times-opened', '-');
-      setText('times-present', '-');
-      setText('times-absent', '-');
-      return;
-    }
+        if (!doc.exists) {
+            console.log('No attendance data found for:', docId);
+            setText('times-opened', '-');
+            setText('times-present', '-');
+            setText('times-absent', '-');
+            return;
+        }
 
-    const d = doc.data();
-    
-    // FIXED: Validate data
-    if (!d) {
-      console.warn('Attendance document exists but has no data');
-      setText('times-opened', '-');
-      setText('times-present', '-');
-      setText('times-absent', '-');
-      return;
+        const d = doc.data();
+        
+        if (!d) {
+            console.warn('Attendance document exists but has no data');
+            setText('times-opened', '-');
+            setText('times-present', '-');
+            setText('times-absent', '-');
+            return;
+        }
+        
+        console.log('Attendance data:', d);
+        
+        setText('times-opened', typeof d.timesOpened === 'number' ? d.timesOpened : '-');
+        setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
+        setText('times-absent', typeof d.timesAbsent === 'number' ? d.timesAbsent : '-');
+        
+    } catch (error) {
+        console.error('Error loading attendance:', error);
+        setText('times-opened', '-');
+        setText('times-present', '-');
+        setText('times-absent', '-');
     }
-    
-    console.log('Attendance data:', d);
-    
-    // FIXED: Type checking for attendance values
-    setText('times-opened', typeof d.timesOpened === 'number' ? d.timesOpened : '-');
-    setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
-    setText('times-absent', typeof d.timesAbsent === 'number' ? d.timesAbsent : '-');
-    
-  } catch (error) {
-    console.error('Error loading attendance:', error);
-    
-    // FIXED: Handle specific errors
-    if (error.code === 'permission-denied') {
-      setText('times-opened', 'N/A');
-      setText('times-present', 'N/A');
-      setText('times-absent', 'N/A');
-      window.showToast?.('Cannot access attendance data', 'warning');
-    } else {
-      setText('times-opened', '-');
-      setText('times-present', '-');
-      setText('times-absent', '-');
-    }
-  }
 }
 
 /* ===============================
@@ -536,79 +487,56 @@ async function loadAttendance() {
 ================================ */
 
 async function loadBehavioralTraits() {
-    await loadKeyedCollection(
-        'behavioral_traits',
-        'trait-'
-    );
+    await loadKeyedCollection('behavioral_traits', 'trait-');
 }
 
 async function loadPsychomotorSkills() {
-    await loadKeyedCollection(
-        'psychomotor_skills',
-        'skill-'
-    );
+    await loadKeyedCollection('psychomotor_skills', 'skill-');
 }
 
 async function loadKeyedCollection(collection, prefix) {
-  try {
-    // FIXED: Validate inputs
-    if (!collection || !prefix) {
-      console.error('loadKeyedCollection called with invalid parameters');
-      return;
-    }
-    
-    if (!currentPupilId || !currentSettings || !currentSettings.term) {
-      console.warn(`Cannot load ${collection}: Missing pupil or term data`);
-      return;
-    }
-    
-    const docId = `${currentPupilId}_${currentSettings.term}`;
-    
-    // FIXED: Check permissions first
     try {
-      await db.collection(collection).limit(1).get();
-    } catch (permissionError) {
-      console.error(`Permission denied for ${collection}:`, permissionError);
-      return;
-    }
-    
-    const doc = await db.collection(collection).doc(docId).get();
+        if (!collection || !prefix) {
+            console.error('loadKeyedCollection called with invalid parameters');
+            return;
+        }
+        
+        if (!currentPupilId || !currentSettings.term) {
+            console.warn(`Cannot load ${collection}: Missing pupil or term data`);
+            return;
+        }
+        
+        const docId = `${currentPupilId}_${currentSettings.term}`;
+        
+        const doc = await db.collection(collection).doc(docId).get();
 
-    if (!doc.exists) {
-      console.log(`No ${collection} data for:`, docId);
-      return;
-    }
-    
-    const data = doc.data();
-    
-    // FIXED: Validate data exists
-    if (!data) {
-      console.warn(`${collection} document exists but has no data`);
-      return;
-    }
+        if (!doc.exists) {
+            console.log(`No ${collection} data for:`, docId);
+            return;
+        }
+        
+        const data = doc.data();
+        
+        if (!data) {
+            console.warn(`${collection} document exists but has no data`);
+            return;
+        }
 
-    Object.entries(data).forEach(([k, v]) => {
-      // Skip metadata fields
-      if (k === 'pupilId' || k === 'term' || k === 'teacherId' || k === 'updatedAt') return;
-      
-      // FIXED: Type check value before setting
-      const fieldId = prefix + k.toLowerCase();
-      const element = document.getElementById(fieldId);
-      
-      if (element) {
-        setText(fieldId, v !== null && v !== undefined ? v : '-');
-      }
-    });
-    
-  } catch (error) {
-    console.error(`Error loading ${collection}:`, error);
-    
-    // FIXED: Handle specific errors
-    if (error.code === 'permission-denied') {
-      window.showToast?.(`Cannot access ${collection} data`, 'warning');
+        Object.entries(data).forEach(([k, v]) => {
+            // Skip metadata fields
+            if (k === 'pupilId' || k === 'term' || k === 'teacherId' || k === 'updatedAt') return;
+            
+            const fieldId = prefix + k.toLowerCase();
+            const element = document.getElementById(fieldId);
+            
+            if (element) {
+                setText(fieldId, v !== null && v !== undefined ? v : '-');
+            }
+        });
+        
+    } catch (error) {
+        console.error(`Error loading ${collection}:`, error);
     }
-    // Fail silently for other errors - fields will remain as '-'
-  }
 }
 
 /* ===============================
@@ -616,63 +544,42 @@ async function loadKeyedCollection(collection, prefix) {
 ================================ */
 
 async function loadRemarks() {
-  try {
-    // FIXED: Validate required data
-    if (!currentPupilId || !currentSettings || !currentSettings.term) {
-      console.warn('Cannot load remarks: Missing pupil or term data');
-      setText('teacher-remark', '-');
-      setText('head-remark', '-');
-      return;
-    }
-    
-    const docId = `${currentPupilId}_${currentSettings.term}`;
-    
-    // FIXED: Check permissions first
     try {
-      await db.collection('remarks').limit(1).get();
-    } catch (permissionError) {
-      console.error('Permission denied for remarks:', permissionError);
-      setText('teacher-remark', 'N/A');
-      setText('head-remark', 'N/A');
-      return;
-    }
-    
-    const doc = await db.collection('remarks').doc(docId).get();
+        if (!currentPupilId || !currentSettings.term) {
+            console.warn('Cannot load remarks: Missing pupil or term data');
+            setText('teacher-remark', '-');
+            setText('head-remark', '-');
+            return;
+        }
+        
+        const docId = `${currentPupilId}_${currentSettings.term}`;
+        
+        const doc = await db.collection('remarks').doc(docId).get();
 
-    if (!doc.exists) {
-      console.log('No remarks data for:', docId);
-      setText('teacher-remark', '-');
-      setText('head-remark', '-');
-      return;
-    }
+        if (!doc.exists) {
+            console.log('No remarks data for:', docId);
+            setText('teacher-remark', '-');
+            setText('head-remark', '-');
+            return;
+        }
 
-    const data = doc.data();
-    
-    // FIXED: Validate data exists
-    if (!data) {
-      console.warn('Remarks document exists but has no data');
-      setText('teacher-remark', '-');
-      setText('head-remark', '-');
-      return;
+        const data = doc.data();
+        
+        if (!data) {
+            console.warn('Remarks document exists but has no data');
+            setText('teacher-remark', '-');
+            setText('head-remark', '-');
+            return;
+        }
+        
+        setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
+        setText('head-remark', typeof data.headRemark === 'string' ? data.headRemark : '-');
+        
+    } catch (error) {
+        console.error('Error loading remarks:', error);
+        setText('teacher-remark', '-');
+        setText('head-remark', '-');
     }
-    
-    // FIXED: Type check values
-    setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
-    setText('head-remark', typeof data.headRemark === 'string' ? data.headRemark : '-');
-    
-  } catch (error) {
-    console.error('Error loading remarks:', error);
-    
-    // FIXED: Handle specific errors
-    if (error.code === 'permission-denied') {
-      setText('teacher-remark', 'N/A');
-      setText('head-remark', 'N/A');
-      window.showToast?.('Cannot access remarks data', 'warning');
-    } else {
-      setText('teacher-remark', '-');
-      setText('head-remark', '-');
-    }
-  }
 }
 
 /* ===============================
@@ -680,9 +587,7 @@ async function loadRemarks() {
 ================================ */
 
 function resetTraitsAndRemarks() {
-    document
-        .querySelectorAll('.trait-value')
-        .forEach(el => el.textContent = '-');
+    document.querySelectorAll('.trait-value').forEach(el => el.textContent = '-');
 
     setText('teacher-remark', '-');
     setText('head-remark', '-');
@@ -697,11 +602,14 @@ function setText(id, value) {
 }
 
 function loadingRow() {
-    return `<tr><td colspan="6" style="text-align:center">Loading…</td></tr>`;
+    return `<tr><td colspan="6" style="text-align:center; padding: var(--space-lg); color: var(--color-gray-600);">
+        <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto var(--space-sm); border: 3px solid #f3f3f3; border-top: 3px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        Loading results...
+    </td></tr>`;
 }
 
 function emptyRow(text) {
-    return `<tr><td colspan="6" style="text-align:center">${text}</td></tr>`;
+    return `<tr><td colspan="6" style="text-align:center; padding: var(--space-lg); color: var(--color-gray-600);">${text}</td></tr>`;
 }
 
 function getGrade(score) {
@@ -726,4 +634,14 @@ function getRemark(score) {
     return 'Fail';
 }
 
-console.log('✓ print-results.js ready (v6.1.0)');
+// Add spinner animation CSS
+const style = document.createElement('style');
+style.textContent = `
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);
+
+console.log('✓ print-results.js ready (v6.2.0 - ACADEMIC RESULTS FIXED)');
