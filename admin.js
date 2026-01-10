@@ -3066,6 +3066,11 @@ async function approvePromotion() {
   }
 }
 
+/**
+ * FIXED: Execute Promotion with Proper Batch Management
+ * Replace the executePromotion function in admin.js
+ */
+
 async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
   const promotionDoc = await db.collection('promotions').doc(promotionId).get();
   
@@ -3079,68 +3084,99 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
-  // CRITICAL FIX: Batch size management
-  const BATCH_SIZE = 450; // Safety margin under Firestore's 500 limit
-  let batch = db.batch();
+  // CRITICAL FIX: Proper batch management with operation counter
+  const BATCH_SIZE = 400; // Safe margin under 500 limit
+  let currentBatch = db.batch();
   let operationCount = 0;
+  let batchNumber = 1;
   
-  async function commitBatchIfNeeded() {
-    if (operationCount >= BATCH_SIZE) {
-      console.log(`Committing batch with ${operationCount} operations...`);
-      await batch.commit();
-      batch = db.batch();
+  async function commitCurrentBatch() {
+    if (operationCount > 0) {
+      console.log(`Committing batch ${batchNumber} with ${operationCount} operations...`);
+      await currentBatch.commit();
+      console.log(`✓ Batch ${batchNumber} committed successfully`);
+      batchNumber++;
+      currentBatch = db.batch();
       operationCount = 0;
-      console.log('✓ Batch committed, starting new batch');
+    }
+  }
+
+  // Get class details if not terminal
+  let toClassDetails = null;
+  if (!data.isTerminalClass) {
+    const toClassDoc = await db.collection('classes').doc(data.toClass.id).get();
+    if (toClassDoc.exists) {
+      toClassDetails = toClassDoc.data();
     }
   }
 
   // Handle promoted pupils
+  console.log(`Processing ${promotedPupils.length} promoted pupils...`);
+  
   for (const pupilId of promotedPupils) {
     const pupilRef = db.collection('pupils').doc(pupilId);
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`Pupil ${pupilId} not found, skipping`);
+      continue;
+    }
+    
+    const pupilData = pupilDoc.data();
 
     if (data.isTerminalClass) {
-      // Move to alumni
-      const pupilDoc = await pupilRef.get();
-      if (pupilDoc.exists) {
-        const pupilData = pupilDoc.data();
-
-        // Create alumni record
-        await db.collection('alumni').doc(pupilId).set({
-          ...pupilData,
-          graduationSession: data.fromSession,
-          graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-          finalClass: data.fromClass.name
-        });
-
-        // Delete from pupils collection
-        batch.delete(pupilRef);
-        operationCount++;
-        await commitBatchIfNeeded();
-      }
+      // Move to alumni (2 operations: create alumni, delete pupil)
+      const alumniRef = db.collection('alumni').doc(pupilId);
+      
+      currentBatch.set(alumniRef, {
+        ...pupilData,
+        graduationSession: data.fromSession,
+        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+        finalClass: data.fromClass.name,
+        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      
+      currentBatch.delete(pupilRef);
+      operationCount++;
+      
     } else {
-      // Regular promotion
-      batch.update(pupilRef, {
-        class: {
-          id: data.toClass.id,
-          name: data.toClass.name
-        },
+      // Regular promotion (1 operation: update pupil)
+      currentBatch.update(pupilRef, {
+        'class.id': data.toClass.id,
+        'class.name': data.toClass.name,
+        subjects: toClassDetails?.subjects || [],
         promotionHistory: firebase.firestore.FieldValue.arrayUnion({
           session: data.fromSession,
           fromClass: data.fromClass.name,
           toClass: data.toClass.name,
           promoted: true,
           date: firebase.firestore.FieldValue.serverTimestamp()
-        })
+        }),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       operationCount++;
-      await commitBatchIfNeeded();
+    }
+    
+    // Check if we need to commit this batch
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
     }
   }
 
   // Handle held back pupils
+  console.log(`Processing ${heldBackPupils.length} held back pupils...`);
+  
   for (const pupilId of heldBackPupils) {
     const pupilRef = db.collection('pupils').doc(pupilId);
-    batch.update(pupilRef, {
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`Pupil ${pupilId} not found, skipping`);
+      continue;
+    }
+    
+    currentBatch.update(pupilRef, {
       promotionHistory: firebase.firestore.FieldValue.arrayUnion({
         session: data.fromSession,
         fromClass: data.fromClass.name,
@@ -3148,59 +3184,81 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         promoted: false,
         reason: 'Held back by admin/teacher decision',
         date: firebase.firestore.FieldValue.serverTimestamp()
-      })
+      }),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     operationCount++;
-    await commitBatchIfNeeded();
-  }
-
-  // Handle manual overrides
-  for (const override of manualOverrides) {
-    const pupilRef = db.collection('pupils').doc(override.pupilId);
-
-    if (override.classId === 'alumni') {
-      // Move to alumni
-      const pupilDoc = await pupilRef.get();
-      if (pupilDoc.exists) {
-        const pupilData = pupilDoc.data();
-
-        await db.collection('alumni').doc(override.pupilId).set({
-          ...pupilData,
-          graduationSession: data.fromSession,
-          graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-          finalClass: data.fromClass.name
-        });
-
-        batch.delete(pupilRef);
-        operationCount++;
-        await commitBatchIfNeeded();
-      }
-    } else {
-      // Move to specific class
-      const classDoc = await db.collection('classes').doc(override.classId).get();
-      if (classDoc.exists) {
-        batch.update(pupilRef, {
-          class: {
-            id: override.classId,
-            name: classDoc.data().name
-          },
-          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-            session: data.fromSession,
-            fromClass: data.fromClass.name,
-            toClass: classDoc.data().name,
-            promoted: true,
-            manualOverride: true,
-            date: firebase.firestore.FieldValue.serverTimestamp()
-          })
-        });
-        operationCount++;
-        await commitBatchIfNeeded();
-      }
+    
+    // Check if we need to commit this batch
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
     }
   }
 
-  // Mark promotion as completed
-  batch.update(promotionDoc.ref, {
+  // Handle manual overrides
+  console.log(`Processing ${manualOverrides.length} manual overrides...`);
+  
+  for (const override of manualOverrides) {
+    const pupilRef = db.collection('pupils').doc(override.pupilId);
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`Pupil ${override.pupilId} not found, skipping`);
+      continue;
+    }
+    
+    const pupilData = pupilDoc.data();
+
+    if (override.classId === 'alumni') {
+      // Move to alumni (2 operations)
+      const alumniRef = db.collection('alumni').doc(override.pupilId);
+      
+      currentBatch.set(alumniRef, {
+        ...pupilData,
+        graduationSession: data.fromSession,
+        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+        finalClass: data.fromClass.name,
+        manualOverride: true,
+        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      
+      currentBatch.delete(pupilRef);
+      operationCount++;
+      
+    } else {
+      // Move to specific class
+      const overrideClassDoc = await db.collection('classes').doc(override.classId).get();
+      
+      if (overrideClassDoc.exists) {
+        const overrideClassData = overrideClassDoc.data();
+        
+        currentBatch.update(pupilRef, {
+          'class.id': override.classId,
+          'class.name': overrideClassData.name,
+          subjects: overrideClassData.subjects || [],
+          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+            session: data.fromSession,
+            fromClass: data.fromClass.name,
+            toClass: overrideClassData.name,
+            promoted: true,
+            manualOverride: true,
+            date: firebase.firestore.FieldValue.serverTimestamp()
+          }),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        operationCount++;
+      }
+    }
+    
+    // Check if we need to commit this batch
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
+    }
+  }
+
+  // Mark promotion as completed (1 operation)
+  currentBatch.update(promotionDoc.ref, {
     status: 'completed',
     approvedBy: auth.currentUser.uid,
     approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -3208,12 +3266,10 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
   });
   operationCount++;
 
-  // Commit any remaining operations
-  if (operationCount > 0) {
-    console.log(`Committing final batch with ${operationCount} operations...`);
-    await batch.commit();
-    console.log('✓ All promotion operations completed successfully');
-  }
+  // Commit final batch
+  await commitCurrentBatch();
+  
+  console.log(`✓ Promotion completed: ${promotedPupils.length} promoted, ${heldBackPupils.length} held back, ${manualOverrides.length} overrides`);
 }
 
 async function rejectPromotion() {
