@@ -3415,3 +3415,26 @@ i[data-lucide] {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Timeline connector for School Life page */
+@media (min-width: 768px) {
+    .main-content article[style*="display: flex"] {
+        position: relative;
+        padding-left: 120px;
+    }
+    
+    .main-content article[style*="display: flex"]::before {
+        content: '';
+        position: absolute;
+        left: 45px;
+        top: 90px;
+        width: 2px;
+        height: calc(100% + var(--space-10));
+        background: linear-gradient(to bottom, #e0e0e0 0%, #e0e0e0 100%);
+        z-index: -1;
+    }
+    
+    .main-content article[style*="display: flex"]:last-of-type::before {
+        display: none;
+    }
+}
