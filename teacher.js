@@ -633,15 +633,15 @@ async function saveAllResults() {
     return;
   }
   
-  // FIXED: Get button and manage state properly
+  // FIXED: Manage button state properly without nested spans
   const saveBtn = document.getElementById('save-results-btn');
-  const btnText = saveBtn?.querySelector('.btn-text');
-  const btnLoading = saveBtn?.querySelector('.btn-loading');
+  const originalText = saveBtn?.textContent;
   
   // FIXED: Disable button and show loading
-  if (saveBtn) saveBtn.disabled = true;
-  if (btnText) btnText.hidden = true;
-  if (btnLoading) btnLoading.hidden = false;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ Saving...';
+  }
   
   try {
     // CRITICAL: Get current session information
@@ -708,9 +708,10 @@ async function saveAllResults() {
     window.handleError?.(err, 'Failed to save results');
   } finally {
     // FIXED: Always restore button state
-    if (saveBtn) saveBtn.disabled = false;
-    if (btnText) btnText.hidden = false;
-    if (btnLoading) btnLoading.hidden = true;
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText || '💾 Save All Results';
+    }
   }
 }
 
