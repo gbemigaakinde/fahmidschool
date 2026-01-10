@@ -3,88 +3,459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Discover extracurricular activities, sports, arts, and events that enrich student life at Fahmid School.">
+    <meta name="description" content="Discover daily life, activities, and the vibrant community at Fahmid Nursery & Primary School.">
     <title>School Life - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html" aria-current="page">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html" aria-current="page"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>School Life</h1>
-                <p class="lead">Beyond academics, we offer rich extracurricular activities, sports, arts, and events to develop well-rounded children.</p>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>School Life</h1>
+            <p class="lead">
+                Experience the vibrant, engaging, and supportive community that makes Fahmid special
+            </p>
+        </div>
+    </section>
 
-            <section aria-labelledby="activities-heading">
-                <h2 id="activities-heading" class="visually-hidden">Our Activities</h2>
-                <div class="grid">
-                    <article class="card">
-                        <h3>Extracurricular Activities</h3>
-                        <p>Music, dance, drama, and clubs.</p>
-                    </article>
-                    <article class="card">
-                        <h3>Sports & Games</h3>
-                        <p>Football, athletics, indoor games.</p>
-                    </article>
-                    <article class="card">
-                        <h3>Events</h3>
-                        <p>Annual day, cultural festivals, field trips.</p>
-                    </article>
+    <main id="main-content" class="main-content">
+
+        <!-- TYPICAL DAY -->
+        <section class="container section">
+            <h2 class="section-title">A Day at Fahmid</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Every day is filled with learning, discovery, and fun
+            </p>
+
+            <div style="max-width: 900px; margin: 0 auto;">
+                <!-- Morning -->
+                <article style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <i data-lucide="sunrise" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-warning);">7:30 AM - 9:00 AM</h3>
+                        <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Morning Assembly & Early Learning</h4>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                            Students arrive and gather for assembly with prayers, national anthem, announcements, and an inspiring message for the day. Early arrivals enjoy quiet reading or morning activities.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Mid-Morning -->
+                <article style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <i data-lucide="book-open" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-primary);">9:00 AM - 11:00 AM</h3>
+                        <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Core Academic Lessons</h4>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                            Focused instruction in English, Mathematics, and other core subjects. Teachers use interactive methods, group work, and hands-on activities to make learning engaging and effective.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Break Time -->
+                <article style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <i data-lucide="coffee" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-success);">11:00 AM - 11:30 AM</h3>
+                        <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Break & Snack Time</h4>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                            Students enjoy nutritious snacks, outdoor play, and social time with friends. Supervised activities ensure safety while allowing children to recharge and have fun.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Late Morning -->
+                <article style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <i data-lucide="palette" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-2) 0; color: #9C27B0;">11:30 AM - 1:00 PM</h3>
+                        <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Specialist Subjects & Activities</h4>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                            Time for Science, Social Studies, Arts, Music, or Physical Education. Students explore different subjects and develop well-rounded skills through varied activities.
+                        </p>
+                    </div>
+                </article>
+
+                <!-- Afternoon -->
+                <article style="display: flex; gap: var(--space-6); align-items: flex-start;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
+                            <i data-lucide="home" style="width: 40px; height: 40px; color: white;"></i>
+                        </div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 var(--space-2) 0; color: #00BCD4;">1:00 PM - 2:00 PM</h3>
+                        <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Review, Homework & Dismissal</h4>
+                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                            Students review the day's lessons, receive homework assignments, and prepare to go home. Organized dismissal ensures each child leaves safely with their guardian or transport.
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- EXTRACURRICULAR ACTIVITIES -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Extracurricular Activities</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Beyond the classroom, students develop talents and interests through diverse activities
+            </p>
+
+            <div class="grid">
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);">
+                        <i data-lucide="trophy"></i>
+                    </div>
+                    <h3>Sports & Athletics</h3>
+                    <p>
+                        Football, athletics, table tennis, and team games. Regular sports periods and annual sports day develop fitness, teamwork, and competitive spirit.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
+                        <i data-lucide="music"></i>
+                    </div>
+                    <h3>Music & Drama</h3>
+                    <p>
+                        Singing, dancing, and dramatic performances. Students participate in school concerts, cultural shows, and end-of-year productions.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
+                        <i data-lucide="palette"></i>
+                    </div>
+                    <h3>Arts & Crafts</h3>
+                    <p>
+                        Drawing, painting, and creative projects. Art club allows students to express creativity and develop fine motor skills through various media.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+                        <i data-lucide="book-open"></i>
+                    </div>
+                    <h3>Reading Club</h3>
+                    <p>
+                        Book discussions, library visits, and storytelling sessions. Fostering a love for reading and improving literacy through engaging activities.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+                        <i data-lucide="flask-conical"></i>
+                    </div>
+                    <h3>Science Club</h3>
+                    <p>
+                        Hands-on experiments, nature walks, and science projects. Encouraging curiosity and exploration of the natural world through practical activities.
+                    </p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);">
+                        <i data-lucide="users"></i>
+                    </div>
+                    <h3>Leadership Programs</h3>
+                    <p>
+                        Prefect system, class monitors, and student council. Developing responsibility, leadership skills, and service to the school community.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- SPECIAL EVENTS -->
+        <section class="container section">
+            <h2 class="section-title">Annual Events & Celebrations</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Creating memorable experiences throughout the school year
+            </p>
+
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="calendar-check" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Resumption Day</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        New academic session begins with welcome activities, class assignments, and orientation for new students and parents.
+                    </p>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="flag" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Independence Day</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        Celebrating Nigerian independence with cultural displays, traditional attire, patriotic songs, and learning about national heritage.
+                    </p>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="gift" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Children's Day</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        A special day dedicated to our students with games, entertainment, gifts, and fun activities celebrating childhood.
+                    </p>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="globe" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Cultural Day</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        Students showcase Nigeria's diverse cultures through traditional dress, food, dance, and presentations about different ethnic groups.
+                    </p>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="trophy" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Sports Day</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        Annual athletics competition with races, relay events, and team sports. Houses compete for trophies and bragging rights!
+                    </p>
+                </article>
+
+                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
+                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="graduation-cap" style="width: 28px; height: 28px; color: white;"></i>
+                        </div>
+                        <h3 style="margin: 0;">Graduation Ceremony</h3>
+                    </div>
+                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                        Celebrating Primary 6 graduates as they complete their journey at Fahmid and prepare for secondary school.
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- STUDENT SUPPORT -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Student Support & Wellbeing</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                We prioritize each child's emotional, social, and physical wellbeing
+            </p>
+
+            <div class="grid">
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="heart" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Pastoral Care</h3>
+                    <p>Dedicated staff provide emotional support, conflict resolution, and guidance to ensure every child feels safe and valued.</p>
                 </div>
-            </section>
-        </article>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="stethoscope" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Health Services</h3>
+                    <p>Basic first aid available on campus with trained staff to handle minor injuries and health concerns during school hours.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="apple" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Nutrition</h3>
+                    <p>Healthy meal options and snacks available. We promote good eating habits and ensure students have nutritious food.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="users-round" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Anti-Bullying</h3>
+                    <p>Zero-tolerance policy for bullying with clear procedures for reporting and addressing any concerns promptly and effectively.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="graduation-cap" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Learning Support</h3>
+                    <p>Additional help for students who need extra support in specific subjects through remedial classes and one-on-one attention.</p>
+                </div>
+
+                <div class="card">
+                    <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
+                        <i data-lucide="shield-check" style="color: white; width: 28px; height: 28px;"></i>
+                    </div>
+                    <h3>Safety & Security</h3>
+                    <p>Secure campus with controlled access, supervision during all activities, and emergency procedures to keep students safe.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- PARENT INVOLVEMENT -->
+        <section class="container section">
+            <h2 class="section-title">Parent Partnership</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                We believe in strong collaboration between school and home
+            </p>
+
+            <div style="max-width: 900px; margin: 0 auto;">
+                <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
+                    <div class="grid" style="gap: var(--space-10);">
+                        <article>
+                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
+                                <i data-lucide="calendar-days" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+                                <h3 style="margin: 0;">Regular Communication</h3>
+                            </div>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Weekly newsletters, progress reports, and open channels for parents to discuss their child's development with teachers.
+                            </p>
+                        </article>
+
+                        <article>
+                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
+                                <i data-lucide="users" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+                                <h3 style="margin: 0;">Parent-Teacher Meetings</h3>
+                            </div>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Termly conferences to discuss academic progress, behavior, and ways parents can support learning at home.
+                            </p>
+                        </article>
+
+                        <article>
+                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
+                                <i data-lucide="heart-handshake" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+                                <h3 style="margin: 0;">Volunteer Opportunities</h3>
+                            </div>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Parents are welcome to volunteer for school events, field trips, and special activities throughout the year.
+                            </p>
+                        </article>
+
+                        <article>
+                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
+                                <i data-lucide="message-square" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+                                <h3 style="margin: 0;">Parent Portal</h3>
+                            </div>
+                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
+                                Access grades, attendance records, school announcements, and communicate with teachers through our online portal.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA SECTION -->
+        <section class="container section cta-section">
+            <h2>Experience School Life at Fahmid</h2>
+            <p class="lead">
+                See our vibrant community in action with a personal tour
+            </p>
+            <a href="contact.html" class="btn">Schedule a Visit</a>
+            <a href="gallery.html" class="btn btn-secondary">View Photo Gallery</a>
+        </section>
+
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
+                    <i data-lucide="facebook"></i>
+                </a>
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
+                    <i data-lucide="instagram"></i>
+                </a>
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <i data-lucide="message-circle"></i>
+                </a>
+            </div>
+
+            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
         </div>
     </footer>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
