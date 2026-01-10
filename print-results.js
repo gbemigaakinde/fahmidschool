@@ -273,6 +273,11 @@ async function loadReportData() {
    ACADEMIC RESULTS (FIXED)
 ================================ */
 
+/**
+ * FIXED: Academic Results Loading with Initialization Guards
+ * Replace the loadAcademicResults function in print-results.js
+ */
+
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     
@@ -281,8 +286,22 @@ async function loadAcademicResults() {
         return;
     }
     
-    // CRITICAL FIX: Remove the premature initialization check
-    // The check was preventing results from loading on first page load
+    // CRITICAL FIX: Wait for initialization to complete
+    if (!isInitialized) {
+        console.log('Waiting for initialization to complete...');
+        tbody.innerHTML = loadingRow();
+        
+        // Wait up to 5 seconds for initialization
+        for (let i = 0; i < 50; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (isInitialized) break;
+        }
+        
+        if (!isInitialized) {
+            tbody.innerHTML = emptyRow('Initialization timeout. Please refresh the page.');
+            return;
+        }
+    }
     
     if (!currentPupilId) {
         console.error('No pupil ID available');
@@ -305,7 +324,7 @@ async function loadAcademicResults() {
     tbody.innerHTML = loadingRow();
 
     try {
-        // CRITICAL FIX: Query by BOTH pupilId AND session AND term
+        // Query by pupilId, term, AND session
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .where('term', '==', currentSettings.term)
@@ -317,15 +336,13 @@ async function loadAcademicResults() {
         if (resultsSnap.empty) {
             console.log('No results found with query. Trying alternative method...');
             
-            // FALLBACK: Try document ID format (pupilId_term_subject)
+            // FALLBACK: Try document ID format
             const allResultsSnap = await db.collection('results').get();
             const results = [];
             
             allResultsSnap.forEach(doc => {
-                const docId = doc.id;
                 const data = doc.data();
                 
-                // Check if this result matches our criteria
                 if (data.pupilId === currentPupilId && 
                     data.term === currentSettings.term &&
                     data.session === currentSettings.session) {
@@ -346,7 +363,6 @@ async function loadAcademicResults() {
             
             renderResults(results, tbody);
         } else {
-            // Process results from query
             const results = [];
             
             resultsSnap.forEach(doc => {
