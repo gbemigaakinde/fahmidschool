@@ -2943,3 +2943,201 @@ i[data-lucide] {
     font-size: 14px;
     color: #666;
 }
+
+/* ============================================
+   MODERN SIDEBAR REDESIGN
+   ============================================ */
+
+.sidebar-header-modern {
+    padding: 1.5rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-logo-icon {
+    width: 32px;
+    height: 32px;
+    color: white;
+    stroke-width: 2.5;
+}
+
+.sidebar-logo-text {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.01em;
+}
+
+.sidebar-nav-modern {
+    flex: 1;
+    padding: 1rem 0;
+    overflow-y: auto;
+}
+
+.sidebar-nav-modern::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-nav-modern::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav-modern::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    margin: 0.125rem 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar-link::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: white;
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+}
+
+.sidebar-link i[data-lucide] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke-width: 2;
+}
+
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    transform: translateX(2px);
+}
+
+.sidebar-link:hover::before {
+    transform: scaleY(1);
+}
+
+.sidebar-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 600;
+}
+
+.sidebar-link.active::before {
+    transform: scaleY(1);
+}
+
+/* Sidebar Groups */
+.sidebar-group-modern {
+    margin: 0.5rem 0;
+}
+
+.sidebar-group-toggle-modern {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    margin: 0 0.75rem;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 0.5rem;
+}
+
+.sidebar-group-toggle-modern:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.group-header-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.group-header-content i[data-lucide] {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+}
+
+.sidebar-group-toggle-modern .toggle-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+}
+
+.sidebar-group-toggle-modern[aria-expanded="false"] .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.sidebar-group-content-modern {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-group-content-modern.active {
+    max-height: 500px;
+}
+
+.sidebar-group-content-modern .sidebar-link {
+    padding-left: 3.25rem;
+    font-size: 0.875rem;
+}
+
+/* Sidebar Footer */
+.sidebar-footer-modern {
+    padding: 1rem 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-link-secondary {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.sidebar-link-danger {
+    color: #ff6b6b !important;
+}
+
+.sidebar-link-danger:hover {
+    background: rgba(255, 107, 107, 0.15) !important;
+    color: #ff8787 !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+    .admin-sidebar {
+        box-shadow: 2px 0 24px rgba(0, 0, 0, 0.3);
+    }
+}
