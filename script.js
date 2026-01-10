@@ -323,54 +323,6 @@ window.retryOperation = async function(operation, maxRetries = 3) {
   }
 };
 
-async function getCurrentSettings() {
-  try {
-    const doc = await db.collection('settings').doc('current').get();
-
-    if (doc.exists) {
-      const data = doc.data();
-
-      let sessionName = '2025/2026';
-      let sessionData = null;
-
-      if (data.currentSession && typeof data.currentSession === 'object') {
-        sessionName =
-          data.currentSession.name ||
-          `${data.currentSession.startYear}/${data.currentSession.endYear}`;
-        sessionData = data.currentSession;
-      } else if (data.session) {
-        sessionName = data.session;
-      }
-
-      return {
-        term: data.term || 'First Term',
-        session: sessionName,
-        currentSession: sessionData,
-        resumptionDate: data.resumptionDate || null,
-        promotionPeriodActive: data.promotionPeriodActive || false
-      };
-    }
-
-    return {
-      term: 'First Term',
-      session: '2025/2026',
-      currentSession: null,
-      resumptionDate: null,
-      promotionPeriodActive: false
-    };
-  } catch (error) {
-    console.error('Error getting settings:', error);
-
-    return {
-      term: 'First Term',
-      session: '2025/2026',
-      currentSession: null,
-      resumptionDate: null,
-      promotionPeriodActive: false
-    };
-  }
-}
-
 /* =====================================================
    GLOBAL ERROR HANDLING
 ===================================================== */
