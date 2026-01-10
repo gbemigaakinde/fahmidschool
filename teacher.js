@@ -634,6 +634,38 @@ async function saveAllResults() {
     return;
   }
   
+  // ADD THIS VALIDATION:
+  let hasInvalidScores = false;
+  
+  inputs.forEach(input => {
+    const field = input.dataset.field;
+    const value = parseFloat(input.value) || 0;
+    const max = field === 'ca' ? 40 : 60;
+    
+    if (value > max) {
+      hasInvalidScores = true;
+      input.style.borderColor = '#f44336';
+      input.value = max;
+      
+      window.showToast?.(
+        `${field === 'ca' ? 'CA' : 'Exam'} score cannot exceed ${max}`,
+        'danger',
+        4000
+      );
+    }
+    
+    if (value < 0) {
+      hasInvalidScores = true;
+      input.style.borderColor = '#f44336';
+      input.value = 0;
+    }
+  });
+  
+  if (hasInvalidScores) {
+    window.showToast?.('Invalid scores corrected. Please review and save again.', 'warning', 5000);
+    return;
+  }
+  
   // FIXED: Manage button state properly without nested spans
   const saveBtn = document.getElementById('save-results-btn');
   const originalText = saveBtn?.textContent;
