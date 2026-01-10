@@ -23,13 +23,41 @@ let currentSettings = {
 };
 
 /* ===============================
-   INITIALIZATION
+   INITIALIZATION WITH PROPER ORDER
 ================================ */
+// Add loading state flag
+let isInitialized = false;
 
 checkRole('pupil')
-    .then(user => initReport(user))
+    .then(async user => {
+        try {
+            // STEP 1: Load settings FIRST
+            console.log('Step 1: Loading settings...');
+            await fetchSchoolSettings();
+            
+            // STEP 2: Load pupil profile SECOND
+            console.log('Step 2: Loading pupil profile...');
+            await fetchPupilProfile(user.uid);
+            
+            // STEP 3: Setup UI THIRD
+            console.log('Step 3: Setting up UI...');
+            setupTermSelector();
+            updateReportHeader();
+            
+            // STEP 4: Load report data LAST
+            console.log('Step 4: Loading report data...');
+            await loadReportData();
+            
+            isInitialized = true;
+            console.log('✓ Report card initialized successfully');
+            
+        } catch (error) {
+            console.error('Initialization failed:', error);
+            window.showToast?.('Failed to load report card. Please refresh.', 'danger');
+        }
+    })
     .catch(() => window.location.href = 'login.html');
-
+    
 /* ===============================
    MAIN INITIALIZER
 ================================ */
