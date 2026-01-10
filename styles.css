@@ -340,6 +340,8 @@ section .container > p.lead {
     font-weight: var(--weight-bold);
     color: var(--color-black);
     letter-spacing: -0.03em;
+    text-align: center; /* Center the logo text */
+    width: 100%; /* Ensure full width for proper centering */
 }
 
 .sidebar-content {
@@ -501,32 +503,35 @@ section .container > p.lead {
     z-index: 1;
 }
 
-/* Hero text content – free-flowing, not compacted */
+/* Hero text content – centered and properly aligned */
 .hero-content {
     position: relative;
     z-index: 2;
     width: 90%;
     max-width: 900px;
     margin: 0 auto;
-    padding: var(--space-6) var(--space-6) 0 var(--space-6); /* ← Reduced from space-12 to space-6 */
+    padding: var(--space-6) var(--space-6) 0 var(--space-6);
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-6); /* ← Also reduced gap from space-8 to space-6 */
+    align-items: center; /* Changed from flex-start to center */
+    text-align: center; /* Added explicit text alignment */
+    gap: var(--space-6);
 }
 
-/* Bigger, bolder heading */
+/* Bigger, bolder heading - centered */
 .hero h1 {
-    font-size: clamp(3.5rem, 11vw, 5rem); /* slightly bigger */
+    font-size: clamp(3.5rem, 11vw, 5rem);
     color: var(--color-white);
     margin: 0;
     font-weight: var(--weight-bold);
     letter-spacing: -0.02em;
-    line-height: 1.2; /* more breathing room */
+    line-height: 1.2;
     text-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    text-align: center; /* Added explicit center alignment */
+    width: 100%; /* Ensure full width for centering */
 }
 
-/* Subtitle – free spacing */
+/* Subtitle – centered with proper spacing */
 .hero .lead {
     font-size: var(--text-xl);
     max-width: 660px;
@@ -535,11 +540,11 @@ section .container > p.lead {
     text-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
     letter-spacing: -0.01em;
     line-height: 1.6;
-    margin: 0;
-    margin-bottom: var(--space-16); /* ← ADD THIS LINE - pushes button down */
+    margin: 0 auto var(--space-16) auto; /* Center with auto margins */
+    text-align: center; /* Added explicit center alignment */
 }
 
-/* Apply Now button */
+/* Apply Now button - centered */
 .hero .btn {
     padding: var(--space-4) var(--space-10);
     font-size: var(--text-lg);
@@ -549,6 +554,7 @@ section .container > p.lead {
     box-shadow: 0 8px 30px rgba(0, 178, 255, 0.4);
     transition: all 0.4s var(--ease-out);
     animation: buttonPulse 4s infinite ease-in-out;
+    align-self: center; /* Center the button within flex container */
 }
 
 /* Button pulse */
@@ -3143,13 +3149,15 @@ i[data-lucide] {
 }
 
 .hero-title {
-    font-size: 2.2rem; /* smaller, readable size */
+    font-size: 2.2rem;
     font-weight: 700;
     text-align: center;
-    margin: 0 0 0.5rem 0; /* reduce extra spacing */
-    line-height: 1.2; /* tighter spacing if needed */
-    color: white; /* to contrast with the hero background */
+    margin: 0 auto 0.5rem auto; /* Center with auto margins */
+    line-height: 1.2;
+    color: white;
+    width: 100%; /* Ensure full width for centering */
 }
+
 .hero-content p.lead {
     font-size: 1rem; /* slightly smaller than h1 */
     margin-top: 0.5rem;
