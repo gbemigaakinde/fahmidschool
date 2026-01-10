@@ -3,156 +3,610 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Login to Fahmid Nursery & Primary School portal for teachers, pupils, and parents.">
     <title>Login - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Full-screen container with gradient background */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: var(--space-8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated background pattern */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.05)"/></svg>');
+            opacity: 0.3;
+        }
+
+        /* Back to home button */
+        .back-home-btn {
+            position: fixed;
+            top: var(--space-6);
+            left: var(--space-6);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-6);
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--color-primary);
+            border: 2px solid transparent;
+            border-radius: var(--radius-full);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-sm);
+            text-decoration: none;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .back-home-btn:hover {
+            background: white;
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Auth card */
+        .auth-card {
+            background: white;
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-2xl);
+            width: 100%;
+            max-width: 480px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        /* Card header with gradient */
+        .auth-header {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            padding: var(--space-10) var(--space-8);
+            text-align: center;
+            color: white;
+        }
+
+        .auth-header .logo-container {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            margin: 0 auto var(--space-6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .auth-header h1 {
+            font-size: var(--text-3xl);
+            font-weight: var(--weight-bold);
+            color: white;
+            margin: 0 0 var(--space-2);
+        }
+
+        .auth-header p {
+            font-size: var(--text-base);
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+        }
+
+        /* Form container */
+        .auth-body {
+            padding: var(--space-10) var(--space-8);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: var(--space-2);
+            margin-bottom: var(--space-8);
+            background: var(--color-gray-100);
+            padding: var(--space-1);
+            border-radius: var(--radius-full);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: var(--space-3) var(--space-6);
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-full);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-sm);
+            color: var(--color-gray-600);
+            cursor: pointer;
+            transition: all var(--duration-base) var(--ease-out);
+        }
+
+        .auth-tab.active {
+            background: white;
+            color: var(--color-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-6);
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: var(--weight-medium);
+            color: var(--color-gray-900);
+            margin-bottom: var(--space-2);
+            font-size: var(--text-sm);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: var(--space-4);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-gray-400);
+            pointer-events: none;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12);
+            font-family: var(--font-primary);
+            font-size: var(--text-base);
+            color: var(--color-gray-900);
+            background: var(--color-gray-50);
+            border: 2px solid transparent;
+            border-radius: var(--radius-lg);
+            transition: all var(--duration-fast) var(--ease-out);
+        }
+
+        .auth-input:focus {
+            outline: none;
+            background: white;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.1);
+        }
+
+        .auth-input.error {
+            border-color: var(--color-danger);
+            background: rgba(244, 67, 54, 0.05);
+        }
+
+        .auth-input.success {
+            border-color: var(--color-success);
+            background: rgba(76, 175, 80, 0.05);
+        }
+
+        .error-message {
+            display: none;
+            color: var(--color-danger);
+            font-size: var(--text-sm);
+            margin-top: var(--space-2);
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        /* Role selection (for registration) */
+        .role-selection {
+            margin: var(--space-6) 0;
+            padding: var(--space-6);
+            background: var(--color-gray-50);
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--color-gray-200);
+        }
+
+        .role-selection fieldset {
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .role-selection legend {
+            font-weight: var(--weight-semibold);
+            color: var(--color-gray-900);
+            margin-bottom: var(--space-4);
+            font-size: var(--text-base);
+        }
+
+        .role-options {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .role-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-4);
+            background: white;
+            border: 2px solid var(--color-gray-300);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--duration-base);
+        }
+
+        .role-option:hover {
+            border-color: var(--color-primary);
+            background: rgba(33, 150, 243, 0.05);
+        }
+
+        .role-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .role-option label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Submit button */
+        .auth-btn {
+            width: 100%;
+            padding: var(--space-4);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: var(--weight-semibold);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--duration-base) var(--ease-out);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            margin-top: var(--space-6);
+        }
+
+        .auth-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.4);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .auth-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Forgot password link */
+        .forgot-password {
+            display: block;
+            text-align: center;
+            margin-top: var(--space-4);
+            font-size: var(--text-sm);
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: var(--weight-medium);
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        .auth-footer {
+            padding: var(--space-6) var(--space-8);
+            background: var(--color-gray-50);
+            text-align: center;
+            border-top: 1px solid var(--color-gray-200);
+        }
+
+        .auth-footer p {
+            margin: 0;
+            font-size: var(--text-sm);
+            color: var(--color-gray-600);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 640px) {
+            .login-container {
+                padding: var(--space-4);
+            }
+
+            .back-home-btn {
+                top: var(--space-4);
+                left: var(--space-4);
+                padding: var(--space-2) var(--space-4);
+                font-size: var(--text-xs);
+            }
+
+            .auth-header {
+                padding: var(--space-8) var(--space-6);
+            }
+
+            .auth-header h1 {
+                font-size: var(--text-2xl);
+            }
+
+            .auth-body {
+                padding: var(--space-8) var(--space-6);
+            }
+
+            .role-options {
+                flex-direction: column;
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <!-- Skip to main content link -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Back to Home Link -->
-    <div style="position: fixed; top: 20px; left: 20px; z-index: 1000;">
-        <a href="index.html" class="btn" style="background: var(--color-white); color: var(--color-primary-dark); border: 2px solid var(--color-primary);">
-            ← Back to Home
-        </a>
-    </div>
+    <a href="index.html" class="back-home-btn">
+        <i data-lucide="arrow-left"></i>
+        Back to Home
+    </a>
 
-    <main id="main-content">
-        <div class="auth-container">
+    <div class="login-container">
+        <div class="auth-card">
+            <!-- Header -->
             <div class="auth-header">
-                <div class="logo-text" style="color: var(--color-primary-dark); margin-bottom: var(--space-md);">Fahmid School</div>
-                <h2 id="auth-title">Login</h2>
+                <div class="logo-container">
+                    <i data-lucide="graduation-cap" style="width: 40px; height: 40px;"></i>
+                </div>
+                <h1 id="auth-title">Welcome Back</h1>
+                <p id="auth-subtitle">Sign in to access your portal</p>
             </div>
 
-            <form id="auth-form" novalidate>
-                <div class="form-group">
-                    <label for="email">Email Address <span class="required">*</span></label>
-                    <input type="email" id="email" placeholder="your.email@example.com" required aria-required="true" autocomplete="email">
-                    <span class="error-message" id="email-error">Please enter a valid email address</span>
+            <!-- Body -->
+            <div class="auth-body">
+                <!-- Tabs -->
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
+                        Login
+                    </button>
+                    <button class="auth-tab" data-mode="register" onclick="switchAuthMode('register')">
+                        Register
+                    </button>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password <span class="required">*</span></label>
-                    <input type="password" id="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
-                    <span class="error-message" id="password-error">Password must be at least 6 characters</span>
-                </div>
-
-                <div id="role-selection" style="display:none; margin: var(--space-md) 0;">
-                    <fieldset>
-                        <legend style="font-weight: var(--font-weight-medium); margin-bottom: var(--space-sm);">Register As:</legend>
-                        <div style="display: flex; gap: var(--space-lg); justify-content: center;">
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="role" value="teacher" style="margin-right: var(--space-xs);">
-                                <span>Teacher</span>
-                            </label>
-                            <label style="display: flex; align-items: center; cursor: pointer;">
-                                <input type="radio" name="role" value="pupil" checked style="margin-right: var(--space-xs);">
-                                <span>Pupil/Parent</span>
-                            </label>
+                <!-- Form -->
+                <form id="auth-form" novalidate>
+                    <!-- Email Field -->
+                    <div class="form-group">
+                        <label for="email">Email Address <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <i data-lucide="mail" class="input-icon"></i>
+                            <input 
+                                type="email" 
+                                id="email" 
+                                class="auth-input"
+                                placeholder="your.email@example.com" 
+                                required 
+                                aria-required="true" 
+                                autocomplete="email">
                         </div>
-                    </fieldset>
-                </div>
+                        <span class="error-message" id="email-error">Please enter a valid email address</span>
+                    </div>
 
-                <button type="submit" id="auth-btn" class="btn" style="width: 100%; margin-top: var(--space-lg);">
-                    <span class="btn-text">Login</span>
-                    <span class="btn-loading" style="display:none;">Processing...</span>
-                </button>
-            </form>
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label for="password">Password <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <i data-lucide="lock" class="input-icon"></i>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                class="auth-input"
+                                placeholder="Enter your password" 
+                                required 
+                                aria-required="true" 
+                                autocomplete="current-password">
+                        </div>
+                        <span class="error-message" id="password-error">Password must be at least 6 characters</span>
+                    </div>
 
-            <div class="auth-links">
-                <a href="#" class="toggle-link" id="toggle-link">Need an account? Register</a>
-                <a href="#" id="forgot-password-link" style="display:block; margin-top: var(--space-sm); font-size: var(--font-size-sm); text-align: center;">Forgot password?</a>
+                    <!-- Role Selection (Register Only) -->
+                    <div id="role-selection" class="role-selection" style="display:none;">
+                        <fieldset>
+                            <legend>Register As:</legend>
+                            <div class="role-options">
+                                <div class="role-option">
+                                    <input type="radio" name="role" value="pupil" id="role-pupil" checked>
+                                    <label for="role-pupil">Pupil/Parent</label>
+                                </div>
+                                <div class="role-option">
+                                    <input type="radio" name="role" value="teacher" id="role-teacher">
+                                    <label for="role-teacher">Teacher</label>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="auth-btn" id="auth-btn">
+                        Sign In
+                    </button>
+
+                    <!-- Forgot Password (Login Only) -->
+                    <a href="#" id="forgot-password-link" class="forgot-password">
+                        Forgot password?
+                    </a>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="auth-footer">
+                <p>&copy; 2026 Fahmid Nursery and Primary School</p>
             </div>
         </div>
-    </main>
+    </div>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
     <script>
+        let isLoginMode = true;
+
         /**
-         * Login/Register Page Logic
+         * Switch between login and register modes
          */
-        document.addEventListener('DOMContentLoaded', function() {
-            const title = document.getElementById('auth-title');
-            const btn = document.getElementById('auth-btn');
-            const toggle = document.getElementById('toggle-link');
-            const roleDiv = document.getElementById('role-selection');
-            const form = document.getElementById('auth-form');
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const forgotPasswordLink = document.getElementById('forgot-password-link');
+        function switchAuthMode(mode) {
+            isLoginMode = (mode === 'login');
             
-            let isLoginMode = true;
+            // Update tabs
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.mode === mode);
+            });
 
-            /**
-             * Validate email format
-             * @param {string} email - Email to validate
-             * @returns {boolean} True if valid
-             */
-            function isValidEmail(email) {
-                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            // Update header
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+            const button = document.getElementById('auth-btn');
+            const roleDiv = document.getElementById('role-selection');
+            const forgotLink = document.getElementById('forgot-password-link');
+            const passwordInput = document.getElementById('password');
+
+            if (isLoginMode) {
+                title.textContent = 'Welcome Back';
+                subtitle.textContent = 'Sign in to access your portal';
+                button.textContent = 'Sign In';
+                roleDiv.style.display = 'none';
+                forgotLink.style.display = 'block';
+                passwordInput.setAttribute('autocomplete', 'current-password');
+            } else {
+                title.textContent = 'Create Account';
+                subtitle.textContent = 'Register to get started';
+                button.textContent = 'Create Account';
+                roleDiv.style.display = 'block';
+                forgotLink.style.display = 'none';
+                passwordInput.setAttribute('autocomplete', 'new-password');
             }
 
-            /**
-             * Show field error
-             * @param {HTMLElement} input - Input element
-             * @param {string} errorId - Error element ID
-             */
-            function showFieldError(input, errorId) {
-                input.classList.add('error');
-                input.classList.remove('success');
-                document.getElementById(errorId).classList.add('visible');
-                input.setAttribute('aria-invalid', 'true');
-            }
+            // Clear validation states
+            clearValidation();
+        }
 
-            /**
-             * Show field success
-             * @param {HTMLElement} input - Input element
-             * @param {string} errorId - Error element ID
-             */
-            function showFieldSuccess(input, errorId) {
-                input.classList.remove('error');
-                input.classList.add('success');
-                document.getElementById(errorId).classList.remove('visible');
+        /**
+         * Clear all validation states
+         */
+        function clearValidation() {
+            const inputs = document.querySelectorAll('.auth-input');
+            inputs.forEach(input => {
+                input.classList.remove('error', 'success');
                 input.setAttribute('aria-invalid', 'false');
-            }
+            });
+            
+            const errors = document.querySelectorAll('.error-message');
+            errors.forEach(error => error.classList.remove('visible'));
+        }
 
-            /**
-             * Validate email field
-             * @returns {boolean} True if valid
-             */
-            function validateEmail() {
-                const email = emailInput.value.trim();
-                if (!email || !isValidEmail(email)) {
-                    showFieldError(emailInput, 'email-error');
-                    return false;
-                }
-                showFieldSuccess(emailInput, 'email-error');
-                return true;
-            }
+        /**
+         * Validate email format
+         */
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
 
-            /**
-             * Validate password field
-             * @returns {boolean} True if valid
-             */
-            function validatePassword() {
-                const password = passwordInput.value;
-                if (!password || password.length < 6) {
-                    showFieldError(passwordInput, 'password-error');
-                    return false;
-                }
-                showFieldSuccess(passwordInput, 'password-error');
-                return true;
+        /**
+         * Show field error
+         */
+        function showFieldError(input, errorId) {
+            input.classList.add('error');
+            input.classList.remove('success');
+            document.getElementById(errorId).classList.add('visible');
+            input.setAttribute('aria-invalid', 'true');
+        }
+
+        /**
+         * Show field success
+         */
+        function showFieldSuccess(input, errorId) {
+            input.classList.remove('error');
+            input.classList.add('success');
+            document.getElementById(errorId).classList.remove('visible');
+            input.setAttribute('aria-invalid', 'false');
+        }
+
+        /**
+         * Validate email field
+         */
+        function validateEmail() {
+            const emailInput = document.getElementById('email');
+            const email = emailInput.value.trim();
+            
+            if (!email || !isValidEmail(email)) {
+                showFieldError(emailInput, 'email-error');
+                return false;
             }
+            showFieldSuccess(emailInput, 'email-error');
+            return true;
+        }
+
+        /**
+         * Validate password field
+         */
+        function validatePassword() {
+            const passwordInput = document.getElementById('password');
+            const password = passwordInput.value;
+            
+            if (!password || password.length < 6) {
+                showFieldError(passwordInput, 'password-error');
+                return false;
+            }
+            showFieldSuccess(passwordInput, 'password-error');
+            return true;
+        }
+
+        /**
+         * Initialize page
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            lucide.createIcons();
 
             // Real-time validation
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+
             emailInput.addEventListener('blur', validateEmail);
             passwordInput.addEventListener('blur', validatePassword);
 
@@ -163,6 +617,7 @@
                     document.getElementById('email-error').classList.remove('visible');
                 }
             });
+
             passwordInput.addEventListener('input', () => {
                 if (passwordInput.classList.contains('error')) {
                     passwordInput.classList.remove('error');
@@ -170,56 +625,22 @@
                 }
             });
 
-            /**
-             * Toggle between login and register modes
-             */
-            toggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                isLoginMode = !isLoginMode;
-
-                if (isLoginMode) {
-                    title.textContent = 'Login';
-                    btn.querySelector('.btn-text').textContent = 'Login';
-                    toggle.textContent = 'Need an account? Register';
-                    roleDiv.style.display = 'none';
-                    forgotPasswordLink.style.display = 'block';
-                    passwordInput.setAttribute('autocomplete', 'current-password');
-                } else {
-                    title.textContent = 'Register';
-                    btn.querySelector('.btn-text').textContent = 'Register';
-                    toggle.textContent = 'Already have an account? Login';
-                    roleDiv.style.display = 'block';
-                    forgotPasswordLink.style.display = 'none';
-                    passwordInput.setAttribute('autocomplete', 'new-password');
-                }
-
-                // Clear any validation states
-                emailInput.classList.remove('error', 'success');
-                passwordInput.classList.remove('error', 'success');
-                document.getElementById('email-error').classList.remove('visible');
-                document.getElementById('password-error').classList.remove('visible');
-            });
-
-            /**
-             * Handle forgot password
-             */
-            forgotPasswordLink.addEventListener('click', (e) => {
+            // Forgot password handler
+            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
                 e.preventDefault();
                 const email = prompt('Enter your email address:');
                 if (email && isValidEmail(email)) {
+                    const btn = document.getElementById('auth-btn');
                     btn.disabled = true;
                     resetPassword(email);
-                    // resetPassword will handle re-enabling button via toast callbacks
                     setTimeout(() => btn.disabled = false, 3000);
                 } else if (email) {
                     window.showToast('Please enter a valid email address', 'warning');
                 }
             });
 
-            /**
-             * Handle form submission
-             */
-            form.addEventListener('submit', async (e) => {
+            // Form submission
+            document.getElementById('auth-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
 
                 const isEmailValid = validateEmail();
@@ -230,14 +651,13 @@
                     return;
                 }
 
-                const email = emailInput.value.trim();
-                const password = passwordInput.value;
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const btn = document.getElementById('auth-btn');
 
                 // Show loading state
                 btn.disabled = true;
                 btn.classList.add('loading');
-                btn.querySelector('.btn-text').style.display = 'none';
-                btn.querySelector('.btn-loading').style.display = 'inline';
 
                 try {
                     if (isLoginMode) {
@@ -247,14 +667,10 @@
                         await register(email, password, role);
                     }
                 } catch (error) {
-                    // Error handling is done in firebase-init.js
                     console.error('Auth error:', error);
                 } finally {
-                    // Reset button state
                     btn.disabled = false;
                     btn.classList.remove('loading');
-                    btn.querySelector('.btn-text').style.display = 'inline';
-                    btn.querySelector('.btn-loading').style.display = 'none';
                 }
             });
         });
