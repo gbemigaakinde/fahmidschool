@@ -493,6 +493,20 @@ document.addEventListener('DOMContentLoaded', () => {
     initSmoothScroll();
     initTestimonialsCarousel();
 
+    // ADD THESE LINES:
+    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            const section = link.dataset.section;
+            if (section && typeof showSection === 'function') {
+                showSection(section);
+            }
+        });
+    });
+
+    console.log('✓ Fahmid School website initialized successfully (v2.3.0)');
+});
+
     // ← Add this here
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
         link.addEventListener('click', e => {
