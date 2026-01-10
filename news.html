@@ -6,91 +6,231 @@
     <meta name="description" content="Stay updated with the latest news and announcements from Fahmid Nursery & Primary School.">
     <title>News & Announcements - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Firebase SDKs - Only load on pages that need it -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/jpeg" href="IMG_4629.png">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Skip to main content link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <!-- Hamburger Menu (Mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
         <span class="line1"></span>
         <span class="line2"></span>
         <span class="line3"></span>
     </button>
 
-    <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-header">
             <div class="logo-text">Fahmid School</div>
         </div>
 
         <div class="sidebar-content">
-            <ul role="list">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="about.html">About</a></li>
-                <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html">Admissions</a></li>
-                <li><a href="school-life.html">School Life</a></li>
-                <li><a href="gallery.html">Gallery</a></li>
-                <li><a href="news.html" aria-current="page">News</a></li>
-                <li><a href="contact.html">Contact</a></li>
-            </ul>
+            <nav>
+                <ul role="list">
+                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
+                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
+                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
+                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
+                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
+                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
+                    <li><a href="news.html" aria-current="page"><i data-lucide="newspaper"></i> News</a></li>
+                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
+                </ul>
+            </nav>
         </div>
 
         <div class="sidebar-footer">
-            <div class="sidebar-login-prompt">
-                <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
-                    Login / Register
-                </a>
-            </div>
+            <a href="login.html" class="btn" style="width: 100%; padding: 15px; border-radius: 30px; font-size: 1.1rem; display: block; text-align: center;">
+                Login / Register
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
-        <article class="container">
-            <header>
-                <h1>News & Announcements</h1>
-            </header>
+    <!-- HERO SECTION -->
+    <section class="hero" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); min-height: 400px;">
+        <div class="hero-content">
+            <h1>News & Announcements</h1>
+            <p class="lead">
+                Stay informed with the latest updates and important information from Fahmid School
+            </p>
+        </div>
+    </section>
 
-            <section aria-label="Announcements list">
-                <div id="announcements-container" aria-live="polite">
-                    <!-- Loading skeleton -->
-                    <div class="skeleton-container">
-                        <div class="skeleton" style="height: 40px; width: 60%; margin-bottom: 20px;"></div>
-                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: 10px;"></div>
-                        <div class="skeleton" style="height: 20px; width: 90%; margin-bottom: 10px;"></div>
-                        <div class="skeleton" style="height: 20px; width: 80%; margin-bottom: 30px;"></div>
-                        
-                        <div class="skeleton" style="height: 40px; width: 55%; margin-bottom: 20px;"></div>
-                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: 10px;"></div>
-                        <div class="skeleton" style="height: 20px; width: 95%; margin-bottom: 10px;"></div>
+    <main id="main-content" class="main-content">
+
+        <!-- LATEST ANNOUNCEMENTS -->
+        <section class="container section">
+            <h2 class="section-title">Latest Updates</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Important announcements and news from our school community
+            </p>
+
+            <div id="announcements-container" aria-live="polite">
+                <!-- Loading skeleton -->
+                <div class="skeleton-container">
+                    <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); margin-bottom: var(--space-8); border: 1px solid var(--color-gray-200);">
+                        <div class="skeleton" style="height: 40px; width: 60%; margin-bottom: var(--space-6);"></div>
+                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: var(--space-3);"></div>
+                        <div class="skeleton" style="height: 20px; width: 90%; margin-bottom: var(--space-3);"></div>
+                        <div class="skeleton" style="height: 20px; width: 80%; margin-bottom: var(--space-4);"></div>
+                        <div class="skeleton" style="height: 16px; width: 30%;"></div>
+                    </div>
+                    
+                    <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); margin-bottom: var(--space-8); border: 1px solid var(--color-gray-200);">
+                        <div class="skeleton" style="height: 40px; width: 55%; margin-bottom: var(--space-6);"></div>
+                        <div class="skeleton" style="height: 20px; width: 100%; margin-bottom: var(--space-3);"></div>
+                        <div class="skeleton" style="height: 20px; width: 95%; margin-bottom: var(--space-3);"></div>
+                        <div class="skeleton" style="height: 16px; width: 30%;"></div>
                     </div>
                 </div>
-            </section>
-        </article>
+            </div>
+        </section>
+
+        <!-- IMPORTANT DATES -->
+        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
+            <h2 class="section-title">Important Dates</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Mark your calendar for upcoming school events
+            </p>
+
+            <div class="grid">
+                <article class="card">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="calendar" style="width: 40px; height: 40px; color: white;"></i>
+                    </div>
+                    <h3>New Term Begins</h3>
+                    <p style="color: var(--color-gray-700); margin-bottom: var(--space-4);">
+                        First day of the new academic term for all students
+                    </p>
+                    <p style="color: var(--color-primary); font-weight: var(--weight-semibold); margin: 0;">
+                        <i data-lucide="clock" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                        January 15, 2026
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="users" style="width: 40px; height: 40px; color: white;"></i>
+                    </div>
+                    <h3>Parent-Teacher Meeting</h3>
+                    <p style="color: var(--color-gray-700); margin-bottom: var(--space-4);">
+                        Discuss your child's progress with teachers
+                    </p>
+                    <p style="color: var(--color-primary); font-weight: var(--weight-semibold); margin: 0;">
+                        <i data-lucide="clock" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                        February 5, 2026
+                    </p>
+                </article>
+
+                <article class="card">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-xl); margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="trophy" style="width: 40px; height: 40px; color: white;"></i>
+                    </div>
+                    <h3>Inter-House Sports</h3>
+                    <p style="color: var(--color-gray-700); margin-bottom: var(--space-4);">
+                        Annual sports competition for all houses
+                    </p>
+                    <p style="color: var(--color-primary); font-weight: var(--weight-semibold); margin: 0;">
+                        <i data-lucide="clock" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"></i>
+                        March 12, 2026
+                    </p>
+                </article>
+            </div>
+        </section>
+
+        <!-- STAY CONNECTED -->
+        <section class="container section">
+            <h2 class="section-title">Stay Connected</h2>
+            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
+                Multiple ways to receive updates from Fahmid School
+            </p>
+
+            <div class="grid">
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="facebook" style="width: 28px; height: 28px; color: white;"></i>
+                    </div>
+                    <h3>Facebook</h3>
+                    <p>Follow us for daily updates, photos, and school events</p>
+                    <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" class="btn btn-secondary" style="margin-top: auto;">
+                        Follow Us
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="instagram" style="width: 28px; height: 28px; color: white;"></i>
+                    </div>
+                    <h3>Instagram</h3>
+                    <p>See photos and stories from our school community</p>
+                    <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" class="btn btn-secondary" style="margin-top: auto;">
+                        Follow Us
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="message-circle" style="width: 28px; height: 28px; color: white;"></i>
+                    </div>
+                    <h3>WhatsApp</h3>
+                    <p>Get instant notifications and direct communication</p>
+                    <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" class="btn btn-secondary" style="margin-top: auto;">
+                        Message Us
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEWSLETTER SIGNUP -->
+        <section class="container section" style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(25, 118, 210, 0.05) 100%); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); text-align: center;">
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="mail" style="width: 40px; height: 40px; color: white;"></i>
+                </div>
+                <h2 style="margin-bottom: var(--space-4);">Never Miss an Update</h2>
+                <p style="color: var(--color-gray-700); margin-bottom: var(--space-8); line-height: 1.8;">
+                    Sign up for our newsletter to receive important announcements, event invitations, and school news directly in your inbox.
+                </p>
+                <a href="contact.html" class="btn">
+                    <i data-lucide="mail" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;"></i>
+                    Subscribe to Newsletter
+                </a>
+            </div>
+        </section>
+
     </main>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <div class="container">
-            <p>&copy; 2026 Fahmid Nursery and Primary School. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="about.html">About Us</a>
+                <a href="academics.html">Academics</a>
+                <a href="admissions.html">Admissions</a>
+                <a href="policy.html">School Policy</a>
+            </div>
+
+            <div class="social-links">
+                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
+                    <i data-lucide="facebook"></i>
+                </a>
+                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
+                    <i data-lucide="instagram"></i>
+                </a>
+                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
+                    <i data-lucide="message-circle"></i>
+                </a>
+            </div>
+
+            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
         </div>
     </footer>
 
-    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
     <script>
-        /**
-         * Firebase Configuration for News Page
-         * Only loads announcements - no auth required
-         */
         const firebaseConfig = {
             apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
             authDomain: "fahmid-school.firebaseapp.com",
@@ -101,60 +241,92 @@
             measurementId: "G-HEC84JXFY2"
         };
 
-        // Initialize Firebase for news page only
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        /**
-         * Load and display announcements from Firestore
-         * @async
-         */
         async function loadAnnouncements() {
             const container = document.getElementById('announcements-container');
             
             try {
                 const snapshot = await db.collection('announcements')
                     .orderBy('createdAt', 'desc')
+                    .limit(10)
                     .get();
 
-                // Clear skeleton
                 container.innerHTML = '';
 
                 if (snapshot.empty) {
-                    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No announcements yet. Check back soon!</p>';
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: var(--space-20); background: white; border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);">
+                            <div style="width: 80px; height: 80px; background: var(--color-gray-100); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="inbox" style="width: 40px; height: 40px; color: var(--color-gray-400);"></i>
+                            </div>
+                            <h3 style="color: var(--color-gray-700); margin-bottom: var(--space-3);">No Announcements Yet</h3>
+                            <p style="color: var(--color-gray-600);">Check back soon for important updates and news from Fahmid School</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
                     return;
                 }
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const article = document.createElement('article');
-                    article.className = 'announcement-card';
-                    article.style.cssText = 'background: var(--color-white); padding: var(--space-xl); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: var(--space-xl);';
+                    article.style.cssText = 'background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); margin-bottom: var(--space-8); border: 1px solid var(--color-gray-200); transition: all 0.3s ease;';
                     
-                    const title = document.createElement('h2');
+                    article.addEventListener('mouseenter', function() {
+                        this.style.transform = 'translateY(-4px)';
+                        this.style.boxShadow = 'var(--shadow-lg)';
+                    });
+                    
+                    article.addEventListener('mouseleave', function() {
+                        this.style.transform = 'translateY(0)';
+                        this.style.boxShadow = 'var(--shadow-md)';
+                    });
+                    
+                    const iconDiv = document.createElement('div');
+                    iconDiv.style.cssText = 'width: 48px; height: 48px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6);';
+                    iconDiv.innerHTML = '<i data-lucide="megaphone" style="width: 24px; height: 24px; color: white;"></i>';
+                    
+                    const title = document.createElement('h3');
                     title.textContent = data.title;
-                    title.style.marginTop = '0';
+                    title.style.cssText = 'margin-top: 0; margin-bottom: var(--space-4); color: var(--color-gray-900);';
                     
                     const content = document.createElement('p');
                     content.textContent = data.content;
+                    content.style.cssText = 'color: var(--color-gray-700); line-height: 1.8; margin-bottom: var(--space-6);';
                     
-                    const date = document.createElement('small');
-                    date.style.cssText = 'color: var(--color-gray-600); display: block; margin-top: var(--space-sm);';
-                    date.textContent = `Posted: ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}`;
+                    const date = document.createElement('div');
+                    date.style.cssText = 'display: flex; align-items: center; color: var(--color-gray-500); font-size: var(--text-sm);';
+                    date.innerHTML = `<i data-lucide="calendar" style="width: 16px; height: 16px; margin-right: 6px;"></i> ${data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}`;
                     
+                    article.appendChild(iconDiv);
                     article.appendChild(title);
                     article.appendChild(content);
                     article.appendChild(date);
                     container.appendChild(article);
                 });
+
+                lucide.createIcons();
             } catch (error) {
                 console.error('Error loading announcements:', error);
-                container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Unable to load announcements. Please try again later.</p>';
+                container.innerHTML = `
+                    <div style="text-align: center; padding: var(--space-20); background: white; border-radius: var(--radius-2xl); box-shadow: var(--shadow-md);">
+                        <div style="width: 80px; height: 80px; background: rgba(244, 67, 54, 0.1); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="alert-circle" style="width: 40px; height: 40px; color: var(--color-danger);"></i>
+                        </div>
+                        <h3 style="color: var(--color-gray-700); margin-bottom: var(--space-3);">Unable to Load Announcements</h3>
+                        <p style="color: var(--color-gray-600);">Please try refreshing the page or check back later</p>
+                    </div>
+                `;
+                lucide.createIcons();
             }
         }
 
-        // Load announcements when page loads
-        document.addEventListener('DOMContentLoaded', loadAnnouncements);
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadAnnouncements();
+        });
     </script>
 </body>
 </html>
