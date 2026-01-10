@@ -433,6 +433,7 @@ function loadMyClassesSection() {
     return;
   }
   
+  // Use pagination correctly with table ID (not tbody ID)
   paginateTable(pupils, 'pupils-in-class-table', 20, (pupil, tbodyEl) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
