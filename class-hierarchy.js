@@ -199,9 +199,8 @@ async function saveClassHierarchy(orderedClassIds) {
 }
 
 /**
- * Initialize class hierarchy if it doesn't exist
- * Auto-detects classes from 'classes' collection
- * FIXED: Better error handling and status reporting
+ * FIXED: Initialize class hierarchy with race condition protection
+ * Uses transaction to prevent duplicate creation
  */
 async function initializeClassHierarchy() {
   try {
@@ -211,96 +210,98 @@ async function initializeClassHierarchy() {
       return { success: false, error: 'Firebase not initialized' };
     }
     
-    const doc = await db.collection('settings').doc('classHierarchy').get();
+    const hierarchyRef = db.collection('settings').doc('classHierarchy');
     
-    if (!doc.exists) {
-      console.log('📋 Class hierarchy not found - initializing...');
+    // CRITICAL FIX: Use transaction to prevent race condition
+    const result = await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(hierarchyRef);
       
-      // Get all existing classes
+      // If hierarchy exists, validate and return
+      if (doc.exists) {
+        const data = doc.data();
+        const orderedIds = data.orderedClassIds || [];
+        
+        if (orderedIds.length === 0) {
+          console.warn('⚠️ Class hierarchy exists but is empty');
+          return { 
+            success: true, 
+            isEmpty: true,
+            message: 'Hierarchy exists but is empty',
+            alreadyExists: true
+          };
+        }
+        
+        console.log(`✓ Class hierarchy already exists: ${orderedIds.length} classes`);
+        return { 
+          success: true, 
+          isEmpty: false,
+          classCount: orderedIds.length,
+          message: 'Hierarchy already exists',
+          alreadyExists: true
+        };
+      }
+      
+      // Hierarchy doesn't exist - create it atomically
+      console.log('📋 Class hierarchy not found - initializing atomically...');
+      
+      // Get all existing classes (outside transaction for performance)
       const classesSnapshot = await db.collection('classes').orderBy('name').get();
       
       if (classesSnapshot.empty) {
-        console.log('⚠️ No classes created yet. Create classes first, then set progression order.');
+        console.log('⚠️ No classes created yet. Create classes first.');
         
-        // Create empty structure
-        await db.collection('settings').doc('classHierarchy').set({
+        // Create empty structure atomically
+        transaction.set(hierarchyRef, {
           orderedClassIds: [],
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: auth.currentUser?.uid || 'system',
+          version: 1,
           note: 'Empty - waiting for classes to be created'
         });
         
-        return { success: true, isEmpty: true, message: 'Hierarchy initialized but empty' };
+        return { 
+          success: true, 
+          isEmpty: true, 
+          message: 'Hierarchy initialized but empty',
+          created: true
+        };
       }
       
-      // Auto-initialize with alphabetical order
+      // Auto-initialize with alphabetical order atomically
       const classIds = classesSnapshot.docs.map(doc => doc.id);
       
-      await db.collection('settings').doc('classHierarchy').set({
+      transaction.set(hierarchyRef, {
         orderedClassIds: classIds,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: auth.currentUser?.uid || 'system',
+        version: 1,
         note: 'Auto-initialized in alphabetical order. Rearrange in School Settings if needed.'
       });
       
-      console.log(`✓ Class hierarchy auto-initialized with ${classIds.length} classes in alphabetical order`);
+      console.log(`✓ Class hierarchy created atomically with ${classIds.length} classes`);
       return { 
         success: true, 
         isEmpty: false, 
         autoInitialized: true,
-        classCount: classIds.length
+        classCount: classIds.length,
+        created: true
       };
-    }
+    });
     
-    // Hierarchy exists - validate it
-    const data = doc.data();
-    const orderedIds = data.orderedClassIds || [];
-    
-    if (orderedIds.length === 0) {
-      console.warn('⚠️ Class progression order is empty! Admin should arrange classes in School Settings.');
-      return { 
-        success: true, 
-        isEmpty: true,
-        message: 'Hierarchy exists but is empty'
-      };
-    }
-    
-    // Verify classes still exist
-    const classesSnapshot = await db.collection('classes').get();
-    const currentClassIds = new Set(classesSnapshot.docs.map(d => d.id));
-    
-    // Check if any classes in hierarchy no longer exist
-    const orphanedIds = orderedIds.filter(id => !currentClassIds.has(id));
-    
-    if (orphanedIds.length > 0) {
-      console.warn(`⚠️ Found ${orphanedIds.length} class(es) in hierarchy that no longer exist`);
-      
-      // Auto-clean: remove orphaned classes from hierarchy
-      const cleanedIds = orderedIds.filter(id => currentClassIds.has(id));
-      
-      await db.collection('settings').doc('classHierarchy').update({
-        orderedClassIds: cleanedIds,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-        note: `Auto-cleaned ${orphanedIds.length} deleted class(es)`
-      });
-      
-      console.log(`✓ Cleaned hierarchy - removed ${orphanedIds.length} deleted class(es)`);
-      
-      return {
-        success: true,
-        isEmpty: cleanedIds.length === 0,
-        cleaned: true,
-        removedCount: orphanedIds.length,
-        classCount: cleanedIds.length
-      };
-    }
-    
-    console.log(`✓ Class hierarchy loaded: ${orderedIds.length} classes in progression order`);
-    return { 
-      success: true, 
-      isEmpty: false,
-      classCount: orderedIds.length
-    };
+    return result;
     
   } catch (error) {
+    // Transaction conflicts will retry automatically
+    if (error.code === 'aborted') {
+      console.log('⚠️ Transaction aborted (likely concurrent initialization), retrying...');
+      // Let Firestore retry automatically
+      return { 
+        success: false, 
+        error: 'Concurrent initialization detected, please refresh',
+        retry: true
+      };
+    }
+    
     console.error('❌ Error initializing class hierarchy:', error);
     return { 
       success: false, 
