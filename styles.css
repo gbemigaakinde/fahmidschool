@@ -3450,10 +3450,15 @@ i[data-lucide] {
 
 /* ===== 3D FEATURES SECTION ===== */
 
+/* 3D Features section */
 #features-3d-container {
   width: 100%;
-  height: 600px; /* adjust as needed */
+  height: 600px; /* Adjust if you want it taller or shorter */
   margin-top: var(--space-12);
   margin-bottom: var(--space-12);
   position: relative;
+}
+
+#features-3d-container canvas {
+  display: block; /* removes extra space under canvas */
 }
