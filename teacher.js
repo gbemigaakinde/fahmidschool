@@ -2129,4 +2129,70 @@ window.loadAttendanceSection = loadAttendanceSection;
 
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
 
+/* ======================================== 
+   HAMBURGER MENU FOR MOBILE (CRITICAL FIX)
+======================================== */
+
+function initTeacherHamburger() {
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('teacher-sidebar');
+  
+  if (!hamburger || !sidebar) {
+    console.warn('Hamburger or sidebar not found in teacher portal');
+    return;
+  }
+  
+  // Toggle sidebar on hamburger click
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isActive = sidebar.classList.toggle('active');
+    hamburger.classList.toggle('active', isActive);
+    hamburger.setAttribute('aria-expanded', isActive);
+    document.body.style.overflow = isActive ? 'hidden' : '';
+  });
+  
+  // Close sidebar when clicking outside
+  document.addEventListener('click', (e) => {
+    if (sidebar.classList.contains('active') && 
+        !sidebar.contains(e.target) && 
+        !hamburger.contains(e.target)) {
+      sidebar.classList.remove('active');
+      hamburger.classList.remove('active');
+      hamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+  });
+  
+  // Close sidebar when clicking navigation links on mobile
+  sidebar.querySelectorAll('a[data-section]').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 1024) {
+        sidebar.classList.remove('active');
+        hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+    });
+  });
+  
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+    }, 250);
+  });
+  
+  console.log('✓ Teacher hamburger menu initialized');
+}
+
+// Initialize hamburger menu when DOM is ready
+document.addEventListener('DOMContentLoaded', initTeacherHamburger);
+
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
