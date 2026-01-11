@@ -32,6 +32,25 @@ window.db = firebase.firestore();
 window.auth = firebase.auth();
 window.firebase = firebase;
 
+// ENABLE OFFLINE PERSISTENCE
+try {
+  window.db.enablePersistence({ synchronizeTabs: true })
+    .then(() => {
+      console.log('✓ Offline persistence enabled');
+    })
+    .catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('⚠️ Persistence failed: Multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        console.warn('⚠️ Persistence not supported by browser');
+      } else {
+        console.error('❌ Persistence error:', err);
+      }
+    });
+} catch (error) {
+  console.error('❌ Failed to enable persistence:', error);
+}
+
 // ============================================
 // ERROR MESSAGES - DEFINED ONCE
 // ============================================
