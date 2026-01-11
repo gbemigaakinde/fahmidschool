@@ -294,6 +294,77 @@
             </button>
         </section>
 
+<!-- Result Submission Controls (NEW) -->
+<div id="result-submission-controls" style="display:none; margin-top: var(--space-xl); padding: var(--space-xl); background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: var(--radius-lg);">
+    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-lg);">
+        <div style="width: 48px; height: 48px; background: #0ea5e9; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+            📋
+        </div>
+        <div style="flex: 1;">
+            <h3 style="margin: 0; color: #0c4a6e;">Ready to Submit Results?</h3>
+            <p style="margin: 0.25rem 0 0; color: #075985; font-size: var(--text-sm);">
+                Once submitted, results cannot be edited until admin approval or rejection.
+            </p>
+        </div>
+    </div>
+    
+    <div style="background: white; padding: var(--space-lg); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md);">
+            <div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); margin-bottom: var(--space-xs);">Class</div>
+                <div style="font-weight: 600; color: var(--color-gray-900);" id="submission-class-name">-</div>
+            </div>
+            <div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); margin-bottom: var(--space-xs);">Term</div>
+                <div style="font-weight: 600; color: var(--color-gray-900);" id="submission-term">-</div>
+            </div>
+            <div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); margin-bottom: var(--space-xs);">Subject</div>
+                <div style="font-weight: 600; color: var(--color-gray-900);" id="submission-subject">-</div>
+            </div>
+            <div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); margin-bottom: var(--space-xs);">Pupils</div>
+                <div style="font-weight: 600; color: var(--color-gray-900);" id="submission-pupil-count">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="submitResultsForApproval()" style="width: 100%;">
+        📤 Submit Results for Admin Approval
+    </button>
+</div>
+
+<!-- Result Locked Banner (NEW) -->
+<div id="result-locked-banner" style="display:none; margin-top: var(--space-xl); padding: var(--space-xl); background: #fef3c7; border: 2px solid #f59e0b; border-radius: var(--radius-lg);">
+    <div style="display: flex; align-items: start; gap: var(--space-md);">
+        <div style="font-size: 32px;">🔒</div>
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 var(--space-xs); color: #92400e;">Results Locked</h3>
+            <p style="margin: 0; color: #78350f; line-height: 1.6;">
+                These results have been approved by admin and are now locked. 
+                You cannot make changes unless admin unlocks them first.
+            </p>
+            <div id="lock-details" style="margin-top: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-sm);">
+                <!-- Lock details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submission Status Banner (NEW) -->
+<div id="result-submission-status" style="display:none; margin-top: var(--space-xl); padding: var(--space-xl); background: #e0f2fe; border: 2px solid #0284c7; border-radius: var(--radius-lg);">
+    <div style="display: flex; align-items: center; gap: var(--space-md);">
+        <div style="font-size: 32px;">⏳</div>
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 var(--space-xs); color: #0c4a6e;">Pending Admin Approval</h3>
+            <p style="margin: 0; color: #075985;">
+                You submitted these results on <strong id="submitted-date">-</strong>. 
+                Waiting for admin to review and approve.
+            </p>
+        </div>
+    </div>
+</div>
+
         <!-- Attendance -->
         <section id="attendance" class="admin-card" hidden tabindex="-1">
             <h1>Mark Attendance</h1>
