@@ -274,10 +274,9 @@ async function loadReportData() {
 ================================ */
 
 /**
- * FIXED: Academic Results Loading with Proper Initialization Wait
- * Replace the loadAcademicResults function in print-results.js
+ * FIXED: Load Academic Results with Timeout Protection
+ * Prevents infinite loading if initialization fails
  */
-
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     
@@ -286,7 +285,7 @@ async function loadAcademicResults() {
         return;
     }
     
-    // CRITICAL FIX: Properly wait for ALL initialization to complete
+    // CRITICAL FIX: Wait for initialization with TIMEOUT
     if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
         console.log('Waiting for complete initialization...', {
             isInitialized,
@@ -297,33 +296,56 @@ async function loadAcademicResults() {
         
         tbody.innerHTML = loadingRow();
         
-        // Wait up to 10 seconds for ALL data to be ready
+        // TIMEOUT PROTECTION: Maximum 10 seconds (100 attempts × 100ms)
         let attempts = 0;
-        const maxAttempts = 100; // 10 seconds (100 * 100ms)
+        const maxAttempts = 100;
+        let timedOut = false;
         
         while (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Check if ALL required data is now available
             if (isInitialized && currentPupilId && currentSettings.session && currentSettings.term) {
-                console.log('✓ All data ready, proceeding with results load');
+                console.log('✓ All data ready after', attempts * 100, 'ms');
                 break;
             }
             
             attempts++;
         }
         
+        // Check if we timed out
+        if (attempts >= maxAttempts) {
+            timedOut = true;
+            console.error('❌ Initialization timeout after 10 seconds');
+        }
+        
         // Final validation after waiting
-        if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
+        if (timedOut || !isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
             const missingData = [];
             if (!isInitialized) missingData.push('initialization incomplete');
             if (!currentPupilId) missingData.push('pupil ID missing');
             if (!currentSettings.session) missingData.push('session missing');
             if (!currentSettings.term) missingData.push('term missing');
             
-            tbody.innerHTML = emptyRow(
-                `Unable to load results: ${missingData.join(', ')}. Please refresh the page.`
-            );
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:var(--space-2xl);">
+                        <div style="color:var(--color-danger); margin-bottom:var(--space-md);">
+                            <strong>⚠️ Unable to load results</strong>
+                        </div>
+                        <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
+                            ${timedOut ? 'Loading timed out after 10 seconds.' : 'Required data not available.'}<br>
+                            Missing: ${missingData.join(', ')}
+                        </p>
+                        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:var(--space-md);">
+                            🔄 Reload Page
+                        </button>
+                        <p style="font-size:var(--text-sm); color:var(--color-gray-500); margin-top:var(--space-md);">
+                            If this persists, check your internet connection or contact support.
+                        </p>
+                    </td>
+                </tr>
+            `;
             return;
         }
     }
@@ -397,20 +419,40 @@ async function loadAcademicResults() {
         console.error('Error loading results:', error);
         
         let errorMessage = 'Error loading results';
+        let canRetry = true;
         
         if (error.code === 'permission-denied') {
             errorMessage = 'Permission denied. Contact administrator.';
+            canRetry = false;
             window.showToast?.('You do not have permission to view results', 'danger');
         } else if (error.code === 'unavailable') {
             errorMessage = 'Service unavailable. Check your internet connection.';
             window.showToast?.('Cannot connect to server. Please check your internet.', 'warning');
         } else if (error.code === 'not-found') {
             errorMessage = 'Results data not found.';
+            canRetry = false;
         } else {
             errorMessage = `Error: ${error.message || 'Unknown error'}`;
         }
         
-        tbody.innerHTML = emptyRow(errorMessage);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:var(--space-2xl);">
+                    <div style="color:var(--color-danger); margin-bottom:var(--space-md);">
+                        <strong>⚠️ ${errorMessage}</strong>
+                    </div>
+                    ${canRetry ? `
+                        <button class="btn btn-primary" onclick="loadAcademicResults()" style="margin-top:var(--space-md);">
+                            🔄 Retry
+                        </button>
+                    ` : `
+                        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:var(--space-md);">
+                            🔄 Reload Page
+                        </button>
+                    `}
+                </td>
+            </tr>
+        `;
     }
 }
 
