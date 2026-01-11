@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Receipt - Fahmid School</title>
+  <link rel="stylesheet" href="styles.css">
+  
+  <style>
+    /* Print-optimized styles */
+    @media print {
+      body {
+        margin: 0;
+        padding: 20px;
+      }
+      
+      .no-print {
+        display: none !important;
+      }
+      
+      .receipt-container {
+        box-shadow: none !important;
+        border: 2px solid #000 !important;
+      }
+    }
+    
+    .receipt-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: white;
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .receipt-header {
+      text-align: center;
+      border-bottom: 3px solid #00B2FF;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .school-logo {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 1rem;
+    }
+    
+    .school-name {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #00B2FF;
+      margin: 0;
+    }
+    
+    .school-address {
+      color: #666;
+      margin: 0.5rem 0 0;
+    }
+    
+    .receipt-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+      margin: 2rem 0 1rem;
+      color: #333;
+    }
+    
+    .receipt-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .info-item {
+      padding: 0.5rem;
+    }
+    
+    .info-label {
+      font-weight: 600;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .info-value {
+      font-size: 1.1rem;
+      color: #333;
+      margin-top: 0.25rem;
+    }
+    
+    .payment-details {
+      background: #f8f9fa;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin: 2rem 0;
+    }
+    
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .payment-row:last-child {
+      border-bottom: none;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #00B2FF;
+      padding-top: 1rem;
+      margin-top: 0.5rem;
+      border-top: 2px solid #00B2FF;
+    }
+    
+    .receipt-footer {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 2px solid #ddd;
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .signature-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin: 3rem 0 2rem;
+    }
+    
+    .signature-line {
+      border-top: 1px solid #333;
+      padding-top: 0.5rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+    
+    .print-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Print Button -->
+  <button class="btn btn-primary print-button no-print" onclick="window.print()">
+    🖨️ Print Receipt
+  </button>
+  
+  <div class="receipt-container">
+    <!-- Header -->
+    <div class="receipt-header">
+      <div class="school-logo">
+        <img src="logo.png" alt="School Logo" style="width:100%; height:100%; object-fit:contain;">
+      </div>
+      <h1 class="school-name">FAHMID NURSERY & PRIMARY SCHOOL</h1>
+      <p class="school-address">
+        No. 7 Idowu Aina St, Awoyaya, Ibeju-Lekki 105102, Lagos<br>
+        Phone: +234 XXX XXX XXXX • Email: info@fahmidschool.com
+      </p>
+    </div>
+    
+    <!-- Receipt Title -->
+    <h2 class="receipt-title">PAYMENT RECEIPT</h2>
+    
+    <!-- Receipt Information -->
+    <div class="receipt-info">
+      <div class="info-item">
+        <div class="info-label">Receipt Number:</div>
+        <div class="info-value" id="receipt-no">Loading...</div>
+      </div>
+      
+      <div class="info-item">
+        <div class="info-label">Date:</div>
+        <div class="info-value" id="receipt-date">Loading...</div>
+      </div>
+      
+      <div class="info-item">
+        <div class="info-label">Student Name:</div>
+        <div class="info-value" id="student-name">Loading...</div>
+      </div>
+      
+      <div class="info-item">
+        <div class="info-label">Class:</div>
+        <div class="info-value" id="student-class">Loading...</div>
+      </div>
+      
+      <div class="info-item">
+        <div class="info-label">Session:</div>
+        <div class="info-value" id="receipt-session">Loading...</div>
+      </div>
+      
+      <div class="info-item">
+        <div class="info-label">Term:</div>
+        <div class="info-value" id="receipt-term">Loading...</div>
+      </div>
+    </div>
+    
+    <!-- Payment Details -->
+    <div class="payment-details">
+      <div class="payment-row">
+        <span>Amount Paid:</span>
+        <strong id="amount-paid">₦0.00</strong>
+      </div>
+      
+      <div class="payment-row">
+        <span>Payment Method:</span>
+        <span id="payment-method">-</span>
+      </div>
+      
+      <div class="payment-row" id="notes-row" style="display:none;">
+        <span>Notes:</span>
+        <span id="payment-notes">-</span>
+      </div>
+      
+      <div class="payment-row">
+        <span>Balance Remaining:</span>
+        <strong id="balance-remaining">₦0.00</strong>
+      </div>
+    </div>
+    
+    <!-- Signatures -->
+    <div class="signature-section">
+      <div>
+        <div class="signature-line">Received By</div>
+      </div>
+      <div>
+        <div class="signature-line">Parent/Guardian Signature</div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="receipt-footer">
+      <p><strong>Thank you for your payment!</strong></p>
+      <p>This is an official receipt. Please keep it for your records.</p>
+      <p style="margin-top:1rem; font-size:0.8rem;">
+        Generated on <span id="generated-date"></span>
+      </p>
+    </div>
+  </div>
+  
+  <!-- Firebase and Receipt Script -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-init.js"></script>
+  <script src="finance.js"></script>
+  
+  <script>
+    // Get receipt number from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const receiptNo = urlParams.get('receipt');
+    
+    if (!receiptNo) {
+      alert('No receipt number provided');
+      window.close();
+    }
+    
+    // Load receipt data
+    async function loadReceiptData() {
+      try {
+        const receiptData = await window.finance.getReceiptData(receiptNo);
+        
+        if (!receiptData) {
+          alert('Receipt not found');
+          window.close();
+          return;
+        }
+        
+        // Populate receipt
+        document.getElementById('receipt-no').textContent = receiptData.receiptNo;
+        document.getElementById('receipt-date').textContent = receiptData.paymentDate 
+          ? receiptData.paymentDate.toDate().toLocaleDateString('en-GB', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+          : 'N/A';
+        
+        document.getElementById('student-name').textContent = receiptData.pupilName || 'N/A';
+        document.getElementById('student-class').textContent = receiptData.className || 'N/A';
+        document.getElementById('receipt-session').textContent = receiptData.session || 'N/A';
+        document.getElementById('receipt-term').textContent = receiptData.term || 'N/A';
+        document.getElementById('amount-paid').textContent = `₦${parseFloat(receiptData.amountPaid).toLocaleString()}`;
+        document.getElementById('payment-method').textContent = receiptData.paymentMethod || 'Cash';
+        
+        // Get updated balance
+        const paymentSummary = await window.finance.getPupilPaymentSummary(
+          receiptData.pupilId,
+          receiptData.session,
+          receiptData.term
+        );
+        
+        const balance = paymentSummary ? paymentSummary.balance : 0;
+        document.getElementById('balance-remaining').textContent = `₦${parseFloat(balance).toLocaleString()}`;
+        
+        // Show notes if present
+        if (receiptData.notes) {
+          document.getElementById('payment-notes').textContent = receiptData.notes;
+          document.getElementById('notes-row').style.display = 'flex';
+        }
+        
+        // Set generated date
+        document.getElementById('generated-date').textContent = new Date().toLocaleString('en-GB');
+        
+        // Auto-print after short delay
+        setTimeout(() => {
+          window.print();
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error loading receipt:', error);
+        alert('Failed to load receipt data');
+        window.close();
+      }
+    }
+    
+    // Load when page ready
+    document.addEventListener('DOMContentLoaded', loadReceiptData);
+  </script>
+</body>
+</html>
