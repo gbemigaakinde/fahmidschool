@@ -619,6 +619,7 @@ button[onclick="exportPupilResults()"]:hover {
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="result-locking.js"></script>
 </head>
 <body>
@@ -653,7 +654,7 @@ button[onclick="exportPupilResults()"]:hover {
 
         <!-- User Management -->
         <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="true">
+            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="user-management">
                 <div class="group-header-content">
                     <i data-lucide="users"></i>
                     <span>User Management</span>
@@ -681,7 +682,7 @@ button[onclick="exportPupilResults()"]:hover {
 
         <!-- Academic Setup -->
         <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="true">
+            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="academic-setup">
                 <div class="group-header-content">
                     <i data-lucide="book-open"></i>
                     <span>Academic Setup</span>
@@ -709,7 +710,7 @@ button[onclick="exportPupilResults()"]:hover {
 
         <!-- Results & Assessments -->
         <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="true">
+            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="results">
                 <div class="group-header-content">
                     <i data-lucide="clipboard-check"></i>
                     <span>Results & Assessments</span>
@@ -741,7 +742,7 @@ button[onclick="exportPupilResults()"]:hover {
 
         <!-- Finance -->
         <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="false">
+            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="false" data-group="finance">
                 <div class="group-header-content">
                     <i data-lucide="dollar-sign"></i>
                     <span>Finance</span>
@@ -782,7 +783,7 @@ button[onclick="exportPupilResults()"]:hover {
 
         <!-- System & Security -->
         <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="false">
+            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="false" data-group="system">
                 <div class="group-header-content">
                     <i data-lucide="shield"></i>
                     <span>System & Security</span>
