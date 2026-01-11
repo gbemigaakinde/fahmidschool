@@ -654,127 +654,133 @@ async function loadResultsTable() {
 }
 
 async function saveAllResults() {
-  const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
-  const term = document.getElementById('result-term')?.value;
-  const subject = document.getElementById('result-subject')?.value;
-  
-  if (!term || !subject) {
-    window.showToast?.('Select term and subject', 'warning');
-    return;
-  }
-  
-  // ADD THIS VALIDATION:
-  let hasInvalidScores = false;
-  
-  inputs.forEach(input => {
-    const field = input.dataset.field;
-    const value = parseFloat(input.value) || 0;
-    const max = field === 'ca' ? 40 : 60;
-    
-    if (value > max) {
-      hasInvalidScores = true;
-      input.style.borderColor = '#f44336';
-      input.value = max;
-      
-      window.showToast?.(
-        `${field === 'ca' ? 'CA' : 'Exam'} score cannot exceed ${max}`,
-        'danger',
-        4000
-      );
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    const term = document.getElementById('result-term')?.value;
+    const subject = document.getElementById('result-subject')?.value;
+
+    if (!term || !subject) {
+        window.showToast?.('Select term and subject first', 'warning');
+        return;
     }
-    
-    if (value < 0) {
-      hasInvalidScores = true;
-      input.style.borderColor = '#f44336';
-      input.value = 0;
-    }
-  });
-  
-  if (hasInvalidScores) {
-    window.showToast?.('Invalid scores corrected. Please review and save again.', 'warning', 5000);
-    return;
-  }
-  
-  // FIXED: Manage button state properly without nested spans
-  const saveBtn = document.getElementById('save-results-btn');
-  const originalText = saveBtn?.textContent;
-  
-  // FIXED: Disable button and show loading
-  if (saveBtn) {
-    saveBtn.disabled = true;
-    saveBtn.textContent = '⏳ Saving...';
-  }
-  
-  try {
-    // CRITICAL: Get current session information
-    const settings = await window.getCurrentSettings();
-    const currentSession = settings.session || 'Unknown';
-    const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear = settings.currentSession?.endYear;
-    
-    const batch = db.batch();
-    let hasChanges = false;
-    
+
+    // ── Input validation ───────────────────────────────────────────────────────
+    let hasInvalidScores = false;
+
     inputs.forEach(input => {
-      const pupilId = input.dataset.pupil;
-      const field = input.dataset.field;
-      const value = parseFloat(input.value) || 0;
-      
-      if (value > 0) hasChanges = true;
-      
-      const docId = `${pupilId}_${term}_${subject}`;
-      const ref = db.collection('results').doc(docId);
-      
-      // Create composite session-term field for efficient querying
-      const sessionTerm = `${currentSession}_${term}`;
-      
-      if (field === 'ca') {
-        batch.set(ref, {
-          pupilId, 
-          term, 
-          subject,
-          caScore: value,
-          // Add session context
-          session: currentSession,
-          sessionStartYear: sessionStartYear,
-          sessionEndYear: sessionEndYear,
-          sessionTerm: sessionTerm,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      } else {
-        batch.set(ref, {
-          pupilId, 
-          term, 
-          subject,
-          examScore: value,
-          // Add session context
-          session: currentSession,
-          sessionStartYear: sessionStartYear,
-          sessionEndYear: sessionEndYear,
-          sessionTerm: sessionTerm,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
+        const field = input.dataset.field;
+        const value = parseFloat(input.value) || 0;
+        const max = field === 'ca' ? 40 : 60;
+
+        if (value > max) {
+            hasInvalidScores = true;
+            input.style.borderColor = '#f44336';
+            input.value = max;
+
+            window.showToast?.(
+                `${field === 'ca' ? 'CA' : 'Exam'} score cannot exceed ${max}`,
+                'danger',
+                4000
+            );
+        }
+
+        if (value < 0) {
+            hasInvalidScores = true;
+            input.style.borderColor = '#f44336';
+            input.value = 0;
+        }
     });
-    
-    if (!hasChanges) {
-      window.showToast?.('No scores entered', 'warning');
-      return;
+
+    if (hasInvalidScores) {
+        window.showToast?.(
+            'Invalid scores have been corrected. Please review and try saving again.',
+            'warning',
+            5000
+        );
+        return;
     }
-    
-    await batch.commit();
-    window.showToast?.('✓ All results saved successfully', 'success');
-    
-  } catch (err) {
-    console.error('Error saving results:', err);
-    window.handleError?.(err, 'Failed to save results');
-  } finally {
-    // FIXED: Always restore button state
+
+    // ── Save button loading state ─────────────────────────────────────────────
+    const saveBtn = document.getElementById('save-results-btn');
+    let originalHTML = null;
+    let originalText = null;
+
     if (saveBtn) {
-      saveBtn.disabled = false;
-      saveBtn.textContent = originalText || '💾 Save All Results';
+        originalHTML = saveBtn.innerHTML;
+        originalText = saveBtn.textContent?.trim() || '💾 Save All Results';
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `
+            <span style="display:inline-flex; align-items:center; gap:0.5rem;">
+                <span class="spinner" style="width:14px; height:14px; border-width:2px;"></span>
+                Saving...
+            </span>
+        `;
+        saveBtn.style.opacity = '0.65';
+        saveBtn.style.cursor = 'not-allowed';
     }
-  }
+
+    try {
+        // Get current session information
+        const settings = await window.getCurrentSettings();
+        const currentSession = settings.session || 'Unknown';
+        const sessionStartYear = settings.currentSession?.startYear;
+        const sessionEndYear = settings.currentSession?.endYear;
+
+        const batch = db.batch();
+        let hasChanges = false;
+
+        inputs.forEach(input => {
+            const pupilId = input.dataset.pupil;
+            const field = input.dataset.field;
+            const value = parseFloat(input.value) || 0;
+
+            if (value > 0) hasChanges = true;
+
+            const docId = `${pupilId}_${term}_${subject}`;
+            const ref = db.collection('results').doc(docId);
+
+            const sessionTerm = `${currentSession}_${term}`;
+
+            const baseData = {
+                pupilId,
+                term,
+                subject,
+                session: currentSession,
+                sessionStartYear,
+                sessionEndYear,
+                sessionTerm,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (field === 'ca') {
+                batch.set(ref, { ...baseData, caScore: value }, { merge: true });
+            } else {
+                batch.set(ref, { ...baseData, examScore: value }, { merge: true });
+            }
+        });
+
+        if (!hasChanges) {
+            window.showToast?.('No scores have been entered', 'warning');
+            return;
+        }
+
+        await batch.commit();
+        window.showToast?.('✓ All results saved successfully', 'success');
+    } catch (err) {
+        console.error('Error saving results:', err);
+        window.handleError?.(err, 'Failed to save results');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            if (originalHTML) {
+                saveBtn.innerHTML = originalHTML;
+            } else if (originalText) {
+                saveBtn.textContent = originalText;
+            }
+            saveBtn.style.opacity = '';
+            saveBtn.style.cursor = '';
+        }
+    }
 }
 
 /* ======================================== 
