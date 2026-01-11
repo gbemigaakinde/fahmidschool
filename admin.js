@@ -2682,14 +2682,43 @@ window.refreshHierarchyUI = refreshHierarchyUI;
 DELETE FUNCTIONS
 ======================================== */
 
+/**
+ * FIXED: Delete User with Audit Trail
+ * Logs all delete operations for compliance
+ */
 async function deleteUser(collection, uid) {
-  if (
-    !confirm(
-      'Are you sure you want to delete this user? This cannot be undone.'
-    )
-  ) return;
+  if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) {
+    return;
+  }
 
   try {
+    // Get user data before deletion for audit log
+    const userDoc = await db.collection(collection).doc(uid).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
+    
+    // AUDIT: Log deletion
+    await db.collection('audit_log').add({
+      action: 'delete_user',
+      collection: collection,
+      documentId: uid,
+      deletedData: {
+        name: userData.name || 'Unknown',
+        email: userData.email || 'Unknown',
+        // Store only essential data for audit
+        ...Object.keys(userData).reduce((acc, key) => {
+          if (!['subjects', 'promotionHistory'].includes(key)) {
+            acc[key] = userData[key];
+          }
+          return acc;
+        }, {})
+      },
+      performedBy: auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent: navigator.userAgent
+    });
+
+    // Delete user
     await db.collection(collection).doc(uid).delete();
     await db.collection('users').doc(uid).delete();
 
@@ -2711,15 +2740,35 @@ async function deleteUser(collection, uid) {
   }
 }
 
+/**
+ * FIXED: Delete Item with Audit Trail
+ * Logs all delete operations for compliance
+ */
 async function deleteItem(collectionName, docId) {
-  if (
-    !confirm(
-      'Are you sure you want to delete this item? This action cannot be undone.'
-    )
-  ) return;
+  if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+    return;
+  }
 
   try {
+    // Get item data before deletion for audit log
+    const itemDoc = await db.collection(collectionName).doc(docId).get();
+    const itemData = itemDoc.exists ? itemDoc.data() : {};
+    
+    // AUDIT: Log deletion
+    await db.collection('audit_log').add({
+      action: 'delete_item',
+      collection: collectionName,
+      documentId: docId,
+      deletedData: itemData,
+      performedBy: auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent: navigator.userAgent
+    });
+
+    // Delete item
     await db.collection(collectionName).doc(docId).delete();
+    
     window.showToast?.('Item deleted successfully', 'success');
 
     loadDashboardStats();
@@ -5287,3 +5336,207 @@ window.toggleAllPupils = toggleAllPupils;
 window.updateBulkActionButtons = updateBulkActionButtons;
 window.applyBulkAction = applyBulkAction;
 window.executeBulkReassign = executeBulkReassign;
+
+/**
+ * AUDIT LOG VIEWER
+ */
+async function loadAuditLog() {
+  const container = document.getElementById('audit-log-container');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align:center; padding:var(--space-2xl);"><div class="spinner"></div><p>Loading audit log...</p></div>';
+  
+  try {
+    const logsSnap = await db.collection('audit_log')
+      .orderBy('timestamp', 'desc')
+      .limit(100)
+      .get();
+    
+    if (logsSnap.empty) {
+      container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No audit logs yet</p>';
+      return;
+    }
+    
+    const logs = [];
+    logsSnap.forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() });
+    });
+    
+    container.innerHTML = `
+      <div style="margin-bottom:var(--space-lg);">
+        <input type="text" id="audit-search" placeholder="Search by email, action, or collection..." 
+               style="width:100%; padding:var(--space-sm);" onkeyup="filterAuditLog()">
+      </div>
+      <div class="table-container">
+        <table class="responsive-table" id="audit-log-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Collection</th>
+              <th>Performed By</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="btn btn-secondary" onclick="downloadAuditLog()" style="margin-top:var(--space-lg);">
+        📥 Download Full Audit Log (CSV)
+      </button>
+    `;
+    
+    paginateTable(logs, 'audit-log-table', 25, (log, tbody) => {
+      const timestamp = log.timestamp ? 
+        log.timestamp.toDate().toLocaleString('en-GB') : 
+        'Unknown';
+      
+      const actionBadge = getActionBadge(log.action);
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Timestamp">${timestamp}</td>
+        <td data-label="Action">${actionBadge}</td>
+        <td data-label="Collection">${log.collection || '-'}</td>
+        <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
+        <td data-label="Details">
+          <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
+            View Details
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (error) {
+    console.error('Error loading audit log:', error);
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading audit log</p>';
+  }
+}
+
+function getActionBadge(action) {
+  const badges = {
+    'delete_user': '<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">DELETE USER</span>',
+    'delete_item': '<span style="background:#ff9800; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">DELETE ITEM</span>',
+    'create_user': '<span style="background:#28a745; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">CREATE USER</span>',
+    'update_settings': '<span style="background:#2196F3; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">UPDATE SETTINGS</span>'
+  };
+  
+  return badges[action] || `<span style="color:var(--color-gray-600);">${action}</span>`;
+}
+
+async function viewAuditDetails(logId) {
+  try {
+    const logDoc = await db.collection('audit_log').doc(logId).get();
+    if (!logDoc.exists) {
+      window.showToast?.('Audit log entry not found', 'danger');
+      return;
+    }
+    
+    const log = logDoc.data();
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000; overflow-y:auto; padding:var(--space-lg);';
+    modal.innerHTML = `
+      <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:700px; width:90%; max-height:80vh; overflow-y:auto;">
+        <h3 style="margin-top:0;">Audit Log Details</h3>
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>Action:</strong> ${log.action}
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>Timestamp:</strong> ${log.timestamp ? log.timestamp.toDate().toLocaleString('en-GB') : 'Unknown'}
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>Performed By:</strong> ${log.performedByEmail || 'Unknown'} (${log.performedBy || 'Unknown ID'})
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>Collection:</strong> ${log.collection || 'N/A'}
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>Document ID:</strong> ${log.documentId || 'N/A'}
+        </div>
+        
+        ${log.deletedData ? `
+          <div style="margin-bottom:var(--space-md);">
+            <strong>Deleted Data:</strong>
+            <pre style="background:#f5f5f5; padding:var(--space-md); border-radius:var(--radius-sm); overflow-x:auto; font-size:12px;">${JSON.stringify(log.deletedData, null, 2)}</pre>
+          </div>
+        ` : ''}
+        
+        <div style="margin-bottom:var(--space-md);">
+          <strong>User Agent:</strong>
+          <div style="font-size:12px; color:var(--color-gray-600);">${log.userAgent || 'Unknown'}</div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="this.closest('[style*=position]').remove()">Close</button>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+  } catch (error) {
+    console.error('Error loading audit details:', error);
+    window.showToast?.('Failed to load audit details', 'danger');
+  }
+}
+
+async function downloadAuditLog() {
+  try {
+    const logsSnap = await db.collection('audit_log')
+      .orderBy('timestamp', 'desc')
+      .get();
+    
+    if (logsSnap.empty) {
+      window.showToast?.('No audit logs to download', 'info');
+      return;
+    }
+    
+    // Create CSV
+    let csv = 'Timestamp,Action,Collection,Document ID,Performed By,Email,User Agent\n';
+    
+    logsSnap.forEach(doc => {
+      const log = doc.data();
+      const timestamp = log.timestamp ? log.timestamp.toDate().toISOString() : '';
+      
+      csv += `"${timestamp}","${log.action}","${log.collection || ''}","${log.documentId || ''}","${log.performedBy || ''}","${log.performedByEmail || ''}","${(log.userAgent || '').replace(/"/g, '""')}"\n`;
+    });
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    window.showToast?.('✓ Audit log downloaded', 'success');
+    
+  } catch (error) {
+    console.error('Error downloading audit log:', error);
+    window.showToast?.('Failed to download audit log', 'danger');
+  }
+}
+
+function filterAuditLog() {
+  const searchTerm = document.getElementById('audit-search')?.value.toLowerCase() || '';
+  const rows = document.querySelectorAll('#audit-log-table tbody tr');
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(searchTerm) ? '' : 'none';
+  });
+}
+
+// Make functions globally available
+window.loadAuditLog = loadAuditLog;
+window.viewAuditDetails = viewAuditDetails;
+window.downloadAuditLog = downloadAuditLog;
+window.filterAuditLog = filterAuditLog;
