@@ -21,14 +21,31 @@
    HAMBURGER MENU FUNCTIONALITY (ALL PORTALS)
 ===================================================== */
 
+/**
+ * FIXED: Hamburger menu initialization with proper checks
+ * Works for public site, admin portal, teacher portal, and pupil portal
+ */
 function initHamburgerMenu() {
     const hamburger = document.getElementById('hamburger');
     const sidebar =
-        document.getElementById('sidebar') ||
-        document.getElementById('admin-sidebar') ||
-        document.getElementById('teacher-sidebar');
+        document.getElementById('sidebar') ||           // Public site
+        document.getElementById('admin-sidebar') ||     // Admin portal
+        document.getElementById('teacher-sidebar') ||   // Teacher portal
+        document.getElementById('pupil-sidebar');       // Pupil portal (if exists)
 
-    if (!hamburger || !sidebar) return;
+    // CRITICAL FIX: Don't initialize if elements don't exist
+    if (!hamburger || !sidebar) {
+        console.log('Hamburger menu not found on this page (may be portal-specific)');
+        return;
+    }
+
+    // CRITICAL FIX: Check if already initialized
+    if (hamburger.dataset.initialized === 'true') {
+        console.log('Hamburger menu already initialized');
+        return;
+    }
+    
+    hamburger.dataset.initialized = 'true';
 
     function toggleSidebar(forceClose = false) {
         if (forceClose) {
@@ -39,19 +56,19 @@ function initHamburgerMenu() {
             return;
         }
 
-        hamburger.classList.toggle('active');
-        sidebar.classList.toggle('active');
-
-        const expanded = sidebar.classList.contains('active');
-        hamburger.setAttribute('aria-expanded', expanded);
-        document.body.style.overflow = expanded ? 'hidden' : '';
+        const isActive = hamburger.classList.toggle('active');
+        sidebar.classList.toggle('active', isActive);
+        hamburger.setAttribute('aria-expanded', isActive);
+        document.body.style.overflow = isActive ? 'hidden' : '';
     }
 
+    // Click hamburger to toggle
     hamburger.addEventListener('click', e => {
         e.stopPropagation();
         toggleSidebar();
     });
 
+    // Click outside to close
     document.addEventListener('click', e => {
         if (
             sidebar.classList.contains('active') &&
@@ -62,12 +79,16 @@ function initHamburgerMenu() {
         }
     });
 
+    // Click sidebar links to close on mobile
     sidebar.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
-            if (window.innerWidth <= 1024) toggleSidebar(true);
+            if (window.innerWidth <= 1024) {
+                toggleSidebar(true);
+            }
         });
     });
 
+    // Escape key to close
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && sidebar.classList.contains('active')) {
             toggleSidebar(true);
@@ -75,6 +96,7 @@ function initHamburgerMenu() {
         }
     });
 
+    // Handle window resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
@@ -84,6 +106,8 @@ function initHamburgerMenu() {
             }
         }, 250);
     });
+    
+    console.log('✓ Hamburger menu initialized for:', sidebar.id);
 }
 
 function initHeroSlideshow() {
