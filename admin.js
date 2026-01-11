@@ -5064,6 +5064,699 @@ window.addEventListener('load', async () => {
 console.log('✓ Session validation loaded');
 
 /* ========================================
+   FINANCIAL MANAGEMENT SECTION
+======================================== */
+
+/**
+ * Load Fee Management Section
+ */
+async function loadFeeManagementSection() {
+  console.log('Loading fee management section...');
+  
+  try {
+    // Populate class selector
+    await populateFeeClassSelector();
+    
+    // Load current session/term
+    const settings = await window.getCurrentSettings();
+    document.getElementById('fee-session-display').textContent = settings.session;
+    document.getElementById('fee-term-display').textContent = settings.term;
+    
+    // Load fee structures
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error loading fee management:', error);
+    window.showToast?.('Failed to load fee management section', 'danger');
+  }
+}
+
+/**
+ * Populate class selector for fee configuration
+ */
+async function populateFeeClassSelector() {
+  const select = document.getElementById('fee-config-class');
+  if (!select) return;
+  
+  try {
+    const snapshot = await db.collection('classes').orderBy('name').get();
+    
+    select.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      opt.dataset.className = data.name;
+      select.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error populating class selector:', error);
+  }
+}
+
+/**
+ * Load existing fee structures
+ */
+async function loadFeeStructures() {
+  const container = document.getElementById('fee-structures-list');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    const snapshot = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    if (snapshot.empty) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+          <p style="font-size:var(--text-lg); margin-bottom:var(--space-md);">📋 No Fee Structures Configured Yet</p>
+          <p style="font-size:var(--text-sm);">Configure fees for your classes using the form above.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = '';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      const card = document.createElement('div');
+      card.className = 'fee-structure-card';
+      card.style.cssText = `
+        background: white;
+        border: 1px solid var(--color-gray-300);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-md);
+      `;
+      
+      const feeItems = Object.entries(data.fees || {})
+        .map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
+            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
+            <strong>₦${parseFloat(value).toLocaleString()}</strong>
+          </div>
+        `).join('');
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
+          <div>
+            <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
+            <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
+              ${data.session} • ${data.term}
+            </p>
+          </div>
+          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+            Delete
+          </button>
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          ${feeItems}
+        </div>
+        
+        <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:var(--text-lg);">Total:</strong>
+          <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
+        </div>
+      `;
+      
+      container.appendChild(card);
+    });
+    
+  } catch (error) {
+    console.error('Error loading fee structures:', error);
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading fee structures</p>';
+  }
+}
+
+/**
+ * Save fee structure configuration
+ */
+async function saveFeeStructure() {
+  const classSelect = document.getElementById('fee-config-class');
+  const classId = classSelect?.value;
+  const className = classSelect?.selectedOptions[0]?.dataset.className;
+  
+  if (!classId) {
+    window.showToast?.('Please select a class', 'warning');
+    return;
+  }
+  
+  // Get fee breakdown
+  const tuition = parseFloat(document.getElementById('fee-tuition')?.value) || 0;
+  const examFee = parseFloat(document.getElementById('fee-exam')?.value) || 0;
+  const uniform = parseFloat(document.getElementById('fee-uniform')?.value) || 0;
+  const books = parseFloat(document.getElementById('fee-books')?.value) || 0;
+  const pta = parseFloat(document.getElementById('fee-pta')?.value) || 0;
+  const other = parseFloat(document.getElementById('fee-other')?.value) || 0;
+  
+  const feeBreakdown = {
+    tuition: tuition,
+    exam_fee: examFee,
+    uniform: uniform,
+    books: books,
+    pta: pta,
+    other: other
+  };
+  
+  // Validate at least one fee is entered
+  const total = Object.values(feeBreakdown).reduce((sum, val) => sum + val, 0);
+  
+  if (total <= 0) {
+    window.showToast?.('Please enter at least one fee amount', 'warning');
+    return;
+  }
+  
+  const saveBtn = document.getElementById('save-fee-structure-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    
+    const result = await window.finance.configureFeeStructure(
+      classId,
+      className,
+      settings.session,
+      settings.term,
+      feeBreakdown
+    );
+    
+    window.showToast?.(
+      `✓ Fee structure saved for ${className}\nTotal: ₦${result.total.toLocaleString()}`,
+      'success',
+      5000
+    );
+    
+    // Clear form
+    document.getElementById('fee-config-class').value = '';
+    ['fee-tuition', 'fee-exam', 'fee-uniform', 'fee-books', 'fee-pta', 'fee-other'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    
+    // Reload fee structures
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error saving fee structure:', error);
+    window.handleError(error, 'Failed to save fee structure');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '💾 Save Fee Structure';
+    }
+  }
+}
+
+/**
+ * Delete fee structure
+ */
+async function deleteFeeStructure(docId, className) {
+  if (!confirm(`Delete fee structure for ${className}?\n\nThis will remove the fee configuration but will NOT delete existing payment records.`)) {
+    return;
+  }
+  
+  try {
+    await db.collection('fee_structures').doc(docId).delete();
+    
+    window.showToast?.(`✓ Fee structure for ${className} deleted`, 'success');
+    
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error deleting fee structure:', error);
+    window.handleError(error, 'Failed to delete fee structure');
+  }
+}
+
+/**
+ * Load payment recording section
+ */
+async function loadPaymentRecordingSection() {
+  try {
+    // Populate class filter
+    await populatePaymentClassFilter();
+    
+    // Load current settings
+    const settings = await window.getCurrentSettings();
+    document.getElementById('payment-session-display').textContent = settings.session;
+    document.getElementById('payment-term-display').textContent = settings.term;
+    
+  } catch (error) {
+    console.error('Error loading payment section:', error);
+    window.showToast?.('Failed to load payment section', 'danger');
+  }
+}
+
+/**
+ * Populate class filter for payment recording
+ */
+async function populatePaymentClassFilter() {
+  const select = document.getElementById('payment-class-filter');
+  if (!select) return;
+  
+  try {
+    const snapshot = await db.collection('classes').orderBy('name').get();
+    
+    select.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      select.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error populating class filter:', error);
+  }
+}
+
+/**
+ * Load pupils for payment recording
+ */
+async function loadPupilsForPayment() {
+  const classId = document.getElementById('payment-class-filter')?.value;
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  
+  if (!pupilSelect) return;
+  
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  
+  if (!classId) {
+    document.getElementById('payment-form-container').style.display = 'none';
+    return;
+  }
+  
+  try {
+    const snapshot = await db.collection('pupils')
+      .where('class.id', '==', classId)
+      .orderBy('name')
+      .get();
+    
+    if (snapshot.empty) {
+      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
+      document.getElementById('payment-form-container').style.display = 'none';
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      opt.dataset.pupilName = data.name;
+      opt.dataset.className = data.class?.name || 'Unknown';
+      pupilSelect.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error loading pupils:', error);
+    window.showToast?.('Failed to load pupils', 'danger');
+  }
+}
+
+/**
+ * Load pupil payment status
+ */
+async function loadPupilPaymentStatus() {
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  const pupilId = pupilSelect?.value;
+  
+  if (!pupilId) {
+    document.getElementById('payment-form-container').style.display = 'none';
+    return;
+  }
+  
+  const classId = document.getElementById('payment-class-filter')?.value;
+  const pupilName = pupilSelect.selectedOptions[0]?.dataset.pupilName;
+  const className = pupilSelect.selectedOptions[0]?.dataset.className;
+  
+  const formContainer = document.getElementById('payment-form-container');
+  const statusContainer = document.getElementById('payment-status-display');
+  
+  formContainer.style.display = 'block';
+  statusContainer.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Get fee structure
+    const feeStructure = await window.finance.getFeeStructure(classId, session, term);
+    
+    if (!feeStructure) {
+      statusContainer.innerHTML = `
+        <div class="alert alert-warning">
+          <strong>⚠️ Fee Structure Not Configured</strong>
+          <p>No fee structure has been set for ${className} in ${term}. Please configure it in the Fee Management section first.</p>
+        </div>
+      `;
+      document.getElementById('payment-input-section').style.display = 'none';
+      return;
+    }
+    
+    // Get payment summary
+    const paymentSummary = await window.finance.getPupilPaymentSummary(pupilId, session, term);
+    
+    let amountDue = feeStructure.total;
+    let totalPaid = 0;
+    let balance = amountDue;
+    let status = 'owing';
+    
+    if (paymentSummary) {
+      totalPaid = paymentSummary.totalPaid || 0;
+      balance = paymentSummary.balance || 0;
+      status = paymentSummary.status || 'owing';
+    }
+    
+    const statusBadge = 
+      status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
+      status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
+      '<span class="status-badge" style="background:#f44336;">Owing</span>';
+    
+    statusContainer.innerHTML = `
+      <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+          <div>
+            <h3 style="margin:0;">${pupilName}</h3>
+            <p style="margin:var(--space-xs) 0 0; color:var(--color-gray-600);">${className} • ${session} • ${term}</p>
+          </div>
+          ${statusBadge}
+        </div>
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Amount Due</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
+          </div>
+          
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
+          </div>
+          
+          <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Balance</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Show payment input section
+    document.getElementById('payment-input-section').style.display = 'block';
+    
+    // Set max amount to balance
+    const amountInput = document.getElementById('payment-amount');
+    if (amountInput) {
+      amountInput.max = balance;
+      amountInput.value = '';
+    }
+    
+    // Load payment history
+    await loadPaymentHistory(pupilId, session, term);
+    
+  } catch (error) {
+    console.error('Error loading payment status:', error);
+    statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
+  }
+}
+
+// Record a new payment
+async function recordPayment() {
+    const pupilSelect = document.getElementById('payment-pupil-select');
+    const pupilId = pupilSelect?.value;
+    const pupilName = pupilSelect?.selectedOptions[0]?.dataset.pupilName;
+    const className = pupilSelect?.selectedOptions[0]?.dataset.className;
+    const classId = document.getElementById('payment-class-filter')?.value;
+
+    const amountInput = document.getElementById('payment-amount');
+    const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
+
+    const paymentMethod = document.getElementById('payment-method')?.value;
+    const notes = document.getElementById('payment-notes')?.value.trim() || '';
+
+    // Validation
+    if (!pupilId || !classId) {
+        window.showToast?.('Please select a pupil and class', 'warning');
+        return;
+    }
+
+    if (isNaN(amountPaid) || amountPaid <= 0) {
+        window.showToast?.('Please enter a valid payment amount', 'warning');
+        return;
+    }
+
+    const recordBtn = document.getElementById('record-payment-btn');
+    if (recordBtn) {
+        recordBtn.disabled = true;
+        recordBtn.innerHTML = '<span class="btn-loading">Recording payment...</span>';
+    }
+
+    try {
+        const settings = await window.getCurrentSettings();
+
+        const result = await window.finance.recordPayment(
+            pupilId,
+            pupilName,
+            classId,
+            className,
+            settings.session,
+            settings.term,
+            {
+                amountPaid,
+                paymentMethod,
+                notes
+            }
+        );
+
+        window.showToast?.(
+            `✓ Payment Recorded Successfully!\n\n` +
+            `Receipt #${result.receiptNo}\n` +
+            `Amount: ₦${result.amountPaid.toLocaleString()}\n` +
+            `New Balance: ₦${result.newBalance.toLocaleString()}`,
+            'success',
+            8000
+        );
+
+        // Clear form
+        if (amountInput) amountInput.value = '';
+        document.getElementById('payment-notes')?.value = '';
+
+        // Refresh data
+        await loadPupilPaymentStatus();
+
+        // Ask to print receipt
+        if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
+            printReceipt(result.receiptNo);
+        }
+
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        window.handleError?.(error, 'Failed to record payment');
+    } finally {
+        if (recordBtn) {
+            recordBtn.disabled = false;
+            recordBtn.innerHTML = '💰 Record Payment';
+        }
+    }
+}
+
+// Load payment history for selected pupil
+async function loadPaymentHistory(pupilId, session, term) {
+    const container = document.getElementById('payment-history-list');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
+
+    try {
+        const transactions = await window.finance.getPupilPaymentHistory(pupilId, session, term);
+
+        if (!transactions?.length) {
+            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
+            return;
+        }
+
+        container.innerHTML = transactions.map(txn => {
+            const date = txn.paymentDate 
+                ? new Date(txn.paymentDate).toLocaleDateString('en-GB')
+                : 'N/A';
+
+            return `
+                <div class="payment-item">
+                    <div>
+                        <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
+                        <div class="payment-meta">
+                            ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo}
+                        </div>
+                    </div>
+                    <button class="btn-small btn-secondary" 
+                            onclick="printReceipt('${txn.receiptNo}')">
+                        Print Receipt
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading payment history:', error);
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
+    }
+}
+
+// Open receipt in new window for printing
+function printReceipt(receiptNo) {
+    const receiptWindow = window.open(
+        `receipt.html?receipt=${receiptNo}`,
+        '_blank',
+        'width=800,height=600'
+    );
+
+    if (!receiptWindow) {
+        window.showToast?.('Please allow popups to print receipts', 'warning');
+    }
+}
+
+// Load list of pupils with outstanding fees
+async function loadOutstandingFeesReport() {
+    const container = document.getElementById('outstanding-fees-table');
+    if (!container) return;
+
+    const tbody = container.querySelector('tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading outstanding fees...</td></tr>';
+
+    try {
+        const settings = await window.getCurrentSettings();
+        const outstanding = await window.finance.getOutstandingFeesReport(null, settings.session, settings.term);
+
+        if (!outstanding?.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
+                        ✓ All fees collected! No outstanding payments.
+                    </td>
+                </tr>`;
+
+            document.getElementById('outstanding-count')?.textContent = '0';
+            document.getElementById('outstanding-total')?.textContent = '₦0';
+            return;
+        }
+
+        let totalOutstanding = 0;
+        const fragment = document.createDocumentFragment();
+
+        outstanding.forEach(payment => {
+            totalOutstanding += Number(payment.balance) || 0;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Pupil Name">${payment.pupilName || '-'}</td>
+                <td data-label="Class">${payment.className || '-'}</td>
+                <td data-label="Amount Due">₦${Number(payment.amountDue || 0).toLocaleString()}</td>
+                <td data-label="Paid">₦${Number(payment.totalPaid || 0).toLocaleString()}</td>
+                <td data-label="Balance" class="text-bold text-danger">
+                    ₦${Number(payment.balance || 0).toLocaleString()}
+                </td>
+                <td data-label="Status">
+                    <span class="status-badge" style="background:${payment.status === 'partial' ? '#ff9800' : '#f44336'};">
+                        ${payment.status === 'partial' ? 'Partial' : 'Owing'}
+                    </span>
+                </td>
+            `;
+            fragment.appendChild(tr);
+        });
+
+        tbody.innerHTML = '';
+        tbody.appendChild(fragment);
+
+        // Update summary
+        document.getElementById('outstanding-count')?.textContent = outstanding.length;
+        document.getElementById('outstanding-total')?.textContent = 
+            `₦${totalOutstanding.toLocaleString()}`;
+
+    } catch (error) {
+        console.error('Error loading outstanding fees:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; color:var(--color-danger);">
+                    Error loading outstanding fees
+                </td>
+            </tr>`;
+    }
+}
+
+// Load financial summary dashboard
+async function loadFinancialReports() {
+    try {
+        const settings = await window.getCurrentSettings();
+        const summary = await window.finance.getFinancialSummary(settings.session, settings.term);
+
+        if (!summary) {
+            window.showToast?.('Failed to load financial summary', 'danger');
+            return;
+        }
+
+        // Main cards
+        document.getElementById('report-total-expected')?.textContent = 
+            `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
+        document.getElementById('report-total-collected')?.textContent = 
+            `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
+        document.getElementById('report-total-outstanding')?.textContent = 
+            `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
+        document.getElementById('report-collection-rate')?.textContent = 
+            `${Number(summary.collectionRate || 0)}%`;
+
+        // Breakdown
+        document.getElementById('report-paid-full')?.textContent = summary.paidInFull || 0;
+        document.getElementById('report-partial')?.textContent = summary.partialPayments || 0;
+        document.getElementById('report-owing')?.textContent = summary.noPayment || 0;
+
+        // Current period
+        document.getElementById('report-session-display')?.textContent = settings.session || '—';
+        document.getElementById('report-term-display')?.textContent = settings.term || '—';
+
+    } catch (error) {
+        console.error('Error loading financial reports:', error);
+        window.showToast?.('Failed to load financial reports', 'danger');
+    }
+}
+
+// Export to global scope
+window.recordPayment = recordPayment;
+window.loadPaymentHistory = loadPaymentHistory;
+window.printReceipt = printReceipt;
+window.loadOutstandingFeesReport = loadOutstandingFeesReport;
+window.loadFinancialReports = loadFinancialReports;
+window.loadFeeManagementSection = loadFeeManagementSection;
+window.saveFeeStructure = saveFeeStructure;
+window.deleteFeeStructure = deleteFeeStructure;
+window.loadPaymentRecordingSection = loadPaymentRecordingSection;
+window.loadPupilsForPayment = loadPupilsForPayment;
+window.loadPupilPaymentStatus = loadPupilPaymentStatus;
+
+console.log('✓ Financial management functions loaded');
+
+/* ========================================
    MODERN SIDEBAR GROUP TOGGLE
 ======================================== */
 
