@@ -889,6 +889,29 @@ button[onclick="exportPupilResults()"]:hover {
         </form>
     </div>
 
+ <!-- BULK ACTIONS BAR -->
+<div id="bulk-actions-bar" style="display:none; background:#f8f9fa; padding:var(--space-md); border-radius:var(--radius-md); margin-bottom:var(--space-lg); align-items:center; gap:var(--space-md);">
+  <input type="checkbox" id="select-all-pupils" onchange="toggleAllPupils(this)" style="cursor:pointer;">
+  <label for="select-all-pupils" style="cursor:pointer; margin:0;">Select All</label>
+  
+  <span id="selected-count" style="margin-left:var(--space-md); color:var(--color-gray-600); font-size:var(--text-sm);">
+    0 selected
+  </span>
+  
+  <div style="margin-left:auto; display:flex; gap:var(--space-sm);">
+    <select id="bulk-action-select" disabled style="padding:var(--space-xs) var(--space-sm);">
+      <option value="">-- Select Action --</option>
+      <option value="reassign-class">Reassign to Class</option>
+      <option value="delete">Delete Selected</option>
+    </select>
+    
+    <button id="apply-bulk-action-btn" class="btn-small btn-primary" onclick="applyBulkAction()" disabled>
+      Apply to Selected
+    </button>
+  </div>
+</div>
+
+
     <div class="table-container">
         <table class="responsive-table">
             <thead>
