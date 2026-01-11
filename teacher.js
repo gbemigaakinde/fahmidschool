@@ -867,6 +867,10 @@ async function loadAttendanceSection() {
 /* ======================================== 
    FIXED: Save Attendance with Session Context
 ======================================== */
+/**
+ * FIXED: Save Attendance with Validation
+ * Ensures attendance data is logically valid before saving
+ */
 async function saveAllAttendance() {
   const inputs = document.querySelectorAll('#attendance-form-container input[type="number"]');
   const term = document.getElementById('attendance-term')?.value;
@@ -876,7 +880,91 @@ async function saveAllAttendance() {
     return;
   }
   
-  // FIXED: Get current session
+  // VALIDATION STEP 1: Collect and validate data
+  const pupilData = {};
+  const validationErrors = [];
+  
+  inputs.forEach(input => {
+    const pupilId = input.dataset.pupil;
+    const field = input.dataset.field;
+    const value = parseInt(input.value) || 0;
+    
+    // Prevent negative numbers
+    if (value < 0) {
+      const pupilName = input.closest('tr')?.querySelector('td:first-child')?.textContent || 'Unknown';
+      validationErrors.push(`${pupilName}: ${field} cannot be negative`);
+      input.style.borderColor = '#dc3545';
+      return;
+    }
+    
+    if (!pupilData[pupilId]) pupilData[pupilId] = {};
+    pupilData[pupilId][field] = value;
+  });
+  
+  // VALIDATION STEP 2: Check logical consistency
+  for (const [pupilId, data] of Object.entries(pupilData)) {
+    const timesOpened = data.timesOpened || 0;
+    const timesPresent = data.timesPresent || 0;
+    const timesAbsent = data.timesAbsent || 0;
+    
+    // Get pupil name for error messages
+    const pupilRow = document.querySelector(`input[data-pupil="${pupilId}"]`)?.closest('tr');
+    const pupilName = pupilRow?.querySelector('td:first-child')?.textContent || 'Unknown';
+    
+    // Validate: timesPresent cannot exceed timesOpened
+    if (timesPresent > timesOpened) {
+      validationErrors.push(
+        `${pupilName}: Times present (${timesPresent}) cannot exceed times school opened (${timesOpened})`
+      );
+      
+      // Highlight the invalid fields
+      const presentInput = document.querySelector(`input[data-pupil="${pupilId}"][data-field="timesPresent"]`);
+      if (presentInput) presentInput.style.borderColor = '#dc3545';
+    }
+    
+    // Validate: timesAbsent cannot exceed timesOpened
+    if (timesAbsent > timesOpened) {
+      validationErrors.push(
+        `${pupilName}: Times absent (${timesAbsent}) cannot exceed times school opened (${timesOpened})`
+      );
+      
+      const absentInput = document.querySelector(`input[data-pupil="${pupilId}"][data-field="timesAbsent"]`);
+      if (absentInput) absentInput.style.borderColor = '#dc3545';
+    }
+    
+    // Validate: present + absent cannot exceed opened
+    if (timesPresent + timesAbsent > timesOpened) {
+      validationErrors.push(
+        `${pupilName}: Total attendance (${timesPresent} present + ${timesAbsent} absent = ${timesPresent + timesAbsent}) ` +
+        `cannot exceed times school opened (${timesOpened})`
+      );
+    }
+  }
+  
+  // VALIDATION STEP 3: Show errors and block save if validation fails
+  if (validationErrors.length > 0) {
+    const errorMessage = 
+      `⚠️ ATTENDANCE VALIDATION ERRORS (${validationErrors.length}):\n\n` +
+      validationErrors.slice(0, 5).join('\n') +
+      (validationErrors.length > 5 ? `\n... and ${validationErrors.length - 5} more errors` : '');
+    
+    alert(errorMessage);
+    
+    window.showToast?.(
+      `Cannot save: ${validationErrors.length} validation error(s) found. Please fix highlighted fields.`,
+      'danger',
+      8000
+    );
+    
+    return; // Block save
+  }
+  
+  // Clear any previous error highlighting
+  inputs.forEach(input => {
+    input.style.borderColor = '';
+  });
+  
+  // SAVE: Get current session
   const settings = await window.getCurrentSettings();
   const currentSession = settings.session || 'Unknown';
   const sessionStartYear = settings.currentSession?.startYear;
@@ -884,16 +972,6 @@ async function saveAllAttendance() {
   const sessionTerm = `${currentSession}_${term}`;
   
   const batch = db.batch();
-  const pupilData = {};
-  
-  inputs.forEach(input => {
-    const pupilId = input.dataset.pupil;
-    const field = input.dataset.field;
-    const value = parseInt(input.value) || 0;
-    
-    if (!pupilData[pupilId]) pupilData[pupilId] = {};
-    pupilData[pupilId][field] = value;
-  });
   
   for (const [pupilId, data] of Object.entries(pupilData)) {
     const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
@@ -901,7 +979,6 @@ async function saveAllAttendance() {
       pupilId,
       term,
       teacherId: currentUser.uid,
-      // FIXED: Add session context
       session: currentSession,
       sessionStartYear: sessionStartYear,
       sessionEndYear: sessionEndYear,
