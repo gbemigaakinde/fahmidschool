@@ -6078,25 +6078,6 @@ window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 console.log('✓ Financial management functions loaded');
 
 /* ========================================
-   MODERN SIDEBAR GROUP TOGGLE
-======================================== */
-
-window.toggleSidebarGroup = function(button) {
-    const content = button.nextElementSibling;
-    const isExpanded = button.getAttribute('aria-expanded') === 'true';
-    
-    // Toggle aria-expanded
-    button.setAttribute('aria-expanded', !isExpanded);
-    
-    // Toggle active class
-    if (isExpanded) {
-        content.classList.remove('active');
-    } else {
-        content.classList.add('active');
-    }
-};
-
-/* ========================================
    INITIALIZE LUCIDE ICONS
 ======================================== */
 
