@@ -657,5 +657,19 @@
     <script src="class-hierarchy.js"></script>
     <script src="teacher.js"></script>
     <script src="script.js"></script>
+<!-- Optimization Scripts -->
+<script src="session-cache.js"></script>
+<script src="button-loader.js"></script>
+
+<!-- Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('✓ Service Worker registered'))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  });
+}
+</script>
 </body>
 </html>
