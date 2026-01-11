@@ -215,6 +215,9 @@ async function loadPupilProfile(user) {
         // Load results
         await loadResults();
 
+        // Load fee balance
+        await loadFeeBalance();
+
         // FIXED: Setup real-time listeners with debouncing
         let pupilUpdateTimeout = null;
         let classUpdateTimeout = null;
