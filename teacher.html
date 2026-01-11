@@ -390,213 +390,25 @@
         </section>
 
         <!-- Traits & Skills -->
-        <section id="traits-skills" class="admin-card" hidden tabindex="-1">
-            <h1>Behavioral Traits & Psychomotor Skills</h1>
-            <p class="section-description">Assess pupils' behavioral traits and psychomotor skills</p>
-
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="traits-term">Term <span class="required">*</span></label>
-                    <select id="traits-term" onchange="loadTraitsData()">
-                        <option value="First Term">First Term</option>
-                        <option value="Second Term">Second Term</option>
-                        <option value="Third Term">Third Term</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="traits-pupil">Pupil <span class="required">*</span></label>
-                    <select id="traits-pupil" onchange="loadTraitsData()">
-                        <option value="">-- Select Pupil --</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="traits-form-container" class="traits-form" hidden>
-                <h3>Behavioral Traits</h3>
-                <div class="form-group">
-                    <label for="trait-punctuality">Punctuality</label>
-                    <select id="trait-punctuality" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-neatness">Neatness</label>
-                    <select id="trait-neatness" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-politeness">Politeness</label>
-                    <select id="trait-politeness" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-honesty">Honesty</label>
-                    <select id="trait-honesty" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-obedience">Obedience</label>
-                    <select id="trait-obedience" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-cooperation">Cooperation</label>
-                    <select id="trait-cooperation" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-attentiveness">Attentiveness</label>
-                    <select id="trait-attentiveness" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-leadership">Leadership</label>
-                    <select id="trait-leadership" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-selfcontrol">Self Control</label>
-                    <select id="trait-selfcontrol" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="trait-creativity">Creativity</label>
-                    <select id="trait-creativity" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-
-                <h3 class="section-heading-alt">Psychomotor Skills</h3>
-                <div class="form-group">
-                    <label for="skill-handwriting">Handwriting</label>
-                    <select id="skill-handwriting" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="skill-drawing">Drawing</label>
-                    <select id="skill-drawing" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="skill-sports">Sports</label>
-                    <select id="skill-sports" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="skill-craft">Craft</label>
-                    <select id="skill-craft" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="skill-verbal">Verbal Fluency</label>
-                    <select id="skill-verbal" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="skill-coordination">Coordination</label>
-                    <select id="skill-coordination" class="trait-select">
-                        <option value="">-- Rate 1-5 --</option>
-                        <option value="1">1 (Poor)</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5 (Excellent)</option>
-                    </select>
-                </div>
-
-                <button class="btn" onclick="saveTraitsAndSkills()">
-                    💾 Save Traits & Skills
-                </button>
-            </div>
-        </section>
+        <section id="traits-skills" class="admin-card" hidden>
+    <h1>Behavioral Traits & Psychomotor Skills</h1>
+    <p class="section-description">Bulk entry for all pupils in your class</p>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label for="traits-term">Term <span class="required">*</span></label>
+            <select id="traits-term" onchange="loadBulkTraitsTable()">
+                <option value="First Term">First Term</option>
+                <option value="Second Term">Second Term</option>
+                <option value="Third Term">Third Term</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="traits-form-container">
+        <!-- Bulk traits grid will be generated here -->
+    </div>
+</section>
 
         <!-- Remarks -->
         <section id="remarks" class="admin-card" hidden tabindex="-1">
