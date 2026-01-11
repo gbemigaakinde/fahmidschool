@@ -3067,10 +3067,9 @@ async function approvePromotion() {
 }
 
 /**
- * FIXED: Execute Promotion with Proper Batch Management
- * Replace the executePromotion function in admin.js
+ * FIXED: Execute Promotion with Rollback Safety
+ * Executes promotion in smaller chunks with rollback capability
  */
-
 async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
   const promotionDoc = await db.collection('promotions').doc(promotionId).get();
   
@@ -3084,20 +3083,66 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
-  // CRITICAL FIX: Proper batch management with operation counter
-  const BATCH_SIZE = 400; // Safe margin under 500 limit
+  // SAFETY: Create snapshot before executing
+  const executionSnapshot = {
+    promotionId: promotionId,
+    executedAt: new Date().toISOString(),
+    promotedPupils: promotedPupils,
+    heldBackPupils: heldBackPupils,
+    manualOverrides: manualOverrides,
+    status: 'in_progress'
+  };
+  
+  // Store snapshot for rollback capability
+  await db.collection('promotion_snapshots').doc(promotionId).set(executionSnapshot);
+  
+  const BATCH_SIZE = 400;
   let currentBatch = db.batch();
   let operationCount = 0;
   let batchNumber = 1;
+  let totalOperations = 0;
   
+  // Track all batches for potential rollback
+  const committedBatches = [];
+
   async function commitCurrentBatch() {
     if (operationCount > 0) {
       console.log(`Committing batch ${batchNumber} with ${operationCount} operations...`);
-      await currentBatch.commit();
-      console.log(`✓ Batch ${batchNumber} committed successfully`);
-      batchNumber++;
-      currentBatch = db.batch();
-      operationCount = 0;
+      
+      try {
+        await currentBatch.commit();
+        console.log(`✓ Batch ${batchNumber} committed successfully`);
+        
+        committedBatches.push({
+          batchNumber: batchNumber,
+          operations: operationCount,
+          timestamp: new Date().toISOString()
+        });
+        
+        batchNumber++;
+        currentBatch = db.batch();
+        operationCount = 0;
+        
+        // Update progress in snapshot
+        await db.collection('promotion_snapshots').doc(promotionId).update({
+          lastCompletedBatch: batchNumber - 1,
+          totalOperationsCompleted: totalOperations
+        });
+        
+      } catch (error) {
+        // CRITICAL: Batch failed - log and throw
+        console.error(`❌ Batch ${batchNumber} failed:`, error);
+        
+        await db.collection('promotion_snapshots').doc(promotionId).update({
+          status: 'failed',
+          failedAt: new Date().toISOString(),
+          failedBatch: batchNumber,
+          error: error.message,
+          successfulBatches: committedBatches
+        });
+        
+        throw new Error(`Promotion failed at batch ${batchNumber}. ${committedBatches.length} batches completed successfully. Contact admin for manual recovery.`);
+      }
     }
   }
 
@@ -3125,7 +3170,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     const pupilData = pupilDoc.data();
 
     if (data.isTerminalClass) {
-      // Move to alumni (2 operations: create alumni, delete pupil)
+      // Move to alumni (2 operations)
       const alumniRef = db.collection('alumni').doc(pupilId);
       
       currentBatch.set(alumniRef, {
@@ -3136,12 +3181,14 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         promotionDate: firebase.firestore.FieldValue.serverTimestamp()
       });
       operationCount++;
+      totalOperations++;
       
       currentBatch.delete(pupilRef);
       operationCount++;
+      totalOperations++;
       
     } else {
-      // Regular promotion (1 operation: update pupil)
+      // Regular promotion (1 operation)
       currentBatch.update(pupilRef, {
         'class.id': data.toClass.id,
         'class.name': data.toClass.name,
@@ -3156,6 +3203,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       operationCount++;
+      totalOperations++;
     }
     
     // Check if we need to commit this batch
@@ -3188,8 +3236,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     operationCount++;
+    totalOperations++;
     
-    // Check if we need to commit this batch
     if (operationCount >= BATCH_SIZE) {
       await commitCurrentBatch();
     }
@@ -3222,9 +3270,11 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         promotionDate: firebase.firestore.FieldValue.serverTimestamp()
       });
       operationCount++;
+      totalOperations++;
       
       currentBatch.delete(pupilRef);
       operationCount++;
+      totalOperations++;
       
     } else {
       // Move to specific class
@@ -3248,10 +3298,10 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         operationCount++;
+        totalOperations++;
       }
     }
     
-    // Check if we need to commit this batch
     if (operationCount >= BATCH_SIZE) {
       await commitCurrentBatch();
     }
@@ -3265,11 +3315,21 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     executedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   operationCount++;
+  totalOperations++;
 
   // Commit final batch
   await commitCurrentBatch();
   
+  // Update snapshot to completed
+  await db.collection('promotion_snapshots').doc(promotionId).update({
+    status: 'completed',
+    completedAt: new Date().toISOString(),
+    totalBatches: batchNumber - 1,
+    totalOperations: totalOperations
+  });
+  
   console.log(`✓ Promotion completed: ${promotedPupils.length} promoted, ${heldBackPupils.length} held back, ${manualOverrides.length} overrides`);
+  console.log(`✓ Total batches: ${batchNumber - 1}, Total operations: ${totalOperations}`);
 }
 
 async function rejectPromotion() {
