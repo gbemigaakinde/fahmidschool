@@ -249,77 +249,88 @@
   <script src="firebase-init.js"></script>
   <script src="finance.js"></script>
   
-  <script>
+ <script>
     // Get receipt number from URL
     const urlParams = new URLSearchParams(window.location.search);
     const receiptNo = urlParams.get('receipt');
     
     if (!receiptNo) {
-      alert('No receipt number provided');
-      window.close();
+        alert('No receipt number provided');
+        window.close();
     }
     
     // Load receipt data
     async function loadReceiptData() {
-      try {
-        const receiptData = await window.finance.getReceiptData(receiptNo);
-        
-        if (!receiptData) {
-          alert('Receipt not found');
-          window.close();
-          return;
+        try {
+            // Get transaction data
+            const transactionsSnap = await db.collection('payment_transactions')
+                .where('receiptNo', '==', receiptNo)
+                .limit(1)
+                .get();
+            
+            if (transactionsSnap.empty) {
+                alert('Receipt not found');
+                window.close();
+                return;
+            }
+            
+            const receiptData = transactionsSnap.docs[0].data();
+            
+            // Populate receipt fields
+            document.getElementById('receipt-no').textContent = receiptData.receiptNo;
+            
+            const paymentDate = receiptData.paymentDate 
+                ? receiptData.paymentDate.toDate().toLocaleDateString('en-GB', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                  })
+                : 'N/A';
+            
+            document.getElementById('receipt-date').textContent = paymentDate;
+            document.getElementById('student-name').textContent = receiptData.pupilName || 'N/A';
+            document.getElementById('student-class').textContent = receiptData.className || 'N/A';
+            document.getElementById('receipt-session').textContent = receiptData.session || 'N/A';
+            document.getElementById('receipt-term').textContent = receiptData.term || 'N/A';
+            
+            const amountPaid = parseFloat(receiptData.amountPaid) || 0;
+            document.getElementById('amount-paid').textContent = `₦${amountPaid.toLocaleString()}`;
+            document.getElementById('payment-method').textContent = receiptData.paymentMethod || 'Cash';
+            
+            // Show notes if present
+            if (receiptData.notes) {
+                document.getElementById('payment-notes').textContent = receiptData.notes;
+                document.getElementById('notes-row').style.display = 'flex';
+            }
+            
+            // Get updated balance from payments summary
+            const paymentRecordId = `${receiptData.pupilId}_${receiptData.session}_${receiptData.term}`;
+            const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+            
+            let balance = 0;
+            if (paymentDoc.exists) {
+                balance = parseFloat(paymentDoc.data().balance) || 0;
+            }
+            
+            document.getElementById('balance-remaining').textContent = `₦${balance.toLocaleString()}`;
+            
+            // Set generated date
+            document.getElementById('generated-date').textContent = new Date().toLocaleString('en-GB');
+            
+            // Auto-print after short delay
+            setTimeout(() => {
+                window.print();
+            }, 500);
+            
+        } catch (error) {
+            console.error('Error loading receipt:', error);
+            alert('Failed to load receipt data: ' + error.message);
+            window.close();
         }
-        
-        // Populate receipt
-        document.getElementById('receipt-no').textContent = receiptData.receiptNo;
-        document.getElementById('receipt-date').textContent = receiptData.paymentDate 
-          ? receiptData.paymentDate.toDate().toLocaleDateString('en-GB', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })
-          : 'N/A';
-        
-        document.getElementById('student-name').textContent = receiptData.pupilName || 'N/A';
-        document.getElementById('student-class').textContent = receiptData.className || 'N/A';
-        document.getElementById('receipt-session').textContent = receiptData.session || 'N/A';
-        document.getElementById('receipt-term').textContent = receiptData.term || 'N/A';
-        document.getElementById('amount-paid').textContent = `₦${parseFloat(receiptData.amountPaid).toLocaleString()}`;
-        document.getElementById('payment-method').textContent = receiptData.paymentMethod || 'Cash';
-        
-        // Get updated balance
-        const paymentSummary = await window.finance.getPupilPaymentSummary(
-          receiptData.pupilId,
-          receiptData.session,
-          receiptData.term
-        );
-        
-        const balance = paymentSummary ? paymentSummary.balance : 0;
-        document.getElementById('balance-remaining').textContent = `₦${parseFloat(balance).toLocaleString()}`;
-        
-        // Show notes if present
-        if (receiptData.notes) {
-          document.getElementById('payment-notes').textContent = receiptData.notes;
-          document.getElementById('notes-row').style.display = 'flex';
-        }
-        
-        // Set generated date
-        document.getElementById('generated-date').textContent = new Date().toLocaleString('en-GB');
-        
-        // Auto-print after short delay
-        setTimeout(() => {
-          window.print();
-        }, 500);
-        
-      } catch (error) {
-        console.error('Error loading receipt:', error);
-        alert('Failed to load receipt data');
-        window.close();
-      }
     }
     
     // Load when page ready
     document.addEventListener('DOMContentLoaded', loadReceiptData);
-  </script>
+</script>
 </body>
 </html>
