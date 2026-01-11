@@ -732,7 +732,7 @@ function showSection(sectionId) {
         loadAlumni();
         break;
         
-        case 'auditLog':
+        case 'audit-log':
         loadAuditLog();
         break;
       
