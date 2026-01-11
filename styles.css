@@ -3450,49 +3450,10 @@ i[data-lucide] {
 
 /* ===== 3D FEATURES SECTION ===== */
 
-.features-3d {
-  perspective: 1200px;
-}
-
-.features-3d .feature-card {
-  transform-style: preserve-3d;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-  will-change: transform;
-}
-
-.features-3d .feature-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.25),
-    rgba(255, 255, 255, 0)
-  );
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-
-.features-3d .feature-card:hover {
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.15),
-    0 5px 15px rgba(0, 0, 0, 0.08);
-}
-
-.features-3d .feature-card:hover::after {
-  opacity: 1;
-}
-
-.features-3d .feature-icon {
-  transform: translateZ(40px);
-}
-
-.features-3d h3 {
-  transform: translateZ(30px);
-}
-
-.features-3d p {
-  transform: translateZ(20px);
+#features-3d-container {
+  width: 100%;
+  height: 600px; /* adjust as needed */
+  margin-top: var(--space-12);
+  margin-bottom: var(--space-12);
+  position: relative;
 }
