@@ -1107,6 +1107,10 @@ function cancelPupilForm() {
   document.getElementById('save-pupil-btn').textContent = 'Save Pupil';
 }
 
+/**
+ * FIXED: Load Pupils with Bulk Action Support
+ * Adds checkboxes and bulk operation capabilities
+ */
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
   if (!tbody) return;
@@ -1114,14 +1118,19 @@ async function loadPupils() {
   // Populate class dropdown first
   await populateClassDropdown();
 
-  tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading pupils...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
     const snapshot = await db.collection('pupils').get();
     tbody.innerHTML = '';
 
     if (snapshot.empty) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
+      
+      // Hide bulk actions if no pupils
+      const bulkActionsBar = document.getElementById('bulk-actions-bar');
+      if (bulkActionsBar) bulkActionsBar.style.display = 'none';
+      
       return;
     }
 
@@ -1131,6 +1140,10 @@ async function loadPupils() {
     });
 
     pupils.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Show bulk actions bar
+    const bulkActionsBar = document.getElementById('bulk-actions-bar');
+    if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
 
     paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
       // FIXED: Safely extract class name from both old and new formats
@@ -1145,6 +1158,9 @@ async function loadPupils() {
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td data-label="Select" style="text-align:center;">
+          <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}" onchange="updateBulkActionButtons()">
+        </td>
         <td data-label="Name">${pupil.name}</td>
         <td data-label="Class">${className}</td>
         <td data-label="Gender">${pupil.gender || '-'}</td>
@@ -1160,7 +1176,7 @@ async function loadPupils() {
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
   }
 }
 
