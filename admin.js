@@ -3678,20 +3678,62 @@ window.showSection = showSection;
    DATA MIGRATION: BACKFILL SESSION INFO
 ======================================== */
 
+/**
+ * FIXED: Session Data Migration with Date-Based Validation
+ * Only migrates results that belong to current session based on dates
+ */
 async function backfillSessionData() {
   const btn = document.getElementById('backfill-btn');
   const statusDiv = document.getElementById('migration-status');
   const statusText = statusDiv?.querySelector('p');
   
-  // Confirm with admin
+  // Get current session information FIRST
+  let settings;
+  let currentSession;
+  let sessionStartDate;
+  let sessionEndDate;
+  
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    
+    if (!settingsDoc.exists) {
+      throw new Error('Settings not found. Please configure school settings first.');
+    }
+    
+    settings = settingsDoc.data();
+    currentSession = settings.session || 'Unknown';
+    
+    // CRITICAL: Get session date boundaries
+    if (settings.currentSession?.startDate && settings.currentSession?.endDate) {
+      sessionStartDate = settings.currentSession.startDate.toDate();
+      sessionEndDate = settings.currentSession.endDate.toDate();
+    } else {
+      throw new Error('Session dates not configured. Please set session start and end dates in School Settings.');
+    }
+    
+  } catch (error) {
+    if (statusText) {
+      statusText.innerHTML = `❌ <strong>Error:</strong> ${error.message}`;
+    }
+    if (statusDiv) {
+      statusDiv.style.background = '#f8d7da';
+      statusDiv.style.border = '1px solid #dc3545';
+      statusDiv.style.display = 'block';
+    }
+    window.showToast?.(error.message, 'danger', 10000);
+    return;
+  }
+  
+  // ENHANCED CONFIRMATION with date information
   const confirmation = confirm(
     '⚠️ DATA MIGRATION CONFIRMATION\n\n' +
-    'This will add session information to all existing results.\n\n' +
-    'What will happen:\n' +
-    '✓ All results without session data will be updated\n' +
-    '✓ They will be assigned to the CURRENT session\n' +
-    '✓ Existing data will NOT be deleted\n' +
-    '✓ This is a ONE-TIME operation\n\n' +
+    `Current Session: ${currentSession}\n` +
+    `Session Period: ${sessionStartDate.toLocaleDateString('en-GB')} to ${sessionEndDate.toLocaleDateString('en-GB')}\n\n` +
+    'This migration will:\n' +
+    '✓ Only assign current session to results created within session dates\n' +
+    '✓ Flag results outside date range for manual review\n' +
+    '✓ NOT modify existing session-labeled results\n' +
+    '✓ Create a detailed migration report\n\n' +
     'Continue with migration?'
   );
   
@@ -3700,7 +3742,7 @@ async function backfillSessionData() {
   // Disable button and show status
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="btn-loading">Migrating data...</span>';
+    btn.innerHTML = '<span class="btn-loading">Analyzing data...</span>';
   }
   
   if (statusDiv) {
@@ -3710,38 +3752,16 @@ async function backfillSessionData() {
   }
   
   if (statusText) {
-    statusText.innerHTML = '🔄 <strong>Starting migration...</strong>';
+    statusText.innerHTML = `🔄 <strong>Analyzing results...</strong><br>Session: ${currentSession}`;
   }
   
   try {
-    // Get current session settings
-    const settingsDoc = await db.collection('settings').doc('current').get();
-    
-    if (!settingsDoc.exists) {
-      throw new Error('Settings not found. Please configure school settings first.');
-    }
-    
-    const settings = settingsDoc.data();
-    const currentSession = settings.session || 'Unknown';
-    const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear = settings.currentSession?.endYear;
-    
-    if (!currentSession || !sessionStartYear || !sessionEndYear) {
-      throw new Error('Invalid session configuration. Please check school settings.');
-    }
-    
-    if (statusText) {
-      statusText.innerHTML = `🔄 <strong>Current session:</strong> ${currentSession}<br>Loading results...`;
-    }
-    
-    // Query results that don't have session field
+    // Query results WITHOUT session field
     const resultsSnap = await db.collection('results')
       .where('session', '==', null)
       .get();
     
-    const totalResults = resultsSnap.size;
-    
-    if (totalResults === 0) {
+    if (resultsSnap.empty) {
       if (statusText) {
         statusText.innerHTML = '✓ <strong>No results need migration.</strong><br>All results already have session data.';
       }
@@ -3760,63 +3780,152 @@ async function backfillSessionData() {
       return;
     }
     
+    const totalResults = resultsSnap.size;
+    
     if (statusText) {
-      statusText.innerHTML = `🔄 <strong>Found ${totalResults} result(s) to migrate</strong><br>Processing in batches...`;
+      statusText.innerHTML = `🔄 <strong>Found ${totalResults} result(s) without session data</strong><br>Validating dates...`;
     }
     
-    // Process in batches of 450 (safety margin under Firestore's 500 limit)
+    // CRITICAL: Categorize results by date
+    const withinSession = [];
+    const beforeSession = [];
+    const afterSession = [];
+    const noCreatedDate = [];
+    
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      
+      // Check if result has createdAt timestamp
+      if (data.createdAt) {
+        const resultDate = data.createdAt.toDate();
+        
+        if (resultDate >= sessionStartDate && resultDate <= sessionEndDate) {
+          withinSession.push({ id: doc.id, data: data, date: resultDate });
+        } else if (resultDate < sessionStartDate) {
+          beforeSession.push({ id: doc.id, data: data, date: resultDate });
+        } else {
+          afterSession.push({ id: doc.id, data: data, date: resultDate });
+        }
+      } else {
+        noCreatedDate.push({ id: doc.id, data: data });
+      }
+    });
+    
+    // Show categorization summary
+    const summaryMessage = 
+      `📊 <strong>Migration Analysis:</strong><br>` +
+      `• ${withinSession.length} results within current session dates (will be migrated)<br>` +
+      `• ${beforeSession.length} results before session start (flagged for review)<br>` +
+      `• ${afterSession.length} results after session end (flagged for review)<br>` +
+      `• ${noCreatedDate.length} results without creation date (flagged for review)`;
+    
+    if (statusText) {
+      statusText.innerHTML = summaryMessage;
+    }
+    
+    // Ask admin to proceed
+    const proceedWithMigration = confirm(
+      `Migration Analysis Complete:\n\n` +
+      `${withinSession.length} results will be assigned to current session\n` +
+      `${beforeSession.length + afterSession.length + noCreatedDate.length} results need manual review\n\n` +
+      `Proceed with automatic migration?`
+    );
+    
+    if (!proceedWithMigration) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Migrate Existing Results';
+      }
+      window.showToast?.('Migration cancelled', 'info');
+      return;
+    }
+    
+    // Process migration in batches
     const BATCH_SIZE = 450;
     let processed = 0;
     let batch = db.batch();
     let batchCount = 0;
     
-    for (const doc of resultsSnap.docs) {
-      const data = doc.data();
-      const term = data.term || 'Unknown Term';
-      
-      // Create composite session-term field
+    // Migrate results within session dates
+    for (const result of withinSession) {
+      const term = result.data.term || 'Unknown Term';
       const sessionTerm = `${currentSession}_${term}`;
       
-      // Update document with session information
-      batch.update(doc.ref, {
+      batch.update(db.collection('results').doc(result.id), {
         session: currentSession,
-        sessionStartYear: sessionStartYear,
-        sessionEndYear: sessionEndYear,
+        sessionStartYear: settings.currentSession.startYear,
+        sessionEndYear: settings.currentSession.endYear,
         sessionTerm: sessionTerm,
         migrated: true,
-        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+        migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        migrationMethod: 'date_validated'
       });
       
       batchCount++;
       processed++;
       
-      // Commit batch when it reaches size limit
       if (batchCount >= BATCH_SIZE) {
         if (statusText) {
-          statusText.innerHTML = `🔄 <strong>Processing...</strong><br>Migrated ${processed} of ${totalResults} results`;
+          statusText.innerHTML = `🔄 <strong>Migrating...</strong><br>Processed ${processed} of ${withinSession.length} results`;
         }
         
         await batch.commit();
-        console.log(`✓ Committed batch: ${processed}/${totalResults}`);
-        
-        // Start new batch
         batch = db.batch();
         batchCount = 0;
         
-        // Small delay to avoid overwhelming Firestore
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
     
-    // Commit any remaining operations
+    // Commit remaining operations
     if (batchCount > 0) {
       await batch.commit();
-      console.log(`✓ Committed final batch: ${processed}/${totalResults}`);
     }
     
-    // Success!
+    // Flag problematic results for manual review
+    const flaggedResults = [...beforeSession, ...afterSession, ...noCreatedDate];
+    
+    if (flaggedResults.length > 0) {
+      const flagBatch = db.batch();
+      let flagCount = 0;
+      
+      for (const result of flaggedResults) {
+        let flagReason = '';
+        
+        if (beforeSession.includes(result)) {
+          flagReason = `Created before current session (${result.date.toLocaleDateString('en-GB')})`;
+        } else if (afterSession.includes(result)) {
+          flagReason = `Created after current session (${result.date.toLocaleDateString('en-GB')})`;
+        } else {
+          flagReason = 'No creation date found';
+        }
+        
+        flagBatch.update(db.collection('results').doc(result.id), {
+          needsManualReview: true,
+          reviewReason: flagReason,
+          flaggedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        flagCount++;
+        
+        if (flagCount >= BATCH_SIZE) {
+          await flagBatch.commit();
+          flagCount = 0;
+        }
+      }
+      
+      if (flagCount > 0) {
+        await flagBatch.commit();
+      }
+    }
+    
+    // Success message
     if (statusText) {
-      statusText.innerHTML = `✓ <strong>Migration completed successfully!</strong><br>Updated ${totalResults} result(s) with session: ${currentSession}`;
+      statusText.innerHTML = 
+        `✓ <strong>Migration completed successfully!</strong><br>` +
+        `• ${withinSession.length} results assigned to ${currentSession}<br>` +
+        `• ${flaggedResults.length} results flagged for manual review<br><br>` +
+        `<em>Flagged results are marked with "needsManualReview: true"</em>`;
     }
     
     if (statusDiv) {
@@ -3825,12 +3934,10 @@ async function backfillSessionData() {
     }
     
     window.showToast?.(
-      `✓ Migration completed!\n${totalResults} result(s) updated with session information.`,
+      `✓ Migration completed!\n${withinSession.length} migrated, ${flaggedResults.length} need review`,
       'success',
       8000
     );
-    
-    console.log(`✓ Successfully migrated ${totalResults} results to session: ${currentSession}`);
     
   } catch (error) {
     console.error('❌ Migration error:', error);
@@ -3845,7 +3952,7 @@ async function backfillSessionData() {
     }
     
     window.showToast?.(
-      `Migration failed: ${error.message}\nPlease contact support.`,
+      `Migration failed: ${error.message}`,
       'danger',
       10000
     );
