@@ -502,6 +502,143 @@ async function loadResults() {
     }
 }
 
+/**
+ * Load pupil fee balance
+ */
+async function loadFeeBalance() {
+    if (!currentPupilId) return;
+    
+    const feeSection = document.getElementById('fee-balance-section');
+    if (!feeSection) return;
+    
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        const term = settings.term;
+        
+        // Get payment summary
+        const paymentRecordId = `${currentPupilId}_${session}_${term}`;
+        const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+        
+        if (!paymentDoc.exists) {
+            // No fee structure configured for this class/term
+            feeSection.style.display = 'none';
+            return;
+        }
+        
+        const paymentData = paymentDoc.data();
+        
+        // Display fee summary
+        document.getElementById('fee-amount-due').textContent = 
+            `₦${(paymentData.amountDue || 0).toLocaleString()}`;
+        
+        document.getElementById('fee-total-paid').textContent = 
+            `₦${(paymentData.totalPaid || 0).toLocaleString()}`;
+        
+        const balance = paymentData.balance || 0;
+        const balanceEl = document.getElementById('fee-balance');
+        balanceEl.textContent = `₦${balance.toLocaleString()}`;
+        
+        // Color code balance
+        if (balance <= 0) {
+            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)';
+        } else if (balance < paymentData.amountDue) {
+            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
+        } else {
+            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)';
+        }
+        
+        // Load payment history
+        await loadPaymentHistory(session, term);
+        
+        // Show section
+        feeSection.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading fee balance:', error);
+        feeSection.style.display = 'none';
+    }
+}
+
+/**
+ * Load payment history for pupil
+ */
+async function loadPaymentHistory(session, term) {
+    const container = document.getElementById('payment-history-list');
+    if (!container || !currentPupilId) return;
+    
+    try {
+        const transactionsSnap = await db.collection('payment_transactions')
+            .where('pupilId', '==', currentPupilId)
+            .where('session', '==', session)
+            .where('term', '==', term)
+            .orderBy('paymentDate', 'desc')
+            .get();
+        
+        if (transactionsSnap.empty) {
+            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        transactionsSnap.forEach(doc => {
+            const data = doc.data();
+            
+            const paymentDate = data.paymentDate 
+                ? data.paymentDate.toDate().toLocaleDateString('en-GB')
+                : 'N/A';
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = `
+                padding: var(--space-md);
+                background: white;
+                border: 1px solid var(--color-gray-300);
+                border-radius: var(--radius-md);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+            
+            itemDiv.innerHTML = `
+                <div>
+                    <div style="font-weight: 600; margin-bottom: var(--space-xs);">₦${parseFloat(data.amountPaid).toLocaleString()}</div>
+                    <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
+                        ${paymentDate} • ${data.paymentMethod || 'Cash'} • Receipt #${data.receiptNo}
+                    </div>
+                </div>
+                <button class="btn-small btn-secondary" onclick="viewReceipt('${data.receiptNo}')">
+                    View Receipt
+                </button>
+            `;
+            
+            container.appendChild(itemDiv);
+        });
+        
+    } catch (error) {
+        console.error('Error loading payment history:', error);
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
+    }
+}
+
+/**
+ * Open receipt in new window
+ */
+function viewReceipt(receiptNo) {
+    const receiptWindow = window.open(
+        `receipt.html?receipt=${receiptNo}`,
+        '_blank',
+        'width=800,height=600'
+    );
+    
+    if (!receiptWindow) {
+        window.showToast?.('Please allow popups to view receipts', 'warning');
+    }
+}
+
+// Make functions globally available
+window.viewReceipt = viewReceipt;
+
 async function populateSessionSelector() {
     const selector = document.getElementById('pupil-session-select');
     if (!selector) {
