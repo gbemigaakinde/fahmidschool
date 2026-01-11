@@ -5040,3 +5040,250 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('✓ Lucide icons initialized');
     }
 });
+
+/**
+ * BULK OPERATIONS FUNCTIONS
+ */
+
+function toggleAllPupils(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.pupil-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = masterCheckbox.checked;
+  });
+  updateBulkActionButtons();
+}
+
+function updateBulkActionButtons() {
+  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
+  const count = checkboxes.length;
+  
+  const countDisplay = document.getElementById('selected-count');
+  const actionSelect = document.getElementById('bulk-action-select');
+  const applyBtn = document.getElementById('apply-bulk-action-btn');
+  const selectAllCheckbox = document.getElementById('select-all-pupils');
+  
+  if (countDisplay) {
+    countDisplay.textContent = `${count} selected`;
+    countDisplay.style.fontWeight = count > 0 ? '600' : 'normal';
+    countDisplay.style.color = count > 0 ? 'var(--color-primary)' : 'var(--color-gray-600)';
+  }
+  
+  if (actionSelect) actionSelect.disabled = count === 0;
+  if (applyBtn) applyBtn.disabled = count === 0;
+  
+  // Update "Select All" checkbox state
+  const allCheckboxes = document.querySelectorAll('.pupil-checkbox');
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = count === allCheckboxes.length;
+    selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
+  }
+}
+
+async function applyBulkAction() {
+  const action = document.getElementById('bulk-action-select')?.value;
+  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
+  
+  if (!action || checkboxes.length === 0) {
+    window.showToast?.('Please select an action and at least one pupil', 'warning');
+    return;
+  }
+  
+  const selectedPupilIds = Array.from(checkboxes).map(cb => cb.dataset.pupilId);
+  
+  switch(action) {
+    case 'reassign-class':
+      await bulkReassignClass(selectedPupilIds);
+      break;
+    case 'delete':
+      await bulkDeletePupils(selectedPupilIds);
+      break;
+    default:
+      window.showToast?.('Invalid action selected', 'warning');
+  }
+}
+
+async function bulkReassignClass(pupilIds) {
+  // Show class selection modal
+  const classes = await db.collection('classes').orderBy('name').get();
+  
+  if (classes.empty) {
+    window.showToast?.('No classes available', 'warning');
+    return;
+  }
+  
+  let classOptions = '<option value="">-- Select New Class --</option>';
+  classes.forEach(doc => {
+    const data = doc.data();
+    classOptions += `<option value="${doc.id}">${data.name}</option>`;
+  });
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000;';
+  modal.innerHTML = `
+    <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:500px; width:90%;">
+      <h3 style="margin-top:0;">Reassign ${pupilIds.length} Pupil(s) to New Class</h3>
+      <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
+        Select the new class for the selected pupils. Their subjects and teacher will be updated automatically.
+      </p>
+      <select id="bulk-class-select" style="width:100%; padding:var(--space-sm); margin-bottom:var(--space-lg);">
+        ${classOptions}
+      </select>
+      <div style="display:flex; gap:var(--space-md); justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="this.closest('[style*=position]').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="executeBulkReassign(${JSON.stringify(pupilIds)}, this)">
+          Reassign All
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+async function executeBulkReassign(pupilIds, btn) {
+  const newClassId = document.getElementById('bulk-class-select')?.value;
+  
+  if (!newClassId) {
+    window.showToast?.('Please select a class', 'warning');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span class="btn-loading">Reassigning...</span>';
+  
+  try {
+    // Get new class details
+    const classDoc = await db.collection('classes').doc(newClassId).get();
+    if (!classDoc.exists) {
+      throw new Error('Class not found');
+    }
+    
+    const classData = classDoc.data();
+    
+    // Get teacher info
+    let teacherId = classData.teacherId || '';
+    let teacherName = classData.teacherName || '';
+    
+    if (teacherId && !teacherName) {
+      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+      if (teacherDoc.exists) {
+        teacherName = teacherDoc.data().name || '';
+      }
+    }
+    
+    // Batch update pupils
+    const BATCH_SIZE = 450;
+    let batch = db.batch();
+    let count = 0;
+    
+    for (const pupilId of pupilIds) {
+      const pupilRef = db.collection('pupils').doc(pupilId);
+      
+      batch.update(pupilRef, {
+        'class.id': newClassId,
+        'class.name': classData.name,
+        subjects: classData.subjects || [],
+        'assignedTeacher.id': teacherId,
+        'assignedTeacher.name': teacherName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      count++;
+      
+      if (count >= BATCH_SIZE) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✓ Successfully reassigned ${pupilIds.length} pupil(s) to ${classData.name}`,
+      'success',
+      5000
+    );
+    
+    // Close modal
+    btn.closest('[style*="position"]').remove();
+    
+    // Reload pupils list
+    await loadPupils();
+    
+  } catch (error) {
+    console.error('Bulk reassign error:', error);
+    window.handleError(error, 'Failed to reassign pupils');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Reassign All';
+  }
+}
+
+async function bulkDeletePupils(pupilIds) {
+  const confirmation = confirm(
+    `⚠️ DELETE ${pupilIds.length} PUPIL(S)?\n\n` +
+    `This will permanently delete:\n` +
+    `• ${pupilIds.length} pupil records\n` +
+    `• ${pupilIds.length} user accounts\n` +
+    `• All associated results, attendance, and remarks\n\n` +
+    `This action CANNOT be undone!\n\n` +
+    `Type "DELETE" below to confirm:`
+  );
+  
+  if (!confirmation) return;
+  
+  const confirmText = prompt('Type DELETE to confirm:');
+  if (confirmText !== 'DELETE') {
+    window.showToast?.('Deletion cancelled', 'info');
+    return;
+  }
+  
+  try {
+    // Delete in batches
+    const BATCH_SIZE = 450;
+    let batch = db.batch();
+    let count = 0;
+    
+    for (const pupilId of pupilIds) {
+      // Delete from pupils collection
+      batch.delete(db.collection('pupils').doc(pupilId));
+      
+      // Delete from users collection
+      batch.delete(db.collection('users').doc(pupilId));
+      
+      count += 2; // Two deletes per pupil
+      
+      if (count >= BATCH_SIZE) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✓ Successfully deleted ${pupilIds.length} pupil(s)`,
+      'success',
+      5000
+    );
+    
+    await loadPupils();
+    await loadDashboardStats();
+    
+  } catch (error) {
+    console.error('Bulk delete error:', error);
+    window.handleError(error, 'Failed to delete pupils');
+  }
+}
+
+// Make functions globally available
+window.toggleAllPupils = toggleAllPupils;
+window.updateBulkActionButtons = updateBulkActionButtons;
+window.applyBulkAction = applyBulkAction;
+window.executeBulkReassign = executeBulkReassign;
