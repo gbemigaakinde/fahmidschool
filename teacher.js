@@ -1292,128 +1292,291 @@ async function saveAllAttendance() {
    TRAITS & SKILLS 
 ======================================== */
 
+/**
+ * Load traits section - now with bulk entry
+ */
 function loadTraitsSection() {
-  const pupilSelect = document.getElementById('traits-pupil');
-  const container = document.getElementById('traits-form-container');
-  
-  if (!pupilSelect || !container) return;
-  
-  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  
-  if (allPupils.length === 0) {
-    container.hidden = true;
-    return;
-  }
-  
-  allPupils.forEach(pupil => {
-    const opt = document.createElement('option');
-    opt.value = pupil.id;
-    opt.textContent = pupil.name;
-    pupilSelect.appendChild(opt);
-  });
-  
-  container.hidden = true;
+    const termSelect = document.getElementById('traits-term');
+    
+    if (!termSelect) return;
+    
+    // Auto-load bulk table
+    loadBulkTraitsTable();
 }
 
-async function loadTraitsData() {
-  const pupilId = document.getElementById('traits-pupil')?.value;
-  const term = document.getElementById('traits-term')?.value;
-  const container = document.getElementById('traits-form-container');
-  
-  if (!container || !pupilId || !term) {
-    container.hidden = true;
-    return;
-  }
-  
-  container.hidden = false;
-  
-  const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
-  const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
-  
-  try {
-    const traitsSnap = await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).get();
-    const traitsData = traitsSnap.exists ? traitsSnap.data() : {};
+/**
+ * Load bulk traits entry table for all pupils
+ */
+async function loadBulkTraitsTable() {
+    const container = document.getElementById('traits-form-container');
+    const term = document.getElementById('traits-term')?.value;
     
-    traitFields.forEach(f => {
-      const el = document.getElementById(`trait-${f}`);
-      if (el) el.value = traitsData[f] || '';
-    });
+    if (!container || !term) return;
     
-    const skillsSnap = await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).get();
-    const skillsData = skillsSnap.exists ? skillsSnap.data() : {};
+    if (allPupils.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">No pupils in your assigned classes</p>';
+        return;
+    }
     
-    skillFields.forEach(f => {
-      const el = document.getElementById(`skill-${f}`);
-      if (el) el.value = skillsData[f] || '';
-    });
-  } catch (err) {
-    window.handleError(err, 'Failed to load traits/skills');
-  }
+    // Show loading state
+    container.innerHTML = `
+        <div style="text-align:center; padding: var(--space-2xl);">
+            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+            <p style="color: var(--color-gray-600);">Loading traits data...</p>
+        </div>
+    `;
+    
+    try {
+        // Load existing traits data for all pupils
+        const traitsData = {};
+        const skillsData = {};
+        
+        for (const pupil of allPupils) {
+            const traitsDocId = `${pupil.id}_${term}`;
+            
+            // Load behavioral traits
+            const traitsDoc = await db.collection('behavioral_traits').doc(traitsDocId).get();
+            if (traitsDoc.exists) {
+                traitsData[pupil.id] = traitsDoc.data();
+            }
+            
+            // Load psychomotor skills
+            const skillsDoc = await db.collection('psychomotor_skills').doc(traitsDocId).get();
+            if (skillsDoc.exists) {
+                skillsData[pupil.id] = skillsDoc.data();
+            }
+        }
+        
+        // Render bulk entry table
+        container.innerHTML = `
+            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: #e0f2fe; border: 1px solid #0284c7; border-radius: var(--radius-md);">
+                <strong style="color: #0c4a6e;">📊 Bulk Entry Mode</strong>
+                <p style="margin: 0.5rem 0 0; color: #075985; font-size: var(--text-sm);">
+                    Rate each trait/skill from 1 (Poor) to 5 (Excellent). Leave blank if not assessed.
+                </p>
+            </div>
+            
+            <!-- Behavioral Traits Table -->
+            <div style="margin-bottom: var(--space-2xl);">
+                <h3 style="margin-bottom: var(--space-md);">Behavioral Traits</h3>
+                <div class="table-container">
+                    <table class="responsive-table" id="bulk-traits-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 150px;">Pupil Name</th>
+                                <th>Punctuality</th>
+                                <th>Neatness</th>
+                                <th>Politeness</th>
+                                <th>Honesty</th>
+                                <th>Obedience</th>
+                                <th>Cooperation</th>
+                                <th>Attentiveness</th>
+                                <th>Leadership</th>
+                                <th>Self Control</th>
+                                <th>Creativity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-traits-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Psychomotor Skills Table -->
+            <div style="margin-bottom: var(--space-xl);">
+                <h3 style="margin-bottom: var(--space-md);">Psychomotor Skills</h3>
+                <div class="table-container">
+                    <table class="responsive-table" id="bulk-skills-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 150px;">Pupil Name</th>
+                                <th>Handwriting</th>
+                                <th>Drawing/Painting</th>
+                                <th>Sports</th>
+                                <th>Craft</th>
+                                <th>Verbal Fluency</th>
+                                <th>Coordination</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-skills-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveBulkTraitsAndSkills()" style="width: 100%;">
+                💾 Save All Traits & Skills
+            </button>
+        `;
+        
+        // Populate traits table
+        const traitsFields = ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 'attentiveness', 'leadership', 'selfcontrol', 'creativity'];
+        const traitsTbody = document.getElementById('bulk-traits-tbody');
+        
+        allPupils.forEach(pupil => {
+            const existing = traitsData[pupil.id] || {};
+            const tr = document.createElement('tr');
+            
+            let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
+            
+            traitsFields.forEach(field => {
+                const value = existing[field] || '';
+                cellsHTML += `
+                    <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
+                        <select data-pupil="${pupil.id}" data-field="${field}" data-type="trait" style="width: 100%; max-width: 80px;">
+                            <option value="">-</option>
+                            ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
+                        </select>
+                    </td>
+                `;
+            });
+            
+            tr.innerHTML = cellsHTML;
+            traitsTbody.appendChild(tr);
+        });
+        
+        // Populate skills table
+        const skillsFields = ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'];
+        const skillsTbody = document.getElementById('bulk-skills-tbody');
+        
+        allPupils.forEach(pupil => {
+            const existing = skillsData[pupil.id] || {};
+            const tr = document.createElement('tr');
+            
+            let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
+            
+            skillsFields.forEach(field => {
+                const value = existing[field] || '';
+                cellsHTML += `
+                    <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
+                        <select data-pupil="${pupil.id}" data-field="${field}" data-type="skill" style="width: 100%; max-width: 80px;">
+                            <option value="">-</option>
+                            ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
+                        </select>
+                    </td>
+                `;
+            });
+            
+            tr.innerHTML = cellsHTML;
+            skillsTbody.appendChild(tr);
+        });
+        
+        console.log(`✓ Bulk traits table loaded for ${allPupils.length} pupils`);
+        
+    } catch (error) {
+        console.error('Error loading bulk traits table:', error);
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger); padding: var(--space-2xl);">Error loading traits data</p>';
+    }
 }
 
-/* ======================================== 
-   FIXED: Save Traits & Skills with Session Context
-======================================== */
-async function saveTraitsAndSkills() {
-  const pupilId = document.getElementById('traits-pupil')?.value;
-  const term = document.getElementById('traits-term')?.value;
-  
-  if (!pupilId || !term) {
-    window.showToast?.('Select pupil and term', 'warning');
-    return;
-  }
-  
-  // FIXED: Get current session
-  const settings = await window.getCurrentSettings();
-  const currentSession = settings.session || 'Unknown';
-  const sessionStartYear = settings.currentSession?.startYear;
-  const sessionEndYear = settings.currentSession?.endYear;
-  const sessionTerm = `${currentSession}_${term}`;
-  
-  const traitFields = ['punctuality','neatness','politeness','honesty','obedience','cooperation','attentiveness','leadership','selfcontrol','creativity'];
-  const skillFields = ['handwriting','drawing','sports','craft','verbal','coordination'];
-  
-  const traitsData = { 
-    pupilId, 
-    term, 
-    teacherId: currentUser.uid,
-    // FIXED: Add session context
-    session: currentSession,
-    sessionStartYear: sessionStartYear,
-    sessionEndYear: sessionEndYear,
-    sessionTerm: sessionTerm
-  };
-  
-  traitFields.forEach(f => {
-    traitsData[f] = document.getElementById(`trait-${f}`).value.trim();
-  });
-  traitsData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-  
-  const skillsData = { 
-    pupilId, 
-    term, 
-    teacherId: currentUser.uid,
-    // FIXED: Add session context
-    session: currentSession,
-    sessionStartYear: sessionStartYear,
-    sessionEndYear: sessionEndYear,
-    sessionTerm: sessionTerm
-  };
-  
-  skillFields.forEach(f => {
-    skillsData[f] = document.getElementById(`skill-${f}`).value.trim();
-  });
-  skillsData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-  
-  try {
-    await db.collection('behavioral_traits').doc(`${pupilId}_${term}`).set(traitsData, { merge: true });
-    await db.collection('psychomotor_skills').doc(`${pupilId}_${term}`).set(skillsData, { merge: true });
-    window.showToast?.('✓ Traits & skills saved successfully', 'success');
-  } catch (err) {
-    console.error('Error saving traits & skills:', err);
-    window.handleError?.(err, 'Failed to save traits & skills');
-  }
+/**
+ * Save all traits and skills in bulk
+ */
+async function saveBulkTraitsAndSkills() {
+    const term = document.getElementById('traits-term')?.value;
+    
+    if (!term) {
+        window.showToast?.('Select a term first', 'warning');
+        return;
+    }
+    
+    const selects = document.querySelectorAll('#traits-form-container select');
+    
+    if (selects.length === 0) {
+        window.showToast?.('No data to save', 'warning');
+        return;
+    }
+    
+    // Organize data by pupil
+    const traitsByPupil = {};
+    const skillsByPupil = {};
+    
+    selects.forEach(select => {
+        const pupilId = select.dataset.pupil;
+        const field = select.dataset.field;
+        const type = select.dataset.type;
+        const value = select.value;
+        
+        if (type === 'trait') {
+            if (!traitsByPupil[pupilId]) {
+                traitsByPupil[pupilId] = {
+                    pupilId,
+                    term,
+                    teacherId: currentUser.uid
+                };
+            }
+            traitsByPupil[pupilId][field] = value;
+        } else if (type === 'skill') {
+            if (!skillsByPupil[pupilId]) {
+                skillsByPupil[pupilId] = {
+                    pupilId,
+                    term,
+                    teacherId: currentUser.uid
+                };
+            }
+            skillsByPupil[pupilId][field] = value;
+        }
+    });
+    
+    // Get session context
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const sessionStartYear = settings.currentSession?.startYear;
+    const sessionEndYear = settings.currentSession?.endYear;
+    const sessionTerm = `${session}_${term}`;
+    
+    // Save in batches
+    const batch = db.batch();
+    let operationCount = 0;
+    
+    // Save behavioral traits
+    for (const [pupilId, data] of Object.entries(traitsByPupil)) {
+        const ref = db.collection('behavioral_traits').doc(`${pupilId}_${term}`);
+        batch.set(ref, {
+            ...data,
+            session,
+            sessionStartYear,
+            sessionEndYear,
+            sessionTerm,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        operationCount++;
+    }
+    
+    // Save psychomotor skills
+    for (const [pupilId, data] of Object.entries(skillsByPupil)) {
+        const ref = db.collection('psychomotor_skills').doc(`${pupilId}_${term}`);
+        batch.set(ref, {
+            ...data,
+            session,
+            sessionStartYear,
+            sessionEndYear,
+            sessionTerm,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        operationCount++;
+    }
+    
+    if (operationCount === 0) {
+        window.showToast?.('No changes to save', 'info');
+        return;
+    }
+    
+    try {
+        await batch.commit();
+        
+        window.showToast?.(
+            `✓ Saved traits & skills for ${Object.keys(traitsByPupil).length} pupil(s)`,
+            'success'
+        );
+        
+    } catch (error) {
+        console.error('Error saving bulk traits:', error);
+        window.handleError(error, 'Failed to save traits & skills');
+    }
 }
+
+// Make functions globally available
+window.loadBulkTraitsTable = loadBulkTraitsTable;
+window.saveBulkTraitsAndSkills = saveBulkTraitsAndSkills;
 
 /* ======================================== 
    REMARKS 
