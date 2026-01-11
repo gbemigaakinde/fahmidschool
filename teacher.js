@@ -653,6 +653,289 @@ async function loadResultsTable() {
   }
 }
 
+/**
+ * Check result lock status and show appropriate UI
+ */
+async function checkResultLockStatus() {
+    const term = document.getElementById('result-term')?.value;
+    const subject = document.getElementById('result-subject')?.value;
+    
+    if (!term || !subject || assignedClasses.length === 0) {
+        hideAllResultBanners();
+        return;
+    }
+    
+    const classId = assignedClasses[0].id;
+    const className = assignedClasses[0].name;
+    
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        
+        // Check if locked
+        const lockStatus = await window.resultLocking.isLocked(classId, term, subject, session);
+        
+        if (lockStatus.locked) {
+            showLockedBanner(lockStatus);
+            hideSubmissionControls();
+            disableResultInputs();
+            return;
+        }
+        
+        // Check if submitted and pending
+        const submissionId = `${classId}_${session}_${term}_${subject}`;
+        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+        
+        if (submissionDoc.exists) {
+            const submissionData = submissionDoc.data();
+            
+            if (submissionData.status === 'pending') {
+                showSubmissionStatusBanner(submissionData);
+                hideSubmissionControls();
+                disableResultInputs();
+                return;
+            } else if (submissionData.status === 'rejected') {
+                // Rejected - teacher can edit again
+                window.showToast?.(
+                    'Admin rejected your previous submission. You can now edit and resubmit.',
+                    'warning',
+                    6000
+                );
+                showSubmissionControls(term, subject, className);
+                hideAllResultBanners();
+                enableResultInputs();
+                return;
+            }
+        }
+        
+        // Not locked, not submitted - show submission controls
+        showSubmissionControls(term, subject, className);
+        hideAllResultBanners();
+        enableResultInputs();
+        
+    } catch (error) {
+        console.error('Error checking result lock status:', error);
+        hideAllResultBanners();
+    }
+}
+
+/**
+ * Show locked banner
+ */
+function showLockedBanner(lockStatus) {
+    const banner = document.getElementById('result-locked-banner');
+    const detailsDiv = document.getElementById('lock-details');
+    
+    if (!banner || !detailsDiv) return;
+    
+    const lockedDate = lockStatus.lockedAt 
+        ? lockStatus.lockedAt.toDate().toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'Unknown';
+    
+    detailsDiv.innerHTML = `
+        <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
+            <strong>Locked on:</strong> ${lockedDate}<br>
+            <strong>Reason:</strong> ${lockStatus.reason || 'Approved by admin'}
+        </div>
+    `;
+    
+    banner.style.display = 'block';
+}
+
+/**
+ * Show submission status banner
+ */
+function showSubmissionStatusBanner(submissionData) {
+    const banner = document.getElementById('result-submission-status');
+    const dateEl = document.getElementById('submitted-date');
+    
+    if (!banner || !dateEl) return;
+    
+    const submittedDate = submissionData.submittedAt 
+        ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : 'Unknown';
+    
+    dateEl.textContent = submittedDate;
+    banner.style.display = 'block';
+}
+
+/**
+ * Show submission controls
+ */
+function showSubmissionControls(term, subject, className) {
+    const controls = document.getElementById('result-submission-controls');
+    
+    if (!controls) return;
+    
+    document.getElementById('submission-class-name').textContent = className;
+    document.getElementById('submission-term').textContent = term;
+    document.getElementById('submission-subject').textContent = subject;
+    
+    // Count pupils with results
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    const pupilIds = new Set();
+    
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const value = parseFloat(input.value) || 0;
+        
+        if (value > 0 && pupilId) {
+            pupilIds.add(pupilId);
+        }
+    });
+    
+    document.getElementById('submission-pupil-count').textContent = pupilIds.size;
+    
+    controls.style.display = 'block';
+}
+
+/**
+ * Hide submission controls
+ */
+function hideSubmissionControls() {
+    const controls = document.getElementById('result-submission-controls');
+    if (controls) controls.style.display = 'none';
+}
+
+/**
+ * Hide all banners
+ */
+function hideAllResultBanners() {
+    const lockedBanner = document.getElementById('result-locked-banner');
+    const statusBanner = document.getElementById('result-submission-status');
+    
+    if (lockedBanner) lockedBanner.style.display = 'none';
+    if (statusBanner) statusBanner.style.display = 'none';
+}
+
+/**
+ * Disable result inputs
+ */
+function disableResultInputs() {
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    inputs.forEach(input => {
+        input.disabled = true;
+        input.style.background = '#f3f4f6';
+        input.style.cursor = 'not-allowed';
+    });
+    
+    const saveBtn = document.getElementById('save-results-btn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.style.opacity = '0.5';
+        saveBtn.style.cursor = 'not-allowed';
+    }
+}
+
+/**
+ * Enable result inputs
+ */
+function enableResultInputs() {
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    inputs.forEach(input => {
+        input.disabled = false;
+        input.style.background = '';
+        input.style.cursor = '';
+    });
+    
+    const saveBtn = document.getElementById('save-results-btn');
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.style.opacity = '';
+        saveBtn.style.cursor = '';
+    }
+}
+
+/**
+ * Submit results for admin approval
+ */
+async function submitResultsForApproval() {
+    const term = document.getElementById('result-term')?.value;
+    const subject = document.getElementById('result-subject')?.value;
+    
+    if (!term || !subject || assignedClasses.length === 0) {
+        window.showToast?.('Select term and subject first', 'warning');
+        return;
+    }
+    
+    const classId = assignedClasses[0].id;
+    const className = assignedClasses[0].name;
+    
+    // Validate that results are entered
+    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+    const pupilIds = new Set();
+    
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const value = parseFloat(input.value) || 0;
+        
+        if (value > 0 && pupilId) {
+            pupilIds.add(pupilId);
+        }
+    });
+    
+    if (pupilIds.size === 0) {
+        window.showToast?.('No results entered. Enter scores before submitting.', 'warning');
+        return;
+    }
+    
+    const confirmation = confirm(
+        `Submit ${pupilIds.size} pupil result(s) for approval?\n\n` +
+        `Class: ${className}\n` +
+        `Term: ${term}\n` +
+        `Subject: ${subject}\n\n` +
+        `Once submitted, you cannot edit until admin reviews.`
+    );
+    
+    if (!confirmation) return;
+    
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        
+        // Get teacher name
+        const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
+        const teacherName = teacherDoc.exists ? teacherDoc.data().name : currentUser.email;
+        
+        const result = await window.resultLocking.submitForApproval(
+            classId,
+            className,
+            term,
+            subject,
+            session,
+            currentUser.uid,
+            teacherName
+        );
+        
+        if (result.success) {
+            window.showToast?.(result.message, 'success', 6000);
+            
+            // Reload to show submission status
+            await loadResultsTable();
+        } else {
+            window.showToast?.(result.message || result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error submitting results:', error);
+        window.handleError(error, 'Failed to submit results');
+    }
+}
+
+// Make functions globally available
+window.checkResultLockStatus = checkResultLockStatus;
+window.submitResultsForApproval = submitResultsForApproval;
+
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
     const term = document.getElementById('result-term')?.value;
