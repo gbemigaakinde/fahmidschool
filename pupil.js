@@ -219,78 +219,88 @@ async function loadPupilProfile(user) {
         let pupilUpdateTimeout = null;
         let classUpdateTimeout = null;
 
-        // Pupil data listener with debouncing
-        pupilListener = db.collection('pupils').doc(currentPupilId)
-          .onSnapshot(
-            async snap => {
-              if (pupilUpdateTimeout) {
-                clearTimeout(pupilUpdateTimeout);
-              }
-              
-              pupilUpdateTimeout = setTimeout(async () => {
-                try {
-                  if (!snap.exists) return;
-                  
-                  const updatedData = snap.data();
-                  
-                  // CRITICAL: Check if data actually changed
-                  const hasChanges = JSON.stringify(currentPupilData) !== JSON.stringify(updatedData);
-                  
-                  if (!hasChanges) {
-                    console.log('No changes detected, skipping update');
-                    return;
-                  }
-                  
-                  console.log('Pupil data changed, updating...');
-                  currentPupilData = updatedData;
-                  
-                  // Extract class info
-                  const updatedClassId = getClassIdFromPupilData(updatedData.class);
-                  const updatedClassName = getClassNameFromPupilData(updatedData.class);
-                  
-                  currentClassInfo.name = updatedClassName;
-                  currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
-                  currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
-                  
-                  // Update UI
-                  renderProfile({
-                    name: updatedData.name || '-',
-                    dob: updatedData.dob || '-',
-                    admissionNo: updatedData.admissionNo || '-',
-                    gender: updatedData.gender || '-',
-                    contact: updatedData.contact || '-',
-                    address: updatedData.address || '-',
-                    email: updatedData.email || '-',
-                    class: currentClassInfo.name,
-                    teacher: currentClassInfo.teacher,
-                    subjects: currentClassInfo.subjects
-                  });
+        // FIXED: Pupil data listener with proper change detection
+pupilListener = db.collection('pupils').doc(currentPupilId)
+  .onSnapshot(
+    async snap => {
+      if (pupilUpdateTimeout) {
+        clearTimeout(pupilUpdateTimeout);
+      }
+      
+      pupilUpdateTimeout = setTimeout(async () => {
+        try {
+          if (!snap.exists) return;
+          
+          const updatedData = snap.data();
+          
+          // CRITICAL FIX: Exclude timestamp fields from comparison
+          const currentDataCopy = { ...currentPupilData };
+          const updatedDataCopy = { ...updatedData };
+          
+          // Remove timestamp fields that always change
+          delete currentDataCopy.updatedAt;
+          delete currentDataCopy.createdAt;
+          delete updatedDataCopy.updatedAt;
+          delete updatedDataCopy.createdAt;
+          
+          // Check if data actually changed (excluding timestamps)
+          const hasChanges = JSON.stringify(currentDataCopy) !== JSON.stringify(updatedDataCopy);
+          
+          if (!hasChanges) {
+            console.log('No meaningful changes detected (only timestamp updated), skipping update');
+            return;
+          }
+          
+          console.log('Pupil data changed, updating...');
+          currentPupilData = updatedData;
+          
+          // Extract class info
+          const updatedClassId = getClassIdFromPupilData(updatedData.class);
+          const updatedClassName = getClassNameFromPupilData(updatedData.class);
+          
+          currentClassInfo.name = updatedClassName;
+          currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
+          currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
+          
+          // Update UI
+          renderProfile({
+            name: updatedData.name || '-',
+            dob: updatedData.dob || '-',
+            admissionNo: updatedData.admissionNo || '-',
+            gender: updatedData.gender || '-',
+            contact: updatedData.contact || '-',
+            address: updatedData.address || '-',
+            email: updatedData.email || '-',
+            class: currentClassInfo.name,
+            teacher: currentClassInfo.teacher,
+            subjects: currentClassInfo.subjects
+          });
 
-                  // Update header
-                  const settings = await getCurrentSettings();
-                  const welcomeEl = document.getElementById('pupil-welcome');
-                  const classEl = document.getElementById('student-class');
-                  const sessionEl = document.getElementById('student-session');
-                  
-                  if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
-                  if (classEl) classEl.textContent = currentClassInfo.name;
-                  if (sessionEl) sessionEl.textContent = settings.session;
+          // Update header
+          const settings = await getCurrentSettings();
+          const welcomeEl = document.getElementById('pupil-welcome');
+          const classEl = document.getElementById('student-class');
+          const sessionEl = document.getElementById('student-session');
+          
+          if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+          if (classEl) classEl.textContent = currentClassInfo.name;
+          if (sessionEl) sessionEl.textContent = settings.session;
 
-                  await loadResults();
-                  console.log('✓ Profile updated');
-                  
-                } catch (error) {
-                  console.error('Error in pupil listener:', error);
-                } finally {
-                  pupilUpdateTimeout = null;
-                }
-              }, 500); // 500ms debounce
-            },
-            error => {
-              console.error('Pupil listener error:', error);
-              window.showToast?.('Connection lost. Please refresh.', 'warning');
-            }
-          );
+          await loadResults();
+          console.log('✓ Profile updated');
+          
+        } catch (error) {
+          console.error('Error in pupil listener:', error);
+        } finally {
+          pupilUpdateTimeout = null;
+        }
+      }, 500); // 500ms debounce
+    },
+    error => {
+      console.error('Pupil listener error:', error);
+      window.showToast?.('Connection lost. Please refresh.', 'warning');
+    }
+  );
 
         // Class listener with debouncing
         if (classId) {
