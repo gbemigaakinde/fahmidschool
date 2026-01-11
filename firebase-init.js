@@ -288,3 +288,102 @@ window.getAllTeachers = async function() {
 };
 
 console.log('✓ Firebase initialized (shared v3.1.0 - FIXED)');
+
+/**
+ * Network retry helper with exponential backoff
+ * @param {Function} operation - Async function to retry
+ * @param {number} [maxRetries=3]
+ * @param {string} [operationName='Operation']
+ * @returns {Promise<any>}
+ */
+window.retryWithBackoff = async function(operation, maxRetries = 3, operationName = 'Operation') {
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            // Show retry feedback on retry attempts
+            if (attempt > 1) {
+                window.showToast?.(
+                    `Retrying ${operationName}... (Attempt ${attempt}/${maxRetries})`,
+                    'info',
+                    2000
+                );
+            }
+
+            const result = await operation();
+
+            // Success feedback
+            if (attempt > 1) {
+                window.showToast?.(
+                    `✓ ${operationName} succeeded after ${attempt} attempt(s)`,
+                    'success',
+                    3000
+                );
+            }
+
+            return result;
+
+        } catch (error) {
+            lastError = error;
+
+            // Determine if error is worth retrying
+            const isRetryable =
+                error?.code === 'unavailable' ||
+                error?.code === 'deadline-exceeded' ||
+                error?.code === 'cancelled' ||
+                /network|timeout|unavailable/i.test(error?.message || '');
+
+            if (!isRetryable) {
+                console.error(`Non-retryable error during ${operationName}:`, error);
+                throw error;
+            }
+
+            console.warn(`${operationName} failed (attempt ${attempt}/${maxRetries}):`, error.code || error.message);
+
+            // Final failure
+            if (attempt === maxRetries) {
+                window.showToast?.(
+                    `${operationName} failed after ${maxRetries} attempts. Please check your connection.`,
+                    'danger',
+                    6000
+                );
+                throw lastError;
+            }
+
+            // Exponential backoff: 1s → 2s → 4s → 8s (max 8s)
+            const backoffTime = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
+            console.log(`Waiting ${backoffTime}ms before next attempt...`);
+
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
+        }
+    }
+
+    // Should never reach here, but safety fallback
+    throw lastError;
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Convenience wrappers for common Firestore operations
+// ──────────────────────────────────────────────────────────────────────────────
+
+window.firestoreGet = async function(ref, operationName = 'Fetch document') {
+    return window.retryWithBackoff(() => ref.get(), 3, operationName);
+};
+
+window.firestoreSet = async function(ref, data, options = null, operationName = 'Save document') {
+    return window.retryWithBackoff(
+        () => options ? ref.set(data, options) : ref.set(data),
+        3,
+        operationName
+    );
+};
+
+window.firestoreUpdate = async function(ref, data, operationName = 'Update document') {
+    return window.retryWithBackoff(() => ref.update(data), 3, operationName);
+};
+
+window.firestoreDelete = async function(ref, operationName = 'Delete document') {
+    return window.retryWithBackoff(() => ref.delete(), 2, operationName); // fewer retries for delete
+};
+
+console.log('✓ Network retry helpers loaded');
