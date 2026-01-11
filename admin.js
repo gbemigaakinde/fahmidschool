@@ -5540,3 +5540,127 @@ window.loadAuditLog = loadAuditLog;
 window.viewAuditDetails = viewAuditDetails;
 window.downloadAuditLog = downloadAuditLog;
 window.filterAuditLog = filterAuditLog;
+
+/**
+ * Export all pupils data to CSV
+ */
+async function exportPupilsData() {
+    try {
+        window.showToast?.('Preparing pupils export...', 'info', 2000);
+
+        const snap = await db.collection('pupils').get();
+
+        if (snap.empty) {
+            window.showToast?.('No pupils found to export', 'warning', 4000);
+            return;
+        }
+
+        const headers = [
+            'Name', 'Admission No', 'Class', 'Gender', 'Date of Birth',
+            'Parent Name', 'Parent Email', 'Contact', 'Address', 'Email'
+        ];
+
+        const rows = snap.docs.map(doc => {
+            const p = doc.data();
+            return [
+                p.name || '',
+                p.admissionNo || '',
+                p.class?.name || p.class || '-',
+                p.gender || '',
+                p.dob || '',
+                p.parentName || '',
+                p.parentEmail || '',
+                p.contact || '',
+                p.address || '',
+                p.email || ''
+            ];
+        });
+
+        const csv = [
+            headers,
+            ...rows
+        ].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+         .join('\n');
+
+        downloadCSV(csv, `pupils_export_${new Date().toISOString().split('T')[0]}.csv`);
+
+        window.showToast?.(`✓ Exported ${snap.size} pupil record(s)`, 'success');
+    } catch (err) {
+        console.error('Pupils export failed:', err);
+        window.showToast?.('Export failed. Please try again.', 'danger');
+    }
+}
+
+/**
+ * Export results (filtered by term/session)
+ */
+async function exportResultsData() {
+    try {
+        const term = prompt('Enter term (First Term / Second Term / Third Term):')?.trim();
+        if (!term) return;
+
+        const session = prompt('Enter session (e.g. 2025/2026) or leave empty for all:')?.trim();
+
+        window.showToast?.('Preparing results export...', 'info', 2000);
+
+        let query = db.collection('results');
+        if (term)   query = query.where('term', '==', term);
+        if (session) query = query.where('session', '==', session);
+
+        const snap = await query.get();
+
+        if (snap.empty) {
+            window.showToast?.('No results found for selected filters', 'warning');
+            return;
+        }
+
+        const headers = ['Pupil ID', 'Term', 'Session', 'Subject', 'CA Score', 'Exam Score', 'Total'];
+
+        const rows = snap.docs.map(doc => {
+            const r = doc.data();
+            const total = (Number(r.caScore) || 0) + (Number(r.examScore) || 0);
+            return [
+                r.pupilId || '',
+                r.term || '',
+                r.session || '',
+                r.subject || '',
+                r.caScore ?? 0,
+                r.examScore ?? 0,
+                total
+            ];
+        });
+
+        const csv = [
+            headers,
+            ...rows
+        ].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+         .join('\n');
+
+        const filename = `results_${term.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+        downloadCSV(csv, filename);
+
+        window.showToast?.(`✓ Exported ${snap.size} result record(s)`, 'success');
+    } catch (err) {
+        console.error('Results export failed:', err);
+        window.showToast?.('Export failed. Please try again.', 'danger');
+    }
+}
+
+// ─── Helper ──────────────────────────────────────────────────────────────────
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
+// Expose globally
+window.exportPupilsData = exportPupilsData;
+window.exportResultsData = exportResultsData;
+
+console.log('✓ Data export functions loaded');
