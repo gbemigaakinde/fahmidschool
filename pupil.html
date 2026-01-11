@@ -649,6 +649,44 @@ body.pupil-portal {
         </div>
     </section>
     
+    <!-- Fee Balance Card (NEW) -->
+<section class="profile-section reveal" id="fee-balance-section" style="display:none;">
+    <div class="section-header">
+        <div class="section-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
+            <i data-lucide="credit-card"></i>
+        </div>
+        <div class="section-title">
+            <h2>Fee Status</h2>
+            <p>Your current fee balance and payment history</p>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Amount Due</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-amount-due">₦0</div>
+        </div>
+        
+        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Paid</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-total-paid">₦0</div>
+        </div>
+        
+        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);">
+            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Balance</div>
+            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-balance">₦0</div>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    <div>
+        <h3 style="margin-bottom: var(--space-md);">Payment History</h3>
+        <div id="payment-history-list" style="display: grid; gap: var(--space-sm);">
+            <!-- Payment history will be loaded here -->
+        </div>
+    </div>
+</section>
+
     <!-- Dashboard Overview Cards -->
     <section class="dashboard-section reveal">
         <div class="dashboard-grid">
