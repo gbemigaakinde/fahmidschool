@@ -185,6 +185,10 @@ async function fetchPupilProfile(uid) {
    TERM SELECTOR
 ================================ */
 
+/**
+ * FIXED: Term Selector with Proper Default Value Handling
+ * Ensures correct term is selected after cloning
+ */
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) {
@@ -194,18 +198,28 @@ function setupTermSelector() {
 
     console.log('✓ Setting up term selector, current term:', currentSettings.term);
     
-    // CRITICAL FIX: Set the default value to current term BEFORE cloning
-    select.value = currentSettings.term;
-    setText('current-term', currentSettings.term);
+    // CRITICAL FIX: Store the current term BEFORE any DOM manipulation
+    const termToSelect = currentSettings.term;
+    
+    // Update display text
+    setText('current-term', termToSelect);
 
-    // Remove any existing listeners first
+    // Remove any existing listeners by cloning
     const newSelect = select.cloneNode(true);
     
-    // IMPORTANT: Preserve the selected value after cloning
-    newSelect.value = currentSettings.term;
+    // CRITICAL FIX: Set default value AFTER cloning by marking option as selected
+    Array.from(newSelect.options).forEach(option => {
+        if (option.value === termToSelect) {
+            option.selected = true;
+        } else {
+            option.selected = false;
+        }
+    });
     
+    // Replace old select with new one
     select.parentNode.replaceChild(newSelect, select);
 
+    // Add event listener to the NEW select element
     newSelect.addEventListener('change', async e => {
         currentSettings.term = e.target.value;
         console.log('Term changed to:', currentSettings.term);
@@ -214,7 +228,14 @@ function setupTermSelector() {
         await loadReportData();
     });
     
-    console.log('✓ Term selector ready with event listener, default:', newSelect.value);
+    // VERIFICATION: Log final selected value
+    console.log('✓ Term selector ready, selected value:', newSelect.value);
+    
+    // Double-check the value is correct
+    if (newSelect.value !== termToSelect) {
+        console.warn('⚠️ Term selector value mismatch, forcing correct value');
+        newSelect.value = termToSelect;
+    }
 }
 
 /* ===============================
