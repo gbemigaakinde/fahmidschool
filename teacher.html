@@ -621,10 +621,27 @@
 
             <div id="remarks-form-container" class="remarks-form" hidden>
                 <div class="form-group">
-                    <label for="teacher-remark">Teacher's Remark</label>
-                    <textarea id="teacher-remark" rows="4"
-                        placeholder="Write your remark about the pupil's performance..."></textarea>
-                </div>
+    <label for="teacher-remark">Teacher's Remark</label>
+    
+    <!-- Remark Suggestions (NEW) -->
+    <div id="remark-suggestions" style="display:none; margin-bottom: var(--space-md); padding: var(--space-md); background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: var(--radius-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+            <div>
+                <strong style="color: #0c4a6e;">💡 Suggested Remarks</strong>
+                <div id="suggestion-info" style="font-size: var(--text-sm); color: #075985; margin-top: 4px;"></div>
+            </div>
+            <button type="button" class="btn-small btn-secondary" onclick="refreshRemarkSuggestions()">
+                🔄 Refresh
+            </button>
+        </div>
+        <div id="suggestion-buttons" style="display: flex; flex-wrap: wrap; gap: var(--space-sm);"></div>
+    </div>
+    
+    <textarea id="teacher-remark" rows="4" placeholder="Select a suggestion above or write your own remark..."></textarea>
+    <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
+        💡 Click "Load Suggestions" to see remark templates based on pupil's average
+    </small>
+</div>
 
                 <div class="form-group">
                     <label for="head-remark">Headteacher's Remark</label>
