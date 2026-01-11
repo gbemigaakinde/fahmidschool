@@ -731,6 +731,10 @@ function showSection(sectionId) {
       case 'alumni':
         loadAlumni();
         break;
+        
+        case 'auditLog':
+        loadAuditLog();
+        break;
       
       case 'view-results':
         // FIXED: Add view-results section loader
