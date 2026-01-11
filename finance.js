@@ -168,10 +168,10 @@ const finance = {
     }
   },
   
-  /**
-   * Generate unique receipt number
-   */
-  async generateReceiptNumber() {
+/**
+ * Generate unique receipt number
+ */
+async generateReceiptNumber() {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -184,24 +184,30 @@ const finance = {
     let counter = 1;
     
     try {
-      await db.runTransaction(async (transaction) => {
-        const doc = await transaction.get(counterRef);
-        
-        if (doc.exists) {
-          counter = (doc.data().count || 0) + 1;
-          transaction.update(counterRef, { count: counter });
-        } else {
-          transaction.set(counterRef, { count: 1, date: new Date() });
-        }
-      });
+        await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(counterRef);
+            
+            if (doc.exists) {
+                counter = (doc.data().count || 0) + 1;
+                transaction.update(counterRef, { 
+                    count: counter,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                transaction.set(counterRef, { 
+                    count: 1, 
+                    date: firebase.firestore.FieldValue.serverTimestamp() 
+                });
+            }
+        });
     } catch (error) {
-      console.error('Error generating receipt number:', error);
-      // Fallback to timestamp-based receipt number
-      counter = Date.now() % 10000;
+        console.error('Error generating receipt number:', error);
+        // Fallback to timestamp-based receipt number
+        counter = Date.now() % 10000;
     }
     
     return `RCT${year}${month}${day}${String(counter).padStart(4, '0')}`;
-  },
+}
   
   /**
    * Get receipt data for printing
