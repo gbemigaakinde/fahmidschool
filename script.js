@@ -28,18 +28,16 @@
 function initHamburgerMenu() {
     const hamburger = document.getElementById('hamburger');
     const sidebar =
-        document.getElementById('sidebar') ||           // Public site
-        document.getElementById('admin-sidebar') ||     // Admin portal
-        document.getElementById('teacher-sidebar') ||   // Teacher portal
-        document.getElementById('pupil-sidebar');       // Pupil portal (if exists)
+        document.getElementById('sidebar') ||
+        document.getElementById('admin-sidebar') ||
+        document.getElementById('teacher-sidebar');
 
-    // CRITICAL FIX: Don't initialize if elements don't exist
     if (!hamburger || !sidebar) {
-        console.log('Hamburger menu not found on this page (may be portal-specific)');
+        console.log('Hamburger menu not found on this page');
         return;
     }
 
-    // CRITICAL FIX: Check if already initialized
+    // Prevent double initialization
     if (hamburger.dataset.initialized === 'true') {
         console.log('Hamburger menu already initialized');
         return;
@@ -62,13 +60,11 @@ function initHamburgerMenu() {
         document.body.style.overflow = isActive ? 'hidden' : '';
     }
 
-    // Click hamburger to toggle
     hamburger.addEventListener('click', e => {
         e.stopPropagation();
         toggleSidebar();
     });
 
-    // Click outside to close
     document.addEventListener('click', e => {
         if (
             sidebar.classList.contains('active') &&
@@ -79,7 +75,6 @@ function initHamburgerMenu() {
         }
     });
 
-    // Click sidebar links to close on mobile
     sidebar.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth <= 1024) {
@@ -88,7 +83,6 @@ function initHamburgerMenu() {
         });
     });
 
-    // Escape key to close
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && sidebar.classList.contains('active')) {
             toggleSidebar(true);
@@ -96,7 +90,6 @@ function initHamburgerMenu() {
         }
     });
 
-    // Handle window resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
@@ -107,7 +100,7 @@ function initHamburgerMenu() {
         }, 250);
     });
     
-    console.log('✓ Hamburger menu initialized for:', sidebar.id);
+    console.log('✓ Hamburger menu initialized');
 }
 
 function initHeroSlideshow() {
