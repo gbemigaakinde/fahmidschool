@@ -6663,3 +6663,17 @@ window.exportPupilsData = exportPupilsData;
 window.exportResultsData = exportResultsData;
 
 console.log('✓ Data export functions loaded');
+
+/**
+ * Initialize sidebar group toggles
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Setup group toggle handlers
+    document.querySelectorAll('.sidebar-group-toggle-modern').forEach(button => {
+        button.addEventListener('click', function() {
+            toggleSidebarGroup(this);
+        });
+    });
+    
+    console.log('✓ Sidebar group toggles initialized');
+});
