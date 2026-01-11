@@ -562,63 +562,107 @@ async function populateSessionSelector() {
 
 async function loadSessionResults() {
     if (!currentPupilId) return;
-    
+
     const container = document.getElementById('results-container');
+    if (!container) return;
+
     const sessionSelect = document.getElementById('pupil-session-select');
     const sessionInfo = document.getElementById('session-info');
-    const selectedSessionName = document.getElementById('selected-session-name');
-    
-    if (!container) return;
-    
-    // Show loading
+    const selectedSessionNameEl = document.getElementById('selected-session-name');
+
+    // Show loading state
     container.innerHTML = `
         <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
             <div class="spinner" style="margin: 0 auto var(--space-md); width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
             <p>Loading results...</p>
         </div>
     `;
-    
+
     try {
         const selectedSession = sessionSelect?.value || 'current';
-        
-        // Build query based on selection
         let resultsSnap;
         let displaySessionName;
-        
+
+        // ── Determine session name & fetch results ───────────────────────────────
         if (selectedSession === 'current') {
-            // Load current session results
             const settings = await window.getCurrentSettings();
             const currentSessionName = settings.session;
             displaySessionName = `Current Session (${currentSessionName})`;
-            
+
+            // Primary query using the real session name
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', currentSessionName)
                 .get();
-            
-        } else {
-            // Load historical session results
+
+            // Fallback: legacy results (missing session field or matching current)
+            if (resultsSnap.empty) {
+                console.log('No results for current session → checking legacy data...');
+
+                const legacySnap = await db.collection('results')
+                    .where('pupilId', '==', currentPupilId)
+                    .get();
+
+                const validResults = [];
+                legacySnap.forEach(doc => {
+                    const data = doc.data();
+                    if (!data.session || data.session === currentSessionName) {
+                        validResults.push(doc);
+                    }
+                });
+
+                console.log(`Found ${validResults.length} legacy/matching results`);
+
+                if (validResults.length > 0) {
+                    // Create pseudo-snapshot compatible with Firestore snapshot
+                    resultsSnap = {
+                        empty: false,
+                        size: validResults.length,
+                        forEach: callback => validResults.forEach(callback),
+                        docs: validResults
+                    };
+
+                    // Add legacy data warning banner
+                    const banner = document.createElement('div');
+                    banner.className = 'alert alert-info';
+                    banner.style.marginBottom = 'var(--space-lg)';
+                    banner.innerHTML = `
+                        <strong>ℹ️ Legacy Results Detected</strong>
+                        <p style="margin-top:var(--space-xs); font-size:var(--text-sm);">
+                            Some results lack session information (created before session tracking).
+                            They are shown here because they belong to the current academic period.
+                        </p>
+                    `;
+
+                    const displayContainer = document.getElementById('results-display-container');
+                    if (displayContainer) {
+                        displayContainer.insertBefore(banner, displayContainer.firstChild);
+                    }
+                }
+            }
+        } 
+        // Historical session
+        else {
             displaySessionName = `${selectedSession} Session`;
-            
+
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', selectedSession)
                 .get();
         }
-        
-        // Update info display
-        if (selectedSessionName) {
-            selectedSessionName.textContent = displaySessionName;
+
+        // ── Update UI header ─────────────────────────────────────────────────────
+        if (selectedSessionNameEl) {
+            selectedSessionNameEl.textContent = displaySessionName;
         }
-        
-        // Show session info
+
         if (sessionInfo) {
             sessionInfo.style.display = 'block';
         }
-        
-        // Process and display results
+
+        // ── Process results ──────────────────────────────────────────────────────
         const pupilResults = [];
-        
+
         resultsSnap.forEach(doc => {
             const data = doc.data();
             pupilResults.push({
@@ -629,33 +673,36 @@ async function loadSessionResults() {
                 total: (data.caScore || 0) + (data.examScore || 0)
             });
         });
-        
-        // Clear container
+
+        // Clear loading state
         container.innerHTML = '';
-        
+
         if (pupilResults.length === 0) {
-            container.innerHTML = `<p style="text-align:center; padding:var(--space-2xl); font-size:var(--text-lg); color:var(--color-gray-600);">
-                📚 No results found for this session.<br>
-                ${selectedSession === 'current' ? 'Your teachers will upload scores soon.' : 'No historical data available.'}
-            </p>`;
+            container.innerHTML = `
+                <p style="text-align:center; padding:var(--space-2xl); font-size:var(--text-lg); color:var(--color-gray-600);">
+                    📚 No results found for this session.<br>
+                    ${selectedSession === 'current' 
+                        ? 'Your teachers will upload scores soon.' 
+                        : 'No historical data available.'}
+                </p>`;
             return;
         }
-        
-        // Group results by term
+
+        // ── Group by term ────────────────────────────────────────────────────────
         const terms = {};
-        pupilResults.forEach(r => { 
-            if (!terms[r.term]) terms[r.term] = []; 
-            terms[r.term].push(r); 
+        pupilResults.forEach(r => {
+            if (!terms[r.term]) terms[r.term] = [];
+            terms[r.term].push(r);
         });
-        
-        // Display results for each term
+
+        // ── Render each term ─────────────────────────────────────────────────────
         ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
             if (!terms[termName]) return;
 
             const termSection = document.createElement('div');
             termSection.className = 'results-term-section';
             termSection.style.marginBottom = 'var(--space-2xl)';
-            
+
             const heading = document.createElement('h3');
             heading.textContent = termName;
             heading.style.marginBottom = 'var(--space-md)';
@@ -681,16 +728,18 @@ async function loadSessionResults() {
             let termTotal = 0;
             let subjectCount = 0;
 
-            terms[termName].sort((a, b) => a.subject.localeCompare(b.subject))
+            terms[termName]
+                .sort((a, b) => a.subject.localeCompare(b.subject))
                 .forEach(r => {
                     const grade = getGrade(r.total);
-                    tbody.innerHTML += `<tr>
-                        <td><strong>${r.subject}</strong></td>
-                        <td style="text-align:center;">${r.caScore}</td>
-                        <td style="text-align:center;">${r.examScore}</td>
-                        <td style="text-align:center;font-weight:bold;">${r.total}</td>
-                        <td style="text-align:center;" class="grade-${grade}">${grade}</td>
-                    </tr>`;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${r.subject}</strong></td>
+                            <td style="text-align:center;">${r.caScore}</td>
+                            <td style="text-align:center;">${r.examScore}</td>
+                            <td style="text-align:center;font-weight:bold;">${r.total}</td>
+                            <td style="text-align:center;" class="grade-${grade}">${grade}</td>
+                        </tr>`;
                     termTotal += r.total;
                     subjectCount++;
                 });
@@ -699,27 +748,29 @@ async function loadSessionResults() {
                 const average = (termTotal / subjectCount).toFixed(1);
                 const avgGrade = getGrade(parseFloat(average));
 
-                tbody.innerHTML += `<tr class="summary-row">
-                    <td colspan="3"><strong>TOTAL SCORE</strong></td>
-                    <td colspan="2"><strong>${termTotal} / ${subjectCount*100}</strong></td>
-                </tr>
-                <tr class="summary-row">
-                    <td colspan="3"><strong>AVERAGE</strong></td>
-                    <td colspan="2"><strong>${average}% (${avgGrade})</strong></td>
-                </tr>`;
+                tbody.innerHTML += `
+                    <tr class="summary-row">
+                        <td colspan="3"><strong>TOTAL SCORE</strong></td>
+                        <td colspan="2"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
+                    </tr>
+                    <tr class="summary-row">
+                        <td colspan="3"><strong>AVERAGE</strong></td>
+                        <td colspan="2"><strong>${average}% (${avgGrade})</strong></td>
+                    </tr>`;
             }
 
             termSection.appendChild(table);
             container.appendChild(termSection);
         });
-        
+
         console.log(`✓ Loaded ${pupilResults.length} results for session: ${selectedSession}`);
 
     } catch (error) {
         console.error('Error loading session results:', error);
-        container.innerHTML = `<p style="text-align:center;color:var(--color-danger); padding:var(--space-2xl);">
-            ⚠️ Unable to load results. Please try again.
-        </p>`;
+        container.innerHTML = `
+            <p style="text-align:center; color:var(--color-danger); padding:var(--space-2xl);">
+                ⚠️ Unable to load results. Please try again.
+            </p>`;
     }
 }
 
