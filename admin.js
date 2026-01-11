@@ -802,16 +802,34 @@ window.showSection = showSection;
    SIDEBAR GROUP TOGGLE
 ======================================== */
 
+/**
+ * FIXED: Toggle sidebar group with proper state management
+ */
 function toggleSidebarGroup(button) {
+  if (!button) {
+    console.error('toggleSidebarGroup: button is null');
+    return;
+  }
+  
   const content = button.nextElementSibling;
+  
+  if (!content) {
+    console.error('toggleSidebarGroup: no content element found');
+    return;
+  }
+  
   const isCollapsed = button.classList.contains('collapsed');
   
   if (isCollapsed) {
+    // Expand the group
     button.classList.remove('collapsed');
     content.classList.add('active');
+    button.setAttribute('aria-expanded', 'true');
   } else {
+    // Collapse the group
     button.classList.add('collapsed');
     content.classList.remove('active');
+    button.setAttribute('aria-expanded', 'false');
   }
 }
 
