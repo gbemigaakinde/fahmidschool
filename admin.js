@@ -2072,30 +2072,117 @@ async function loadCurrentSettings() {
 /* ======================================== 
    START NEW ACADEMIC SESSION
 ======================================== */
+/**
+ * FIXED: Start New Session with Pre-Flight Validation
+ * Checks for pending work before allowing session rollover
+ */
 async function confirmStartNewSession() {
-  const confirmation = confirm(
-    '⚠️ START NEW ACADEMIC SESSION?\n\n' +
-    'This will:\n' +
-    '• Archive the current session\n' +
-    '• Create a new session (next year)\n' +
-    '• Reset current term to "First Term"\n' +
-    '• Open promotion period for teachers\n\n' +
-    'IMPORTANT: Make sure all promotions are completed first!\n\n' +
-    'Continue?'
-  );
+  // VALIDATION STEP 1: Check for pending promotions
+  const pendingPromotions = await db.collection('promotions')
+    .where('status', '==', 'pending')
+    .get();
   
-  if (!confirmation) return;
+  const pendingCount = pendingPromotions.size;
   
-  // Double confirmation for safety
-  const doubleCheck = prompt(
-    'Type "START NEW SESSION" (without quotes) to confirm:'
-  );
+  // VALIDATION STEP 2: Check for pupils in terminal class
+  let pupilsInTerminalClass = 0;
   
-  if (doubleCheck !== 'START NEW SESSION') {
-    window.showToast?.('Action cancelled', 'info');
-    return;
+  try {
+    // Get class hierarchy to find terminal class
+    const hierarchy = await window.classHierarchy.getHierarchy();
+    
+    if (hierarchy.length > 0) {
+      const terminalClassName = hierarchy[hierarchy.length - 1].name;
+      
+      const pupilsSnap = await db.collection('pupils')
+        .where('class.name', '==', terminalClassName)
+        .get();
+      
+      pupilsInTerminalClass = pupilsSnap.size;
+    }
+  } catch (error) {
+    console.error('Error checking terminal class pupils:', error);
   }
   
+  // VALIDATION STEP 3: Build warning message
+  const issues = [];
+  
+  if (pendingCount > 0) {
+    issues.push(`• ${pendingCount} pending promotion request(s) not yet approved`);
+  }
+  
+  if (pupilsInTerminalClass > 0) {
+    issues.push(`• ${pupilsInTerminalClass} pupil(s) still in terminal class (should be in alumni)`);
+  }
+  
+  // VALIDATION STEP 4: Show blocking or warning dialog
+  if (issues.length > 0) {
+    const warningMessage = 
+      '⚠️ WARNING: Issues detected before starting new session:\n\n' +
+      issues.join('\n') + '\n\n' +
+      'RECOMMENDATIONS:\n' +
+      '1. Approve or reject all pending promotions\n' +
+      '2. Move terminal class pupils to alumni\n' +
+      '3. Verify all teachers have completed their work\n\n' +
+      'Do you want to:\n' +
+      '• Click CANCEL to fix these issues first (RECOMMENDED)\n' +
+      '• Click OK to force start anyway (NOT RECOMMENDED)';
+    
+    const forceProceed = confirm(warningMessage);
+    
+    if (!forceProceed) {
+      window.showToast?.('Session start cancelled. Please resolve pending issues first.', 'info', 5000);
+      return;
+    }
+    
+    // Admin chose to force - require password confirmation
+    const adminConfirm = prompt(
+      '⚠️ FORCE START NEW SESSION\n\n' +
+      'This will archive the current session with unresolved issues.\n\n' +
+      'Type "FORCE START" (without quotes) to confirm:'
+    );
+    
+    if (adminConfirm !== 'FORCE START') {
+      window.showToast?.('Session start cancelled', 'info');
+      return;
+    }
+    
+    // Log forced start with issues
+    await db.collection('session_issues').add({
+      sessionStartedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      forcedBy: auth.currentUser.uid,
+      pendingPromotions: pendingCount,
+      pupilsInTerminalClass: pupilsInTerminalClass,
+      issues: issues,
+      type: 'forced_session_start'
+    });
+    
+  } else {
+    // No issues - normal confirmation
+    const confirmation = confirm(
+      '⚠️ START NEW ACADEMIC SESSION?\n\n' +
+      'This will:\n' +
+      '• Archive the current session\n' +
+      '• Create a new session (next year)\n' +
+      '• Reset current term to "First Term"\n' +
+      '• Open promotion period for teachers\n\n' +
+      'Continue?'
+    );
+    
+    if (!confirmation) return;
+    
+    // Double confirmation
+    const doubleCheck = prompt(
+      'Type "START NEW SESSION" (without quotes) to confirm:'
+    );
+    
+    if (doubleCheck !== 'START NEW SESSION') {
+      window.showToast?.('Action cancelled', 'info');
+      return;
+    }
+  }
+  
+  // Proceed with session start
   await startNewSession();
 }
 
