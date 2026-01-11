@@ -1242,6 +1242,10 @@ function showClassForm() {
   }
 }
 
+/**
+ * FIXED: Add Class with Duplicate Name Prevention
+ * Ensures unique class names to avoid migration conflicts
+ */
 async function addClass() {
   const className = document.getElementById('class-name')?.value.trim();
   
@@ -1250,24 +1254,51 @@ async function addClass() {
     return;
   }
   
+  // CRITICAL FIX: Check for duplicate class names (case-insensitive)
   try {
-    const existingSnap = await db.collection('classes').where('name', '==', className).get();
+    const existingSnap = await db.collection('classes')
+      .where('name', '==', className)
+      .get();
     
     if (!existingSnap.empty) {
-      window.showToast?.('This class already exists', 'warning');
+      window.showToast?.(
+        `Class "${className}" already exists. Please use a unique name.`,
+        'warning',
+        5000
+      );
       return;
     }
     
-    await db.collection('classes').add({
-      name: className,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    // Also check case-insensitive duplicates
+    const allClassesSnap = await db.collection('classes').get();
+    const duplicateFound = allClassesSnap.docs.some(doc => {
+      const existingName = doc.data().name || '';
+      return existingName.toLowerCase() === className.toLowerCase();
     });
     
-    window.showToast?.('Class created successfully', 'success');
+    if (duplicateFound) {
+      window.showToast?.(
+        `A class with a similar name already exists (case-insensitive match). Please use a unique name.`,
+        'warning',
+        6000
+      );
+      return;
+    }
+    
+    // Create the class
+    await db.collection('classes').add({
+      name: className,
+      subjects: [], // Initialize empty subjects array
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: auth.currentUser?.uid || 'unknown'
+    });
+    
+    window.showToast?.('✓ Class created successfully', 'success');
     document.getElementById('class-form').style.display = 'none';
     document.getElementById('class-name').value = '';
     loadClasses();
     loadDashboardStats();
+    
   } catch (error) {
     console.error('Error adding class:', error);
     window.handleError(error, 'Failed to create class');
