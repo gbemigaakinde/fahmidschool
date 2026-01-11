@@ -753,6 +753,22 @@ function showSection(sectionId) {
         // Load session history
         loadSessionHistory();
         break;
+        
+      case 'fee-management':
+      loadFeeManagementSection();
+      break;
+
+    case 'record-payment':
+      loadPaymentRecordingSection();
+      break;
+
+    case 'outstanding-fees':
+      loadOutstandingFeesReport();
+      break;
+
+    case 'financial-reports':
+      loadFinancialReports();
+      break;
       
       default:
         console.warn(`Unknown section: ${sectionId}`);
