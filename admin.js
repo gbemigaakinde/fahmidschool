@@ -723,6 +723,10 @@ function showSection(sectionId) {
       case 'promotion-requests':
         loadPromotionRequests();
         break;
+        
+     case 'result-approvals':
+        loadResultApprovals();
+        break;
       
       case 'announcements':
         loadAdminAnnouncements();
