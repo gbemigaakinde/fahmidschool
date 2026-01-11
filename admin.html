@@ -699,6 +699,39 @@ button[onclick="exportPupilResults()"]:hover {
                 </div>
             </div>
             
+            <!-- FINANCIAL MANAGEMENT SIDEBAR GROUP -->
+<div class="sidebar-group-modern">
+  <button class="sidebar-group-toggle-modern" onclick="toggleSidebarGroup(this)" aria-expanded="false">
+    <div class="group-header-content">
+      <i data-lucide="dollar-sign"></i>
+      <span>Finance</span>
+    </div>
+    <i data-lucide="chevron-down" class="toggle-icon"></i>
+  </button>
+  
+  <div class="sidebar-group-content-modern">
+    <a href="#fee-management" data-section="fee-management" class="sidebar-link">
+      <i data-lucide="settings"></i>
+      <span>Fee Management</span>
+    </a>
+    
+    <a href="#record-payment" data-section="record-payment" class="sidebar-link">
+      <i data-lucide="credit-card"></i>
+      <span>Record Payment</span>
+    </a>
+    
+    <a href="#outstanding-fees" data-section="outstanding-fees" class="sidebar-link">
+      <i data-lucide="alert-circle"></i>
+      <span>Outstanding Fees</span>
+    </a>
+    
+    <a href="#financial-reports" data-section="financial-reports" class="sidebar-link">
+      <i data-lucide="bar-chart-2"></i>
+      <span>Financial Reports</span>
+    </a>
+  </div>
+</div>
+
             <!-- Reports & Results -->
             <a href="#view-results" class="sidebar-link" data-section="view-results">
                 <i data-lucide="bar-chart-3"></i>
@@ -1309,6 +1342,292 @@ button[onclick="exportPupilResults()"]:hover {
             </div>
         </div>
         
+        <!-- ========================================
+     FEE MANAGEMENT SECTION
+========================================= -->
+<section id="fee-management" class="admin-card" style="display:none;">
+  <h1>💰 Fee Management</h1>
+  <p class="section-description">Configure fee structures for each class and term</p>
+  
+  <!-- Current Session/Term Display -->
+  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
+    <strong>Current Session:</strong> <span id="fee-session-display">Loading...</span> • 
+    <strong>Term:</strong> <span id="fee-term-display">Loading...</span>
+  </div>
+  
+  <!-- Fee Configuration Form -->
+  <div class="admin-card" style="background:var(--color-gray-50); border:2px solid var(--color-primary);">
+    <h2 style="margin-top:0;">Configure Fee Structure</h2>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fee-config-class">Select Class <span style="color:var(--color-danger);">*</span></label>
+        <select id="fee-config-class" required>
+          <option value="">-- Select Class --</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fee-tuition">Tuition Fee (₦)</label>
+        <input type="number" id="fee-tuition" min="0" step="0.01" placeholder="0.00">
+      </div>
+      
+      <div class="form-group">
+        <label for="fee-exam">Exam Fee (₦)</label>
+        <input type="number" id="fee-exam" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fee-uniform">Uniform Fee (₦)</label>
+        <input type="number" id="fee-uniform" min="0" step="0.01" placeholder="0.00">
+      </div>
+      
+      <div class="form-group">
+        <label for="fee-books">Books Fee (₦)</label>
+        <input type="number" id="fee-books" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="fee-pta">PTA Fee (₦)</label>
+        <input type="number" id="fee-pta" min="0" step="0.01" placeholder="0.00">
+      </div>
+      
+      <div class="form-group">
+        <label for="fee-other">Other Fees (₦)</label>
+        <input type="number" id="fee-other" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" id="save-fee-structure-btn" onclick="saveFeeStructure()">
+      💾 Save Fee Structure
+    </button>
+  </div>
+  
+  <!-- Existing Fee Structures -->
+  <div style="margin-top:var(--space-2xl);">
+    <h2>Configured Fee Structures</h2>
+    <div id="fee-structures-list">
+      <div style="text-align:center; padding:var(--space-2xl);">
+        <div class="spinner"></div>
+        <p>Loading fee structures...</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     RECORD PAYMENT SECTION
+========================================= -->
+<section id="record-payment" class="admin-card" style="display:none;">
+  <h1>💳 Record Payment</h1>
+  <p class="section-description">Record fee payments and generate receipts</p>
+  
+  <!-- Current Session/Term Display -->
+  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
+    <strong>Session:</strong> <span id="payment-session-display">Loading...</span> • 
+    <strong>Term:</strong> <span id="payment-term-display">Loading...</span>
+  </div>
+  
+  <!-- Class and Pupil Selection -->
+  <div class="form-row">
+    <div class="form-group">
+      <label for="payment-class-filter">Select Class <span style="color:var(--color-danger);">*</span></label>
+      <select id="payment-class-filter" onchange="loadPupilsForPayment()">
+        <option value="">-- Select Class --</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="payment-pupil-select">Select Pupil <span style="color:var(--color-danger);">*</span></label>
+      <select id="payment-pupil-select" onchange="loadPupilPaymentStatus()">
+        <option value="">-- Select Pupil --</option>
+      </select>
+    </div>
+  </div>
+  
+  <!-- Payment Form Container -->
+  <div id="payment-form-container" style="display:none;">
+    
+    <!-- Payment Status Display -->
+    <div id="payment-status-display" style="margin-bottom:var(--space-xl);">
+      <!-- Populated by JavaScript -->
+    </div>
+    
+    <!-- Payment Input Section -->
+    <div id="payment-input-section" class="admin-card" style="background:var(--color-gray-50); border:2px solid var(--color-success); display:none;">
+      <h2 style="margin-top:0;">Record New Payment</h2>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="payment-amount">Amount Paid (₦) <span style="color:var(--color-danger);">*</span></label>
+          <input type="number" id="payment-amount" min="0" step="0.01" placeholder="0.00" required>
+          <small style="color:var(--color-gray-600);">Enter the amount paid by the parent</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="payment-method">Payment Method</label>
+          <select id="payment-method">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank Transfer</option>
+            <option value="pos">POS/Card</option>
+            <option value="online">Online Payment</option>
+            <option value="cheque">Cheque</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="payment-notes">Notes (Optional)</label>
+        <textarea id="payment-notes" rows="2" placeholder="Add any additional notes about this payment..."></textarea>
+      </div>
+      
+      <button class="btn btn-primary" id="record-payment-btn" onclick="recordPayment()">
+        💰 Record Payment
+      </button>
+    </div>
+    
+    <!-- Payment History -->
+    <div style="margin-top:var(--space-2xl);">
+      <h3>Payment History</h3>
+      <div id="payment-history-list">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================
+     OUTSTANDING FEES SECTION
+========================================= -->
+<section id="outstanding-fees" class="admin-card" style="display:none;">
+  <h1>📊 Outstanding Fees</h1>
+  <p class="section-description">Track pupils with outstanding fee balances</p>
+  
+  <!-- Summary Cards -->
+  <div class="stats-grid" style="margin-bottom:var(--space-2xl);">
+    <div class="stat-card" style="background:linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">
+      <div class="stat-icon">📋</div>
+      <div class="stat-value" id="outstanding-count">0</div>
+      <div class="stat-label">Pupils Owing</div>
+    </div>
+    
+    <div class="stat-card" style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value" id="outstanding-total">₦0</div>
+      <div class="stat-label">Total Outstanding</div>
+    </div>
+  </div>
+  
+  <!-- Outstanding Fees Table -->
+  <div class="table-container">
+    <table class="responsive-table" id="outstanding-fees-table">
+      <thead>
+        <tr>
+          <th>Pupil Name</th>
+          <th>Class</th>
+          <th>Amount Due</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="6" class="table-loading">Loading outstanding fees...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========================================
+     FINANCIAL REPORTS SECTION
+========================================= -->
+<section id="financial-reports" class="admin-card" style="display:none;">
+  <h1>📈 Financial Reports</h1>
+  <p class="section-description">Comprehensive financial overview and analytics</p>
+  
+  <!-- Session/Term Display -->
+  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
+    <strong>Reporting Period:</strong> 
+    <span id="report-session-display">Loading...</span> • 
+    <span id="report-term-display">Loading...</span>
+  </div>
+  
+  <!-- Summary Statistics -->
+  <div class="stats-grid">
+    <div class="stat-card" style="background:linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+      <div class="stat-icon">💵</div>
+      <div class="stat-value" id="report-total-expected">₦0</div>
+      <div class="stat-label">Total Expected</div>
+    </div>
+    
+    <div class="stat-card" style="background:linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);">
+      <div class="stat-icon">✓</div>
+      <div class="stat-value" id="report-total-collected">₦0</div>
+      <div class="stat-label">Total Collected</div>
+    </div>
+    
+    <div class="stat-card" style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-value" id="report-total-outstanding">₦0</div>
+      <div class="stat-label">Outstanding</div>
+    </div>
+    
+    <div class="stat-card" style="background:linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
+      <div class="stat-icon">📊</div>
+      <div class="stat-value" id="report-collection-rate">0%</div>
+      <div class="stat-label">Collection Rate</div>
+    </div>
+  </div>
+  
+  <!-- Payment Status Breakdown -->
+  <div class="admin-card" style="margin-top:var(--space-2xl); background:var(--color-gray-50);">
+    <h2 style="margin-top:0;">Payment Status Breakdown</h2>
+    
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:var(--space-lg);">
+      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-success);">
+        <div style="font-size:3rem; margin-bottom:var(--space-sm);">✓</div>
+        <div style="font-size:2rem; font-weight:700; color:var(--color-success);" id="report-paid-full">0</div>
+        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Paid in Full</div>
+      </div>
+      
+      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-warning);">
+        <div style="font-size:3rem; margin-bottom:var(--space-sm);">⚠️</div>
+        <div style="font-size:2rem; font-weight:700; color:var(--color-warning);" id="report-partial">0</div>
+        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Partial Payment</div>
+      </div>
+      
+      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-danger);">
+        <div style="font-size:3rem; margin-bottom:var(--space-sm);">✗</div>
+        <div style="font-size:2rem; font-weight:700; color:var(--color-danger);" id="report-owing">0</div>
+        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Not Paid</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Export Options -->
+  <div style="margin-top:var(--space-2xl); padding:var(--space-xl); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md);">
+    <h3 style="margin-top:0;">Export Reports</h3>
+    <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">Download financial data for external analysis</p>
+    
+    <div style="display:flex; gap:var(--space-md); flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="exportFinancialReport('csv')">
+        📥 Export to CSV
+      </button>
+      <button class="btn btn-secondary" onclick="exportFinancialReport('pdf')">
+        📄 Generate PDF Report
+      </button>
+    </div>
+  </div>
+</section>
+
         <!-- Announcements Section -->
         <div id="announcements" class="admin-card" style="display:none;">
             <h1>Manage Announcements</h1>
