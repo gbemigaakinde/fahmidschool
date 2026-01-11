@@ -1170,8 +1170,8 @@ async function editPupil(uid) {
     if (!doc.exists) throw new Error('Pupil not found');
 
     const data = doc.data();
-    
-    // FIXED: Safely extract class ID
+
+    // Safely extract class ID
     const classId = getClassIdFromPupilData(data.class);
 
     // Populate class dropdown and select the pupil's current class
@@ -1188,34 +1188,61 @@ async function editPupil(uid) {
     document.getElementById('pupil-address').value = data.address || '';
     document.getElementById('pupil-email').value = data.email || '';
     document.getElementById('pupil-password').value = ''; // always blank for security
-    
-    // FIXED: If the pupil has old-format class data (just a string), 
-    // we need to find the matching class by name
-    if (!classId && data.class && typeof data.class === 'string') {
-      const className = data.class;
-      
-      // Try to find the class by name
+
+    // Handle old-format class data
+    const className = data.class; // define className here so it’s accessible later
+    if (!classId && className && typeof className === 'string') {
       const classesSnapshot = await db.collection('classes')
         .where('name', '==', className)
-        .limit(1)
         .get();
-      
-      if (!classesSnapshot.empty) {
-        const matchedClassId = classesSnapshot.docs[0].id;
-        document.getElementById('pupil-class').value = matchedClassId;
-        
+
+      if (classesSnapshot.empty) {
         window.showToast?.(
-          'Note: This pupil has old class data. Saving will upgrade it to the new format.', 
-          'info', 
-          5000
-        );
-      } else {
-        window.showToast?.(
-          `Warning: Could not find class "${className}". Please select the correct class.`, 
-          'warning', 
+          `Warning: Class "${className}" not found in database. Please select the correct class manually.`,
+          'warning',
           6000
         );
+      } else if (classesSnapshot.size > 1) {
+        // Multiple classes with same name found
+        window.showToast?.(
+          `⚠️ AMBIGUOUS CLASS DATA DETECTED!\n\n` +
+          `This pupil's record shows class "${className}", but ${classesSnapshot.size} classes ` +
+          `have this name in the database.\n\n` +
+          `Please manually select the correct class from the dropdown and save to fix this issue.`,
+          'warning',
+          10000
+        );
+
+        const classSelect = document.getElementById('pupil-class');
+        if (classSelect) {
+          classSelect.value = ''; // force manual selection
+          classSelect.style.background = '#fff3cd';
+          classSelect.style.border = '2px solid #ffc107';
+
+          classSelect.addEventListener('change', function removeHighlight() {
+            this.style.background = '';
+            this.style.border = '';
+            this.removeEventListener('change', removeHighlight);
+          });
+        }
+      } else {
+        // Exactly one match - safe to auto-select
+        const matchedClassId = classesSnapshot.docs[0].id;
+        document.getElementById('pupil-class').value = matchedClassId;
+
+        window.showToast?.(
+          'Note: This pupil has old class data format. Saving will upgrade it automatically.',
+          'info',
+          5000
+        );
       }
+    } else if (!classId) {
+      // classId is missing and className is invalid
+      window.showToast?.(
+        `Warning: Could not find class "${className}". Please select the correct class.`,
+        'warning',
+        6000
+      );
     }
 
     // Update form title and button
