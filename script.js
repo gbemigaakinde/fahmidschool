@@ -567,3 +567,75 @@ document.querySelectorAll('.features-3d .feature-card').forEach(card => {
 });
 
 console.log('✓ Script.js loaded successfully');
+
+/* =====================================================
+   UNSAVED CHANGES PROTECTION
+===================================================== */
+
+// Track if there are unsaved changes in forms
+let hasUnsavedChanges = false;
+
+// Monitor all input fields in teacher and admin portals
+document.addEventListener('input', (e) => {
+  const target = e.target;
+  
+  // Only track form inputs, not search/filter fields
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+    const isFilterField = target.id?.includes('filter') || 
+                         target.id?.includes('search') ||
+                         target.id?.includes('term') ||
+                         target.id?.includes('session');
+    
+    if (!isFilterField) {
+      hasUnsavedChanges = true;
+    }
+  }
+});
+
+// Reset flag when save buttons are clicked
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  
+  if (target.classList.contains('btn-primary') || 
+      target.textContent?.includes('Save') ||
+      target.textContent?.includes('Submit')) {
+    // Small delay to allow save operation to complete
+    setTimeout(() => {
+      hasUnsavedChanges = false;
+    }, 1000);
+  }
+});
+
+// Warn before leaving page with unsaved changes
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges) {
+    const message = 'You have unsaved changes. Are you sure you want to leave?';
+    e.preventDefault();
+    e.returnValue = message; // Standard way
+    return message; // For older browsers
+  }
+});
+
+// Warn before navigating away in single-page app
+if (typeof window.showSection === 'function') {
+  const originalShowSection = window.showSection;
+  
+  window.showSection = function(sectionId) {
+    if (hasUnsavedChanges) {
+      const confirm = window.confirm(
+        'You have unsaved changes that will be lost.\n\n' +
+        'Do you want to leave this section without saving?'
+      );
+      
+      if (!confirm) {
+        return; // Don't navigate
+      }
+      
+      hasUnsavedChanges = false; // Reset if user confirms
+    }
+    
+    return originalShowSection(sectionId);
+  };
+}
+
+console.log('✓ Unsaved changes protection enabled');
