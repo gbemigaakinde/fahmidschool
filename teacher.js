@@ -651,6 +651,8 @@ async function loadResultsTable() {
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
     if (saveBtn) saveBtn.hidden = true;
   }
+  // Check lock status after loading results
+    await checkResultLockStatus();
 }
 
 /**
