@@ -1464,7 +1464,102 @@ async function loadRemarksData() {
     window.handleError(err, 'Failed to load remarks');
     container.hidden = true;
   }
+  // Auto-load remark suggestions
+    await loadRemarkSuggestions();
 }
+
+/**
+ * Load remark suggestions based on pupil's performance
+ */
+async function loadRemarkSuggestions() {
+    const pupilId = document.getElementById('remarks-pupil')?.value;
+    const term = document.getElementById('remarks-term')?.value;
+    const suggestionsDiv = document.getElementById('remark-suggestions');
+    const infoDiv = document.getElementById('suggestion-info');
+    const buttonsDiv = document.getElementById('suggestion-buttons');
+    
+    if (!pupilId || !term || !suggestionsDiv) {
+        if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Show loading state
+    suggestionsDiv.style.display = 'block';
+    infoDiv.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; display:inline-block;"></span> Loading suggestions...';
+    buttonsDiv.innerHTML = '';
+    
+    try {
+        const result = await window.remarkTemplates.getRemarkSuggestions(pupilId, term);
+        
+        if (!result.success) {
+            infoDiv.innerHTML = `<span style="color: var(--color-warning);">⚠️ ${result.message}</span>`;
+            buttonsDiv.innerHTML = '';
+            return;
+        }
+        
+        // Show average and category
+        const categoryLabels = {
+            excellent: '🌟 Excellent',
+            veryGood: '✨ Very Good',
+            good: '👍 Good',
+            average: '📊 Average',
+            poor: '⚠️ Needs Improvement'
+        };
+        
+        infoDiv.innerHTML = `
+            Average: <strong>${result.average}%</strong> • 
+            Category: <strong style="color: var(--color-primary);">${categoryLabels[result.category] || result.category}</strong>
+        `;
+        
+        // Display template buttons
+        if (result.templates.length === 0) {
+            buttonsDiv.innerHTML = '<p style="color: var(--color-gray-600); margin: 0;">No templates available</p>';
+            return;
+        }
+        
+        buttonsDiv.innerHTML = '';
+        
+        result.templates.forEach((template, index) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-small btn-secondary';
+            btn.style.cssText = 'text-align: left; white-space: normal; max-width: 100%;';
+            btn.textContent = template;
+            btn.onclick = () => useRemarkTemplate(template);
+            buttonsDiv.appendChild(btn);
+        });
+        
+    } catch (error) {
+        console.error('Error loading suggestions:', error);
+        infoDiv.innerHTML = '<span style="color: var(--color-danger);">❌ Failed to load suggestions</span>';
+        buttonsDiv.innerHTML = '';
+    }
+}
+
+/**
+ * Use selected remark template
+ */
+function useRemarkTemplate(template) {
+    const remarkTextarea = document.getElementById('teacher-remark');
+    if (!remarkTextarea) return;
+    
+    remarkTextarea.value = template;
+    remarkTextarea.focus();
+    
+    window.showToast?.('Template applied. You can edit it before saving.', 'success', 3000);
+}
+
+/**
+ * Refresh remark suggestions
+ */
+async function refreshRemarkSuggestions() {
+    await loadRemarkSuggestions();
+}
+
+// Make functions globally available
+window.loadRemarkSuggestions = loadRemarkSuggestions;
+window.useRemarkTemplate = useRemarkTemplate;
+window.refreshRemarkSuggestions = refreshRemarkSuggestions;
 
 async function saveRemarks() {
   const pupilId = document.getElementById('remarks-pupil')?.value;
