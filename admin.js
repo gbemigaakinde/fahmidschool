@@ -6324,8 +6324,11 @@ async function loadOutstandingFeesReport() {
                     </td>
                 </tr>`;
 
-            document.getElementById('outstanding-count')?.textContent = '0';
-            document.getElementById('outstanding-total')?.textContent = '₦0';
+            const outstandingCount = document.getElementById('outstanding-count');
+if (outstandingCount) outstandingCount.textContent = '0';
+
+const outstandingTotal = document.getElementById('outstanding-total');
+if (outstandingTotal) outstandingTotal.textContent = '₦0';
             return;
         }
 
