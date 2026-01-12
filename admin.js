@@ -32,51 +32,171 @@ try {
   secondaryAuth = secondaryApp.auth();
 }
 
-document.addEventListener('click', function(e) {
-  const link = e.target.closest('.sidebar-link[data-section]');
-  if (link) {
-    e.preventDefault();
-    const section = link.dataset.section;
-    console.log('Clicked:', section);
-    if (typeof window.showSection === 'function') {
-      window.showSection(section);
-    } else {
-      console.error('showSection not found!');
-    }
-  }
+/* =====================================================
+   CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
+===================================================== */
+
+console.log('🔐 Waiting for authentication...');
+
+window.checkRole('admin')
+  .then(async user => {
+    console.log('✓ Admin authenticated:', user.email);
+    
+    // NOW initialize the portal
+    await initializeAdminPortal();
+  })
+  .catch(err => {
+    console.error('❌ Authentication failed:', err);
+    // User will be redirected to login
+  });
+
+// Logout handler
+document.getElementById('admin-logout')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.logout();
 });
 
-// ============================================
-// CRITICAL: EXPORT showSection FIRST
-// ============================================
+/* =====================================================
+   MAIN INITIALIZATION FUNCTION
+===================================================== */
 
-/**
- * Show a specific admin section and hide all others
- * EXPORTED IMMEDIATELY - BEFORE ANY EVENT HANDLERS
- */
-window.showSection = function(sectionId) {
-  if (!sectionId) {
-    console.error('showSection called with no sectionId');
+async function initializeAdminPortal() {
+  console.log('🚀 Initializing admin portal...');
+  
+  // Step 1: Setup sidebar navigation
+  setupSidebarNavigation();
+  
+  // Step 2: Initialize class hierarchy
+  await window.classHierarchy.initializeClassHierarchy();
+  
+  // Step 3: Load dashboard
+  showSection('dashboard');
+  
+  // Step 4: Setup date input max date
+  const dobInput = document.getElementById('pupil-dob');
+  if (dobInput) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const maxDate = `${year}-${month}-${day}`;
+    dobInput.setAttribute('max', maxDate);
+  }
+  
+  console.log('✅ Admin portal initialized successfully');
+}
+
+/* =====================================================
+   SIDEBAR NAVIGATION - COMPLETE REWRITE
+===================================================== */
+
+function setupSidebarNavigation() {
+  console.log('🔧 Setting up sidebar navigation...');
+  
+  // Prevent double initialization
+  if (window.sidebarInitialized) {
+    console.log('⚠️ Sidebar already initialized, skipping');
     return;
   }
   
-  console.log(`🎯 showSection: ${sectionId}`);
+  // Get all navigation links
+  const links = document.querySelectorAll('.sidebar-link[data-section]');
+  console.log(`📋 Found ${links.length} navigation links`);
+  
+  if (links.length === 0) {
+    console.error('❌ CRITICAL: No navigation links found!');
+    return;
+  }
+  
+  // Setup each link
+  links.forEach((link) => {
+    const sectionId = link.dataset.section;
+    
+    if (!sectionId) {
+      console.warn('⚠️ Link missing data-section:', link);
+      return;
+    }
+    
+    // Remove any existing handlers
+    const newLink = link.cloneNode(true);
+    link.parentNode.replaceChild(newLink, link);
+    
+    // Add click handler
+    newLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log(`🖱️ Clicked: ${sectionId}`);
+      showSection(sectionId);
+    });
+  });
+  
+  // Setup group toggles
+  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+  console.log(`🔽 Found ${toggles.length} group toggles`);
+  
+  toggles.forEach((toggle) => {
+    // Remove any existing handlers
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    newToggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const content = this.nextElementSibling;
+      if (!content) {
+        console.warn('⚠️ No content found for toggle');
+        return;
+      }
+      
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      // Toggle state
+      this.setAttribute('aria-expanded', !isExpanded);
+      content.classList.toggle('active');
+      
+      // Rotate icon
+      const icon = this.querySelector('.toggle-icon');
+      if (icon) {
+        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+      
+      console.log(`  ${isExpanded ? '📁 Collapsed' : '📂 Expanded'} group`);
+    });
+  });
+  
+  window.sidebarInitialized = true;
+  console.log('✅ Sidebar navigation initialized');
+}
+
+/* =====================================================
+   SHOW SECTION FUNCTION
+===================================================== */
+
+function showSection(sectionId) {
+  if (!sectionId) {
+    console.error('❌ showSection called with no sectionId');
+    return;
+  }
+  
+  console.log(`📄 Showing section: ${sectionId}`);
   
   // Hide all sections
   document.querySelectorAll('.admin-card').forEach(card => {
     card.style.display = 'none';
   });
   
-  // Show requested section
+  // Show target section
   const section = document.getElementById(sectionId);
-  if (section) {
-    section.style.display = 'block';
-  } else {
-    console.warn(`Section ${sectionId} not found`);
+  if (!section) {
+    console.error(`❌ Section not found: ${sectionId}`);
     return;
   }
   
-  // Update active nav link
+  section.style.display = 'block';
+  
+  // Update active link
   document.querySelectorAll('.sidebar-link').forEach(link => {
     link.classList.remove('active');
   });
@@ -84,66 +204,22 @@ window.showSection = function(sectionId) {
   const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
+    
+    // Expand parent group if nested
+    const parentGroup = activeLink.closest('.sidebar-group-content-modern');
+    if (parentGroup) {
+      parentGroup.classList.add('active');
+      const toggle = parentGroup.previousElementSibling;
+      if (toggle && toggle.classList.contains('sidebar-group-toggle-modern')) {
+        toggle.setAttribute('aria-expanded', 'true');
+        const icon = toggle.querySelector('.toggle-icon');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
+    }
   }
   
-  // Load section-specific data
-  switch(sectionId) {
-    case 'dashboard':
-      loadDashboardStats();
-      break;
-    case 'teachers':
-      loadTeachers();
-      break;
-    case 'pupils':
-      loadPupils();
-      break;
-    case 'classes':
-      loadClasses();
-      break;
-    case 'subjects':
-      loadSubjects();
-      break;
-    case 'assign-teachers':
-      loadTeacherAssignments();
-      break;
-    case 'promotion-requests':
-      loadPromotionRequests();
-      break;
-    case 'result-approvals':
-      loadResultApprovals();
-      break;
-    case 'announcements':
-      loadAdminAnnouncements();
-      break;
-    case 'alumni':
-      loadAlumni();
-      break;
-    case 'audit-log':
-      loadAuditLog();
-      break;
-    case 'view-results':
-      loadViewResultsSection();
-      break;
-    case 'settings':
-      loadCurrentSettings();
-      setTimeout(async () => {
-        await loadClassHierarchyUI();
-      }, 200);
-      loadSessionHistory();
-      break;
-    case 'fee-management':
-      loadFeeManagementSection();
-      break;
-    case 'record-payment':
-      loadPaymentRecordingSection();
-      break;
-    case 'outstanding-fees':
-      loadOutstandingFeesReport();
-      break;
-    case 'financial-reports':
-      loadFinancialReports();
-      break;
-  }
+  // Load section data
+  loadSectionData(sectionId);
   
   // Close mobile sidebar
   const sidebar = document.getElementById('admin-sidebar');
@@ -156,93 +232,82 @@ window.showSection = function(sectionId) {
     }
     document.body.style.overflow = '';
   }
-};
-
-// ============================================
-// CRITICAL: SETUP NAVIGATION ONLY ONCE
-// ============================================
-
-/**
- * Setup sidebar navigation - CALLED ONLY ONCE
- */
-function setupSidebarNavigation() {
-  // Prevent multiple initializations
-  if (window.sidebarInitialized) {
-    console.log('⚠️ Sidebar already initialized, skipping');
-    return;
-  }
-  
-  console.log('🔧 Setting up sidebar navigation...');
-  
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`📋 Found ${links.length} sidebar links`);
-  
-  if (links.length === 0) {
-    console.error('❌ No sidebar links found!');
-    return;
-  }
-  
-  // Add click handlers ONCE
-  links.forEach((link) => {
-    const sectionId = link.dataset.section;
-    
-    if (!sectionId) {
-      console.warn('Link has no data-section:', link);
-      return;
-    }
-    
-    // Remove any existing onclick to prevent duplicates
-    link.onclick = null;
-    
-    // Add single click handler
-    link.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      console.log(`🖱️ Click: ${sectionId}`);
-      window.showSection(sectionId);
-    });
-  });
-  
-  // Setup group toggles
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  toggles.forEach((toggle) => {
-    toggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      if (!content) return;
-      
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-      
-      const icon = this.querySelector('.toggle-icon');
-      if (icon) {
-        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-    });
-  });
-  
-  // Mark as initialized
-  window.sidebarInitialized = true;
-  console.log('✅ Sidebar navigation setup complete');
 }
 
-// ============================================
-// INITIALIZE ON DOM READY
-// ============================================
+// Make globally available
+window.showSection = showSection;
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setupSidebarNavigation();
-    window.showSection('dashboard');
-  });
-} else {
-  setupSidebarNavigation();
-  window.showSection('dashboard');
+/* =====================================================
+   LOAD SECTION DATA
+===================================================== */
+
+function loadSectionData(sectionId) {
+  console.log(`📊 Loading data for: ${sectionId}`);
+  
+  try {
+    switch(sectionId) {
+      case 'dashboard':
+        loadDashboardStats();
+        break;
+      case 'teachers':
+        loadTeachers();
+        break;
+      case 'pupils':
+        loadPupils();
+        break;
+      case 'classes':
+        loadClasses();
+        break;
+      case 'subjects':
+        loadSubjects();
+        break;
+      case 'assign-teachers':
+        loadTeacherAssignments();
+        break;
+      case 'promotion-requests':
+        loadPromotionRequests();
+        break;
+      case 'result-approvals':
+        loadResultApprovals();
+        break;
+      case 'announcements':
+        loadAdminAnnouncements();
+        break;
+      case 'alumni':
+        loadAlumni();
+        break;
+      case 'audit-log':
+        loadAuditLog();
+        break;
+      case 'view-results':
+        loadViewResultsSection();
+        break;
+      case 'settings':
+        loadCurrentSettings();
+        setTimeout(async () => {
+          await loadClassHierarchyUI();
+        }, 200);
+        loadSessionHistory();
+        break;
+      case 'fee-management':
+        loadFeeManagementSection();
+        break;
+      case 'record-payment':
+        loadPaymentRecordingSection();
+        break;
+      case 'outstanding-fees':
+        loadOutstandingFeesReport();
+        break;
+      case 'financial-reports':
+        loadFinancialReports();
+        break;
+      default:
+        console.log(`ℹ️ No data loader for: ${sectionId}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error loading ${sectionId}:`, error);
+    window.showToast?.(`Failed to load ${sectionId}`, 'danger');
+  }
 }
 
 /* ======================================== 
@@ -1178,39 +1243,53 @@ window.toggleSidebarGroup = toggleSidebarGroup;
    DASHBOARD STATS 
 ======================================== */
 async function loadDashboardStats() {
+  console.log('📊 Loading dashboard stats...');
+  
+  // Set loading state
+  ['teacher-count', 'pupil-count', 'class-count', 'announce-count'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="spinner" style="width:20px; height:20px; margin:0 auto;"></div>';
+  });
+  
   try {
-    const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
-      db.collection('teachers').get(),
-      db.collection('pupils').get(),
-      db.collection('classes').get(),
-      db.collection('announcements').get()
-    ]);
+    console.log('  → Fetching teachers...');
+    const teachersSnap = await db.collection('teachers').get();
+    console.log(`  ✓ Teachers: ${teachersSnap.size}`);
     
+    console.log('  → Fetching pupils...');
+    const pupilsSnap = await db.collection('pupils').get();
+    console.log(`  ✓ Pupils: ${pupilsSnap.size}`);
+    
+    console.log('  → Fetching classes...');
+    const classesSnap = await db.collection('classes').get();
+    console.log(`  ✓ Classes: ${classesSnap.size}`);
+    
+    console.log('  → Fetching announcements...');
+    const announcementsSnap = await db.collection('announcements').get();
+    console.log(`  ✓ Announcements: ${announcementsSnap.size}`);
+    
+    // Update display
     document.getElementById('teacher-count').textContent = teachersSnap.size;
     document.getElementById('pupil-count').textContent = pupilsSnap.size;
     document.getElementById('class-count').textContent = classesSnap.size;
     document.getElementById('announce-count').textContent = announcementsSnap.size;
+    
+    console.log('✅ Dashboard stats loaded successfully');
+    
+    // Check session status
+    await checkSessionStatus();
+    
   } catch (error) {
-    console.error('Error loading dashboard stats:', error);
-    window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
-    // Set defaults on error
+    console.error('❌ Error loading dashboard stats:', error);
+    window.showToast?.('Failed to load dashboard statistics', 'danger');
+    
+    // Set error state
     ['teacher-count', 'pupil-count', 'class-count', 'announce-count'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.textContent = '0';
+      if (el) el.textContent = '!';
     });
   }
-  
-  // Check session status when dashboard loads
-  await checkSessionStatus();
 }
-
-// Simple role check
-window.checkRole('admin').catch(() => {});
-
-document.getElementById('admin-logout')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  window.logout();
-});
 
 /* ======================================== 
    TEACHERS MANAGEMENT 
@@ -7203,3 +7282,73 @@ window.exportPupilsData = exportPupilsData;
 window.exportResultsData = exportResultsData;
 
 console.log('✓ Data export functions loaded');
+/* =====================================================
+   DEBUG CONSOLE - SHOWS WHAT'S HAPPENING
+===================================================== */
+
+window.adminDebug = {
+  // Check if everything is loaded
+  checkStatus() {
+    console.log('═══════════════════════════════════════');
+    console.log('🔍 ADMIN PORTAL DEBUG STATUS');
+    console.log('═══════════════════════════════════════');
+    
+    // Firebase
+    console.log('Firebase:', typeof firebase !== 'undefined' ? '✓' : '❌');
+    console.log('  db:', typeof db !== 'undefined' ? '✓' : '❌');
+    console.log('  auth:', typeof auth !== 'undefined' ? '✓' : '❌');
+    console.log('  currentUser:', auth?.currentUser ? `✓ ${auth.currentUser.email}` : '❌');
+    
+    // DOM Elements
+    console.log('\nDOM Elements:');
+    console.log('  sidebar:', document.getElementById('admin-sidebar') ? '✓' : '❌');
+    console.log('  hamburger:', document.getElementById('hamburger') ? '✓' : '❌');
+    console.log('  dashboard:', document.getElementById('dashboard') ? '✓' : '❌');
+    
+    // Navigation
+    const links = document.querySelectorAll('.sidebar-link[data-section]');
+    console.log(`  nav links: ${links.length} found`);
+    
+    const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+    console.log(`  group toggles: ${toggles.length} found`);
+    
+    // Functions
+    console.log('\nFunctions:');
+    console.log('  showSection:', typeof window.showSection);
+    console.log('  loadDashboardStats:', typeof loadDashboardStats);
+    console.log('  loadTeachers:', typeof loadTeachers);
+    
+    // Initialization
+    console.log('\nInitialization:');
+    console.log('  sidebarInitialized:', window.sidebarInitialized || false);
+    
+    console.log('═══════════════════════════════════════');
+  },
+  
+  // Manually show a section
+  showSection(sectionId) {
+    console.log(`\n🔧 Manual section load: ${sectionId}`);
+    if (typeof window.showSection === 'function') {
+      window.showSection(sectionId);
+    } else {
+      console.error('❌ showSection function not available!');
+    }
+  },
+  
+  // Test dashboard loading
+  testDashboard() {
+    console.log('\n🧪 Testing dashboard load...');
+    if (typeof loadDashboardStats === 'function') {
+      loadDashboardStats();
+    } else {
+      console.error('❌ loadDashboardStats function not available!');
+    }
+  }
+};
+
+console.log('═══════════════════════════════════════');
+console.log('✓ Admin portal script loaded');
+console.log('💡 Type adminDebug.checkStatus() to see status');
+console.log('💡 Type adminDebug.showSection("dashboard") to manually load dashboard');
+console.log('💡 Type adminDebug.testDashboard() to test data loading');
+console.log('═══════════════════════════════════════');
