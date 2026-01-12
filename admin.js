@@ -6221,8 +6221,13 @@ async function recordPayment() {
         );
 
         // Clear form
-        if (amountInput) amountInput.value = '';
-        document.getElementById('payment-notes')?.value = '';
+if (amountInput) {
+    amountInput.value = '';
+}
+const notesInput = document.getElementById('payment-notes');
+if (notesInput) {
+    notesInput.value = '';
+}
 
         // Refresh data
         await loadPupilPaymentStatus();
