@@ -32,6 +32,20 @@ try {
   secondaryAuth = secondaryApp.auth();
 }
 
+document.addEventListener('click', function(e) {
+  const link = e.target.closest('.sidebar-link[data-section]');
+  if (link) {
+    e.preventDefault();
+    const section = link.dataset.section;
+    console.log('Clicked:', section);
+    if (typeof window.showSection === 'function') {
+      window.showSection(section);
+    } else {
+      console.error('showSection not found!');
+    }
+  }
+});
+
 // ============================================
 // CRITICAL: EXPORT showSection FIRST
 // ============================================
