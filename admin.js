@@ -114,16 +114,13 @@ async function initializeAdminPortal() {
   
   console.log('✓ All critical elements found');
   
-  // Step 1: Setup sidebar FIRST
+  // Step 1: Setup sidebar FIRST (this includes hamburger menu handling)
   setupSidebarNavigation();
   
-  // Step 2: Setup hamburger menu
-  setupHamburgerMenu();
-  
-  // Step 3: Mark data as loading
+  // Step 2: Mark data as loading
   isLoadingAdminData = true;
   
-  // Step 4: Load initial data
+  // Step 3: Load initial data
   try {
     console.log('📊 Loading initial admin data...');
     
@@ -148,10 +145,10 @@ async function initializeAdminPortal() {
     );
   }
   
-  // Step 5: Show dashboard
+  // Step 4: Show dashboard
   showSection('dashboard');
   
-  // Step 6: Initialize class hierarchy
+  // Step 5: Initialize class hierarchy
   try {
     await window.classHierarchy.initializeClassHierarchy();
     console.log('✓ Class hierarchy initialized');
