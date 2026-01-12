@@ -246,6 +246,9 @@ function initSmoothScroll() {
    TOAST NOTIFICATIONS
 ===================================================== */
 
+/**
+ * FIXED: Toast notifications with null checks
+ */
 window.showToast = function (message, type = 'info', duration = 3000) {
     let container = document.getElementById('toast-container');
 
@@ -255,7 +258,14 @@ window.showToast = function (message, type = 'info', duration = 3000) {
         container.id = 'toast-container';
         container.setAttribute('aria-live', 'polite');
         container.setAttribute('aria-atomic', 'true');
-        document.body.appendChild(container);
+        
+        // Check if body exists before appending
+        if (document.body) {
+            document.body.appendChild(container);
+        } else {
+            console.error('document.body not available for toast container');
+            return;
+        }
     }
 
     // Create the toast element
@@ -290,7 +300,11 @@ window.showToast = function (message, type = 'info', duration = 3000) {
     setTimeout(() => {
         toast.classList.remove('show'); // trigger slide-out
         // Remove from DOM after animation ends
-        setTimeout(() => toast.remove(), slideOutDuration);
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, slideOutDuration);
     }, duration);
 };
 
@@ -558,28 +572,19 @@ document.addEventListener('DOMContentLoaded', () => {
     initTestimonialsCarousel();
     initScrollAnimations();
 
+    // REMOVE THIS BLOCK - IT'S CAUSING THE ERROR
+    // document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
+    //     link.addEventListener('click', e => {
+    //         e.preventDefault();
+    //         const section = link.dataset.section;
+    //         if (section && typeof window.showSection === 'function') {
+    //             window.showSection(section);
+    //         }
+    //     });
+    // });
+
     console.log('✓ Fahmid School website initialized successfully (v2.4.0 - FIXED)');
 });
-
-document.querySelectorAll('.features-3d .feature-card').forEach(card => {
-  card.addEventListener('mousemove', e => {
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const rotateX = ((y / rect.height) - 0.5) * -10;
-    const rotateY = ((x / rect.width) - 0.5) * 10;
-
-    card.style.transform =
-      `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-  });
-
-  card.addEventListener('mouseleave', () => {
-    card.style.transform = 'rotateX(0deg) rotateY(0deg)';
-  });
-});
-
-console.log('✓ Script.js loaded successfully');
 
 /* =====================================================
    UNSAVED CHANGES PROTECTION
