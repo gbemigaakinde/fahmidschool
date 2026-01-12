@@ -506,7 +506,7 @@ async function loadResults() {
 }
 
 /**
- * Load pupil fee balance - FIXED session path encoding
+ * Load pupil fee balance - FIXED with proper error handling
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -528,13 +528,44 @@ async function loadFeeBalance() {
         const session = settings.session;
         const term = settings.term;
         
-        // CRITICAL FIX: Encode session name to avoid path issues
-        // Convert "2025/2026" to "2025-2026"
+        // Encode session name to avoid path issues
         const encodedSession = session.replace(/\//g, '-');
         
-        // Get payment summary
+        // FIXED: Try to get payment summary with proper error handling
         const paymentRecordId = `${currentPupilId}_${encodedSession}_${term}`;
-        const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+        let paymentDoc;
+        
+        try {
+            paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+        } catch (permissionError) {
+            console.warn('Permission denied accessing payments collection:', permissionError);
+            
+            // Show permission error message
+            feeSection.innerHTML = `
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
+                        <i data-lucide="lock"></i>
+                    </div>
+                    <div class="section-title">
+                        <h2>Fee Information</h2>
+                        <p>Access restricted</p>
+                    </div>
+                </div>
+                <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+                    <i data-lucide="shield-alert" style="width: 48px; height: 48px; margin: 0 auto var(--space-md); opacity: 0.5;"></i>
+                    <p style="margin-bottom: var(--space-sm);">Fee information is currently unavailable.</p>
+                    <p style="font-size: var(--text-sm); color: var(--color-gray-500);">
+                        Please contact the school office for fee details and payment information.
+                    </p>
+                </div>
+            `;
+            
+            // Re-initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            return;
+        }
         
         if (!paymentDoc.exists) {
             // No fee structure configured
@@ -552,6 +583,10 @@ async function loadFeeBalance() {
                     <p>Fee details will appear here once configured by the school administration.</p>
                 </div>
             `;
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
             return;
         }
         
@@ -653,6 +688,10 @@ async function loadFeeBalance() {
                 <p>Unable to load fee information. Please try again later.</p>
             </div>
         `;
+        
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
 }
 
