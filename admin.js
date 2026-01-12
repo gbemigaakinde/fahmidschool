@@ -868,12 +868,13 @@ async function deleteAlumni(alumniId) {
 // Make globally available
 window.deleteAlumni = deleteAlumni;
 
-/* ======================================== 
-   SECTION NAVIGATION - COMPLETELY FIXED
-======================================== */
+/* =====================================================
+   ADMIN SIDEBAR NAVIGATION - FIXED FOR GROUPED STRUCTURE
+===================================================== */
 
 /**
  * Show a specific admin section and hide all others
+ * FIXED: Properly handles admin sidebar's grouped structure
  */
 function showSection(sectionId) {
   if (!sectionId) {
@@ -881,7 +882,7 @@ function showSection(sectionId) {
     return;
   }
   
-  console.log(`🎯 showSection called for: ${sectionId}`);
+  console.log(`🎯 showSection: ${sectionId}`);
   
   // Hide all sections
   document.querySelectorAll('.admin-card').forEach(card => {
@@ -906,6 +907,19 @@ function showSection(sectionId) {
   const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
+    
+    // CRITICAL FIX: Ensure parent group is expanded
+    const parentGroup = activeLink.closest('.sidebar-group-content-modern');
+    if (parentGroup) {
+      parentGroup.classList.add('active');
+      const toggleButton = parentGroup.previousElementSibling;
+      if (toggleButton && toggleButton.classList.contains('sidebar-group-toggle-modern')) {
+        toggleButton.setAttribute('aria-expanded', 'true');
+        const icon = toggleButton.querySelector('.toggle-icon');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      }
+    }
+    
     console.log(`✓ Active link updated for ${sectionId}`);
   }
   
@@ -1011,13 +1025,19 @@ function showSection(sectionId) {
 window.showSection = showSection;
 
 /**
- * CRITICAL: Setup sidebar navigation on page load
- * This MUST run after DOM is ready
+ * CRITICAL FIX: Setup admin sidebar navigation with grouped structure
+ * This properly handles the nested group toggles
  */
 function setupSidebarNavigation() {
-  console.log('🔧 Setting up sidebar navigation...');
+  // Prevent multiple initializations
+  if (window.adminSidebarInitialized) {
+    console.log('⚠️ Admin sidebar already initialized');
+    return;
+  }
   
-  // Get all sidebar links with data-section
+  console.log('🔧 Setting up admin sidebar navigation...');
+  
+  // STEP 1: Setup all navigation links
   const links = document.querySelectorAll('.sidebar-link[data-section]');
   console.log(`📋 Found ${links.length} sidebar links`);
   
@@ -1034,59 +1054,86 @@ function setupSidebarNavigation() {
       return;
     }
     
-    console.log(`✓ Registering link ${index + 1}: ${sectionId}`);
+    // Remove any existing onclick to prevent duplicates
+    link.onclick = null;
     
-    // Remove href navigation, use click handler only
+    // Add click handler with proper event handling
     link.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log(`🖱️ Click detected on: ${sectionId}`);
+      console.log(`🖱️ Navigation click: ${sectionId}`);
       showSection(sectionId);
     });
+    
+    console.log(`  ✓ Link ${index + 1}: ${sectionId}`);
   });
   
-  // Setup group toggles
+  // STEP 2: Setup group toggles (collapsible sections)
   const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
   console.log(`📋 Found ${toggles.length} group toggles`);
   
   toggles.forEach((toggle, index) => {
-    console.log(`✓ Registering toggle ${index + 1}`);
+    const groupName = toggle.dataset.group || `group-${index}`;
     
+    // Remove any existing onclick
+    toggle.onclick = null;
+    
+    // Add click handler
     toggle.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
       const content = this.nextElementSibling;
-      if (!content) {
-        console.warn('No content element found for toggle');
+      if (!content || !content.classList.contains('sidebar-group-content-modern')) {
+        console.warn(`No valid content found for toggle: ${groupName}`);
         return;
       }
       
       const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      const newState = !isExpanded;
       
-      // Toggle
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
+      // Toggle state
+      this.setAttribute('aria-expanded', newState);
+      content.classList.toggle('active', newState);
       
-      // Rotate icon
+      // Rotate chevron icon
       const icon = this.querySelector('.toggle-icon');
       if (icon) {
-        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+        icon.style.transform = newState ? 'rotate(180deg)' : 'rotate(0deg)';
       }
       
-      console.log(`🔽 Toggled group (expanded: ${!isExpanded})`);
+      console.log(`  🔽 Toggled ${groupName}: ${newState ? 'OPEN' : 'CLOSED'}`);
     });
+    
+    console.log(`  ✓ Toggle ${index + 1}: ${groupName}`);
   });
   
-  console.log('✅ Sidebar navigation setup complete');
+  // STEP 3: Initialize default states (some groups start open)
+  document.querySelectorAll('.sidebar-group-content-modern.active').forEach(content => {
+    const toggle = content.previousElementSibling;
+    if (toggle && toggle.classList.contains('sidebar-group-toggle-modern')) {
+      toggle.setAttribute('aria-expanded', 'true');
+      const icon = toggle.querySelector('.toggle-icon');
+      if (icon) icon.style.transform = 'rotate(180deg)';
+    }
+  });
+  
+  // Mark as initialized
+  window.adminSidebarInitialized = true;
+  console.log('✅ Admin sidebar navigation initialized successfully');
 }
 
-// Call setup immediately if DOM is ready, otherwise wait
+// Initialize on DOM ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupSidebarNavigation);
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSidebarNavigation();
+    // Show dashboard by default
+    setTimeout(() => showSection('dashboard'), 100);
+  });
 } else {
   setupSidebarNavigation();
+  setTimeout(() => showSection('dashboard'), 100);
 }
 
 /* ========================================
@@ -5586,7 +5633,100 @@ window.loadCurrentSettings = loadCurrentSettings;
 window.loadAlumni = loadAlumni;
 window.loadViewResultsSection = loadViewResultsSection;
 
-console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
+/* =====================================================
+   FINAL INITIALIZATION - GUARANTEED EXECUTION
+===================================================== */
+
+/**
+ * CRITICAL: Final initialization check
+ * This ensures everything is set up correctly
+ */
+function finalizeAdminPortal() {
+  console.log('🚀 Finalizing admin portal initialization...');
+  
+  // Ensure sidebar is set up
+  if (!window.adminSidebarInitialized) {
+    console.warn('⚠️ Sidebar not initialized, running setup now...');
+    setupSidebarNavigation();
+  }
+  
+  // Ensure dashboard is visible
+  const dashboard = document.getElementById('dashboard');
+  if (dashboard && dashboard.style.display === 'none') {
+    console.log('📊 Showing dashboard...');
+    showSection('dashboard');
+  }
+  
+  // Log success
+  console.log('✅ Admin portal fully initialized and ready');
+  console.log('═══════════════════════════════════════');
+  console.log('Available sections:', 
+    Array.from(document.querySelectorAll('.sidebar-link[data-section]'))
+      .map(l => l.dataset.section)
+      .join(', ')
+  );
+  console.log('═══════════════════════════════════════');
+}
+
+// Run finalization after a delay to ensure DOM is ready
+setTimeout(finalizeAdminPortal, 500);
+
+// Also run on window load as backup
+window.addEventListener('load', () => {
+  if (!window.adminSidebarInitialized) {
+    console.warn('⚠️ Window load: Sidebar still not initialized');
+    setupSidebarNavigation();
+    showSection('dashboard');
+  }
+});
+
+/* =====================================================
+   DIAGNOSTIC & DEBUG UTILITIES
+===================================================== */
+
+/**
+ * Run diagnostics on admin sidebar
+ */
+function runSidebarDiagnostics() {
+  console.log('🔍 ADMIN SIDEBAR DIAGNOSTICS');
+  console.log('═══════════════════════════════════════');
+  
+  const sidebar = document.getElementById('admin-sidebar');
+  console.log('Sidebar element:', sidebar ? '✓ Found' : '❌ Missing');
+  
+  const hamburger = document.getElementById('hamburger');
+  console.log('Hamburger element:', hamburger ? '✓ Found' : '❌ Missing');
+  
+  const links = document.querySelectorAll('.sidebar-link[data-section]');
+  console.log(`Navigation links: ${links.length} found`);
+  
+  if (links.length > 0) {
+    console.log('Link sections:');
+    links.forEach((link, i) => {
+      const section = link.dataset.section;
+      const exists = document.getElementById(section);
+      console.log(`  ${i + 1}. ${section}: ${exists ? '✓' : '❌ section missing'}`);
+    });
+  }
+  
+  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+  console.log(`Group toggles: ${toggles.length} found`);
+  
+  console.log('Functions available:');
+  console.log('  showSection:', typeof window.showSection);
+  console.log('  setupSidebarNavigation:', typeof setupSidebarNavigation);
+  
+  console.log('Initialization status:');
+  console.log('  adminSidebarInitialized:', window.adminSidebarInitialized || false);
+  
+  console.log('═══════════════════════════════════════');
+}
+
+// Make diagnostic function globally available
+window.runSidebarDiagnostics = runSidebarDiagnostics;
+
+console.log('✓ Admin portal v6.3.0 - SIDEBAR NAVIGATION COMPLETELY FIXED');
+console.log('💡 Run window.runSidebarDiagnostics() in console to check sidebar status');
 
 /* ======================================== 
    SESSION VALIDATION ON LOAD
@@ -7063,17 +7203,3 @@ window.exportPupilsData = exportPupilsData;
 window.exportResultsData = exportResultsData;
 
 console.log('✓ Data export functions loaded');
-
-/**
- * Initialize sidebar group toggles
- */
-document.addEventListener('DOMContentLoaded', () => {
-    // Setup group toggle handlers
-    document.querySelectorAll('.sidebar-group-toggle-modern').forEach(button => {
-        button.addEventListener('click', function() {
-            toggleSidebarGroup(this);
-        });
-    });
-    
-    console.log('✓ Sidebar group toggles initialized');
-});
