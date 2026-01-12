@@ -900,27 +900,46 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
   
   let currentPage = 1;
   const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
+
+function renderPage(page) {
+  tbody.innerHTML = '';
   
-  function renderPage(page) {
-    tbody.innerHTML = '';
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageData = data.slice(start, end);
-    
-    if (pageData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
-      return;
-    }
-    
-    pageData.forEach(item => {
-      try {
-        renderRowCallback(item, tbody);
-      } catch (error) {
-        console.error('Error rendering row:', error);
-      }
-    });
-    updatePaginationControls(page, totalPages);
+  // Validate page number
+  if (page < 1) page = 1;
+  if (page > totalPages) page = totalPages;
+  
+  const start = (page - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  
+  // CRITICAL FIX: Check if start is beyond data length
+  if (start >= data.length && data.length > 0) {
+    // Go back to last valid page
+    console.warn(`⚠️ Page ${page} is beyond data, going to page ${totalPages}`);
+    renderPage(totalPages);
+    return;
   }
+  
+  const pageData = data.slice(start, end);
+  
+  // Handle empty page data
+  if (pageData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+    updatePaginationControls(1, 1); // Show page 1 of 1
+    return;
+  }
+  
+  // Render each row
+  pageData.forEach(item => {
+    try {
+      renderRowCallback(item, tbody);
+    } catch (error) {
+      console.error('❌ Error rendering row:', error);
+      // Don't break the entire table, just skip this row
+    }
+  });
+  
+  updatePaginationControls(page, totalPages);
+}
   
   function updatePaginationControls(page, total) {
     const table = tbody.parentElement;
@@ -2882,34 +2901,66 @@ function renderHierarchyUI(orderedClasses) {
     console.error('❌ sortable-class-list not found after innerHTML update');
     return;
   }
+
+orderedClasses.forEach((cls, index) => {
+  const itemDiv = document.createElement('div');
+  itemDiv.className = 'hierarchy-item draggable';
+  itemDiv.draggable = true;
+  itemDiv.dataset.classId = cls.id;
+  itemDiv.dataset.index = index;
   
-  orderedClasses.forEach((cls, index) => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'hierarchy-item draggable';
-    itemDiv.draggable = true;
-    itemDiv.dataset.classId = cls.id;
-    itemDiv.dataset.index = index;
-    
-    const isTerminal = index === orderedClasses.length - 1;
-    
-    itemDiv.innerHTML = `
-      <span class="drag-handle">☰</span>
-      <span class="hierarchy-number">${index + 1}</span>
-      <span class="class-name">${cls.name}</span>
-      ${isTerminal ? '<span class="terminal-badge">🎓 Terminal/Graduation Class</span>' : ''}
-    `;
-    
-    // Drag events
-    itemDiv.addEventListener('dragstart', handleDragStart);
-    itemDiv.addEventListener('dragover', handleDragOver);
-    itemDiv.addEventListener('drop', handleDrop);
-    itemDiv.addEventListener('dragend', handleDragEnd);
-    
-    listContainer.appendChild(itemDiv);
+  const isTerminal = index === orderedClasses.length - 1;
+  
+  itemDiv.innerHTML = `
+    <span class="drag-handle">☰</span>
+    <span class="hierarchy-number">${index + 1}</span>
+    <span class="class-name">${cls.name}</span>
+    ${isTerminal ? '<span class="terminal-badge">🎓 Terminal/Graduation Class</span>' : ''}
+  `;
+  
+  // NO INDIVIDUAL EVENT LISTENERS - using delegation instead!
+  listContainer.appendChild(itemDiv);
+});
+
+// CRITICAL FIX: Use event delegation on parent container
+// Add this AFTER the forEach loop, BEFORE the console.log
+
+// Remove old delegation if exists
+if (listContainer.dataset.delegationActive === 'true') {
+  console.log('⚠️ Event delegation already active, skipping');
+} else {
+  // Add single set of event listeners to container
+  listContainer.addEventListener('dragstart', function(e) {
+    if (e.target.classList.contains('hierarchy-item')) {
+      handleDragStart.call(e.target, e);
+    }
   });
   
-  console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
+  listContainer.addEventListener('dragover', function(e) {
+    const item = e.target.closest('.hierarchy-item');
+    if (item) {
+      handleDragOver.call(item, e);
+    }
+  });
+  
+  listContainer.addEventListener('drop', function(e) {
+    const item = e.target.closest('.hierarchy-item');
+    if (item) {
+      handleDrop.call(item, e);
+    }
+  });
+  
+  listContainer.addEventListener('dragend', function(e) {
+    if (e.target.classList.contains('hierarchy-item')) {
+      handleDragEnd.call(e.target, e);
+    }
+  });
+  
+  listContainer.dataset.delegationActive = 'true';
+  console.log('✓ Event delegation set up for class hierarchy');
 }
+
+console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
 
 // Drag and drop handlers - FIXED
 let draggedElement = null;
