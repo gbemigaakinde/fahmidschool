@@ -506,13 +506,22 @@ async function loadResults() {
 }
 
 /**
- * Load pupil fee balance
+ * Load pupil fee balance with detailed breakdown
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
     
     const feeSection = document.getElementById('fee-balance-section');
     if (!feeSection) return;
+    
+    // Show loading state
+    feeSection.style.display = 'block';
+    feeSection.innerHTML = `
+        <div style="text-align:center; padding:var(--space-2xl);">
+            <div class="spinner"></div>
+            <p>Loading fee information...</p>
+        </div>
+    `;
     
     try {
         const settings = await window.getCurrentSettings();
@@ -524,54 +533,135 @@ async function loadFeeBalance() {
         const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
         
         if (!paymentDoc.exists) {
-            // No fee structure configured for this class/term
-            feeSection.style.display = 'none';
+            // No fee structure configured
+            feeSection.innerHTML = `
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
+                        <i data-lucide="info"></i>
+                    </div>
+                    <div class="section-title">
+                        <h2>Fee Information</h2>
+                        <p>No fee structure configured for your class yet</p>
+                    </div>
+                </div>
+                <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+                    <p>Fee details will appear here once configured by the school administration.</p>
+                </div>
+            `;
             return;
         }
         
         const paymentData = paymentDoc.data();
-        
-        // Display fee summary
-        document.getElementById('fee-amount-due').textContent = 
-            `₦${(paymentData.amountDue || 0).toLocaleString()}`;
-        
-        document.getElementById('fee-total-paid').textContent = 
-            `₦${(paymentData.totalPaid || 0).toLocaleString()}`;
-        
         const balance = paymentData.balance || 0;
-        const balanceEl = document.getElementById('fee-balance');
-        balanceEl.textContent = `₦${balance.toLocaleString()}`;
         
-        // Color code balance
+        // Determine status color
+        let statusColor = '#f44336'; // Red (owing)
+        let statusText = 'Outstanding Balance';
+        let statusIcon = 'alert-circle';
+        
         if (balance <= 0) {
-            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)';
+            statusColor = '#4CAF50'; // Green (paid)
+            statusText = 'Fully Paid';
+            statusIcon = 'check-circle';
         } else if (balance < paymentData.amountDue) {
-            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)';
-        } else {
-            balanceEl.parentElement.style.background = 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)';
+            statusColor = '#ff9800'; // Orange (partial)
+            statusText = 'Partial Payment';
+            statusIcon = 'clock';
+        }
+        
+        // Build enhanced fee section
+        feeSection.innerHTML = `
+            <div class="section-header">
+                <div class="section-icon" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%);">
+                    <i data-lucide="${statusIcon}"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Fee Status</h2>
+                    <p style="color: ${statusColor}; font-weight: 600;">${statusText}</p>
+                </div>
+            </div>
+
+            <!-- Fee Summary Cards -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Fee</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${(paymentData.amountDue || 0).toLocaleString()}</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">${session} • ${term}</div>
+                </div>
+                
+                <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Amount Paid</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${(paymentData.totalPaid || 0).toLocaleString()}</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
+                        ${paymentData.totalPaid > 0 ? 'Last: ' + (paymentData.lastPaymentDate ? paymentData.lastPaymentDate.toDate().toLocaleDateString('en-GB') : 'N/A') : 'No payments yet'}
+                    </div>
+                </div>
+                
+                <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(${statusColor === '#4CAF50' ? '76, 175, 80' : '244, 67, 54'}, 0.3);">
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Balance</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${balance.toLocaleString()}</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
+                        ${balance > 0 ? 'Amount remaining' : 'All paid!'}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
+                <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                    Payment History
+                </h3>
+                <div id="payment-history-list" style="display: grid; gap: var(--space-md);">
+                    <div style="text-align:center; padding:var(--space-lg); color:var(--color-gray-600);">
+                        <div class="spinner" style="margin: 0 auto var(--space-sm);"></div>
+                        <p>Loading payment records...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Instructions -->
+            <div style="margin-top: var(--space-xl); padding: var(--space-lg); background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-sm); color: #0369a1; display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+                    Payment Information
+                </h4>
+                <p style="margin: 0; font-size: var(--text-sm); color: #0c4a6e; line-height: 1.6;">
+                    To make a payment, please visit the school office or contact the accounts department. 
+                    All payments will be reflected here within 24 hours of processing.
+                </p>
+            </div>
+        `;
+        
+        // Re-initialize Lucide icons for new elements
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
         }
         
         // Load payment history
         await loadPaymentHistory(session, term);
         
-        // Show section
-        feeSection.style.display = 'block';
-        
     } catch (error) {
         console.error('Error loading fee balance:', error);
-        feeSection.style.display = 'none';
+        feeSection.innerHTML = `
+            <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
+                <i data-lucide="alert-triangle" style="width: 48px; height: 48px; margin: 0 auto var(--space-md);"></i>
+                <p>Unable to load fee information. Please try again later.</p>
+            </div>
+        `;
     }
 }
 
 /**
- * Load payment history for pupil
+ * Load payment history with enhanced styling
  */
 async function loadPaymentHistory(session, term) {
     const container = document.getElementById('payment-history-list');
     if (!container || !currentPupilId) return;
     
     try {
-        const transactionsSnap = await db.collection('payment_transactions')
+        // Query transactions directly from Firestore
+        const transactionsSnap = await db.collection('transactions')
             .where('pupilId', '==', currentPupilId)
             .where('session', '==', session)
             .where('term', '==', term)
@@ -579,7 +669,15 @@ async function loadPaymentHistory(session, term) {
             .get();
         
         if (transactionsSnap.empty) {
-            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
+            container.innerHTML = `
+                <div style="text-align:center; padding:var(--space-xl); color:var(--color-gray-600); background: #f8fafc; border-radius: var(--radius-md);">
+                    <i data-lucide="inbox" style="width: 40px; height: 40px; margin: 0 auto var(--space-md); opacity: 0.5;"></i>
+                    <p style="margin: 0;">No payment history yet for this session</p>
+                </div>
+            `;
+            
+            // Re-init icons
+            if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
         
@@ -587,40 +685,79 @@ async function loadPaymentHistory(session, term) {
         
         transactionsSnap.forEach(doc => {
             const data = doc.data();
-            
             const paymentDate = data.paymentDate 
-                ? data.paymentDate.toDate().toLocaleDateString('en-GB')
+                ? data.paymentDate.toDate().toLocaleDateString('en-GB', { 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })
                 : 'N/A';
             
             const itemDiv = document.createElement('div');
             itemDiv.style.cssText = `
                 padding: var(--space-md);
-                background: white;
-                border: 1px solid var(--color-gray-300);
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
                 border-radius: var(--radius-md);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                transition: all 0.2s ease;
             `;
             
             itemDiv.innerHTML = `
-                <div>
-                    <div style="font-weight: 600; margin-bottom: var(--space-xs);">₦${parseFloat(data.amountPaid).toLocaleString()}</div>
-                    <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
-                        ${paymentDate} • ${data.paymentMethod || 'Cash'} • Receipt #${data.receiptNo}
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
+                        ₦${parseFloat(data.amountPaid).toLocaleString()}
+                    </div>
+                    <div style="font-size: var(--text-sm); color: #64748b; display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                            <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                            ${paymentDate}
+                        </span>
+                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                            <i data-lucide="${data.paymentMethod === 'cash' ? 'banknote' : 'credit-card'}" style="width: 14px; height: 14px;"></i>
+                            ${data.paymentMethod || 'Cash'}
+                        </span>
+                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                            <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+                            ${data.receiptNo}
+                        </span>
                     </div>
                 </div>
-                <button class="btn-small btn-secondary" onclick="viewReceipt('${data.receiptNo}')">
+                <button class="btn-small btn-secondary" onclick="viewReceipt('${data.receiptNo}')" style="white-space: nowrap;">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
                     View Receipt
                 </button>
             `;
             
+            // Hover effect
+            itemDiv.onmouseenter = () => {
+                itemDiv.style.background = 'white';
+                itemDiv.style.borderColor = '#cbd5e1';
+                itemDiv.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
+            };
+            itemDiv.onmouseleave = () => {
+                itemDiv.style.background = '#f8fafc';
+                itemDiv.style.borderColor = '#e2e8f0';
+                itemDiv.style.boxShadow = 'none';
+            };
+            
             container.appendChild(itemDiv);
         });
         
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+        
     } catch (error) {
         console.error('Error loading payment history:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
+        container.innerHTML = `
+            <div style="text-align:center; padding:var(--space-lg); color:var(--color-danger); background: #fef2f2; border-radius: var(--radius-md);">
+                <p style="margin: 0;">Error loading payment history</p>
+            </div>
+        `;
     }
 }
 
@@ -916,6 +1053,21 @@ async function loadSessionResults() {
 
 // Make function globally available
 window.loadSessionResults = loadSessionResults;
+
+/**
+ * Scroll to fee balance section smoothly
+ */
+function scrollToFees() {
+  const feeSection = document.getElementById('fee-balance-section');
+  if (feeSection) {
+    feeSection.style.display = 'block';
+    feeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.showToast?.('📊 Viewing fee balance', 'info', 2000);
+  }
+}
+
+// Make function globally available
+window.scrollToFees = scrollToFees;
 
 // ============================================
 // GRADE CALCULATION
