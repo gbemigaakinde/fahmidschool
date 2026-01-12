@@ -2073,6 +2073,7 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
+    // FIXED: Remove orderBy to avoid index requirement
     const snapshot = await db.collection('pupils').get();
     tbody.innerHTML = '';
 
@@ -2091,7 +2092,8 @@ async function loadPupils() {
       pupils.push({ id: doc.id, ...doc.data() });
     });
 
-    pupils.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort in JavaScript instead of Firestore
+    pupils.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // Show bulk actions bar
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
