@@ -7375,9 +7375,5 @@ window.adminDebug = {
   }
 };
 
-console.log('--------------------------------------------------');
-console.log('✓ Admin portal script loaded');
-console.log('💡 Type adminDebug.checkStatus() to see status');
-console.log('💡 Type adminDebug.showSection("dashboard") to manually load dashboard');
-console.log('💡 Type adminDebug.testDashboard() to test data loading');
-console.log('--------------------------------------------------');
+console.log('--- Admin portal loaded ---');
+console.log('Debug helpers: checkStatus(), showSection("dashboard"), testDashboard()');
