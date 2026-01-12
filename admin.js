@@ -7375,10 +7375,9 @@ window.adminDebug = {
   }
 };
 
-console.log('═'.repeat(60));
-console.log('✓ Admin portal script loaded successfully');
-console.log('💡 Debug helpers:');
-console.log('   → adminDebug.checkStatus()          → Check initialization status');
-console.log('   → adminDebug.showSection("dashboard") → Force-load dashboard');
-console.log('   → adminDebug.testDashboard()       → Test stats/data loading');
-console.log('═'.repeat(60));
+console.log('--------------------------------------------------');
+console.log('✓ Admin portal script loaded');
+console.log('💡 Type adminDebug.checkStatus() to see status');
+console.log('💡 Type adminDebug.showSection("dashboard") to manually load dashboard');
+console.log('💡 Type adminDebug.testDashboard() to test data loading');
+console.log('--------------------------------------------------');
