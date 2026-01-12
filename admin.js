@@ -3662,10 +3662,6 @@ async function approvePromotion() {
   }
 }
 
-/**
- * FIXED: Execute Promotion with Rollback Safety
- * Executes promotion in smaller chunks with rollback capability
- */
 async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
   const promotionDoc = await db.collection('promotions').doc(promotionId).get();
   
@@ -3679,65 +3675,32 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
-  // SAFETY: Create snapshot before executing
-  const executionSnapshot = {
-    promotionId: promotionId,
-    executedAt: new Date().toISOString(),
-    promotedPupils: promotedPupils,
-    heldBackPupils: heldBackPupils,
-    manualOverrides: manualOverrides,
-    status: 'in_progress'
-  };
-  
-  // Store snapshot for rollback capability
-  await db.collection('promotion_snapshots').doc(promotionId).set(executionSnapshot);
-  
-  const BATCH_SIZE = 400;
+  // CRITICAL FIX: Proper batch size limit
+  const BATCH_SIZE = 400; // Safe limit under Firestore's 500
   let currentBatch = db.batch();
   let operationCount = 0;
   let batchNumber = 1;
   let totalOperations = 0;
-  
-  // Track all batches for potential rollback
-  const committedBatches = [];
 
+  // Helper function to commit current batch safely
   async function commitCurrentBatch() {
     if (operationCount > 0) {
-      console.log(`Committing batch ${batchNumber} with ${operationCount} operations...`);
+      console.log(`📦 Committing batch ${batchNumber} with ${operationCount} operations...`);
       
       try {
         await currentBatch.commit();
-        console.log(`✓ Batch ${batchNumber} committed successfully`);
-        
-        committedBatches.push({
-          batchNumber: batchNumber,
-          operations: operationCount,
-          timestamp: new Date().toISOString()
-        });
+        console.log(`✅ Batch ${batchNumber} committed successfully`);
         
         batchNumber++;
         currentBatch = db.batch();
         operationCount = 0;
         
-        // Update progress in snapshot
-        await db.collection('promotion_snapshots').doc(promotionId).update({
-          lastCompletedBatch: batchNumber - 1,
-          totalOperationsCompleted: totalOperations
-        });
+        // Small delay between batches to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
-        // CRITICAL: Batch failed - log and throw
         console.error(`❌ Batch ${batchNumber} failed:`, error);
-        
-        await db.collection('promotion_snapshots').doc(promotionId).update({
-          status: 'failed',
-          failedAt: new Date().toISOString(),
-          failedBatch: batchNumber,
-          error: error.message,
-          successfulBatches: committedBatches
-        });
-        
-        throw new Error(`Promotion failed at batch ${batchNumber}. ${committedBatches.length} batches completed successfully. Contact admin for manual recovery.`);
+        throw new Error(`Promotion failed at batch ${batchNumber}. Error: ${error.message}`);
       }
     }
   }
@@ -3751,15 +3714,15 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     }
   }
 
-  // Handle promoted pupils
-  console.log(`Processing ${promotedPupils.length} promoted pupils...`);
+  // Process promoted pupils
+  console.log(`📝 Processing ${promotedPupils.length} promoted pupils...`);
   
   for (const pupilId of promotedPupils) {
     const pupilRef = db.collection('pupils').doc(pupilId);
     const pupilDoc = await pupilRef.get();
     
     if (!pupilDoc.exists) {
-      console.warn(`Pupil ${pupilId} not found, skipping`);
+      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
       continue;
     }
     
@@ -3802,21 +3765,21 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       totalOperations++;
     }
     
-    // Check if we need to commit this batch
+    // Commit if batch is full
     if (operationCount >= BATCH_SIZE) {
       await commitCurrentBatch();
     }
   }
 
-  // Handle held back pupils
-  console.log(`Processing ${heldBackPupils.length} held back pupils...`);
+  // Process held back pupils
+  console.log(`📝 Processing ${heldBackPupils.length} held back pupils...`);
   
   for (const pupilId of heldBackPupils) {
     const pupilRef = db.collection('pupils').doc(pupilId);
     const pupilDoc = await pupilRef.get();
     
     if (!pupilDoc.exists) {
-      console.warn(`Pupil ${pupilId} not found, skipping`);
+      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
       continue;
     }
     
@@ -3839,15 +3802,15 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     }
   }
 
-  // Handle manual overrides
-  console.log(`Processing ${manualOverrides.length} manual overrides...`);
+  // Process manual overrides
+  console.log(`📝 Processing ${manualOverrides.length} manual overrides...`);
   
   for (const override of manualOverrides) {
     const pupilRef = db.collection('pupils').doc(override.pupilId);
     const pupilDoc = await pupilRef.get();
     
     if (!pupilDoc.exists) {
-      console.warn(`Pupil ${override.pupilId} not found, skipping`);
+      console.warn(`⚠️ Pupil ${override.pupilId} not found, skipping`);
       continue;
     }
     
@@ -3916,16 +3879,12 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
   // Commit final batch
   await commitCurrentBatch();
   
-  // Update snapshot to completed
-  await db.collection('promotion_snapshots').doc(promotionId).update({
-    status: 'completed',
-    completedAt: new Date().toISOString(),
-    totalBatches: batchNumber - 1,
-    totalOperations: totalOperations
-  });
-  
-  console.log(`✓ Promotion completed: ${promotedPupils.length} promoted, ${heldBackPupils.length} held back, ${manualOverrides.length} overrides`);
-  console.log(`✓ Total batches: ${batchNumber - 1}, Total operations: ${totalOperations}`);
+  console.log(`✅ Promotion completed successfully!`);
+  console.log(`   - ${promotedPupils.length} pupils promoted`);
+  console.log(`   - ${heldBackPupils.length} pupils held back`);
+  console.log(`   - ${manualOverrides.length} manual overrides`);
+  console.log(`   - Total batches: ${batchNumber - 1}`);
+  console.log(`   - Total operations: ${totalOperations}`);
 }
 
 async function rejectPromotion() {
@@ -6717,7 +6676,10 @@ async function bulkReassignClass(pupilIds) {
     classOptions += `<option value="${doc.id}">${data.name}</option>`;
   });
   
+  // Create modal with unique ID
+  const modalId = 'bulk-reassign-modal-' + Date.now();
   const modal = document.createElement('div');
+  modal.id = modalId;
   modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000;';
   modal.innerHTML = `
     <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:500px; width:90%;">
@@ -6725,12 +6687,12 @@ async function bulkReassignClass(pupilIds) {
       <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
         Select the new class for the selected pupils. Their subjects and teacher will be updated automatically.
       </p>
-      <select id="bulk-class-select" style="width:100%; padding:var(--space-sm); margin-bottom:var(--space-lg);">
+      <select id="bulk-class-select-${modalId}" style="width:100%; padding:var(--space-sm); margin-bottom:var(--space-lg);">
         ${classOptions}
       </select>
       <div style="display:flex; gap:var(--space-md); justify-content:flex-end;">
-        <button class="btn btn-secondary" onclick="this.closest('[style*=position]').remove()">Cancel</button>
-        <button class="btn btn-primary" onclick="executeBulkReassign(${JSON.stringify(pupilIds)}, this)">
+        <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+        <button class="btn btn-primary" data-action="confirm">
           Reassign All
         </button>
       </div>
@@ -6738,6 +6700,103 @@ async function bulkReassignClass(pupilIds) {
   `;
   
   document.body.appendChild(modal);
+  
+  // CRITICAL FIX: Cleanup function
+  const cleanup = () => {
+    modal.remove();
+    document.removeEventListener('keydown', escapeHandler);
+    console.log('✓ Modal cleaned up');
+  };
+  
+  // Escape key handler
+  const escapeHandler = (e) => {
+    if (e.key === 'Escape') {
+      cleanup();
+    }
+  };
+  document.addEventListener('keydown', escapeHandler);
+  
+  // Button handlers
+  modal.querySelector('[data-action="cancel"]').onclick = cleanup;
+  
+  modal.querySelector('[data-action="confirm"]').onclick = async function() {
+    const selectId = `bulk-class-select-${modalId}`;
+    const newClassId = document.getElementById(selectId)?.value;
+    
+    if (!newClassId) {
+      window.showToast?.('Please select a class', 'warning');
+      return;
+    }
+    
+    this.disabled = true;
+    this.innerHTML = '<span class="btn-loading">Reassigning...</span>';
+    
+    try {
+      // Get new class details
+      const classDoc = await db.collection('classes').doc(newClassId).get();
+      if (!classDoc.exists) {
+        throw new Error('Class not found');
+      }
+      
+      const classData = classDoc.data();
+      
+      // Get teacher info
+      let teacherId = classData.teacherId || '';
+      let teacherName = classData.teacherName || '';
+      
+      if (teacherId && !teacherName) {
+        const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+        if (teacherDoc.exists) {
+          teacherName = teacherDoc.data().name || '';
+        }
+      }
+      
+      // Batch update pupils (with proper chunking)
+      const BATCH_SIZE = 450;
+      let batch = db.batch();
+      let count = 0;
+      
+      for (const pupilId of pupilIds) {
+        const pupilRef = db.collection('pupils').doc(pupilId);
+        
+        batch.update(pupilRef, {
+          'class.id': newClassId,
+          'class.name': classData.name,
+          subjects: classData.subjects || [],
+          'assignedTeacher.id': teacherId,
+          'assignedTeacher.name': teacherName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        count++;
+        
+        if (count >= BATCH_SIZE) {
+          await batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      }
+      
+      if (count > 0) {
+        await batch.commit();
+      }
+      
+      window.showToast?.(
+        `✓ Successfully reassigned ${pupilIds.length} pupil(s) to ${classData.name}`,
+        'success',
+        5000
+      );
+      
+      cleanup();
+      await loadPupils();
+      
+    } catch (error) {
+      console.error('Bulk reassign error:', error);
+      window.handleError?.(error, 'Failed to reassign pupils');
+      this.disabled = false;
+      this.innerHTML = 'Reassign All';
+    }
+  };
 }
 
 async function executeBulkReassign(pupilIds, btn) {
