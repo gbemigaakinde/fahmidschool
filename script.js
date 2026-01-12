@@ -247,65 +247,70 @@ function initSmoothScroll() {
 ===================================================== */
 
 /**
- * FIXED: Toast notifications with null checks
+ * FIXED: Toast notifications with proper DOM readiness check
  */
 window.showToast = function (message, type = 'info', duration = 3000) {
-    let container = document.getElementById('toast-container');
-
-    // Create container if it doesn't exist
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.setAttribute('aria-live', 'polite');
-        container.setAttribute('aria-atomic', 'true');
-        
-        // Check if body exists before appending
-        if (document.body) {
-            document.body.appendChild(container);
-        } else {
-            console.error('document.body not available for toast container');
-            return;
-        }
+  // CRITICAL FIX: Check if DOM is ready first
+  if (!document.body) {
+    console.warn('⚠️ Toast called before DOM ready, queueing:', message);
+    
+    // Queue the toast to run after DOM loads
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        window.showToast(message, type, duration);
+      }, { once: true });
     }
+    return;
+  }
 
-    // Create the toast element
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.setAttribute('role', 'alert');
+  let container = document.getElementById('toast-container');
 
-    // Add icons based on type
-    const icons = {
-        success: '✓',
-        danger: '✕',
-        warning: '⚠',
-        info: 'ℹ'
-    };
+  // Create container if it doesn't exist
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.setAttribute('aria-live', 'polite');
+    container.setAttribute('aria-atomic', 'true');
+    document.body.appendChild(container);
+  }
 
-    if (icons[type]) {
-        const icon = document.createElement('span');
-        icon.textContent = icons[type] + ' ';
-        icon.style.fontSize = '1.2em';
-        toast.appendChild(icon);
-    }
+  // Create the toast element
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.setAttribute('role', 'alert');
 
-    // Add message text
-    toast.appendChild(document.createTextNode(message));
-    container.appendChild(toast);
+  // Add icons based on type
+  const icons = {
+    success: '✓',
+    danger: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  };
 
-    // Trigger CSS slide-in
-    requestAnimationFrame(() => toast.classList.add('show'));
+  if (icons[type]) {
+    const icon = document.createElement('span');
+    icon.textContent = icons[type] + ' ';
+    icon.style.fontSize = '1.2em';
+    toast.appendChild(icon);
+  }
 
-    // Automatically hide after duration
-    const slideOutDuration = 300; // matches CSS slide-out animation
+  // Add message text
+  toast.appendChild(document.createTextNode(message));
+  container.appendChild(toast);
+
+  // Trigger CSS slide-in
+  requestAnimationFrame(() => toast.classList.add('show'));
+
+  // Automatically hide after duration
+  const slideOutDuration = 300;
+  setTimeout(() => {
+    toast.classList.remove('show');
     setTimeout(() => {
-        toast.classList.remove('show'); // trigger slide-out
-        // Remove from DOM after animation ends
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
-            }
-        }, slideOutDuration);
-    }, duration);
+      if (toast.parentNode) {
+        toast.remove();
+      }
+    }, slideOutDuration);
+  }, duration);
 };
 
 /* =====================================================
@@ -375,13 +380,29 @@ window.addEventListener('unhandledrejection', e => {
    ACCESSIBILITY: KEYBOARD NAVIGATION
 ===================================================== */
 
-document.body.addEventListener('keydown', e => {
-    if (e.key === 'Tab') document.body.classList.add('keyboard-nav');
-});
+/**
+ * FIXED: Keyboard navigation with DOM readiness check
+ */
+function initKeyboardNavigation() {
+  if (!document.body) {
+    console.warn('⚠️ Body not ready for keyboard nav, waiting...');
+    document.addEventListener('DOMContentLoaded', initKeyboardNavigation, { once: true });
+    return;
+  }
 
-document.body.addEventListener('mousedown', () => {
+  document.body.addEventListener('keydown', e => {
+    if (e.key === 'Tab') document.body.classList.add('keyboard-nav');
+  });
+
+  document.body.addEventListener('mousedown', () => {
     document.body.classList.remove('keyboard-nav');
-});
+  });
+  
+  console.log('✓ Keyboard navigation initialized');
+}
+
+// Initialize immediately or wait for DOM
+initKeyboardNavigation();
 
 /* =====================================================
    UTILITY FUNCTIONS
