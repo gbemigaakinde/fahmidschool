@@ -619,8 +619,39 @@ button[onclick="exportPupilResults()"]:hover {
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="result-locking.js"></script>
+
+<!-- Load Lucide Icons Library FIRST -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Initialize Lucide Icons IMMEDIATELY After Loading -->
+<script>
+  // Early initialization to prevent race conditions
+  if (typeof lucide !== 'undefined') {
+    console.log('✓ Lucide library loaded');
+    
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        console.log('✓ Lucide icons initialized (DOMContentLoaded)');
+      });
+    } else {
+      // DOM already ready
+      lucide.createIcons();
+      console.log('✓ Lucide icons initialized (immediate)');
+    }
+  } else {
+    console.error('❌ Lucide library failed to load');
+  }
+</script>
+
+<!-- THEN load Firebase and app scripts -->
+<script src="firebase-init.js"></script>
+<script src="class-hierarchy.js"></script>
+<script src="pupils-export.js"></script>
+<script src="admin.js"></script>
+<script src="script.js"></script>
+  <script src="result-locking.js"></script>
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -1932,12 +1963,6 @@ button[onclick="exportPupilResults()"]:hover {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
-    <!-- School Scripts -->
-    <script src="firebase-init.js"></script>
-    <script src="class-hierarchy.js"></script>
-    <script src="pupils-export.js"></script>
-    <script src="admin.js"></script>
-    <script src="script.js"></script>
     <!-- Optimization Scripts -->
 <script src="session-cache.js"></script>
 <script src="button-loader.js"></script>
