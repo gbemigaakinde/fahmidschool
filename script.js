@@ -380,13 +380,13 @@ window.addEventListener('unhandledrejection', e => {
    ACCESSIBILITY: KEYBOARD NAVIGATION
 ===================================================== */
 
-/**
- * FIXED: Keyboard navigation with DOM readiness check
- */
+// FIXED: Wait for body to be available
 function initKeyboardNavigation() {
   if (!document.body) {
-    console.warn('⚠️ Body not ready for keyboard nav, waiting...');
-    document.addEventListener('DOMContentLoaded', initKeyboardNavigation, { once: true });
+    // Wait for DOM if body isn't ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initKeyboardNavigation, { once: true });
+    }
     return;
   }
 
@@ -397,11 +397,9 @@ function initKeyboardNavigation() {
   document.body.addEventListener('mousedown', () => {
     document.body.classList.remove('keyboard-nav');
   });
-  
-  console.log('✓ Keyboard navigation initialized');
 }
 
-// Initialize immediately or wait for DOM
+// Initialize keyboard navigation
 initKeyboardNavigation();
 
 /* =====================================================
