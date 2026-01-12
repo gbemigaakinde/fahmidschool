@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Main JavaScript File – FIXED VERSION
- *
+ * 
  * Handles:
  * - Hamburger menu toggle (public, admin, teacher portals)
  * - Gallery lightbox
