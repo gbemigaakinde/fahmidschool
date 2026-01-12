@@ -3866,10 +3866,16 @@ window.approveResultSubmission = approveResultSubmission;
 window.rejectResultSubmission = rejectResultSubmission;
 
 /* ========================================
-INITIALIZATION
+   INITIALIZATION
 ======================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 Admin portal initializing...');
+  
+  // CRITICAL FIX: Initialize navigation FIRST
+  initializeSidebarNavigation();
+  
+  // Show dashboard by default
   showSection('dashboard');
   
   // Set maximum date for date of birth (today's date)
@@ -3886,8 +3892,113 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize class hierarchy if it doesn't exist
   await window.classHierarchy.initializeClassHierarchy();
   
-  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+  console.log('✓ Admin portal initialized successfully (v6.4.0 - SIDEBAR FIXED)');
 });
+
+/**
+ * FIXED: Initialize Sidebar Navigation
+ * Handles all sidebar link clicks and group toggles
+ */
+function initializeSidebarNavigation() {
+  console.log('🔗 Initializing sidebar navigation...');
+  
+  // ============================================
+  // SECTION NAVIGATION LINKS
+  // ============================================
+  const sectionLinks = document.querySelectorAll('.sidebar-link[data-section]');
+  
+  sectionLinks.forEach(link => {
+    // Remove any existing listeners by cloning
+    const newLink = link.cloneNode(true);
+    link.parentNode.replaceChild(newLink, link);
+    
+    // Add single click handler
+    newLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const sectionId = this.dataset.section;
+      
+      if (!sectionId) {
+        console.warn('No section ID found for link:', this);
+        return;
+      }
+      
+      console.log(`📍 Navigating to section: ${sectionId}`);
+      
+      // Update active state
+      document.querySelectorAll('.sidebar-link').forEach(l => {
+        l.classList.remove('active');
+      });
+      this.classList.add('active');
+      
+      // Show the section
+      if (typeof window.showSection === 'function') {
+        window.showSection(sectionId);
+      } else {
+        console.error('showSection function not found!');
+      }
+    });
+  });
+  
+  console.log(`✓ Registered ${sectionLinks.length} section navigation links`);
+  
+  // ============================================
+  // GROUP TOGGLES
+  // ============================================
+  const groupToggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+  
+  groupToggles.forEach(toggle => {
+    // Remove any existing listeners by cloning
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Add single click handler
+    newToggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const content = this.nextElementSibling;
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      // Toggle state
+      this.setAttribute('aria-expanded', !isExpanded);
+      content.classList.toggle('active');
+      
+      // Rotate chevron icon
+      const chevron = this.querySelector('.toggle-icon');
+      if (chevron) {
+        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+      
+      console.log(`🔽 Toggled group: ${this.dataset.group} (expanded: ${!isExpanded})`);
+    });
+  });
+  
+  console.log(`✓ Registered ${groupToggles.length} group toggle buttons`);
+  
+  // ============================================
+  // LOGOUT BUTTON
+  // ============================================
+  const logoutBtn = document.getElementById('admin-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('🚪 Logout clicked');
+      if (typeof window.logout === 'function') {
+        window.logout();
+      } else {
+        console.error('logout function not found!');
+      }
+    });
+    console.log('✓ Logout button registered');
+  }
+  
+  console.log('✅ Sidebar navigation initialization complete');
+}
+
+// Make function globally available
+window.initializeSidebarNavigation = initializeSidebarNavigation;
 
 /* ======================================== 
    CLASS HIERARCHY MANAGEMENT
