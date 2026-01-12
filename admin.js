@@ -44,12 +44,12 @@ let domReady = false;
 
 function tryInitialize() {
   if (authUser && domReady) {
-    console.log('✅ Both auth and DOM ready - initializing admin portal');
+    console.log('✅ Both auth and DOM ready - initializing');
     initializeAdminPortal();
   }
 }
 
-// Step 1: Check authentication
+// Wait for authentication
 window.checkRole('admin')
   .then(async user => {
     console.log('✓ Admin authenticated:', user.email);
@@ -60,7 +60,7 @@ window.checkRole('admin')
     console.error('❌ Authentication failed:', err);
   });
 
-// Step 2: Wait for DOM
+// Wait for DOM
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     console.log('✓ DOM ready');
@@ -186,111 +186,84 @@ let isLoadingAdminData = false;
 function setupSidebarNavigation() {
   console.log('🔧 Setting up admin sidebar navigation...');
   
-  // CRITICAL FIX: Wait for DOM to be fully ready
-  if (document.readyState === 'loading') {
-    console.warn('⏳ DOM not ready yet, deferring sidebar setup');
-    document.addEventListener('DOMContentLoaded', setupSidebarNavigation);
-    return;
-  }
-  
   // Prevent double initialization
   if (window.adminSidebarInitialized) {
     console.log('⚠️ Sidebar already initialized, skipping');
     return;
   }
   
-  // CRITICAL: Verify sidebar exists
+  const hamburger = document.getElementById('hamburger');
   const sidebar = document.getElementById('admin-sidebar');
-  if (!sidebar) {
-    console.error('❌ Sidebar element not found!');
-    // Retry after delay
-    setTimeout(() => {
-      console.log('⏳ Retrying sidebar setup...');
-      setupSidebarNavigation();
-    }, 200);
+  
+  if (!hamburger || !sidebar) {
+    console.error('❌ Hamburger or sidebar not found!');
     return;
   }
   
-  // Get all navigation links
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`📋 Found ${links.length} navigation links`);
+  // Toggle sidebar on hamburger click
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isActive = sidebar.classList.toggle('active');
+    hamburger.classList.toggle('active', isActive);
+    hamburger.setAttribute('aria-expanded', isActive);
+    document.body.style.overflow = isActive ? 'hidden' : '';
+  });
   
-  if (links.length === 0) {
-    console.error('❌ CRITICAL: No navigation links found!');
-    return;
-  }
-  
-  // Setup each link with clean event handlers
-  links.forEach((link) => {
-    const sectionId = link.dataset.section;
-    
-    if (!sectionId) {
-      console.warn('⚠️ Link missing data-section:', link);
-      return;
+  // Close sidebar when clicking outside
+  document.addEventListener('click', (e) => {
+    if (sidebar.classList.contains('active') && 
+        !sidebar.contains(e.target) && 
+        !hamburger.contains(e.target)) {
+      sidebar.classList.remove('active');
+      hamburger.classList.remove('active');
+      hamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
     }
-    
-    // Remove any existing handlers by cloning (prevents duplicates)
-    const newLink = link.cloneNode(true);
-    link.parentNode.replaceChild(newLink, link);
-    
-    // Add single click handler
-    newLink.addEventListener('click', function(e) {
+  });
+  
+  // Close sidebar on link click (mobile)
+  sidebar.querySelectorAll('a[data-section]').forEach(link => {
+    link.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
+      const sectionId = link.dataset.section;
       
-      console.log(`🖱️ Navigation click: ${sectionId}`);
+      if (!sectionId) return;
       
-      // Check if data is loading
-      if (isLoadingAdminData) {
-        window.showToast?.('Loading data, please wait...', 'info', 2000);
-        return;
-      }
+      console.log(`📍 Navigating to: ${sectionId}`);
       
       // Update active state
-      document.querySelectorAll('.sidebar-link').forEach(l => {
-        l.classList.remove('active');
-      });
-      this.classList.add('active');
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
       
-      // Navigate to section
+      // Show section
       showSection(sectionId);
+      
+      // Close mobile sidebar
+      if (window.innerWidth <= 1024) {
+        sidebar.classList.remove('active');
+        hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
     });
   });
   
-  // Setup group toggles
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`🔽 Found ${toggles.length} group toggles`);
-  
-  toggles.forEach((toggle) => {
-    // Remove any existing handlers
-    const newToggle = toggle.cloneNode(true);
-    toggle.parentNode.replaceChild(newToggle, toggle);
-    
-    newToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      if (!content) return;
-      
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      
-      // Toggle state
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-      
-      // Rotate icon
-      const icon = this.querySelector('.toggle-icon');
-      if (icon) {
-        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        hamburger.classList.remove('active');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
       }
-      
-      console.log(`🔽 Toggled group: ${isExpanded ? 'closed' : 'opened'}`);
-    });
+    }, 250);
   });
   
   window.adminSidebarInitialized = true;
-  console.log('✅ Admin sidebar navigation initialized successfully');
+  console.log('✅ Admin sidebar navigation initialized');
 }
 
 // ============================================
@@ -1171,51 +1144,31 @@ window.toggleSidebarGroup = toggleSidebarGroup;
 async function loadDashboardStats() {
   console.log('📊 Loading dashboard stats...');
   
-  // CRITICAL: Check if elements exist
+  // Wait a bit for DOM to be ready
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
   const teacherCount = document.getElementById('teacher-count');
   const pupilCount = document.getElementById('pupil-count');
   const classCount = document.getElementById('class-count');
   const announceCount = document.getElementById('announce-count');
   
   if (!teacherCount || !pupilCount || !classCount || !announceCount) {
-    console.error('❌ Dashboard stat elements missing!', {
-      teacherCount: !!teacherCount,
-      pupilCount: !!pupilCount,
-      classCount: !!classCount,
-      announceCount: !!announceCount
-    });
-    
-    // Retry after delay if elements missing
-    setTimeout(() => {
-      console.log('⏳ Retrying dashboard stats...');
-      loadDashboardStats();
-    }, 100);
+    console.error('❌ Dashboard stat elements missing!');
     return;
   }
   
-  // Set loading state
-  [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
-    if (el) el.innerHTML = '<div class="spinner" style="width:20px; height:20px; margin:0 auto;"></div>';
-  });
+  // Show loading state
+  teacherCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+  pupilCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+  classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+  announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   
   try {
-    console.log('  → Fetching teachers...');
     const teachersSnap = await db.collection('teachers').get();
-    console.log(`  ✓ Teachers: ${teachersSnap.size}`);
-    
-    console.log('  → Fetching pupils...');
     const pupilsSnap = await db.collection('pupils').get();
-    console.log(`  ✓ Pupils: ${pupilsSnap.size}`);
-    
-    console.log('  → Fetching classes...');
     const classesSnap = await db.collection('classes').get();
-    console.log(`  ✓ Classes: ${classesSnap.size}`);
-    
-    console.log('  → Fetching announcements...');
     const announcementsSnap = await db.collection('announcements').get();
-    console.log(`  ✓ Announcements: ${announcementsSnap.size}`);
     
-    // Update display
     teacherCount.textContent = teachersSnap.size;
     pupilCount.textContent = pupilsSnap.size;
     classCount.textContent = classesSnap.size;
@@ -1223,17 +1176,14 @@ async function loadDashboardStats() {
     
     console.log('✅ Dashboard stats loaded successfully');
     
-    // Check session status
-    await checkSessionStatus();
-    
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics', 'danger');
     
-    // Set error state
-    [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
-      if (el) el.textContent = '!';
-    });
+    teacherCount.textContent = '!';
+    pupilCount.textContent = '!';
+    classCount.textContent = '!';
+    announceCount.textContent = '!';
   }
 }
 
