@@ -6424,8 +6424,15 @@ if (owingEl) {
     owingEl.textContent = summary?.noPayment ?? 0;
 }
         // Session / term display
-        document.getElementById('report-session-display')?.textContent = settings.session || '—';
-        document.getElementById('report-term-display')?.textContent    = settings.term    || '—';
+const sessionEl = document.getElementById('report-session-display');
+if (sessionEl) {
+    sessionEl.textContent = settings?.session || '—';
+}
+
+const termEl = document.getElementById('report-term-display');
+if (termEl) {
+    termEl.textContent = settings?.term || '—';
+}
 
     } catch (error) {
         console.error('Error loading financial reports:', error);
