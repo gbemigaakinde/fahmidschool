@@ -81,10 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/* =====================================================
-   MAIN INITIALIZATION FUNCTION
-===================================================== */
+// ============================================
+// INITIALIZATION WITH DATA LOADING
+// ============================================
 
+/**
+ * Initialize admin portal with proper loading sequence
+ * Replace initializeAdminPortal function (around line 100)
+ */
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
   
@@ -100,7 +104,7 @@ async function initializeAdminPortal() {
       dashboard: !!dashboard
     });
     
-    // Retry after short delay if elements missing
+    // Retry after short delay
     setTimeout(() => {
       console.log('⏳ Retrying initialization...');
       initializeAdminPortal();
@@ -110,13 +114,44 @@ async function initializeAdminPortal() {
   
   console.log('✓ All critical elements found');
   
-  // Step 1: Setup sidebar navigation
+  // Step 1: Setup sidebar FIRST
   setupSidebarNavigation();
   
   // Step 2: Setup hamburger menu
   setupHamburgerMenu();
   
-  // Step 3: Initialize class hierarchy
+  // Step 3: Mark data as loading
+  isLoadingAdminData = true;
+  
+  // Step 4: Load initial data
+  try {
+    console.log('📊 Loading initial admin data...');
+    
+    // Load essential data first
+    await loadDashboardStats();
+    
+    // Mark data as loaded
+    adminDataLoaded = true;
+    isLoadingAdminData = false;
+    
+    console.log('✓ Admin data loaded successfully');
+    
+  } catch (error) {
+    console.error('❌ Failed to load admin data:', error);
+    isLoadingAdminData = false;
+    adminDataLoaded = false;
+    
+    window.showToast?.(
+      'Some data failed to load. Some features may be unavailable.',
+      'warning',
+      6000
+    );
+  }
+  
+  // Step 5: Show dashboard
+  showSection('dashboard');
+  
+  // Step 6: Initialize class hierarchy
   try {
     await window.classHierarchy.initializeClassHierarchy();
     console.log('✓ Class hierarchy initialized');
@@ -124,69 +159,38 @@ async function initializeAdminPortal() {
     console.error('⚠️ Class hierarchy init failed:', error);
   }
   
-  // Step 4: Load dashboard
-  showSection('dashboard');
-  
-  // Step 5: Setup date input max date
-  const dobInput = document.getElementById('pupil-dob');
-  if (dobInput) {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const maxDate = `${year}-${month}-${day}`;
-    dobInput.setAttribute('max', maxDate);
-  }
-  
   console.log('✅ Admin portal initialized successfully');
-}
-
-function setupHamburgerMenu() {
-  const hamburger = document.getElementById('hamburger');
-  const sidebar = document.getElementById('admin-sidebar');
-  
-  if (!hamburger || !sidebar) {
-    console.warn('Hamburger or sidebar not found');
-    return;
-  }
-  
-  // Remove any existing listeners by cloning
-  const newHamburger = hamburger.cloneNode(true);
-  hamburger.parentNode.replaceChild(newHamburger, hamburger);
-  
-  // Add click handler
-  newHamburger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isActive = sidebar.classList.toggle('active');
-    newHamburger.classList.toggle('active', isActive);
-    newHamburger.setAttribute('aria-expanded', isActive);
-    document.body.style.overflow = isActive ? 'hidden' : '';
-  });
-  
-  // Close on outside click
-  document.addEventListener('click', (e) => {
-    if (sidebar.classList.contains('active') && 
-        !sidebar.contains(e.target) && 
-        !newHamburger.contains(e.target)) {
-      sidebar.classList.remove('active');
-      newHamburger.classList.remove('active');
-      newHamburger.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-    }
-  });
-  
-  console.log('✓ Hamburger menu initialized');
 }
 
 /* =====================================================
    SIDEBAR NAVIGATION - COMPLETE REWRITE
 ===================================================== */
 
+/**
+ * FIXED ADMIN SIDEBAR NAVIGATION
+ * Following the same robust pattern as teacher portal
+ * 
+ * Replace the setupSidebarNavigation() function in admin.js (lines 168-265)
+ */
+
+// ============================================
+// LOADING STATE FLAGS (Add at top of admin.js after line 20)
+// ============================================
+let adminDataLoaded = false;
+let isLoadingAdminData = false;
+
+// ============================================
+// SIDEBAR NAVIGATION SETUP (Replaces lines 168-265)
+// ============================================
+
+/**
+ * Setup sidebar navigation with teacher-style reliability
+ */
 function setupSidebarNavigation() {
-  console.log('🔧 Setting up sidebar navigation...');
+  console.log('🔧 Setting up admin sidebar navigation...');
   
   // Prevent double initialization
-  if (window.sidebarInitialized) {
+  if (window.adminSidebarInitialized) {
     console.log('⚠️ Sidebar already initialized, skipping');
     return;
   }
@@ -204,11 +208,10 @@ function setupSidebarNavigation() {
   
   if (links.length === 0) {
     console.error('❌ CRITICAL: No navigation links found!');
-    console.log('Sidebar HTML structure:', sidebar.innerHTML.substring(0, 200));
     return;
   }
   
-  // Setup each link
+  // Setup each link with clean event handlers
   links.forEach((link) => {
     const sectionId = link.dataset.section;
     
@@ -217,16 +220,30 @@ function setupSidebarNavigation() {
       return;
     }
     
-    // Remove any existing handlers
+    // Remove any existing handlers by cloning (prevents duplicates)
     const newLink = link.cloneNode(true);
     link.parentNode.replaceChild(newLink, link);
     
-    // Add click handler
+    // Add single click handler
     newLink.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log(`🖱️ Clicked: ${sectionId}`);
+      console.log(`🖱️ Navigation click: ${sectionId}`);
+      
+      // TEACHER-STYLE: Check if data is loading
+      if (isLoadingAdminData) {
+        window.showToast?.('Loading data, please wait...', 'info', 2000);
+        return;
+      }
+      
+      // Update active state
+      document.querySelectorAll('.sidebar-link').forEach(l => {
+        l.classList.remove('active');
+      });
+      this.classList.add('active');
+      
+      // Navigate to section
       showSection(sectionId);
     });
   });
@@ -245,10 +262,7 @@ function setupSidebarNavigation() {
       e.stopPropagation();
       
       const content = this.nextElementSibling;
-      if (!content) {
-        console.warn('⚠️ No content found for toggle');
-        return;
-      }
+      if (!content) return;
       
       const isExpanded = this.getAttribute('aria-expanded') === 'true';
       
@@ -262,18 +276,22 @@ function setupSidebarNavigation() {
         icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
       }
       
-      console.log(`  ${isExpanded ? '📁 Collapsed' : '📂 Expanded'} group`);
+      console.log(`🔽 Toggled group: ${isExpanded ? 'closed' : 'opened'}`);
     });
   });
   
-  window.sidebarInitialized = true;
-  console.log('✅ Sidebar navigation initialized');
+  window.adminSidebarInitialized = true;
+  console.log('✅ Admin sidebar navigation initialized');
 }
 
-/* =====================================================
-   SHOW SECTION FUNCTION
-===================================================== */
+// ============================================
+// SHOW SECTION (Teacher-style validation)
+// ============================================
 
+/**
+ * Show section with loading state validation (like teacher portal)
+ * Replace showSection function in admin.js (around line 280)
+ */
 function showSection(sectionId) {
   if (!sectionId) {
     console.error('❌ showSection called with no sectionId');
@@ -281,6 +299,13 @@ function showSection(sectionId) {
   }
   
   console.log(`📄 Showing section: ${sectionId}`);
+  
+  // TEACHER-STYLE: Check if data is loaded (except dashboard)
+  if (!adminDataLoaded && sectionId !== 'dashboard' && !isLoadingAdminData) {
+    window.showToast?.('Loading data, please wait...', 'info', 3000);
+    console.warn('⚠️ Data not loaded yet, showing dashboard instead');
+    sectionId = 'dashboard'; // Fallback to dashboard
+  }
   
   // Hide all sections
   document.querySelectorAll('.admin-card').forEach(card => {
@@ -310,7 +335,7 @@ function showSection(sectionId) {
     if (parentGroup) {
       parentGroup.classList.add('active');
       const toggle = parentGroup.previousElementSibling;
-      if (toggle && toggle.classList.contains('sidebar-group-toggle-modern')) {
+      if (toggle?.classList.contains('sidebar-group-toggle-modern')) {
         toggle.setAttribute('aria-expanded', 'true');
         const icon = toggle.querySelector('.toggle-icon');
         if (icon) icon.style.transform = 'rotate(180deg)';
@@ -324,27 +349,54 @@ function showSection(sectionId) {
   // Close mobile sidebar
   const sidebar = document.getElementById('admin-sidebar');
   const hamburger = document.getElementById('hamburger');
-  if (sidebar && sidebar.classList.contains('active')) {
+  if (sidebar?.classList.contains('active')) {
     sidebar.classList.remove('active');
-    if (hamburger) {
-      hamburger.classList.remove('active');
-      hamburger.setAttribute('aria-expanded', 'false');
-    }
+    hamburger?.classList.remove('active');
+    hamburger?.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
   }
 }
 
-// Make globally available
-window.showSection = showSection;
+// ============================================
+// LOAD SECTION DATA (Defensive loading)
+// ============================================
 
-/* =====================================================
-   LOAD SECTION DATA
-===================================================== */
-
+/**
+ * Load section data with validation
+ * Replace loadSectionData function (around line 320)
+ */
 function loadSectionData(sectionId) {
   console.log(`📊 Loading data for: ${sectionId}`);
   
+  // Show loading indicator for data-heavy sections
+  const showLoadingForSection = (id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    
+    const container = section.querySelector('.table-container tbody') || 
+                      section.querySelector('.stats-grid') ||
+                      section;
+    
+    if (container) {
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'section-loading';
+      loadingDiv.style.cssText = 'text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);';
+      loadingDiv.innerHTML = `
+        <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+        <p>Loading ${id.replace(/-/g, ' ')}...</p>
+      `;
+      container.innerHTML = '';
+      container.appendChild(loadingDiv);
+    }
+  };
+  
   try {
+    // Show loading state for sections that take time
+    const loadingSections = ['teachers', 'pupils', 'classes', 'subjects'];
+    if (loadingSections.includes(sectionId)) {
+      showLoadingForSection(sectionId);
+    }
+    
     switch(sectionId) {
       case 'dashboard':
         loadDashboardStats();
@@ -409,6 +461,19 @@ function loadSectionData(sectionId) {
     window.showToast?.(`Failed to load ${sectionId}`, 'danger');
   }
 }
+
+// ============================================
+// MAKE FUNCTIONS GLOBALLY AVAILABLE
+// ============================================
+
+window.showSection = showSection;
+window.setupSidebarNavigation = setupSidebarNavigation;
+window.initializeAdminPortal = initializeAdminPortal;
+window.loadSectionData = loadSectionData;
+
+console.log('✓ Admin sidebar navigation - Teacher-style logic applied');
+
+
 
 /* ======================================== 
    CLASS HIERARCHY MODULE (ADMIN ONLY)
