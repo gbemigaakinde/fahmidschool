@@ -656,7 +656,7 @@ async function loadResultsTable() {
 }
 
 /**
- * Check result lock status and show appropriate UI
+ * Check result lock status and show appropriate UI - FIXED session encoding
  */
 async function checkResultLockStatus() {
     const term = document.getElementById('result-term')?.value;
@@ -674,8 +674,12 @@ async function checkResultLockStatus() {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         
-        // Check if locked
-        const lockStatus = await window.resultLocking.isLocked(classId, term, subject, session);
+        // CRITICAL FIX: Encode session to avoid path separator issues
+        // Convert "2025/2026" to "2025-2026"
+        const encodedSession = session.replace(/\//g, '-');
+        
+        // Check if locked (using encoded session)
+        const lockStatus = await window.resultLocking.isLocked(classId, term, subject, encodedSession);
         
         if (lockStatus.locked) {
             showLockedBanner(lockStatus);
@@ -684,8 +688,8 @@ async function checkResultLockStatus() {
             return;
         }
         
-        // Check if submitted and pending
-        const submissionId = `${classId}_${session}_${term}_${subject}`;
+        // Check if submitted and pending (using encoded session)
+        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
         const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
         
         if (submissionDoc.exists) {
@@ -859,7 +863,7 @@ function enableResultInputs() {
 }
 
 /**
- * Submit results for admin approval
+ * Submit results for admin approval - FIXED session encoding
  */
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
@@ -905,6 +909,9 @@ async function submitResultsForApproval() {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         
+        // CRITICAL FIX: Encode session for consistent document IDs
+        const encodedSession = session.replace(/\//g, '-');
+        
         // Get teacher name
         const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
         const teacherName = teacherDoc.exists ? teacherDoc.data().name : currentUser.email;
@@ -914,7 +921,7 @@ async function submitResultsForApproval() {
             className,
             term,
             subject,
-            session,
+            encodedSession, // Use encoded session
             currentUser.uid,
             teacherName
         );
