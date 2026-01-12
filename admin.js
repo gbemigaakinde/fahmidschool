@@ -7374,6 +7374,5 @@ window.adminDebug = {
     }
   }
 };
-
-console.log('--- Admin portal loaded ---');
-console.log('Debug helpers: checkStatus(), showSection("dashboard"), testDashboard()');
+ 
+console.log('✓ Teacher portal v8.1.0 loaded');
