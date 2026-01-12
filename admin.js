@@ -924,9 +924,17 @@ async function loadOutstandingFeesReport() {
   
   try {
     const settings = await window.getCurrentSettings();
-    const outstanding = await window.finance.getOutstandingFeesReport(null, settings.session, settings.term);
+    const session = settings.session;
+    const term = settings.term;
     
-    if (!outstanding?.length) {
+    // Query payments collection directly (NO finance.js dependency)
+    const paymentsSnap = await db.collection('payments')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .where('balance', '>', 0)
+      .get();
+    
+    if (paymentsSnap.empty) {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
@@ -945,7 +953,8 @@ async function loadOutstandingFeesReport() {
     let totalOutstanding = 0;
     const fragment = document.createDocumentFragment();
     
-    outstanding.forEach(payment => {
+    paymentsSnap.forEach(doc => {
+      const payment = doc.data();
       totalOutstanding += Number(payment.balance) || 0;
       
       const tr = document.createElement('tr');
@@ -971,7 +980,7 @@ async function loadOutstandingFeesReport() {
     
     // Update summary
     const outstandingCountEl = document.getElementById('outstanding-count');
-    if (outstandingCountEl) outstandingCountEl.textContent = outstanding.length;
+    if (outstandingCountEl) outstandingCountEl.textContent = paymentsSnap.size;
     
     const outstandingTotalEl = document.getElementById('outstanding-total');
     if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
@@ -981,7 +990,7 @@ async function loadOutstandingFeesReport() {
     tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align:center; color:var(--color-danger);">
-          Error loading outstanding fees
+          Error loading outstanding fees: ${error.message}
         </td>
       </tr>`;
   }
@@ -993,43 +1002,101 @@ async function loadOutstandingFeesReport() {
 async function loadFinancialReports() {
   try {
     const settings = await window.getCurrentSettings();
-    const summary = await window.finance.getFinancialSummary(settings.session, settings.term);
+    const session = settings.session;
+    const term = settings.term;
     
-    if (!summary) {
-      window.showToast?.('Failed to load financial summary', 'danger');
+    // Query payments collection directly (NO finance.js dependency)
+    const paymentsSnap = await db.collection('payments')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    if (paymentsSnap.empty) {
+      updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, term);
       return;
     }
     
-    // Update displays
-    const expectedEl = document.getElementById('report-total-expected');
-    const collectedEl = document.getElementById('report-total-collected');
-    const outstandingEl = document.getElementById('report-total-outstanding');
-    const rateEl = document.getElementById('report-collection-rate');
+    // Calculate summary
+    let totalExpected = 0;
+    let totalCollected = 0;
+    let totalOutstanding = 0;
+    let paidInFull = 0;
+    let partialPayments = 0;
+    let noPayment = 0;
     
-    if (expectedEl) expectedEl.textContent = `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
-    if (collectedEl) collectedEl.textContent = `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
-    if (outstandingEl) outstandingEl.textContent = `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
-    if (rateEl) rateEl.textContent = `${Number(summary.collectionRate || 0)}%`;
+    paymentsSnap.forEach(doc => {
+      const data = doc.data();
+      totalExpected += Number(data.amountDue) || 0;
+      totalCollected += Number(data.totalPaid) || 0;
+      totalOutstanding += Number(data.balance) || 0;
+      
+      if (data.status === 'paid') {
+        paidInFull++;
+      } else if (data.status === 'partial') {
+        partialPayments++;
+      } else {
+        noPayment++;
+      }
+    });
     
-    const paidFullEl = document.getElementById('report-paid-full');
-    if (paidFullEl) paidFullEl.textContent = summary?.paidInFull ?? 0;
+    const collectionRate = totalExpected > 0 
+      ? ((totalCollected / totalExpected) * 100).toFixed(1)
+      : 0;
     
-    const partialEl = document.getElementById('report-partial');
-    if (partialEl) partialEl.textContent = summary?.partialPayments ?? 0;
-    
-    const owingEl = document.getElementById('report-owing');
-    if (owingEl) owingEl.textContent = summary?.noPayment ?? 0;
-    
-    const sessionEl = document.getElementById('report-session-display');
-    if (sessionEl) sessionEl.textContent = settings?.session || '—';
-    
-    const termEl = document.getElementById('report-term-display');
-    if (termEl) termEl.textContent = settings?.term || '—';
+    updateFinancialDisplays(
+      totalExpected,
+      totalCollected,
+      totalOutstanding,
+      collectionRate,
+      paidInFull,
+      partialPayments,
+      noPayment,
+      session,
+      term
+    );
     
   } catch (error) {
     console.error('Error loading financial reports:', error);
     window.showToast?.('Failed to load financial reports', 'danger');
   }
+}
+
+// Helper function
+function updateFinancialDisplays(
+  totalExpected,
+  totalCollected,
+  totalOutstanding,
+  collectionRate,
+  paidInFull,
+  partialPayments,
+  noPayment,
+  session,
+  term
+) {
+  const expectedEl = document.getElementById('report-total-expected');
+  const collectedEl = document.getElementById('report-total-collected');
+  const outstandingEl = document.getElementById('report-total-outstanding');
+  const rateEl = document.getElementById('report-collection-rate');
+  
+  if (expectedEl) expectedEl.textContent = `₦${Number(totalExpected).toLocaleString()}`;
+  if (collectedEl) collectedEl.textContent = `₦${Number(totalCollected).toLocaleString()}`;
+  if (outstandingEl) outstandingEl.textContent = `₦${Number(totalOutstanding).toLocaleString()}`;
+  if (rateEl) rateEl.textContent = `${collectionRate}%`;
+  
+  const paidFullEl = document.getElementById('report-paid-full');
+  if (paidFullEl) paidFullEl.textContent = paidInFull;
+  
+  const partialEl = document.getElementById('report-partial');
+  if (partialEl) partialEl.textContent = partialPayments;
+  
+  const owingEl = document.getElementById('report-owing');
+  if (owingEl) owingEl.textContent = noPayment;
+  
+  const sessionEl = document.getElementById('report-session-display');
+  if (sessionEl) sessionEl.textContent = session || '—';
+  
+  const termEl = document.getElementById('report-term-display');
+  if (termEl) termEl.textContent = term || '—';
 }
 
 // Make functions globally available
