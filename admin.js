@@ -283,6 +283,52 @@ function setupSidebarNavigation() {
     });
   });
   
+  // ✅ NEW: Setup group toggle buttons
+  console.log('🎯 Setting up group toggle buttons...');
+  const groupToggles = sidebar.querySelectorAll('.sidebar-group-toggle-modern');
+  
+  console.log(`Found ${groupToggles.length} group toggle buttons`);
+  
+  groupToggles.forEach((toggle, index) => {
+    // Remove any existing listeners by cloning
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    
+    // Get the fresh reference
+    const freshToggle = sidebar.querySelectorAll('.sidebar-group-toggle-modern')[index];
+    
+    freshToggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const groupName = freshToggle.dataset.group;
+      console.log(`🔽 Group toggle clicked: ${groupName}`);
+      
+      const content = freshToggle.nextElementSibling;
+      
+      if (!content) {
+        console.error('❌ No content element found for toggle');
+        return;
+      }
+      
+      const isExpanded = freshToggle.getAttribute('aria-expanded') === 'true';
+      
+      // Toggle state
+      freshToggle.setAttribute('aria-expanded', !isExpanded);
+      content.classList.toggle('active');
+      
+      // Rotate chevron icon
+      const chevron = freshToggle.querySelector('.toggle-icon');
+      if (chevron) {
+        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+      
+      console.log(`Group ${groupName} is now: ${!isExpanded ? 'EXPANDED' : 'COLLAPSED'}`);
+    });
+    
+    console.log(`✓ Group toggle #${index + 1} initialized`);
+  });
+  
   // Handle window resize
   let resizeTimer;
   window.addEventListener('resize', () => {
