@@ -657,18 +657,19 @@ async function deleteAlumni(alumniId) {
 window.deleteAlumni = deleteAlumni;
 
 /* ======================================== 
-   SECTION NAVIGATION - FIXED ORDER
+   SECTION NAVIGATION - COMPLETELY FIXED
 ======================================== */
-/**
- * SECTION NAVIGATION - FIXED WITH PROPER VIEW-RESULTS SUPPORT
- * Replace the existing showSection() function in admin.js
- */
 
+/**
+ * Show a specific admin section and hide all others
+ */
 function showSection(sectionId) {
   if (!sectionId) {
     console.error('showSection called with no sectionId');
     return;
   }
+  
+  console.log(`🎯 showSection called for: ${sectionId}`);
   
   // Hide all sections
   document.querySelectorAll('.admin-card').forEach(card => {
@@ -679,22 +680,27 @@ function showSection(sectionId) {
   const section = document.getElementById(sectionId);
   if (section) {
     section.style.display = 'block';
+    console.log(`✓ Section ${sectionId} displayed`);
   } else {
-    console.warn(`Section ${sectionId} not found in DOM`);
+    console.warn(`❌ Section ${sectionId} not found in DOM`);
+    return;
   }
   
   // Update active nav link
-  document.querySelectorAll('.admin-sidebar a').forEach(a => {
-    a.classList.remove('active');
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.classList.remove('active');
   });
   
-  const activeLink = document.querySelector(`.admin-sidebar a[onclick*="${sectionId}"], .admin-sidebar a[data-section="${sectionId}"]`);
+  const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
+    console.log(`✓ Active link updated for ${sectionId}`);
   }
   
-  // FIXED: All section loaders properly mapped
+  // Load section-specific data
   try {
+    console.log(`📊 Loading data for section: ${sectionId}`);
+    
     switch(sectionId) {
       case 'dashboard':
         loadDashboardStats();
@@ -724,7 +730,7 @@ function showSection(sectionId) {
         loadPromotionRequests();
         break;
         
-     case 'result-approvals':
+      case 'result-approvals':
         loadResultApprovals();
         break;
       
@@ -736,49 +742,43 @@ function showSection(sectionId) {
         loadAlumni();
         break;
         
-        case 'audit-log':
+      case 'audit-log':
         loadAuditLog();
         break;
       
       case 'view-results':
-        // FIXED: Add view-results section loader
         loadViewResultsSection();
         break;
       
       case 'settings':
-        // Load all settings components
         loadCurrentSettings();
-        
-        // Load hierarchy with a small delay to ensure DOM is ready
         setTimeout(async () => {
           await loadClassHierarchyUI();
         }, 200);
-        
-        // Load session history
         loadSessionHistory();
         break;
         
       case 'fee-management':
-      loadFeeManagementSection();
-      break;
+        loadFeeManagementSection();
+        break;
 
-    case 'record-payment':
-      loadPaymentRecordingSection();
-      break;
+      case 'record-payment':
+        loadPaymentRecordingSection();
+        break;
 
-    case 'outstanding-fees':
-      loadOutstandingFeesReport();
-      break;
+      case 'outstanding-fees':
+        loadOutstandingFeesReport();
+        break;
 
-    case 'financial-reports':
-      loadFinancialReports();
-      break;
+      case 'financial-reports':
+        loadFinancialReports();
+        break;
       
       default:
-        console.warn(`Unknown section: ${sectionId}`);
+        console.warn(`⚠️ No loader defined for section: ${sectionId}`);
     }
   } catch (error) {
-    console.error(`Error loading section ${sectionId}:`, error);
+    console.error(`❌ Error loading section ${sectionId}:`, error);
     window.showToast?.(`Failed to load ${sectionId} section`, 'danger');
   }
   
@@ -797,6 +797,85 @@ function showSection(sectionId) {
 
 // Make globally available
 window.showSection = showSection;
+
+/**
+ * CRITICAL: Setup sidebar navigation on page load
+ * This MUST run after DOM is ready
+ */
+function setupSidebarNavigation() {
+  console.log('🔧 Setting up sidebar navigation...');
+  
+  // Get all sidebar links with data-section
+  const links = document.querySelectorAll('.sidebar-link[data-section]');
+  console.log(`📋 Found ${links.length} sidebar links`);
+  
+  if (links.length === 0) {
+    console.error('❌ No sidebar links found! Check HTML structure.');
+    return;
+  }
+  
+  links.forEach((link, index) => {
+    const sectionId = link.dataset.section;
+    
+    if (!sectionId) {
+      console.warn(`⚠️ Link ${index} has no data-section attribute:`, link);
+      return;
+    }
+    
+    console.log(`✓ Registering link ${index + 1}: ${sectionId}`);
+    
+    // Remove href navigation, use click handler only
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log(`🖱️ Click detected on: ${sectionId}`);
+      showSection(sectionId);
+    });
+  });
+  
+  // Setup group toggles
+  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+  console.log(`📋 Found ${toggles.length} group toggles`);
+  
+  toggles.forEach((toggle, index) => {
+    console.log(`✓ Registering toggle ${index + 1}`);
+    
+    toggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const content = this.nextElementSibling;
+      if (!content) {
+        console.warn('No content element found for toggle');
+        return;
+      }
+      
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      // Toggle
+      this.setAttribute('aria-expanded', !isExpanded);
+      content.classList.toggle('active');
+      
+      // Rotate icon
+      const icon = this.querySelector('.toggle-icon');
+      if (icon) {
+        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+      
+      console.log(`🔽 Toggled group (expanded: ${!isExpanded})`);
+    });
+  });
+  
+  console.log('✅ Sidebar navigation setup complete');
+}
+
+// Call setup immediately if DOM is ready, otherwise wait
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupSidebarNavigation);
+} else {
+  setupSidebarNavigation();
+}
 
 /* ========================================
    SIDEBAR GROUP TOGGLE
