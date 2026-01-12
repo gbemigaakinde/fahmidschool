@@ -38,22 +38,47 @@ try {
 
 console.log('🔐 Waiting for authentication...');
 
+// Wait for BOTH authentication AND DOM to be ready
+let authUser = null;
+let domReady = false;
+
+function tryInitialize() {
+  if (authUser && domReady) {
+    console.log('✅ Both auth and DOM ready - initializing admin portal');
+    initializeAdminPortal();
+  }
+}
+
+// Step 1: Check authentication
 window.checkRole('admin')
   .then(async user => {
     console.log('✓ Admin authenticated:', user.email);
-    
-    // NOW initialize the portal
-    await initializeAdminPortal();
+    authUser = user;
+    tryInitialize();
   })
   .catch(err => {
     console.error('❌ Authentication failed:', err);
-    // User will be redirected to login
   });
 
-// Logout handler
-document.getElementById('admin-logout')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  window.logout();
+// Step 2: Wait for DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('✓ DOM ready');
+    domReady = true;
+    tryInitialize();
+  });
+} else {
+  console.log('✓ DOM already ready');
+  domReady = true;
+  tryInitialize();
+}
+
+// Logout handler (safe - uses optional chaining)
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('admin-logout')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.logout();
+  });
 });
 
 /* =====================================================
@@ -63,16 +88,46 @@ document.getElementById('admin-logout')?.addEventListener('click', (e) => {
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
   
+  // CRITICAL: Verify DOM is ready
+  const sidebar = document.getElementById('admin-sidebar');
+  const hamburger = document.getElementById('hamburger');
+  const dashboard = document.getElementById('dashboard');
+  
+  if (!sidebar || !hamburger || !dashboard) {
+    console.error('❌ Critical elements missing!', {
+      sidebar: !!sidebar,
+      hamburger: !!hamburger,
+      dashboard: !!dashboard
+    });
+    
+    // Retry after short delay if elements missing
+    setTimeout(() => {
+      console.log('⏳ Retrying initialization...');
+      initializeAdminPortal();
+    }, 100);
+    return;
+  }
+  
+  console.log('✓ All critical elements found');
+  
   // Step 1: Setup sidebar navigation
   setupSidebarNavigation();
   
-  // Step 2: Initialize class hierarchy
-  await window.classHierarchy.initializeClassHierarchy();
+  // Step 2: Setup hamburger menu
+  setupHamburgerMenu();
   
-  // Step 3: Load dashboard
+  // Step 3: Initialize class hierarchy
+  try {
+    await window.classHierarchy.initializeClassHierarchy();
+    console.log('✓ Class hierarchy initialized');
+  } catch (error) {
+    console.error('⚠️ Class hierarchy init failed:', error);
+  }
+  
+  // Step 4: Load dashboard
   showSection('dashboard');
   
-  // Step 4: Setup date input max date
+  // Step 5: Setup date input max date
   const dobInput = document.getElementById('pupil-dob');
   if (dobInput) {
     const today = new Date();
@@ -84,6 +139,43 @@ async function initializeAdminPortal() {
   }
   
   console.log('✅ Admin portal initialized successfully');
+}
+
+function setupHamburgerMenu() {
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('admin-sidebar');
+  
+  if (!hamburger || !sidebar) {
+    console.warn('Hamburger or sidebar not found');
+    return;
+  }
+  
+  // Remove any existing listeners by cloning
+  const newHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(newHamburger, hamburger);
+  
+  // Add click handler
+  newHamburger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isActive = sidebar.classList.toggle('active');
+    newHamburger.classList.toggle('active', isActive);
+    newHamburger.setAttribute('aria-expanded', isActive);
+    document.body.style.overflow = isActive ? 'hidden' : '';
+  });
+  
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (sidebar.classList.contains('active') && 
+        !sidebar.contains(e.target) && 
+        !newHamburger.contains(e.target)) {
+      sidebar.classList.remove('active');
+      newHamburger.classList.remove('active');
+      newHamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+  });
+  
+  console.log('✓ Hamburger menu initialized');
 }
 
 /* =====================================================
@@ -99,12 +191,20 @@ function setupSidebarNavigation() {
     return;
   }
   
+  // CRITICAL: Verify sidebar exists
+  const sidebar = document.getElementById('admin-sidebar');
+  if (!sidebar) {
+    console.error('❌ Sidebar element not found!');
+    return;
+  }
+  
   // Get all navigation links
   const links = document.querySelectorAll('.sidebar-link[data-section]');
   console.log(`📋 Found ${links.length} navigation links`);
   
   if (links.length === 0) {
     console.error('❌ CRITICAL: No navigation links found!');
+    console.log('Sidebar HTML structure:', sidebar.innerHTML.substring(0, 200));
     return;
   }
   
@@ -1245,9 +1345,30 @@ window.toggleSidebarGroup = toggleSidebarGroup;
 async function loadDashboardStats() {
   console.log('📊 Loading dashboard stats...');
   
+  // CRITICAL: Check if elements exist
+  const teacherCount = document.getElementById('teacher-count');
+  const pupilCount = document.getElementById('pupil-count');
+  const classCount = document.getElementById('class-count');
+  const announceCount = document.getElementById('announce-count');
+  
+  if (!teacherCount || !pupilCount || !classCount || !announceCount) {
+    console.error('❌ Dashboard stat elements missing!', {
+      teacherCount: !!teacherCount,
+      pupilCount: !!pupilCount,
+      classCount: !!classCount,
+      announceCount: !!announceCount
+    });
+    
+    // Retry after delay if elements missing
+    setTimeout(() => {
+      console.log('⏳ Retrying dashboard stats...');
+      loadDashboardStats();
+    }, 100);
+    return;
+  }
+  
   // Set loading state
-  ['teacher-count', 'pupil-count', 'class-count', 'announce-count'].forEach(id => {
-    const el = document.getElementById(id);
+  [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
     if (el) el.innerHTML = '<div class="spinner" style="width:20px; height:20px; margin:0 auto;"></div>';
   });
   
@@ -1269,10 +1390,10 @@ async function loadDashboardStats() {
     console.log(`  ✓ Announcements: ${announcementsSnap.size}`);
     
     // Update display
-    document.getElementById('teacher-count').textContent = teachersSnap.size;
-    document.getElementById('pupil-count').textContent = pupilsSnap.size;
-    document.getElementById('class-count').textContent = classesSnap.size;
-    document.getElementById('announce-count').textContent = announcementsSnap.size;
+    teacherCount.textContent = teachersSnap.size;
+    pupilCount.textContent = pupilsSnap.size;
+    classCount.textContent = classesSnap.size;
+    announceCount.textContent = announcementsSnap.size;
     
     console.log('✅ Dashboard stats loaded successfully');
     
@@ -1284,8 +1405,7 @@ async function loadDashboardStats() {
     window.showToast?.('Failed to load dashboard statistics', 'danger');
     
     // Set error state
-    ['teacher-count', 'pupil-count', 'class-count', 'announce-count'].forEach(id => {
-      const el = document.getElementById(id);
+    [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
       if (el) el.textContent = '!';
     });
   }
@@ -4281,34 +4401,6 @@ async function rejectResultSubmission(submissionId) {
 window.loadResultApprovals = loadResultApprovals;
 window.approveResultSubmission = approveResultSubmission;
 window.rejectResultSubmission = rejectResultSubmission;
-
-/* ========================================
-   INITIALIZATION
-======================================== */
-
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 Admin portal DOMContentLoaded fired');
-  
-  // Navigation is already setup by setupSidebarNavigation() above
-  // Just show dashboard
-  showSection('dashboard');
-  
-  // Set maximum date for date of birth
-  const dobInput = document.getElementById('pupil-dob');
-  if (dobInput) {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const maxDate = `${year}-${month}-${day}`;
-    dobInput.setAttribute('max', maxDate);
-  }
-  
-  // Initialize class hierarchy
-  await window.classHierarchy.initializeClassHierarchy();
-  
-  console.log('✅ Admin portal fully initialized');
-});
 
 /**
  * FIXED: Initialize Sidebar Navigation
