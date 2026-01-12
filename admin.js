@@ -525,6 +525,326 @@ function loadSectionData(sectionId) {
   }
 }
 
+/* ========================================
+   FINANCIAL MANAGEMENT SECTION LOADERS
+======================================== */
+
+/**
+ * Load Fee Management Section
+ */
+async function loadFeeManagementSection() {
+  console.log('Loading fee management section...');
+  
+  try {
+    // Populate class selector
+    await populateFeeClassSelector();
+    
+    // Load current session/term
+    const settings = await window.getCurrentSettings();
+    
+    const sessionDisplay = document.getElementById('fee-session-display');
+    const termDisplay = document.getElementById('fee-term-display');
+    
+    if (sessionDisplay) sessionDisplay.textContent = settings.session;
+    if (termDisplay) termDisplay.textContent = settings.term;
+    
+    // Load fee structures
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error loading fee management:', error);
+    window.showToast?.('Failed to load fee management section', 'danger');
+  }
+}
+
+/**
+ * Populate class selector for fee configuration
+ */
+async function populateFeeClassSelector() {
+  const select = document.getElementById('fee-config-class');
+  if (!select) return;
+  
+  try {
+    const snapshot = await db.collection('classes').orderBy('name').get();
+    
+    select.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      opt.dataset.className = data.name;
+      select.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error populating class selector:', error);
+  }
+}
+
+/**
+ * Load existing fee structures
+ */
+async function loadFeeStructures() {
+  const container = document.getElementById('fee-structures-list');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    const snapshot = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    if (snapshot.empty) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+          <p style="font-size:var(--text-lg); margin-bottom:var(--space-md);">📋 No Fee Structures Configured Yet</p>
+          <p style="font-size:var(--text-sm);">Configure fees for your classes using the form above.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = '';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      
+      const card = document.createElement('div');
+      card.className = 'fee-structure-card';
+      card.style.cssText = `
+        background: white;
+        border: 1px solid var(--color-gray-300);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-md);
+      `;
+      
+      const feeItems = Object.entries(data.fees || {})
+        .map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
+            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
+            <strong>₦${parseFloat(value).toLocaleString()}</strong>
+          </div>
+        `).join('');
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
+          <div>
+            <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
+            <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
+              ${data.session} • ${data.term}
+            </p>
+          </div>
+          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+            Delete
+          </button>
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          ${feeItems}
+        </div>
+        
+        <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:var(--text-lg);">Total:</strong>
+          <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
+        </div>
+      `;
+      
+      container.appendChild(card);
+    });
+    
+  } catch (error) {
+    console.error('Error loading fee structures:', error);
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading fee structures</p>';
+  }
+}
+
+/**
+ * Load payment recording section
+ */
+async function loadPaymentRecordingSection() {
+  try {
+    // Populate class filter
+    await populatePaymentClassFilter();
+    
+    // Load current settings
+    const settings = await window.getCurrentSettings();
+    
+    const sessionDisplay = document.getElementById('payment-session-display');
+    const termDisplay = document.getElementById('payment-term-display');
+    
+    if (sessionDisplay) sessionDisplay.textContent = settings.session;
+    if (termDisplay) termDisplay.textContent = settings.term;
+    
+  } catch (error) {
+    console.error('Error loading payment section:', error);
+    window.showToast?.('Failed to load payment section', 'danger');
+  }
+}
+
+/**
+ * Populate class filter for payment recording
+ */
+async function populatePaymentClassFilter() {
+  const select = document.getElementById('payment-class-filter');
+  if (!select) return;
+  
+  try {
+    const snapshot = await db.collection('classes').orderBy('name').get();
+    
+    select.innerHTML = '<option value="">-- Select Class --</option>';
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      select.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error populating class filter:', error);
+  }
+}
+
+/**
+ * Load outstanding fees report
+ */
+async function loadOutstandingFeesReport() {
+  const container = document.getElementById('outstanding-fees-table');
+  if (!container) return;
+  
+  const tbody = container.querySelector('tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading outstanding fees...</td></tr>';
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const outstanding = await window.finance.getOutstandingFeesReport(null, settings.session, settings.term);
+    
+    if (!outstanding?.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
+            ✓ All fees collected! No outstanding payments.
+          </td>
+        </tr>`;
+      
+      const outstandingCount = document.getElementById('outstanding-count');
+      if (outstandingCount) outstandingCount.textContent = '0';
+      
+      const outstandingTotal = document.getElementById('outstanding-total');
+      if (outstandingTotal) outstandingTotal.textContent = '₦0';
+      return;
+    }
+    
+    let totalOutstanding = 0;
+    const fragment = document.createDocumentFragment();
+    
+    outstanding.forEach(payment => {
+      totalOutstanding += Number(payment.balance) || 0;
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Pupil Name">${payment.pupilName || '-'}</td>
+        <td data-label="Class">${payment.className || '-'}</td>
+        <td data-label="Amount Due">₦${Number(payment.amountDue || 0).toLocaleString()}</td>
+        <td data-label="Paid">₦${Number(payment.totalPaid || 0).toLocaleString()}</td>
+        <td data-label="Balance" class="text-bold text-danger">
+          ₦${Number(payment.balance || 0).toLocaleString()}
+        </td>
+        <td data-label="Status">
+          <span class="status-badge" style="background:${payment.status === 'partial' ? '#ff9800' : '#f44336'};">
+            ${payment.status === 'partial' ? 'Partial' : 'Owing'}
+          </span>
+        </td>
+      `;
+      fragment.appendChild(tr);
+    });
+    
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
+    
+    // Update summary
+    const outstandingCountEl = document.getElementById('outstanding-count');
+    if (outstandingCountEl) outstandingCountEl.textContent = outstanding.length;
+    
+    const outstandingTotalEl = document.getElementById('outstanding-total');
+    if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
+    
+  } catch (error) {
+    console.error('Error loading outstanding fees:', error);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; color:var(--color-danger);">
+          Error loading outstanding fees
+        </td>
+      </tr>`;
+  }
+}
+
+/**
+ * Load financial reports
+ */
+async function loadFinancialReports() {
+  try {
+    const settings = await window.getCurrentSettings();
+    const summary = await window.finance.getFinancialSummary(settings.session, settings.term);
+    
+    if (!summary) {
+      window.showToast?.('Failed to load financial summary', 'danger');
+      return;
+    }
+    
+    // Update displays
+    const expectedEl = document.getElementById('report-total-expected');
+    const collectedEl = document.getElementById('report-total-collected');
+    const outstandingEl = document.getElementById('report-total-outstanding');
+    const rateEl = document.getElementById('report-collection-rate');
+    
+    if (expectedEl) expectedEl.textContent = `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
+    if (collectedEl) collectedEl.textContent = `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
+    if (outstandingEl) outstandingEl.textContent = `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
+    if (rateEl) rateEl.textContent = `${Number(summary.collectionRate || 0)}%`;
+    
+    const paidFullEl = document.getElementById('report-paid-full');
+    if (paidFullEl) paidFullEl.textContent = summary?.paidInFull ?? 0;
+    
+    const partialEl = document.getElementById('report-partial');
+    if (partialEl) partialEl.textContent = summary?.partialPayments ?? 0;
+    
+    const owingEl = document.getElementById('report-owing');
+    if (owingEl) owingEl.textContent = summary?.noPayment ?? 0;
+    
+    const sessionEl = document.getElementById('report-session-display');
+    if (sessionEl) sessionEl.textContent = settings?.session || '—';
+    
+    const termEl = document.getElementById('report-term-display');
+    if (termEl) termEl.textContent = settings?.term || '—';
+    
+  } catch (error) {
+    console.error('Error loading financial reports:', error);
+    window.showToast?.('Failed to load financial reports', 'danger');
+  }
+}
+
+// Make functions globally available
+window.loadFeeManagementSection = loadFeeManagementSection;
+window.loadPaymentRecordingSection = loadPaymentRecordingSection;
+window.loadOutstandingFeesReport = loadOutstandingFeesReport;
+window.loadFinancialReports = loadFinancialReports;
+
+console.log('✓ Finance section loaders initialized');
+
 // ============================================
 // MAKE FUNCTIONS GLOBALLY AVAILABLE
 // ============================================
@@ -535,8 +855,6 @@ window.initializeAdminPortal = initializeAdminPortal;
 window.loadSectionData = loadSectionData;
 
 console.log('✓ Admin sidebar navigation - Teacher-style logic applied');
-
-
 
 /* ======================================== 
    CLASS HIERARCHY MODULE (ADMIN ONLY)
@@ -5811,140 +6129,6 @@ console.log('✓ Session validation loaded');
 ======================================== */
 
 /**
- * Load Fee Management Section
- */
-async function loadFeeManagementSection() {
-  console.log('Loading fee management section...');
-  
-  try {
-    // Populate class selector
-    await populateFeeClassSelector();
-    
-    // Load current session/term
-    const settings = await window.getCurrentSettings();
-    document.getElementById('fee-session-display').textContent = settings.session;
-    document.getElementById('fee-term-display').textContent = settings.term;
-    
-    // Load fee structures
-    await loadFeeStructures();
-    
-  } catch (error) {
-    console.error('Error loading fee management:', error);
-    window.showToast?.('Failed to load fee management section', 'danger');
-  }
-}
-
-/**
- * Populate class selector for fee configuration
- */
-async function populateFeeClassSelector() {
-  const select = document.getElementById('fee-config-class');
-  if (!select) return;
-  
-  try {
-    const snapshot = await db.collection('classes').orderBy('name').get();
-    
-    select.innerHTML = '<option value="">-- Select Class --</option>';
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const opt = document.createElement('option');
-      opt.value = doc.id;
-      opt.textContent = data.name;
-      opt.dataset.className = data.name;
-      select.appendChild(opt);
-    });
-    
-  } catch (error) {
-    console.error('Error populating class selector:', error);
-  }
-}
-
-/**
- * Load existing fee structures
- */
-async function loadFeeStructures() {
-  const container = document.getElementById('fee-structures-list');
-  if (!container) return;
-  
-  container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
-  
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    
-    const snapshot = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .where('term', '==', term)
-      .get();
-    
-    if (snapshot.empty) {
-      container.innerHTML = `
-        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
-          <p style="font-size:var(--text-lg); margin-bottom:var(--space-md);">📋 No Fee Structures Configured Yet</p>
-          <p style="font-size:var(--text-sm);">Configure fees for your classes using the form above.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    container.innerHTML = '';
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      
-      const card = document.createElement('div');
-      card.className = 'fee-structure-card';
-      card.style.cssText = `
-        background: white;
-        border: 1px solid var(--color-gray-300);
-        border-radius: var(--radius-md);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-md);
-      `;
-      
-      const feeItems = Object.entries(data.fees || {})
-        .map(([key, value]) => `
-          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
-            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
-            <strong>₦${parseFloat(value).toLocaleString()}</strong>
-          </div>
-        `).join('');
-      
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
-          <div>
-            <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
-            <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
-              ${data.session} • ${data.term}
-            </p>
-          </div>
-          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
-            Delete
-          </button>
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          ${feeItems}
-        </div>
-        
-        <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
-          <strong style="font-size:var(--text-lg);">Total:</strong>
-          <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
-        </div>
-      `;
-      
-      container.appendChild(card);
-    });
-    
-  } catch (error) {
-    console.error('Error loading fee structures:', error);
-    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading fee structures</p>';
-  }
-}
-
-/**
  * Save fee structure configuration
  */
 async function saveFeeStructure() {
@@ -6044,50 +6228,6 @@ async function deleteFeeStructure(docId, className) {
   } catch (error) {
     console.error('Error deleting fee structure:', error);
     window.handleError(error, 'Failed to delete fee structure');
-  }
-}
-
-/**
- * Load payment recording section
- */
-async function loadPaymentRecordingSection() {
-  try {
-    // Populate class filter
-    await populatePaymentClassFilter();
-    
-    // Load current settings
-    const settings = await window.getCurrentSettings();
-    document.getElementById('payment-session-display').textContent = settings.session;
-    document.getElementById('payment-term-display').textContent = settings.term;
-    
-  } catch (error) {
-    console.error('Error loading payment section:', error);
-    window.showToast?.('Failed to load payment section', 'danger');
-  }
-}
-
-/**
- * Populate class filter for payment recording
- */
-async function populatePaymentClassFilter() {
-  const select = document.getElementById('payment-class-filter');
-  if (!select) return;
-  
-  try {
-    const snapshot = await db.collection('classes').orderBy('name').get();
-    
-    select.innerHTML = '<option value="">-- Select Class --</option>';
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const opt = document.createElement('option');
-      opt.value = doc.id;
-      opt.textContent = data.name;
-      select.appendChild(opt);
-    });
-    
-  } catch (error) {
-    console.error('Error populating class filter:', error);
   }
 }
 
@@ -6380,144 +6520,6 @@ function printReceipt(receiptNo) {
 
     if (!receiptWindow) {
         window.showToast?.('Please allow popups to print receipts', 'warning');
-    }
-}
-
-// Load list of pupils with outstanding fees
-async function loadOutstandingFeesReport() {
-    const container = document.getElementById('outstanding-fees-table');
-    if (!container) return;
-
-    const tbody = container.querySelector('tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading outstanding fees...</td></tr>';
-
-    try {
-        const settings = await window.getCurrentSettings();
-        const outstanding = await window.finance.getOutstandingFeesReport(null, settings.session, settings.term);
-
-        if (!outstanding?.length) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
-                        ✓ All fees collected! No outstanding payments.
-                    </td>
-                </tr>`;
-
-            const outstandingCount = document.getElementById('outstanding-count');
-if (outstandingCount) outstandingCount.textContent = '0';
-
-const outstandingTotal = document.getElementById('outstanding-total');
-if (outstandingTotal) outstandingTotal.textContent = '₦0';
-            return;
-        }
-
-        let totalOutstanding = 0;
-        const fragment = document.createDocumentFragment();
-
-        outstanding.forEach(payment => {
-            totalOutstanding += Number(payment.balance) || 0;
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Pupil Name">${payment.pupilName || '-'}</td>
-                <td data-label="Class">${payment.className || '-'}</td>
-                <td data-label="Amount Due">₦${Number(payment.amountDue || 0).toLocaleString()}</td>
-                <td data-label="Paid">₦${Number(payment.totalPaid || 0).toLocaleString()}</td>
-                <td data-label="Balance" class="text-bold text-danger">
-                    ₦${Number(payment.balance || 0).toLocaleString()}
-                </td>
-                <td data-label="Status">
-                    <span class="status-badge" style="background:${payment.status === 'partial' ? '#ff9800' : '#f44336'};">
-                        ${payment.status === 'partial' ? 'Partial' : 'Owing'}
-                    </span>
-                </td>
-            `;
-            fragment.appendChild(tr);
-        });
-
-        tbody.innerHTML = '';
-        tbody.appendChild(fragment);
-
-        // Update summary
-        const outstandingCountEl = document.getElementById('outstanding-count');
-if (outstandingCountEl) outstandingCountEl.textContent = outstanding.length;
-
-const outstandingTotalEl = document.getElementById('outstanding-total');
-if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
-
-    } catch (error) {
-        console.error('Error loading outstanding fees:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; color:var(--color-danger);">
-                    Error loading outstanding fees
-                </td>
-            </tr>`;
-    }
-}
-
-// Load financial summary dashboard
-async function loadFinancialReports() {
-    try {
-        const settings = await window.getCurrentSettings();
-        const summary = await window.finance.getFinancialSummary(settings.session, settings.term);
-
-        if (!summary) {
-            window.showToast?.('Failed to load financial summary', 'danger');
-            return;
-        }
-
-        // ─── Fixed assignments ────────────────────────────────────────
-        const expectedEl  = document.getElementById('report-total-expected');
-        const collectedEl = document.getElementById('report-total-collected');
-        const outstandingEl = document.getElementById('report-total-outstanding');
-        const rateEl      = document.getElementById('report-collection-rate');
-
-        if (expectedEl) {
-            expectedEl.textContent = `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
-        }
-        if (collectedEl) {
-            collectedEl.textContent = `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
-        }
-        if (outstandingEl) {
-            outstandingEl.textContent = `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
-        }
-        if (rateEl) {
-            rateEl.textContent = `${Number(summary.collectionRate || 0)}%`;
-        }
-
-    
-        // Safe assignment using explicit null check
-const paidFullEl = document.getElementById('report-paid-full');
-if (paidFullEl) {
-    paidFullEl.textContent = summary?.paidInFull ?? 0;
-}
-
-const partialEl = document.getElementById('report-partial');
-if (partialEl) {
-    partialEl.textContent = summary?.partialPayments ?? 0;
-}
-
-const owingEl = document.getElementById('report-owing');
-if (owingEl) {
-    owingEl.textContent = summary?.noPayment ?? 0;
-}
-        // Session / term display
-const sessionEl = document.getElementById('report-session-display');
-if (sessionEl) {
-    sessionEl.textContent = settings?.session || '—';
-}
-
-const termEl = document.getElementById('report-term-display');
-if (termEl) {
-    termEl.textContent = settings?.term || '—';
-}
-
-    } catch (error) {
-        console.error('Error loading financial reports:', error);
-        window.showToast?.('Failed to load financial reports', 'danger');
     }
 }
 
