@@ -692,10 +692,6 @@ button[onclick="exportPupilResults()"]:hover {
                         <i data-lucide="user-plus"></i>
                         <span>Assign Teachers</span>
                     </a>
-                    <a href="#result-approvals" data-section="result-approvals" class="sidebar-link">
-                    <i data-lucide="clipboard-check"></i>
-                    <span>Approve Results</span>
-                    </a>
                     <a href="#promotion-requests" class="sidebar-link" data-section="promotion-requests">
                         <i data-lucide="trending-up"></i>
                         <span>Promotion Requests</span>
@@ -1346,37 +1342,6 @@ button[onclick="exportPupilResults()"]:hover {
             </div>
         </div>
         
-        <!-- Result Approvals Section (NEW) -->
-<div id="result-approvals" class="admin-card" style="display:none;">
-    <h1>Result Approvals</h1>
-    <p class="section-description">Review and approve teacher-submitted results</p>
-    
-    <div class="table-container">
-        <table class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Teacher</th>
-                    <th>Class</th>
-                    <th>Subject</th>
-                    <th>Term</th>
-                    <th>Pupils</th>
-                    <th>Submitted</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="result-approvals-table">
-                <tr><td colspan="8" class="table-loading">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div id="no-approvals-message" style="display:none; text-align:center; padding: var(--space-2xl); color: var(--color-gray-600);">
-        <p style="font-size: var(--text-lg); margin-bottom: var(--space-md);">📋 No Pending Approvals</p>
-        <p>Teachers will submit results here for your review.</p>
-    </div>
-</div>
-
         <!-- ========================================
      FEE MANAGEMENT SECTION
 ========================================= -->
