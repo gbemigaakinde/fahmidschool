@@ -127,54 +127,75 @@ window.handleError = function(error, fallbackMessage = 'An error occurred') {
 // ============================================
 
 window.getCurrentSettings = async function() {
+  // Define complete default structure
+  const defaultSettings = {
+    term: 'First Term',
+    session: '2025/2026',
+    currentSession: {
+      name: '2025/2026',
+      startYear: 2025,
+      endYear: 2026,
+      startDate: null,
+      endDate: null
+    },
+    resumptionDate: null,
+    promotionPeriodActive: false
+  };
+  
   try {
     const settingsDoc = await window.db.collection('settings').doc('current').get();
     
-    if (settingsDoc.exists) {
-      const data = settingsDoc.data();
-      
-      // Extract session info properly
-      let sessionName = '2025/2026';
-      let sessionData = null;
-
-      if (data.currentSession && typeof data.currentSession === 'object') {
-        sessionName =
-          data.currentSession.name ||
-          `${data.currentSession.startYear}/${data.currentSession.endYear}`;
-        sessionData = data.currentSession;
-      } else if (data.session) {
-        sessionName = data.session;
-      }
-
-      // Return ALL fields that code expects
-      return {
-        term: data.term || 'First Term',
-        session: sessionName,
-        currentSession: sessionData,
-        resumptionDate: data.resumptionDate || null,
-        promotionPeriodActive: data.promotionPeriodActive || false
-      };
+    if (!settingsDoc.exists) {
+      console.warn('⚠️ Settings document not found, using defaults');
+      return defaultSettings;
     }
     
-    // Return complete default structure
-    return {
-      term: 'First Term',
-      session: '2025/2026',
-      currentSession: null,
-      resumptionDate: null,
-      promotionPeriodActive: false
-    };
-  } catch (error) {
-    console.error('Error getting settings:', error);
+    const data = settingsDoc.data();
     
-    // Return complete default structure on error
+    // Extract session information safely
+    let sessionName = defaultSettings.session;
+    let sessionData = defaultSettings.currentSession;
+    
+    if (data.currentSession && typeof data.currentSession === 'object') {
+      sessionName = data.currentSession.name || 
+                    `${data.currentSession.startYear}/${data.currentSession.endYear}` ||
+                    defaultSettings.session;
+      sessionData = {
+        name: sessionName,
+        startYear: data.currentSession.startYear || defaultSettings.currentSession.startYear,
+        endYear: data.currentSession.endYear || defaultSettings.currentSession.endYear,
+        startDate: data.currentSession.startDate || null,
+        endDate: data.currentSession.endDate || null
+      };
+    } else if (data.session) {
+      sessionName = data.session;
+      // Try to parse year from session name like "2025/2026"
+      const yearMatch = data.session.match(/(\d{4})\/(\d{4})/);
+      if (yearMatch) {
+        sessionData = {
+          name: data.session,
+          startYear: parseInt(yearMatch[1]),
+          endYear: parseInt(yearMatch[2]),
+          startDate: null,
+          endDate: null
+        };
+      }
+    }
+    
+    // Return complete object with all fields
     return {
-      term: 'First Term',
-      session: '2025/2026',
-      currentSession: null,
-      resumptionDate: null,
-      promotionPeriodActive: false
+      term: data.term || defaultSettings.term,
+      session: sessionName,
+      currentSession: sessionData,
+      resumptionDate: data.resumptionDate || null,
+      promotionPeriodActive: Boolean(data.promotionPeriodActive)
     };
+    
+  } catch (error) {
+    console.error('❌ Error getting settings:', error);
+    
+    // Always return valid default object on error
+    return defaultSettings;
   }
 };
 
