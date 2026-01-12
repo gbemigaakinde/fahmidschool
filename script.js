@@ -552,16 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initTestimonialsCarousel();
     initScrollAnimations();
 
-    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            const section = link.dataset.section;
-            if (section && typeof window.showSection === 'function') {
-                window.showSection(section);
-            }
-        });
-    });
-
     console.log('✓ Fahmid School website initialized successfully (v2.4.0 - FIXED)');
 });
 
