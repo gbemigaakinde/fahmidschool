@@ -1561,7 +1561,6 @@ async function editPupil(uid) {
     document.getElementById('pupil-password').value = ''; // always blank for security
 
     // Handle old-format class data
-    const className = data.class; // define className here so it’s accessible later
     if (!classId && className && typeof className === 'string') {
       const classesSnapshot = await db.collection('classes')
         .where('name', '==', className)
