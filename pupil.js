@@ -506,7 +506,7 @@ async function loadResults() {
 }
 
 /**
- * Load pupil fee balance with detailed breakdown
+ * Load pupil fee balance - FIXED session path encoding
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -528,8 +528,12 @@ async function loadFeeBalance() {
         const session = settings.session;
         const term = settings.term;
         
+        // CRITICAL FIX: Encode session name to avoid path issues
+        // Convert "2025/2026" to "2025-2026"
+        const encodedSession = session.replace(/\//g, '-');
+        
         // Get payment summary
-        const paymentRecordId = `${currentPupilId}_${session}_${term}`;
+        const paymentRecordId = `${currentPupilId}_${encodedSession}_${term}`;
         const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
         
         if (!paymentDoc.exists) {
@@ -638,8 +642,8 @@ async function loadFeeBalance() {
             lucide.createIcons();
         }
         
-        // Load payment history
-        await loadPaymentHistory(session, term);
+        // Load payment history with encoded session
+        await loadPaymentHistory(encodedSession, term);
         
     } catch (error) {
         console.error('Error loading fee balance:', error);
@@ -1054,21 +1058,6 @@ async function loadSessionResults() {
 // Make function globally available
 window.loadSessionResults = loadSessionResults;
 
-/**
- * Scroll to fee balance section smoothly
- */
-function scrollToFees() {
-  const feeSection = document.getElementById('fee-balance-section');
-  if (feeSection) {
-    feeSection.style.display = 'block';
-    feeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.showToast?.('📊 Viewing fee balance', 'info', 2000);
-  }
-}
-
-// Make function globally available
-window.scrollToFees = scrollToFees;
-
 // ============================================
 // GRADE CALCULATION
 // ============================================
@@ -1093,5 +1082,22 @@ style.textContent = `
 }
 `;
 document.head.appendChild(style);
+
+/**
+ * Scroll to fee balance section smoothly
+ */
+function scrollToFees() {
+  const feeSection = document.getElementById('fee-balance-section');
+  if (feeSection) {
+    feeSection.style.display = 'block';
+    feeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.showToast?.('📊 Viewing fee balance', 'info', 2000);
+  }
+}
+
+// Make function globally available
+window.scrollToFees = scrollToFees;
+
+console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
 
 console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
