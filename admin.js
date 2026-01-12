@@ -3949,15 +3949,13 @@ window.rejectResultSubmission = rejectResultSubmission;
 ======================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 Admin portal initializing...');
+  console.log('🚀 Admin portal DOMContentLoaded fired');
   
-  // CRITICAL FIX: Initialize navigation FIRST
-  initializeSidebarNavigation();
-  
-  // Show dashboard by default
+  // Navigation is already setup by setupSidebarNavigation() above
+  // Just show dashboard
   showSection('dashboard');
   
-  // Set maximum date for date of birth (today's date)
+  // Set maximum date for date of birth
   const dobInput = document.getElementById('pupil-dob');
   if (dobInput) {
     const today = new Date();
@@ -3968,10 +3966,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     dobInput.setAttribute('max', maxDate);
   }
   
-  // Initialize class hierarchy if it doesn't exist
+  // Initialize class hierarchy
   await window.classHierarchy.initializeClassHierarchy();
   
-  console.log('✓ Admin portal initialized successfully (v6.4.0 - SIDEBAR FIXED)');
+  console.log('✅ Admin portal fully initialized');
 });
 
 /**
