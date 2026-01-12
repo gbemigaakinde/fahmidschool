@@ -21,10 +21,6 @@
    HAMBURGER MENU FUNCTIONALITY (ALL PORTALS)
 ===================================================== */
 
-/**
- * FIXED: Hamburger menu initialization with proper checks
- * Works for public site, admin portal, teacher portal, and pupil portal
- */
 function initHamburgerMenu() {
     const hamburger = document.getElementById('hamburger');
     const sidebar =
@@ -37,14 +33,13 @@ function initHamburgerMenu() {
         return;
     }
 
-    // Prevent double initialization
-    if (hamburger.dataset.initialized === 'true') {
-        console.log('Hamburger menu already initialized');
+    // CRITICAL FIX: Check if already initialized
+    if (hamburger.hasAttribute('data-initialized')) {
+        console.log('✓ Hamburger menu already initialized, skipping');
         return;
     }
-    
-    hamburger.dataset.initialized = 'true';
 
+    // Toggle function
     function toggleSidebar(forceClose = false) {
         if (forceClose) {
             hamburger.classList.remove('active');
@@ -60,11 +55,13 @@ function initHamburgerMenu() {
         document.body.style.overflow = isActive ? 'hidden' : '';
     }
 
+    // Click on hamburger
     hamburger.addEventListener('click', e => {
         e.stopPropagation();
         toggleSidebar();
     });
 
+    // Click outside to close
     document.addEventListener('click', e => {
         if (
             sidebar.classList.contains('active') &&
@@ -75,6 +72,7 @@ function initHamburgerMenu() {
         }
     });
 
+    // Close on link click (mobile)
     sidebar.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
             if (window.innerWidth <= 1024) {
@@ -83,6 +81,7 @@ function initHamburgerMenu() {
         });
     });
 
+    // Escape key to close
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape' && sidebar.classList.contains('active')) {
             toggleSidebar(true);
@@ -90,6 +89,7 @@ function initHamburgerMenu() {
         }
     });
 
+    // Close on window resize
     let resizeTimer;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
@@ -100,7 +100,9 @@ function initHamburgerMenu() {
         }, 250);
     });
     
-    console.log('✓ Hamburger menu initialized');
+    // Mark as initialized
+    hamburger.setAttribute('data-initialized', 'true');
+    console.log('✅ Hamburger menu initialized');
 }
 
 function initHeroSlideshow() {
