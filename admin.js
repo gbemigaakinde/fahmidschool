@@ -6360,9 +6360,11 @@ if (outstandingTotal) outstandingTotal.textContent = '₦0';
         tbody.appendChild(fragment);
 
         // Update summary
-        document.getElementById('outstanding-count')?.textContent = outstanding.length;
-        document.getElementById('outstanding-total')?.textContent = 
-            `₦${totalOutstanding.toLocaleString()}`;
+        const outstandingCountEl = document.getElementById('outstanding-count');
+if (outstandingCountEl) outstandingCountEl.textContent = outstanding.length;
+
+const outstandingTotalEl = document.getElementById('outstanding-total');
+if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
 
     } catch (error) {
         console.error('Error loading outstanding fees:', error);
