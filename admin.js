@@ -760,7 +760,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * Load pupil payment status (MISSING FUNCTION)
+ * Load pupil payment status
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -786,10 +786,15 @@ async function loadPupilPaymentStatus() {
     const session = settings.session;
     const term = settings.term;
     
-    // Get fee structure
-    const feeStructure = await window.finance.getFeeStructure(classId, session, term);
+    // Get fee structure directly from Firestore
+    const feeStructureSnap = await db.collection('fee_structures')
+      .where('classId', '==', classId)
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .limit(1)
+      .get();
     
-    if (!feeStructure) {
+    if (feeStructureSnap.empty) {
       statusContainer.innerHTML = `
         <div class="alert alert-warning">
           <strong>⚠️ Fee Structure Not Configured</strong>
@@ -800,18 +805,22 @@ async function loadPupilPaymentStatus() {
       return;
     }
     
-    // Get payment summary
-    const paymentSummary = await window.finance.getPupilPaymentSummary(pupilId, session, term);
+    const feeStructure = feeStructureSnap.docs[0].data();
     
-    let amountDue = feeStructure.total;
+    // Get payment summary directly from Firestore
+    const paymentDocId = `${pupilId}_${session}_${term}`;
+    const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+    
+    let amountDue = feeStructure.total || 0;
     let totalPaid = 0;
     let balance = amountDue;
     let status = 'owing';
     
-    if (paymentSummary) {
-      totalPaid = paymentSummary.totalPaid || 0;
-      balance = paymentSummary.balance || 0;
-      status = paymentSummary.status || 'owing';
+    if (paymentDoc.exists) {
+      const paymentData = paymentDoc.data();
+      totalPaid = paymentData.totalPaid || 0;
+      balance = paymentData.balance || 0;
+      status = paymentData.status || 'owing';
     }
     
     const statusBadge = 
@@ -877,12 +886,23 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
   
   try {
-    const transactions = await window.finance.getPupilPaymentHistory(pupilId, session, term);
+    // Query transactions directly from Firestore
+    const transactionsSnap = await db.collection('transactions')
+      .where('pupilId', '==', pupilId)
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .orderBy('paymentDate', 'desc')
+      .get();
     
-    if (!transactions?.length) {
+    if (transactionsSnap.empty) {
       container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
       return;
     }
+    
+    const transactions = [];
+    transactionsSnap.forEach(doc => {
+      transactions.push({ id: doc.id, ...doc.data() });
+    });
     
     container.innerHTML = transactions.map(txn => {
       const date = txn.paymentDate 
@@ -6441,17 +6461,23 @@ async function saveFeeStructure() {
   
   try {
     const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
     
-    const result = await window.finance.configureFeeStructure(
+    // Save fee structure directly to Firestore
+    await db.collection('fee_structures').add({
       classId,
       className,
-      settings.session,
-      settings.term,
-      feeBreakdown
-    );
+      session,
+      term,
+      fees: feeBreakdown,
+      total: total,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: auth.currentUser.uid
+    });
     
     window.showToast?.(
-      `✓ Fee structure saved for ${className}\nTotal: ₦${result.total.toLocaleString()}`,
+      `✓ Fee structure saved for ${className}\nTotal: ₦${total.toLocaleString()}`,
       'success',
       5000
     );
@@ -6468,7 +6494,7 @@ async function saveFeeStructure() {
     
   } catch (error) {
     console.error('Error saving fee structure:', error);
-    window.handleError(error, 'Failed to save fee structure');
+    window.showToast?.('Failed to save fee structure: ' + error.message, 'danger');
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -6652,87 +6678,143 @@ async function loadPupilPaymentStatus() {
 
 // Record a new payment
 async function recordPayment() {
-    const pupilSelect = document.getElementById('payment-pupil-select');
-    const pupilId = pupilSelect?.value;
-    const pupilName = pupilSelect?.selectedOptions[0]?.dataset.pupilName;
-    const className = pupilSelect?.selectedOptions[0]?.dataset.className;
-    const classId = document.getElementById('payment-class-filter')?.value;
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  const pupilId = pupilSelect?.value;
+  const pupilName = pupilSelect?.selectedOptions[0]?.dataset.pupilName;
+  const className = pupilSelect?.selectedOptions[0]?.dataset.className;
+  const classId = document.getElementById('payment-class-filter')?.value;
 
-    const amountInput = document.getElementById('payment-amount');
-    const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
+  const amountInput = document.getElementById('payment-amount');
+  const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
 
-    const paymentMethod = document.getElementById('payment-method')?.value;
-    const notes = document.getElementById('payment-notes')?.value.trim() || '';
+  const paymentMethod = document.getElementById('payment-method')?.value;
+  const notes = document.getElementById('payment-notes')?.value.trim() || '';
 
-    // Validation
-    if (!pupilId || !classId) {
-        window.showToast?.('Please select a pupil and class', 'warning');
-        return;
+  // Validation
+  if (!pupilId || !classId) {
+    window.showToast?.('Please select a pupil and class', 'warning');
+    return;
+  }
+
+  if (isNaN(amountPaid) || amountPaid <= 0) {
+    window.showToast?.('Please enter a valid payment amount', 'warning');
+    return;
+  }
+
+  const recordBtn = document.getElementById('record-payment-btn');
+  if (recordBtn) {
+    recordBtn.disabled = true;
+    recordBtn.innerHTML = '<span class="btn-loading">Recording payment...</span>';
+  }
+
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Generate receipt number
+    const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
+    // Get or create payment summary document
+    const paymentDocId = `${pupilId}_${session}_${term}`;
+    const paymentRef = db.collection('payments').doc(paymentDocId);
+    const paymentDoc = await paymentRef.get();
+    
+    let currentPaid = 0;
+    let amountDue = 0;
+    
+    if (paymentDoc.exists) {
+      const data = paymentDoc.data();
+      currentPaid = data.totalPaid || 0;
+      amountDue = data.amountDue || 0;
+    } else {
+      // Get fee structure to know amount due
+      const feeSnap = await db.collection('fee_structures')
+        .where('classId', '==', classId)
+        .where('session', '==', session)
+        .where('term', '==', term)
+        .limit(1)
+        .get();
+      
+      if (!feeSnap.empty) {
+        amountDue = feeSnap.docs[0].data().total || 0;
+      }
+    }
+    
+    const newTotalPaid = currentPaid + amountPaid;
+    const newBalance = Math.max(0, amountDue - newTotalPaid);
+    const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
+    
+    // Use batch for atomic updates
+    const batch = db.batch();
+    
+    // Update/create payment summary
+    batch.set(paymentRef, {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountDue,
+      totalPaid: newTotalPaid,
+      balance: newBalance,
+      status: newStatus,
+      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    // Add transaction record
+    const transactionRef = db.collection('transactions').doc();
+    batch.set(transactionRef, {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountPaid,
+      paymentMethod: paymentMethod || 'Cash',
+      receiptNo,
+      notes,
+      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      recordedBy: auth.currentUser.uid,
+      recordedByEmail: auth.currentUser.email
+    });
+    
+    await batch.commit();
+
+    window.showToast?.(
+      `✓ Payment Recorded Successfully!\n\n` +
+      `Receipt #${receiptNo}\n` +
+      `Amount: ₦${amountPaid.toLocaleString()}\n` +
+      `New Balance: ₦${newBalance.toLocaleString()}`,
+      'success',
+      8000
+    );
+
+    // Clear form
+    if (amountInput) amountInput.value = '';
+    const notesInput = document.getElementById('payment-notes');
+    if (notesInput) notesInput.value = '';
+
+    // Refresh data
+    await loadPupilPaymentStatus();
+
+    // Ask to print receipt
+    if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
+      printReceipt(receiptNo);
     }
 
-    if (isNaN(amountPaid) || amountPaid <= 0) {
-        window.showToast?.('Please enter a valid payment amount', 'warning');
-        return;
-    }
-
-    const recordBtn = document.getElementById('record-payment-btn');
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    window.showToast?.('Failed to record payment: ' + error.message, 'danger');
+  } finally {
     if (recordBtn) {
-        recordBtn.disabled = true;
-        recordBtn.innerHTML = '<span class="btn-loading">Recording payment...</span>';
+      recordBtn.disabled = false;
+      recordBtn.innerHTML = '💰 Record Payment';
     }
-
-    try {
-        const settings = await window.getCurrentSettings();
-
-        const result = await window.finance.recordPayment(
-            pupilId,
-            pupilName,
-            classId,
-            className,
-            settings.session,
-            settings.term,
-            {
-                amountPaid,
-                paymentMethod,
-                notes
-            }
-        );
-
-        window.showToast?.(
-            `✓ Payment Recorded Successfully!\n\n` +
-            `Receipt #${result.receiptNo}\n` +
-            `Amount: ₦${result.amountPaid.toLocaleString()}\n` +
-            `New Balance: ₦${result.newBalance.toLocaleString()}`,
-            'success',
-            8000
-        );
-
-        // Clear form
-if (amountInput) {
-    amountInput.value = '';
-}
-const notesInput = document.getElementById('payment-notes');
-if (notesInput) {
-    notesInput.value = '';
-}
-
-        // Refresh data
-        await loadPupilPaymentStatus();
-
-        // Ask to print receipt
-        if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
-            printReceipt(result.receiptNo);
-        }
-
-    } catch (error) {
-        console.error('Error recording payment:', error);
-        window.handleError?.(error, 'Failed to record payment');
-    } finally {
-        if (recordBtn) {
-            recordBtn.disabled = false;
-            recordBtn.innerHTML = '💰 Record Payment';
-        }
-    }
+  }
 }
 
 // Load payment history for selected pupil
