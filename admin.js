@@ -192,33 +192,71 @@ function setupSidebarNavigation() {
   const hamburger = document.getElementById('hamburger');
   const sidebar = document.getElementById('admin-sidebar');
   
+  // CRITICAL FIX: Better validation with retry
   if (!hamburger || !sidebar) {
-    console.error('❌ Hamburger or sidebar not found!');
+    console.error('❌ Hamburger or sidebar not found!', {
+      hamburger: !!hamburger,
+      sidebar: !!sidebar
+    });
+    
+    // Retry after a short delay (DOM might not be ready)
+    console.log('⏳ Retrying hamburger setup in 200ms...');
+    setTimeout(() => {
+      window.adminSidebarInitialized = false; // Reset flag
+      setupSidebarNavigation(); // Retry
+    }, 200);
     return;
   }
   
-  // Toggle sidebar on hamburger click
-  hamburger.addEventListener('click', (e) => {
+  console.log('✓ Found hamburger and sidebar elements');
+  
+  // Remove any existing event listeners by cloning (prevents duplicates)
+  const newHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(newHamburger, hamburger);
+  const freshHamburger = document.getElementById('hamburger');
+  
+  console.log('🎯 Setting up hamburger click handler...');
+  
+  // Main hamburger toggle
+  freshHamburger.addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
+    
+    console.log('🔘 Hamburger clicked!');
+    
     const isActive = sidebar.classList.toggle('active');
-    hamburger.classList.toggle('active', isActive);
-    hamburger.setAttribute('aria-expanded', isActive);
+    freshHamburger.classList.toggle('active', isActive);
+    freshHamburger.setAttribute('aria-expanded', isActive);
     document.body.style.overflow = isActive ? 'hidden' : '';
+    
+    console.log(`Sidebar is now: ${isActive ? 'OPEN' : 'CLOSED'}`);
   });
   
   // Close sidebar when clicking outside
   document.addEventListener('click', (e) => {
     if (sidebar.classList.contains('active') && 
         !sidebar.contains(e.target) && 
-        !hamburger.contains(e.target)) {
+        !freshHamburger.contains(e.target)) {
       sidebar.classList.remove('active');
-      hamburger.classList.remove('active');
-      hamburger.setAttribute('aria-expanded', 'false');
+      freshHamburger.classList.remove('active');
+      freshHamburger.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
+      console.log('📍 Sidebar closed (clicked outside)');
     }
   });
   
-  // Close sidebar on link click (mobile)
+  // Close on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+      sidebar.classList.remove('active');
+      freshHamburger.classList.remove('active');
+      freshHamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      console.log('⌨️ Sidebar closed (Escape key)');
+    }
+  });
+  
+  // Setup sidebar navigation links
   sidebar.querySelectorAll('a[data-section]').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -238,8 +276,8 @@ function setupSidebarNavigation() {
       // Close mobile sidebar
       if (window.innerWidth <= 1024) {
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        freshHamburger.classList.remove('active');
+        freshHamburger.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
       }
     });
@@ -252,15 +290,15 @@ function setupSidebarNavigation() {
     resizeTimer = setTimeout(() => {
       if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        freshHamburger.classList.remove('active');
+        freshHamburger.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
       }
     }, 250);
   });
   
   window.adminSidebarInitialized = true;
-  console.log('✅ Admin sidebar navigation initialized');
+  console.log('✅ Admin sidebar navigation initialized successfully');
 }
 
 // ============================================
@@ -7374,3 +7412,45 @@ window.adminDebug = {
 }
 console.log('✓ Admin portal v6.3.0 loaded successfully');
 console.log('All critical fixes applied • Ready for use');
+
+/* =====================================================
+   HAMBURGER DEBUG TESTER - TEMPORARY
+===================================================== */
+
+// Run this in console: testHamburger()
+window.testHamburger = function() {
+  console.log('🧪 HAMBURGER DIAGNOSTIC TEST');
+  console.log('═══════════════════════════════════════');
+  
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('admin-sidebar');
+  
+  console.log('Hamburger element:', hamburger);
+  console.log('Hamburger HTML:', hamburger?.outerHTML?.substring(0, 100));
+  console.log('Sidebar element:', sidebar);
+  console.log('Sidebar classes:', sidebar?.className);
+  
+  if (hamburger) {
+    console.log('🔍 Checking event listeners...');
+    console.log('Dataset initialized:', hamburger.dataset.initialized);
+    
+    // Manual toggle test
+    console.log('🧪 Testing manual toggle...');
+    const isActive = sidebar.classList.toggle('active');
+    hamburger.classList.toggle('active', isActive);
+    console.log('Toggle result:', isActive ? 'OPENED' : 'CLOSED');
+    
+    // Toggle back
+    setTimeout(() => {
+      sidebar.classList.toggle('active');
+      hamburger.classList.toggle('active');
+      console.log('✓ Toggle test complete');
+    }, 1000);
+  } else {
+    console.error('❌ Hamburger element not found!');
+  }
+  
+  console.log('═══════════════════════════════════════');
+};
+
+console.log('💡 Run testHamburger() in console to diagnose');
