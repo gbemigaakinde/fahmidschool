@@ -6068,7 +6068,7 @@ async function loadPupilPaymentStatus() {
   
   const classId = document.getElementById('payment-class-filter')?.value;
   const pupilName = pupilSelect.selectedOptions[0]?.dataset.pupilName;
-  const className = pupilSelect.selectedOptions[0]?.dataset.className;
+  const className = pupilSelect.selectedOptions[0]?.dataset.className;  // ← KEEP THIS ONE
   
   const formContainer = document.getElementById('payment-form-container');
   const statusContainer = document.getElementById('payment-status-display');
