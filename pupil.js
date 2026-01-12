@@ -657,9 +657,9 @@ async function loadFeeBalance() {
 }
 
 /**
- * Load payment history with enhanced styling
+ * Load payment history with encoded session
  */
-async function loadPaymentHistory(session, term) {
+async function loadPaymentHistory(encodedSession, term) {
     const container = document.getElementById('payment-history-list');
     if (!container || !currentPupilId) return;
     
@@ -667,7 +667,7 @@ async function loadPaymentHistory(session, term) {
         // Query transactions directly from Firestore
         const transactionsSnap = await db.collection('transactions')
             .where('pupilId', '==', currentPupilId)
-            .where('session', '==', session)
+            .where('session', '==', encodedSession.replace(/-/g, '/')) // Convert back to original format for query
             .where('term', '==', term)
             .orderBy('paymentDate', 'desc')
             .get();
