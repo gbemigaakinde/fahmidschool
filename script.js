@@ -559,31 +559,58 @@ function initScrollAnimations() {
 ===================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOMContentLoaded fired');
+    
+    // Set copyright year
     const yearEl = document.getElementById('copyright-year');
     if (yearEl) {
         yearEl.textContent = new Date().getFullYear();
     }
 
-    initHamburgerMenu();
-    initHeroSlideshow();
-    initGalleryLightbox();
-    initGalleryCarousel();
-    initSmoothScroll();
-    initTestimonialsCarousel();
-    initScrollAnimations();
+    // Initialize components with error handling
+    try {
+        initHamburgerMenu();
+    } catch (error) {
+        console.error('Error initializing hamburger menu:', error);
+    }
 
-    // REMOVE THIS BLOCK - IT'S CAUSING THE ERROR
-    // document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
-    //     link.addEventListener('click', e => {
-    //         e.preventDefault();
-    //         const section = link.dataset.section;
-    //         if (section && typeof window.showSection === 'function') {
-    //             window.showSection(section);
-    //         }
-    //     });
-    // });
+    try {
+        initHeroSlideshow();
+    } catch (error) {
+        console.error('Error initializing hero slideshow:', error);
+    }
 
-    console.log('✓ Fahmid School website initialized successfully (v2.4.0 - FIXED)');
+    try {
+        initGalleryLightbox();
+    } catch (error) {
+        console.error('Error initializing gallery lightbox:', error);
+    }
+
+    try {
+        initGalleryCarousel();
+    } catch (error) {
+        console.error('Error initializing gallery carousel:', error);
+    }
+
+    try {
+        initSmoothScroll();
+    } catch (error) {
+        console.error('Error initializing smooth scroll:', error);
+    }
+
+    try {
+        initTestimonialsCarousel();
+    } catch (error) {
+        console.error('Error initializing testimonials:', error);
+    }
+
+    try {
+        initScrollAnimations();
+    } catch (error) {
+        console.error('Error initializing scroll animations:', error);
+    }
+
+    console.log('✓ Script.js initialization complete');
 });
 
 /* =====================================================
