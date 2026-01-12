@@ -183,11 +183,15 @@ let isLoadingAdminData = false;
 // SIDEBAR NAVIGATION SETUP (Replaces lines 168-265)
 // ============================================
 
-/**
- * Setup sidebar navigation with teacher-style reliability
- */
 function setupSidebarNavigation() {
   console.log('🔧 Setting up admin sidebar navigation...');
+  
+  // CRITICAL FIX: Wait for DOM to be fully ready
+  if (document.readyState === 'loading') {
+    console.warn('⏳ DOM not ready yet, deferring sidebar setup');
+    document.addEventListener('DOMContentLoaded', setupSidebarNavigation);
+    return;
+  }
   
   // Prevent double initialization
   if (window.adminSidebarInitialized) {
@@ -199,6 +203,11 @@ function setupSidebarNavigation() {
   const sidebar = document.getElementById('admin-sidebar');
   if (!sidebar) {
     console.error('❌ Sidebar element not found!');
+    // Retry after delay
+    setTimeout(() => {
+      console.log('⏳ Retrying sidebar setup...');
+      setupSidebarNavigation();
+    }, 200);
     return;
   }
   
@@ -231,7 +240,7 @@ function setupSidebarNavigation() {
       
       console.log(`🖱️ Navigation click: ${sectionId}`);
       
-      // TEACHER-STYLE: Check if data is loading
+      // Check if data is loading
       if (isLoadingAdminData) {
         window.showToast?.('Loading data, please wait...', 'info', 2000);
         return;
@@ -281,7 +290,7 @@ function setupSidebarNavigation() {
   });
   
   window.adminSidebarInitialized = true;
-  console.log('✅ Admin sidebar navigation initialized');
+  console.log('✅ Admin sidebar navigation initialized successfully');
 }
 
 // ============================================
@@ -4901,8 +4910,8 @@ async function loadFilteredPupils() {
 }
 
 /**
- * FIXED: Load Pupil Results with Session Validation
- * Replace the loadPupilResults function in admin.js
+ * FIX #2: LOAD PUPIL RESULTS WITH BETTER ERROR HANDLING
+ * Copy this ENTIRE function to replace loadPupilResults() in admin.js
  */
 
 async function loadPupilResults() {
@@ -4917,7 +4926,7 @@ async function loadPupilResults() {
     
     const selectedPupil = pupilSelect.value;
     
-    // CRITICAL FIX: Validate all required data before proceeding
+    // Validate all required data before proceeding
     if (!selectedPupil) {
         infoCard.style.display = 'none';
         container.innerHTML = `
@@ -4979,28 +4988,62 @@ async function loadPupilResults() {
         document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
         infoCard.style.display = 'block';
         
-        console.log('Querying results with:', {
+        console.log('🔍 Querying results with:', {
             pupilId: selectedPupil,
             session: currentResultsSession
         });
         
-        // Load results for this pupil and session
-        const resultsSnap = await db.collection('results')
-            .where('pupilId', '==', selectedPupil)
-            .where('session', '==', currentResultsSession)
-            .get();
+        // PRIMARY QUERY: Try with composite query first
+        let results = [];
+        let queryMethod = 'unknown';
         
-        console.log(`Query returned ${resultsSnap.size} results`);
-        
-        if (resultsSnap.empty) {
-            console.log('No results found, trying fallback method...');
+        try {
+            const resultsSnap = await db.collection('results')
+                .where('pupilId', '==', selectedPupil)
+                .where('session', '==', currentResultsSession)
+                .get();
             
-            // Fallback: Try loading all results and filtering
+            console.log(`✓ Primary query returned ${resultsSnap.size} results`);
+            
+            if (!resultsSnap.empty) {
+                resultsSnap.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        term: data.term || 'Unknown',
+                        subject: data.subject || 'Unknown',
+                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
+                        total: (data.caScore || 0) + (data.examScore || 0)
+                    });
+                });
+                queryMethod = 'primary';
+            }
+        } catch (primaryError) {
+            console.warn('⚠️ Primary query failed (possibly missing index):', primaryError.code);
+            
+            // FALLBACK METHOD: Query without session filter
+            if (primaryError.code === 'failed-precondition') {
+                console.log('📋 Using fallback method: querying all pupil results and filtering manually');
+                
+                window.showToast?.(
+                    'Loading results using alternative method...',
+                    'info',
+                    3000
+                );
+            }
+        }
+        
+        // FALLBACK QUERY: If primary failed or returned empty
+        if (results.length === 0) {
+            console.log('🔄 Trying fallback method: manual filtering');
+            
             const allResultsSnap = await db.collection('results')
                 .where('pupilId', '==', selectedPupil)
                 .get();
             
-            const results = [];
+            console.log(`📊 Fallback query found ${allResultsSnap.size} total results for pupil`);
+            
+            // Filter manually by session
             allResultsSnap.forEach(doc => {
                 const data = doc.data();
                 if (data.session === currentResultsSession) {
@@ -5008,71 +5051,71 @@ async function loadPupilResults() {
                         term: data.term || 'Unknown',
                         subject: data.subject || 'Unknown',
                         caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                        examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
+                        total: (data.caScore || 0) + (data.examScore || 0)
                     });
                 }
             });
             
-            console.log(`Fallback found ${results.length} results`);
-            
-            if (results.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-                        <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
-                        <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
-                        <p>This pupil has no recorded results for session: <strong>${currentResultsSession}</strong></p>
-                        <p style="font-size: var(--text-sm); margin-top: var(--space-md); color: var(--color-gray-500);">
-                            Make sure results have been entered by the class teacher.
-                        </p>
-                    </div>
-                `;
-                return;
-            }
-            
-            currentResultsData = results;
-            renderResultsDisplay(results, container);
-        } else {
-            // Process results from query
-            const results = [];
-            
-            resultsSnap.forEach(doc => {
-                const data = doc.data();
-                results.push({
-                    term: data.term || 'Unknown',
-                    subject: data.subject || 'Unknown',
-                    caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                    examScore: typeof data.examScore === 'number' ? data.examScore : 0
-                });
-            });
-            
-            currentResultsData = results;
-            renderResultsDisplay(results, container);
+            console.log(`✓ Fallback filtered to ${results.length} results for session "${currentResultsSession}"`);
+            queryMethod = 'fallback';
         }
+        
+        // Check if we found any results
+        if (results.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                    <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
+                    <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
+                    <p>This pupil has no recorded results for session: <strong>${currentResultsSession}</strong></p>
+                    <p style="font-size: var(--text-sm); margin-top: var(--space-md); color: var(--color-gray-500);">
+                        Make sure results have been entered by the class teacher.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Success! Render results
+        console.log(`✅ Successfully loaded ${results.length} results using ${queryMethod} method`);
+        currentResultsData = results;
+        renderResultsDisplay(results, container);
 
     } catch (error) {
-        console.error('Error loading pupil results:', error);
+        console.error('❌ Error loading pupil results:', error);
         
+        // Detailed error handling
         let errorMessage = 'Error loading results';
         let errorDetails = error.message || 'Unknown error';
+        let showRetry = true;
         
         if (error.code === 'permission-denied') {
             errorMessage = 'Permission denied';
             errorDetails = 'You do not have permission to view this data';
+            showRetry = false;
         } else if (error.code === 'unavailable') {
             errorMessage = 'Service unavailable';
             errorDetails = 'Cannot connect to server. Check your internet connection.';
+        } else if (error.code === 'failed-precondition') {
+            errorMessage = 'Database Configuration Issue';
+            errorDetails = 'A required database index is missing. Please contact your system administrator.';
+            showRetry = false;
         }
         
         container.innerHTML = `
             <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
                 <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
                 <p style="font-size: var(--text-lg); font-weight: 600;">${errorMessage}</p>
-                <p>${errorDetails}</p>
-                <button class="btn btn-primary" onclick="loadPupilResults()" style="margin-top: var(--space-lg);">
-                    🔄 Retry
-                </button>
+                <p style="margin-bottom: var(--space-lg);">${errorDetails}</p>
+                ${showRetry ? `
+                    <button class="btn btn-primary" onclick="loadPupilResults()" style="margin-top: var(--space-lg);">
+                        🔄 Retry
+                    </button>
+                ` : ''}
             </div>
         `;
+        
+        window.showToast?.(errorMessage, 'danger', 5000);
     }
 }
 
