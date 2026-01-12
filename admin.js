@@ -12,11 +12,10 @@
  * - Defensive null checks added
  * - Error boundaries improved
  */
+
+
 'use strict';
 
-/* ======================================== 
-   FIREBASE INSTANCES 
-======================================== */
 const db = window.db;
 const auth = window.auth;
 
@@ -31,6 +30,205 @@ try {
   console.warn('Secondary app already exists:', error);
   secondaryApp = firebase.app('Secondary');
   secondaryAuth = secondaryApp.auth();
+}
+
+// ============================================
+// CRITICAL: EXPORT showSection FIRST
+// ============================================
+
+/**
+ * Show a specific admin section and hide all others
+ * EXPORTED IMMEDIATELY - BEFORE ANY EVENT HANDLERS
+ */
+window.showSection = function(sectionId) {
+  if (!sectionId) {
+    console.error('showSection called with no sectionId');
+    return;
+  }
+  
+  console.log(`🎯 showSection: ${sectionId}`);
+  
+  // Hide all sections
+  document.querySelectorAll('.admin-card').forEach(card => {
+    card.style.display = 'none';
+  });
+  
+  // Show requested section
+  const section = document.getElementById(sectionId);
+  if (section) {
+    section.style.display = 'block';
+  } else {
+    console.warn(`Section ${sectionId} not found`);
+    return;
+  }
+  
+  // Update active nav link
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.classList.remove('active');
+  });
+  
+  const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+  if (activeLink) {
+    activeLink.classList.add('active');
+  }
+  
+  // Load section-specific data
+  switch(sectionId) {
+    case 'dashboard':
+      loadDashboardStats();
+      break;
+    case 'teachers':
+      loadTeachers();
+      break;
+    case 'pupils':
+      loadPupils();
+      break;
+    case 'classes':
+      loadClasses();
+      break;
+    case 'subjects':
+      loadSubjects();
+      break;
+    case 'assign-teachers':
+      loadTeacherAssignments();
+      break;
+    case 'promotion-requests':
+      loadPromotionRequests();
+      break;
+    case 'result-approvals':
+      loadResultApprovals();
+      break;
+    case 'announcements':
+      loadAdminAnnouncements();
+      break;
+    case 'alumni':
+      loadAlumni();
+      break;
+    case 'audit-log':
+      loadAuditLog();
+      break;
+    case 'view-results':
+      loadViewResultsSection();
+      break;
+    case 'settings':
+      loadCurrentSettings();
+      setTimeout(async () => {
+        await loadClassHierarchyUI();
+      }, 200);
+      loadSessionHistory();
+      break;
+    case 'fee-management':
+      loadFeeManagementSection();
+      break;
+    case 'record-payment':
+      loadPaymentRecordingSection();
+      break;
+    case 'outstanding-fees':
+      loadOutstandingFeesReport();
+      break;
+    case 'financial-reports':
+      loadFinancialReports();
+      break;
+  }
+  
+  // Close mobile sidebar
+  const sidebar = document.getElementById('admin-sidebar');
+  const hamburger = document.getElementById('hamburger');
+  if (sidebar && sidebar.classList.contains('active')) {
+    sidebar.classList.remove('active');
+    if (hamburger) {
+      hamburger.classList.remove('active');
+      hamburger.setAttribute('aria-expanded', 'false');
+    }
+    document.body.style.overflow = '';
+  }
+};
+
+// ============================================
+// CRITICAL: SETUP NAVIGATION ONLY ONCE
+// ============================================
+
+/**
+ * Setup sidebar navigation - CALLED ONLY ONCE
+ */
+function setupSidebarNavigation() {
+  // Prevent multiple initializations
+  if (window.sidebarInitialized) {
+    console.log('⚠️ Sidebar already initialized, skipping');
+    return;
+  }
+  
+  console.log('🔧 Setting up sidebar navigation...');
+  
+  const links = document.querySelectorAll('.sidebar-link[data-section]');
+  console.log(`📋 Found ${links.length} sidebar links`);
+  
+  if (links.length === 0) {
+    console.error('❌ No sidebar links found!');
+    return;
+  }
+  
+  // Add click handlers ONCE
+  links.forEach((link) => {
+    const sectionId = link.dataset.section;
+    
+    if (!sectionId) {
+      console.warn('Link has no data-section:', link);
+      return;
+    }
+    
+    // Remove any existing onclick to prevent duplicates
+    link.onclick = null;
+    
+    // Add single click handler
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log(`🖱️ Click: ${sectionId}`);
+      window.showSection(sectionId);
+    });
+  });
+  
+  // Setup group toggles
+  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+  toggles.forEach((toggle) => {
+    toggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const content = this.nextElementSibling;
+      if (!content) return;
+      
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      this.setAttribute('aria-expanded', !isExpanded);
+      content.classList.toggle('active');
+      
+      const icon = this.querySelector('.toggle-icon');
+      if (icon) {
+        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+    });
+  });
+  
+  // Mark as initialized
+  window.sidebarInitialized = true;
+  console.log('✅ Sidebar navigation setup complete');
+}
+
+// ============================================
+// INITIALIZE ON DOM READY
+// ============================================
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setupSidebarNavigation();
+    window.showSection('dashboard');
+  });
+} else {
+  setupSidebarNavigation();
+  window.showSection('dashboard');
 }
 
 /* ======================================== 
