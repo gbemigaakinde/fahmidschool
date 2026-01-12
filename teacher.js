@@ -390,13 +390,16 @@ function setupAllEventListeners() {
   if (resultTerm) resultTerm.addEventListener('change', loadResultsTable);
   if (resultSubject) resultSubject.addEventListener('change', loadResultsTable);
   
-  // Traits
-  const traitsPupil = document.getElementById('traits-pupil');
-  const traitsTerm = document.getElementById('traits-term');
-  if (traitsPupil) traitsPupil.addEventListener('change', loadTraitsData);
-  if (traitsTerm) traitsTerm.addEventListener('change', () => {
-    if (traitsPupil?.value) loadTraitsData();
-  });
+  // Traits - now using bulk entry system
+const traitsTerm = document.getElementById('traits-term');
+if (traitsTerm) traitsTerm.addEventListener('change', loadBulkTraitsTable);
+
+// Remove the pupil selector listener since we no longer use individual entry
+const traitsPupil = document.getElementById('traits-pupil');
+if (traitsPupil) {
+  // Hide or remove the pupil selector if it exists in your HTML
+  traitsPupil.closest('.form-group')?.remove();
+}
   
   // Remarks
   const remarksPupil = document.getElementById('remarks-pupil');
