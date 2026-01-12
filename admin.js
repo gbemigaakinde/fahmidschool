@@ -6407,11 +6407,22 @@ async function loadFinancialReports() {
             rateEl.textContent = `${Number(summary.collectionRate || 0)}%`;
         }
 
-        // Optional: also update the smaller counters safely
-        document.getElementById('report-paid-full')?.textContent  = summary.paidInFull  || 0;
-        document.getElementById('report-partial')?.textContent    = summary.partialPayments || 0;
-        document.getElementById('report-owing')?.textContent      = summary.noPayment || 0;
+    
+        // Safe assignment using explicit null check
+const paidFullEl = document.getElementById('report-paid-full');
+if (paidFullEl) {
+    paidFullEl.textContent = summary?.paidInFull ?? 0;
+}
 
+const partialEl = document.getElementById('report-partial');
+if (partialEl) {
+    partialEl.textContent = summary?.partialPayments ?? 0;
+}
+
+const owingEl = document.getElementById('report-owing');
+if (owingEl) {
+    owingEl.textContent = summary?.noPayment ?? 0;
+}
         // Session / term display
         document.getElementById('report-session-display')?.textContent = settings.session || '—';
         document.getElementById('report-term-display')?.textContent    = settings.term    || '—';
