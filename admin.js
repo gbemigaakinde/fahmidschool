@@ -12,10 +12,11 @@
  * - Defensive null checks added
  * - Error boundaries improved
  */
-
-
 'use strict';
 
+/* ======================================== 
+   FIREBASE INSTANCES 
+======================================== */
 const db = window.db;
 const auth = window.auth;
 
@@ -30,384 +31,6 @@ try {
   console.warn('Secondary app already exists:', error);
   secondaryApp = firebase.app('Secondary');
   secondaryAuth = secondaryApp.auth();
-}
-
-/* =====================================================
-   CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
-===================================================== */
-
-console.log('🔐 Waiting for authentication...');
-
-// Wait for BOTH authentication AND DOM to be ready
-let authUser = null;
-let domReady = false;
-
-function tryInitialize() {
-  if (authUser && domReady) {
-    console.log('✅ Both auth and DOM ready - initializing admin portal');
-    initializeAdminPortal();
-  }
-}
-
-// Step 1: Check authentication
-window.checkRole('admin')
-  .then(async user => {
-    console.log('✓ Admin authenticated:', user.email);
-    authUser = user;
-    tryInitialize();
-  })
-  .catch(err => {
-    console.error('❌ Authentication failed:', err);
-  });
-
-// Step 2: Wait for DOM
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('✓ DOM ready');
-    domReady = true;
-    tryInitialize();
-  });
-} else {
-  console.log('✓ DOM already ready');
-  domReady = true;
-  tryInitialize();
-}
-
-// Logout handler (safe - uses optional chaining)
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('admin-logout')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.logout();
-  });
-});
-
-/* =====================================================
-   MAIN INITIALIZATION FUNCTION
-===================================================== */
-
-async function initializeAdminPortal() {
-  console.log('🚀 Initializing admin portal...');
-  
-  // CRITICAL: Verify DOM is ready
-  const sidebar = document.getElementById('admin-sidebar');
-  const hamburger = document.getElementById('hamburger');
-  const dashboard = document.getElementById('dashboard');
-  
-  if (!sidebar || !hamburger || !dashboard) {
-    console.error('❌ Critical elements missing!', {
-      sidebar: !!sidebar,
-      hamburger: !!hamburger,
-      dashboard: !!dashboard
-    });
-    
-    // Retry after short delay if elements missing
-    setTimeout(() => {
-      console.log('⏳ Retrying initialization...');
-      initializeAdminPortal();
-    }, 100);
-    return;
-  }
-  
-  console.log('✓ All critical elements found');
-  
-  // Step 1: Setup sidebar navigation
-  setupSidebarNavigation();
-  
-  // Step 2: Setup hamburger menu
-  setupHamburgerMenu();
-  
-  // Step 3: Initialize class hierarchy
-  try {
-    await window.classHierarchy.initializeClassHierarchy();
-    console.log('✓ Class hierarchy initialized');
-  } catch (error) {
-    console.error('⚠️ Class hierarchy init failed:', error);
-  }
-  
-  // Step 4: Load dashboard
-  showSection('dashboard');
-  
-  // Step 5: Setup date input max date
-  const dobInput = document.getElementById('pupil-dob');
-  if (dobInput) {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const maxDate = `${year}-${month}-${day}`;
-    dobInput.setAttribute('max', maxDate);
-  }
-  
-  console.log('✅ Admin portal initialized successfully');
-}
-
-function setupHamburgerMenu() {
-  const hamburger = document.getElementById('hamburger');
-  const sidebar = document.getElementById('admin-sidebar');
-  
-  if (!hamburger || !sidebar) {
-    console.warn('Hamburger or sidebar not found');
-    return;
-  }
-  
-  // Remove any existing listeners by cloning
-  const newHamburger = hamburger.cloneNode(true);
-  hamburger.parentNode.replaceChild(newHamburger, hamburger);
-  
-  // Add click handler
-  newHamburger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isActive = sidebar.classList.toggle('active');
-    newHamburger.classList.toggle('active', isActive);
-    newHamburger.setAttribute('aria-expanded', isActive);
-    document.body.style.overflow = isActive ? 'hidden' : '';
-  });
-  
-  // Close on outside click
-  document.addEventListener('click', (e) => {
-    if (sidebar.classList.contains('active') && 
-        !sidebar.contains(e.target) && 
-        !newHamburger.contains(e.target)) {
-      sidebar.classList.remove('active');
-      newHamburger.classList.remove('active');
-      newHamburger.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-    }
-  });
-  
-  console.log('✓ Hamburger menu initialized');
-}
-
-/* =====================================================
-   SIDEBAR NAVIGATION - COMPLETE REWRITE
-===================================================== */
-
-function setupSidebarNavigation() {
-  console.log('🔧 Setting up sidebar navigation...');
-  
-  // Prevent double initialization
-  if (window.sidebarInitialized) {
-    console.log('⚠️ Sidebar already initialized, skipping');
-    return;
-  }
-  
-  // CRITICAL: Verify sidebar exists
-  const sidebar = document.getElementById('admin-sidebar');
-  if (!sidebar) {
-    console.error('❌ Sidebar element not found!');
-    return;
-  }
-  
-  // Get all navigation links
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`📋 Found ${links.length} navigation links`);
-  
-  if (links.length === 0) {
-    console.error('❌ CRITICAL: No navigation links found!');
-    console.log('Sidebar HTML structure:', sidebar.innerHTML.substring(0, 200));
-    return;
-  }
-  
-  // Setup each link
-  links.forEach((link) => {
-    const sectionId = link.dataset.section;
-    
-    if (!sectionId) {
-      console.warn('⚠️ Link missing data-section:', link);
-      return;
-    }
-    
-    // Remove any existing handlers
-    const newLink = link.cloneNode(true);
-    link.parentNode.replaceChild(newLink, link);
-    
-    // Add click handler
-    newLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      console.log(`🖱️ Clicked: ${sectionId}`);
-      showSection(sectionId);
-    });
-  });
-  
-  // Setup group toggles
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`🔽 Found ${toggles.length} group toggles`);
-  
-  toggles.forEach((toggle) => {
-    // Remove any existing handlers
-    const newToggle = toggle.cloneNode(true);
-    toggle.parentNode.replaceChild(newToggle, toggle);
-    
-    newToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      if (!content) {
-        console.warn('⚠️ No content found for toggle');
-        return;
-      }
-      
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      
-      // Toggle state
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-      
-      // Rotate icon
-      const icon = this.querySelector('.toggle-icon');
-      if (icon) {
-        icon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-      
-      console.log(`  ${isExpanded ? '📁 Collapsed' : '📂 Expanded'} group`);
-    });
-  });
-  
-  window.sidebarInitialized = true;
-  console.log('✅ Sidebar navigation initialized');
-}
-
-/* =====================================================
-   SHOW SECTION FUNCTION
-===================================================== */
-
-function showSection(sectionId) {
-  if (!sectionId) {
-    console.error('❌ showSection called with no sectionId');
-    return;
-  }
-  
-  console.log(`📄 Showing section: ${sectionId}`);
-  
-  // Hide all sections
-  document.querySelectorAll('.admin-card').forEach(card => {
-    card.style.display = 'none';
-  });
-  
-  // Show target section
-  const section = document.getElementById(sectionId);
-  if (!section) {
-    console.error(`❌ Section not found: ${sectionId}`);
-    return;
-  }
-  
-  section.style.display = 'block';
-  
-  // Update active link
-  document.querySelectorAll('.sidebar-link').forEach(link => {
-    link.classList.remove('active');
-  });
-  
-  const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
-  if (activeLink) {
-    activeLink.classList.add('active');
-    
-    // Expand parent group if nested
-    const parentGroup = activeLink.closest('.sidebar-group-content-modern');
-    if (parentGroup) {
-      parentGroup.classList.add('active');
-      const toggle = parentGroup.previousElementSibling;
-      if (toggle && toggle.classList.contains('sidebar-group-toggle-modern')) {
-        toggle.setAttribute('aria-expanded', 'true');
-        const icon = toggle.querySelector('.toggle-icon');
-        if (icon) icon.style.transform = 'rotate(180deg)';
-      }
-    }
-  }
-  
-  // Load section data
-  loadSectionData(sectionId);
-  
-  // Close mobile sidebar
-  const sidebar = document.getElementById('admin-sidebar');
-  const hamburger = document.getElementById('hamburger');
-  if (sidebar && sidebar.classList.contains('active')) {
-    sidebar.classList.remove('active');
-    if (hamburger) {
-      hamburger.classList.remove('active');
-      hamburger.setAttribute('aria-expanded', 'false');
-    }
-    document.body.style.overflow = '';
-  }
-}
-
-// Make globally available
-window.showSection = showSection;
-
-/* =====================================================
-   LOAD SECTION DATA
-===================================================== */
-
-function loadSectionData(sectionId) {
-  console.log(`📊 Loading data for: ${sectionId}`);
-  
-  try {
-    switch(sectionId) {
-      case 'dashboard':
-        loadDashboardStats();
-        break;
-      case 'teachers':
-        loadTeachers();
-        break;
-      case 'pupils':
-        loadPupils();
-        break;
-      case 'classes':
-        loadClasses();
-        break;
-      case 'subjects':
-        loadSubjects();
-        break;
-      case 'assign-teachers':
-        loadTeacherAssignments();
-        break;
-      case 'promotion-requests':
-        loadPromotionRequests();
-        break;
-      case 'result-approvals':
-        loadResultApprovals();
-        break;
-      case 'announcements':
-        loadAdminAnnouncements();
-        break;
-      case 'alumni':
-        loadAlumni();
-        break;
-      case 'audit-log':
-        loadAuditLog();
-        break;
-      case 'view-results':
-        loadViewResultsSection();
-        break;
-      case 'settings':
-        loadCurrentSettings();
-        setTimeout(async () => {
-          await loadClassHierarchyUI();
-        }, 200);
-        loadSessionHistory();
-        break;
-      case 'fee-management':
-        loadFeeManagementSection();
-        break;
-      case 'record-payment':
-        loadPaymentRecordingSection();
-        break;
-      case 'outstanding-fees':
-        loadOutstandingFeesReport();
-        break;
-      case 'financial-reports':
-        loadFinancialReports();
-        break;
-      default:
-        console.log(`ℹ️ No data loader for: ${sectionId}`);
-    }
-  } catch (error) {
-    console.error(`❌ Error loading ${sectionId}:`, error);
-    window.showToast?.(`Failed to load ${sectionId}`, 'danger');
-  }
 }
 
 /* ======================================== 
@@ -1033,21 +656,19 @@ async function deleteAlumni(alumniId) {
 // Make globally available
 window.deleteAlumni = deleteAlumni;
 
-/* =====================================================
-   ADMIN SIDEBAR NAVIGATION - FIXED FOR GROUPED STRUCTURE
-===================================================== */
-
+/* ======================================== 
+   SECTION NAVIGATION - FIXED ORDER
+======================================== */
 /**
- * Show a specific admin section and hide all others
- * FIXED: Properly handles admin sidebar's grouped structure
+ * SECTION NAVIGATION - FIXED WITH PROPER VIEW-RESULTS SUPPORT
+ * Replace the existing showSection() function in admin.js
  */
+
 function showSection(sectionId) {
   if (!sectionId) {
     console.error('showSection called with no sectionId');
     return;
   }
-  
-  console.log(`🎯 showSection: ${sectionId}`);
   
   // Hide all sections
   document.querySelectorAll('.admin-card').forEach(card => {
@@ -1058,40 +679,22 @@ function showSection(sectionId) {
   const section = document.getElementById(sectionId);
   if (section) {
     section.style.display = 'block';
-    console.log(`✓ Section ${sectionId} displayed`);
   } else {
-    console.warn(`❌ Section ${sectionId} not found in DOM`);
-    return;
+    console.warn(`Section ${sectionId} not found in DOM`);
   }
   
   // Update active nav link
-  document.querySelectorAll('.sidebar-link').forEach(link => {
-    link.classList.remove('active');
+  document.querySelectorAll('.admin-sidebar a').forEach(a => {
+    a.classList.remove('active');
   });
   
-  const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+  const activeLink = document.querySelector(`.admin-sidebar a[onclick*="${sectionId}"], .admin-sidebar a[data-section="${sectionId}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
-    
-    // CRITICAL FIX: Ensure parent group is expanded
-    const parentGroup = activeLink.closest('.sidebar-group-content-modern');
-    if (parentGroup) {
-      parentGroup.classList.add('active');
-      const toggleButton = parentGroup.previousElementSibling;
-      if (toggleButton && toggleButton.classList.contains('sidebar-group-toggle-modern')) {
-        toggleButton.setAttribute('aria-expanded', 'true');
-        const icon = toggleButton.querySelector('.toggle-icon');
-        if (icon) icon.style.transform = 'rotate(180deg)';
-      }
-    }
-    
-    console.log(`✓ Active link updated for ${sectionId}`);
   }
   
-  // Load section-specific data
+  // FIXED: All section loaders properly mapped
   try {
-    console.log(`📊 Loading data for section: ${sectionId}`);
-    
     switch(sectionId) {
       case 'dashboard':
         loadDashboardStats();
@@ -1120,10 +723,6 @@ function showSection(sectionId) {
       case 'promotion-requests':
         loadPromotionRequests();
         break;
-        
-      case 'result-approvals':
-        loadResultApprovals();
-        break;
       
       case 'announcements':
         loadAdminAnnouncements();
@@ -1133,43 +732,49 @@ function showSection(sectionId) {
         loadAlumni();
         break;
         
-      case 'audit-log':
+        case 'audit-log':
         loadAuditLog();
         break;
       
       case 'view-results':
+        // FIXED: Add view-results section loader
         loadViewResultsSection();
         break;
       
       case 'settings':
+        // Load all settings components
         loadCurrentSettings();
+        
+        // Load hierarchy with a small delay to ensure DOM is ready
         setTimeout(async () => {
           await loadClassHierarchyUI();
         }, 200);
+        
+        // Load session history
         loadSessionHistory();
         break;
         
       case 'fee-management':
-        loadFeeManagementSection();
-        break;
+      loadFeeManagementSection();
+      break;
 
-      case 'record-payment':
-        loadPaymentRecordingSection();
-        break;
+    case 'record-payment':
+      loadPaymentRecordingSection();
+      break;
 
-      case 'outstanding-fees':
-        loadOutstandingFeesReport();
-        break;
+    case 'outstanding-fees':
+      loadOutstandingFeesReport();
+      break;
 
-      case 'financial-reports':
-        loadFinancialReports();
-        break;
+    case 'financial-reports':
+      loadFinancialReports();
+      break;
       
       default:
-        console.warn(`⚠️ No loader defined for section: ${sectionId}`);
+        console.warn(`Unknown section: ${sectionId}`);
     }
   } catch (error) {
-    console.error(`❌ Error loading section ${sectionId}:`, error);
+    console.error(`Error loading section ${sectionId}:`, error);
     window.showToast?.(`Failed to load ${sectionId} section`, 'danger');
   }
   
@@ -1189,150 +794,20 @@ function showSection(sectionId) {
 // Make globally available
 window.showSection = showSection;
 
-/**
- * CRITICAL FIX: Setup admin sidebar navigation with grouped structure
- * This properly handles the nested group toggles
- */
-function setupSidebarNavigation() {
-  // Prevent multiple initializations
-  if (window.adminSidebarInitialized) {
-    console.log('⚠️ Admin sidebar already initialized');
-    return;
-  }
-  
-  console.log('🔧 Setting up admin sidebar navigation...');
-  
-  // STEP 1: Setup all navigation links
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`📋 Found ${links.length} sidebar links`);
-  
-  if (links.length === 0) {
-    console.error('❌ No sidebar links found! Check HTML structure.');
-    return;
-  }
-  
-  links.forEach((link, index) => {
-    const sectionId = link.dataset.section;
-    
-    if (!sectionId) {
-      console.warn(`⚠️ Link ${index} has no data-section attribute:`, link);
-      return;
-    }
-    
-    // Remove any existing onclick to prevent duplicates
-    link.onclick = null;
-    
-    // Add click handler with proper event handling
-    link.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      console.log(`🖱️ Navigation click: ${sectionId}`);
-      showSection(sectionId);
-    });
-    
-    console.log(`  ✓ Link ${index + 1}: ${sectionId}`);
-  });
-  
-  // STEP 2: Setup group toggles (collapsible sections)
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`📋 Found ${toggles.length} group toggles`);
-  
-  toggles.forEach((toggle, index) => {
-    const groupName = toggle.dataset.group || `group-${index}`;
-    
-    // Remove any existing onclick
-    toggle.onclick = null;
-    
-    // Add click handler
-    toggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      if (!content || !content.classList.contains('sidebar-group-content-modern')) {
-        console.warn(`No valid content found for toggle: ${groupName}`);
-        return;
-      }
-      
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      const newState = !isExpanded;
-      
-      // Toggle state
-      this.setAttribute('aria-expanded', newState);
-      content.classList.toggle('active', newState);
-      
-      // Rotate chevron icon
-      const icon = this.querySelector('.toggle-icon');
-      if (icon) {
-        icon.style.transform = newState ? 'rotate(180deg)' : 'rotate(0deg)';
-      }
-      
-      console.log(`  🔽 Toggled ${groupName}: ${newState ? 'OPEN' : 'CLOSED'}`);
-    });
-    
-    console.log(`  ✓ Toggle ${index + 1}: ${groupName}`);
-  });
-  
-  // STEP 3: Initialize default states (some groups start open)
-  document.querySelectorAll('.sidebar-group-content-modern.active').forEach(content => {
-    const toggle = content.previousElementSibling;
-    if (toggle && toggle.classList.contains('sidebar-group-toggle-modern')) {
-      toggle.setAttribute('aria-expanded', 'true');
-      const icon = toggle.querySelector('.toggle-icon');
-      if (icon) icon.style.transform = 'rotate(180deg)';
-    }
-  });
-  
-  // Mark as initialized
-  window.adminSidebarInitialized = true;
-  console.log('✅ Admin sidebar navigation initialized successfully');
-}
-
-// Initialize on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    setupSidebarNavigation();
-    // Show dashboard by default
-    setTimeout(() => showSection('dashboard'), 100);
-  });
-} else {
-  setupSidebarNavigation();
-  setTimeout(() => showSection('dashboard'), 100);
-}
-
 /* ========================================
    SIDEBAR GROUP TOGGLE
 ======================================== */
 
-/**
- * FIXED: Toggle sidebar group with proper state management
- */
 function toggleSidebarGroup(button) {
-  if (!button) {
-    console.error('toggleSidebarGroup: button is null');
-    return;
-  }
-  
   const content = button.nextElementSibling;
-  
-  if (!content) {
-    console.error('toggleSidebarGroup: no content element found');
-    return;
-  }
-  
   const isCollapsed = button.classList.contains('collapsed');
   
   if (isCollapsed) {
-    // Expand the group
     button.classList.remove('collapsed');
     content.classList.add('active');
-    button.setAttribute('aria-expanded', 'true');
   } else {
-    // Collapse the group
     button.classList.add('collapsed');
     content.classList.remove('active');
-    button.setAttribute('aria-expanded', 'false');
   }
 }
 
@@ -1343,73 +818,39 @@ window.toggleSidebarGroup = toggleSidebarGroup;
    DASHBOARD STATS 
 ======================================== */
 async function loadDashboardStats() {
-  console.log('📊 Loading dashboard stats...');
-  
-  // CRITICAL: Check if elements exist
-  const teacherCount = document.getElementById('teacher-count');
-  const pupilCount = document.getElementById('pupil-count');
-  const classCount = document.getElementById('class-count');
-  const announceCount = document.getElementById('announce-count');
-  
-  if (!teacherCount || !pupilCount || !classCount || !announceCount) {
-    console.error('❌ Dashboard stat elements missing!', {
-      teacherCount: !!teacherCount,
-      pupilCount: !!pupilCount,
-      classCount: !!classCount,
-      announceCount: !!announceCount
-    });
-    
-    // Retry after delay if elements missing
-    setTimeout(() => {
-      console.log('⏳ Retrying dashboard stats...');
-      loadDashboardStats();
-    }, 100);
-    return;
-  }
-  
-  // Set loading state
-  [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
-    if (el) el.innerHTML = '<div class="spinner" style="width:20px; height:20px; margin:0 auto;"></div>';
-  });
-  
   try {
-    console.log('  → Fetching teachers...');
-    const teachersSnap = await db.collection('teachers').get();
-    console.log(`  ✓ Teachers: ${teachersSnap.size}`);
+    const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
+      db.collection('teachers').get(),
+      db.collection('pupils').get(),
+      db.collection('classes').get(),
+      db.collection('announcements').get()
+    ]);
     
-    console.log('  → Fetching pupils...');
-    const pupilsSnap = await db.collection('pupils').get();
-    console.log(`  ✓ Pupils: ${pupilsSnap.size}`);
-    
-    console.log('  → Fetching classes...');
-    const classesSnap = await db.collection('classes').get();
-    console.log(`  ✓ Classes: ${classesSnap.size}`);
-    
-    console.log('  → Fetching announcements...');
-    const announcementsSnap = await db.collection('announcements').get();
-    console.log(`  ✓ Announcements: ${announcementsSnap.size}`);
-    
-    // Update display
-    teacherCount.textContent = teachersSnap.size;
-    pupilCount.textContent = pupilsSnap.size;
-    classCount.textContent = classesSnap.size;
-    announceCount.textContent = announcementsSnap.size;
-    
-    console.log('✅ Dashboard stats loaded successfully');
-    
-    // Check session status
-    await checkSessionStatus();
-    
+    document.getElementById('teacher-count').textContent = teachersSnap.size;
+    document.getElementById('pupil-count').textContent = pupilsSnap.size;
+    document.getElementById('class-count').textContent = classesSnap.size;
+    document.getElementById('announce-count').textContent = announcementsSnap.size;
   } catch (error) {
-    console.error('❌ Error loading dashboard stats:', error);
-    window.showToast?.('Failed to load dashboard statistics', 'danger');
-    
-    // Set error state
-    [teacherCount, pupilCount, classCount, announceCount].forEach(el => {
-      if (el) el.textContent = '!';
+    console.error('Error loading dashboard stats:', error);
+    window.showToast?.('Failed to load dashboard statistics. Please refresh.', 'danger');
+    // Set defaults on error
+    ['teacher-count', 'pupil-count', 'class-count', 'announce-count'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '0';
     });
   }
+  
+  // Check session status when dashboard loads
+  await checkSessionStatus();
 }
+
+// Simple role check
+window.checkRole('admin').catch(() => {});
+
+document.getElementById('admin-logout')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.logout();
+});
 
 /* ======================================== 
    TEACHERS MANAGEMENT 
@@ -4289,223 +3730,29 @@ window.quickRejectPromotion = quickRejectPromotion;
 window.approveAllPendingPromotions = approveAllPendingPromotions;
 window.rejectAllPendingPromotions = rejectAllPendingPromotions;
 
-/**
- * Load result approvals section
- */
-async function loadResultApprovals() {
-    const tbody = document.getElementById('result-approvals-table');
-    const noApprovalsMsg = document.getElementById('no-approvals-message');
-    
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
-    
-    try {
-        const submissions = await window.resultLocking.getSubmittedResults();
-        
-        tbody.innerHTML = '';
-        
-        if (submissions.length === 0) {
-            if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-            return;
-        }
-        
-        if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
-        
-        for (const submission of submissions) {
-            const submittedDate = submission.submittedAt 
-                ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
-                : '-';
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
-                <td data-label="Class">${submission.className || '-'}</td>
-                <td data-label="Subject">${submission.subject || '-'}</td>
-                <td data-label="Term">${submission.term || '-'}</td>
-                <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
-                <td data-label="Submitted">${submittedDate}</td>
-                <td data-label="Status">
-                    <span class="status-pending">Pending</span>
-                </td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
-                        ✓ Approve
-                    </button>
-                    <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
-                        ✗ Reject
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        }
-        
-    } catch (error) {
-        console.error('Error loading result approvals:', error);
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
-    }
-}
+/* ========================================
+INITIALIZATION
+======================================== */
 
-/**
- * Approve result submission
- */
-async function approveResultSubmission(submissionId) {
-    if (!confirm('Approve these results and lock them?\n\nTeacher will not be able to edit unless you unlock.')) {
-        return;
-    }
-    
-    try {
-        const result = await window.resultLocking.approveResults(submissionId, auth.currentUser.uid);
-        
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Error approving results:', error);
-        window.handleError(error, 'Failed to approve results');
-    }
-}
-
-/**
- * Reject result submission
- */
-async function rejectResultSubmission(submissionId) {
-    const reason = prompt('Reason for rejection (teacher will see this):');
-    
-    if (!reason) {
-        window.showToast?.('Rejection cancelled - reason required', 'info');
-        return;
-    }
-    
-    try {
-        const result = await window.resultLocking.rejectResults(submissionId, auth.currentUser.uid, reason);
-        
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Error rejecting results:', error);
-        window.handleError(error, 'Failed to reject results');
-    }
-}
-
-// Make functions globally available
-window.loadResultApprovals = loadResultApprovals;
-window.approveResultSubmission = approveResultSubmission;
-window.rejectResultSubmission = rejectResultSubmission;
-
-/**
- * FIXED: Initialize Sidebar Navigation
- * Handles all sidebar link clicks and group toggles
- */
-function initializeSidebarNavigation() {
-  console.log('🔗 Initializing sidebar navigation...');
+document.addEventListener('DOMContentLoaded', async () => {
+  showSection('dashboard');
   
-  // ============================================
-  // SECTION NAVIGATION LINKS
-  // ============================================
-  const sectionLinks = document.querySelectorAll('.sidebar-link[data-section]');
-  
-  sectionLinks.forEach(link => {
-    // Remove any existing listeners by cloning
-    const newLink = link.cloneNode(true);
-    link.parentNode.replaceChild(newLink, link);
-    
-    // Add single click handler
-    newLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const sectionId = this.dataset.section;
-      
-      if (!sectionId) {
-        console.warn('No section ID found for link:', this);
-        return;
-      }
-      
-      console.log(`📍 Navigating to section: ${sectionId}`);
-      
-      // Update active state
-      document.querySelectorAll('.sidebar-link').forEach(l => {
-        l.classList.remove('active');
-      });
-      this.classList.add('active');
-      
-      // Show the section
-      if (typeof window.showSection === 'function') {
-        window.showSection(sectionId);
-      } else {
-        console.error('showSection function not found!');
-      }
-    });
-  });
-  
-  console.log(`✓ Registered ${sectionLinks.length} section navigation links`);
-  
-  // ============================================
-  // GROUP TOGGLES
-  // ============================================
-  const groupToggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  
-  groupToggles.forEach(toggle => {
-    // Remove any existing listeners by cloning
-    const newToggle = toggle.cloneNode(true);
-    toggle.parentNode.replaceChild(newToggle, toggle);
-    
-    // Add single click handler
-    newToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      
-      // Toggle state
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-      
-      // Rotate chevron icon
-      const chevron = this.querySelector('.toggle-icon');
-      if (chevron) {
-        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-      
-      console.log(`🔽 Toggled group: ${this.dataset.group} (expanded: ${!isExpanded})`);
-    });
-  });
-  
-  console.log(`✓ Registered ${groupToggles.length} group toggle buttons`);
-  
-  // ============================================
-  // LOGOUT BUTTON
-  // ============================================
-  const logoutBtn = document.getElementById('admin-logout');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      console.log('🚪 Logout clicked');
-      if (typeof window.logout === 'function') {
-        window.logout();
-      } else {
-        console.error('logout function not found!');
-      }
-    });
-    console.log('✓ Logout button registered');
+  // Set maximum date for date of birth (today's date)
+  const dobInput = document.getElementById('pupil-dob');
+  if (dobInput) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const maxDate = `${year}-${month}-${day}`;
+    dobInput.setAttribute('max', maxDate);
   }
   
-  console.log('✅ Sidebar navigation initialization complete');
-}
-
-// Make function globally available
-window.initializeSidebarNavigation = initializeSidebarNavigation;
+  // Initialize class hierarchy if it doesn't exist
+  await window.classHierarchy.initializeClassHierarchy();
+  
+  console.log('✓ Admin portal initialized (v6.1.0 - CLASS HANDLING FIXED)');
+});
 
 /* ======================================== 
    CLASS HIERARCHY MANAGEMENT
@@ -5804,100 +5051,7 @@ window.loadCurrentSettings = loadCurrentSettings;
 window.loadAlumni = loadAlumni;
 window.loadViewResultsSection = loadViewResultsSection;
 
-/* =====================================================
-   FINAL INITIALIZATION - GUARANTEED EXECUTION
-===================================================== */
-
-/**
- * CRITICAL: Final initialization check
- * This ensures everything is set up correctly
- */
-function finalizeAdminPortal() {
-  console.log('🚀 Finalizing admin portal initialization...');
-  
-  // Ensure sidebar is set up
-  if (!window.adminSidebarInitialized) {
-    console.warn('⚠️ Sidebar not initialized, running setup now...');
-    setupSidebarNavigation();
-  }
-  
-  // Ensure dashboard is visible
-  const dashboard = document.getElementById('dashboard');
-  if (dashboard && dashboard.style.display === 'none') {
-    console.log('📊 Showing dashboard...');
-    showSection('dashboard');
-  }
-  
-  // Log success
-  console.log('✅ Admin portal fully initialized and ready');
-  console.log('═══════════════════════════════════════');
-  console.log('Available sections:', 
-    Array.from(document.querySelectorAll('.sidebar-link[data-section]'))
-      .map(l => l.dataset.section)
-      .join(', ')
-  );
-  console.log('═══════════════════════════════════════');
-}
-
-// Run finalization after a delay to ensure DOM is ready
-setTimeout(finalizeAdminPortal, 500);
-
-// Also run on window load as backup
-window.addEventListener('load', () => {
-  if (!window.adminSidebarInitialized) {
-    console.warn('⚠️ Window load: Sidebar still not initialized');
-    setupSidebarNavigation();
-    showSection('dashboard');
-  }
-});
-
-/* =====================================================
-   DIAGNOSTIC & DEBUG UTILITIES
-===================================================== */
-
-/**
- * Run diagnostics on admin sidebar
- */
-function runSidebarDiagnostics() {
-  console.log('🔍 ADMIN SIDEBAR DIAGNOSTICS');
-  console.log('═══════════════════════════════════════');
-  
-  const sidebar = document.getElementById('admin-sidebar');
-  console.log('Sidebar element:', sidebar ? '✓ Found' : '❌ Missing');
-  
-  const hamburger = document.getElementById('hamburger');
-  console.log('Hamburger element:', hamburger ? '✓ Found' : '❌ Missing');
-  
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`Navigation links: ${links.length} found`);
-  
-  if (links.length > 0) {
-    console.log('Link sections:');
-    links.forEach((link, i) => {
-      const section = link.dataset.section;
-      const exists = document.getElementById(section);
-      console.log(`  ${i + 1}. ${section}: ${exists ? '✓' : '❌ section missing'}`);
-    });
-  }
-  
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`Group toggles: ${toggles.length} found`);
-  
-  console.log('Functions available:');
-  console.log('  showSection:', typeof window.showSection);
-  console.log('  setupSidebarNavigation:', typeof setupSidebarNavigation);
-  
-  console.log('Initialization status:');
-  console.log('  adminSidebarInitialized:', window.adminSidebarInitialized || false);
-  
-  console.log('═══════════════════════════════════════');
-}
-
-// Make diagnostic function globally available
-window.runSidebarDiagnostics = runSidebarDiagnostics;
-
-console.log('✓ Admin portal v6.3.0 - SIDEBAR NAVIGATION COMPLETELY FIXED');
-console.log('💡 Run window.runSidebarDiagnostics() in console to check sidebar status');
+console.log('✓ Admin portal initialized (v6.3.0 - ALL BUGS FIXED)');
 
 /* ======================================== 
    SESSION VALIDATION ON LOAD
@@ -6789,6 +5943,25 @@ window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 console.log('✓ Financial management functions loaded');
 
 /* ========================================
+   MODERN SIDEBAR GROUP TOGGLE
+======================================== */
+
+window.toggleSidebarGroup = function(button) {
+    const content = button.nextElementSibling;
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+    
+    // Toggle aria-expanded
+    button.setAttribute('aria-expanded', !isExpanded);
+    
+    // Toggle active class
+    if (isExpanded) {
+        content.classList.remove('active');
+    } else {
+        content.classList.add('active');
+    }
+};
+
+/* ========================================
    INITIALIZE LUCIDE ICONS
 ======================================== */
 
@@ -7374,73 +6547,3 @@ window.exportPupilsData = exportPupilsData;
 window.exportResultsData = exportResultsData;
 
 console.log('✓ Data export functions loaded');
-/* =====================================================
-   DEBUG CONSOLE - SHOWS WHAT'S HAPPENING
-===================================================== */
-
-window.adminDebug = {
-  // Check if everything is loaded
-  checkStatus() {
-    console.log('═══════════════════════════════════════');
-    console.log('🔍 ADMIN PORTAL DEBUG STATUS');
-    console.log('═══════════════════════════════════════');
-    
-    // Firebase
-    console.log('Firebase:', typeof firebase !== 'undefined' ? '✓' : '❌');
-    console.log('  db:', typeof db !== 'undefined' ? '✓' : '❌');
-    console.log('  auth:', typeof auth !== 'undefined' ? '✓' : '❌');
-    console.log('  currentUser:', auth?.currentUser ? `✓ ${auth.currentUser.email}` : '❌');
-    
-    // DOM Elements
-    console.log('\nDOM Elements:');
-    console.log('  sidebar:', document.getElementById('admin-sidebar') ? '✓' : '❌');
-    console.log('  hamburger:', document.getElementById('hamburger') ? '✓' : '❌');
-    console.log('  dashboard:', document.getElementById('dashboard') ? '✓' : '❌');
-    
-    // Navigation
-    const links = document.querySelectorAll('.sidebar-link[data-section]');
-    console.log(`  nav links: ${links.length} found`);
-    
-    const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-    console.log(`  group toggles: ${toggles.length} found`);
-    
-    // Functions
-    console.log('\nFunctions:');
-    console.log('  showSection:', typeof window.showSection);
-    console.log('  loadDashboardStats:', typeof loadDashboardStats);
-    console.log('  loadTeachers:', typeof loadTeachers);
-    
-    // Initialization
-    console.log('\nInitialization:');
-    console.log('  sidebarInitialized:', window.sidebarInitialized || false);
-    
-    console.log('═══════════════════════════════════════');
-  },
-  
-  // Manually show a section
-  showSection(sectionId) {
-    console.log(`\n🔧 Manual section load: ${sectionId}`);
-    if (typeof window.showSection === 'function') {
-      window.showSection(sectionId);
-    } else {
-      console.error('❌ showSection function not available!');
-    }
-  },
-  
-  // Test dashboard loading
-  testDashboard() {
-    console.log('\n🧪 Testing dashboard load...');
-    if (typeof loadDashboardStats === 'function') {
-      loadDashboardStats();
-    } else {
-      console.error('❌ loadDashboardStats function not available!');
-    }
-  }
-};
-
-console.log('═══════════════════════════════════════');
-console.log('✓ Admin portal script loaded');
-console.log('💡 Type adminDebug.checkStatus() to see status');
-console.log('💡 Type adminDebug.showSection("dashboard") to manually load dashboard');
-console.log('💡 Type adminDebug.testDashboard() to test data loading');
-console.log('═══════════════════════════════════════');
