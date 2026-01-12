@@ -6388,24 +6388,33 @@ async function loadFinancialReports() {
             return;
         }
 
-        // Main cards
-        document.getElementById('report-total-expected')?.textContent = 
-            `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
-        document.getElementById('report-total-collected')?.textContent = 
-            `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
-        document.getElementById('report-total-outstanding')?.textContent = 
-            `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
-        document.getElementById('report-collection-rate')?.textContent = 
-            `${Number(summary.collectionRate || 0)}%`;
+        // ─── Fixed assignments ────────────────────────────────────────
+        const expectedEl  = document.getElementById('report-total-expected');
+        const collectedEl = document.getElementById('report-total-collected');
+        const outstandingEl = document.getElementById('report-total-outstanding');
+        const rateEl      = document.getElementById('report-collection-rate');
 
-        // Breakdown
-        document.getElementById('report-paid-full')?.textContent = summary.paidInFull || 0;
-        document.getElementById('report-partial')?.textContent = summary.partialPayments || 0;
-        document.getElementById('report-owing')?.textContent = summary.noPayment || 0;
+        if (expectedEl) {
+            expectedEl.textContent = `₦${Number(summary.totalExpected || 0).toLocaleString()}`;
+        }
+        if (collectedEl) {
+            collectedEl.textContent = `₦${Number(summary.totalCollected || 0).toLocaleString()}`;
+        }
+        if (outstandingEl) {
+            outstandingEl.textContent = `₦${Number(summary.totalOutstanding || 0).toLocaleString()}`;
+        }
+        if (rateEl) {
+            rateEl.textContent = `${Number(summary.collectionRate || 0)}%`;
+        }
 
-        // Current period
+        // Optional: also update the smaller counters safely
+        document.getElementById('report-paid-full')?.textContent  = summary.paidInFull  || 0;
+        document.getElementById('report-partial')?.textContent    = summary.partialPayments || 0;
+        document.getElementById('report-owing')?.textContent      = summary.noPayment || 0;
+
+        // Session / term display
         document.getElementById('report-session-display')?.textContent = settings.session || '—';
-        document.getElementById('report-term-display')?.textContent = settings.term || '—';
+        document.getElementById('report-term-display')?.textContent    = settings.term    || '—';
 
     } catch (error) {
         console.error('Error loading financial reports:', error);
