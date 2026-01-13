@@ -261,22 +261,20 @@ if (!receiptNo) {
 
 async function loadReceiptData() {
     try {
-        // CRITICAL FIX: Wait for Firebase initialization AND auth
-        await new Promise(resolve => {
-            const maxWait = 10000; // 10 second timeout
+        // Wait for Firebase initialization AND auth
+        await new Promise((resolve, reject) => {
+            const maxWait = 10000;
             const startTime = Date.now();
-            
+
             const checkReady = setInterval(() => {
-                // Check if Firebase is loaded AND user is authenticated
                 if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
-                    // If user is already signed in, proceed immediately
+
                     if (auth.currentUser) {
                         clearInterval(checkReady);
                         resolve();
                         return;
                     }
-                    
-                    // Otherwise wait for auth state to resolve
+
                     auth.onAuthStateChanged(user => {
                         if (user) {
                             clearInterval(checkReady);
@@ -284,19 +282,19 @@ async function loadReceiptData() {
                         } else if (Date.now() - startTime > maxWait) {
                             clearInterval(checkReady);
                             console.warn('⚠️ Proceeding without authentication (timeout)');
-                            resolve(); // Proceed anyway after timeout
+                            resolve();
                         }
                     });
+
                 } else if (Date.now() - startTime > maxWait) {
                     clearInterval(checkReady);
-                    throw new Error('Firebase initialization timeout');
+                    reject(new Error('Firebase initialization timeout'));
                 }
             }, 100);
         });
 
         console.log('✓ Firebase ready, querying receipt...');
 
-        // Query transaction by receipt number ONLY (security handled by rules)
         const snap = await db.collection('transactions')
             .where('receiptNo', '==', receiptNo)
             .limit(1)
@@ -311,23 +309,26 @@ async function loadReceiptData() {
         const data = snap.docs[0].data();
         console.log('✓ Receipt data loaded:', data.receiptNo);
 
-        // Populate receipt fields
         document.getElementById('receipt-no').textContent = data.receiptNo;
         document.getElementById('student-name').textContent = data.pupilName;
         document.getElementById('student-class').textContent = data.className;
         document.getElementById('receipt-session').textContent = data.session;
         document.getElementById('receipt-term').textContent = data.term;
 
-        const date = data.paymentDate 
+        const date = data.paymentDate
             ? data.paymentDate.toDate().toLocaleDateString('en-GB', {
-                year: 'numeric', month: 'long', day: 'numeric'
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })
             : 'N/A';
+
         document.getElementById('receipt-date').textContent = date;
 
-        document.getElementById('amount-paid').textContent = 
+        document.getElementById('amount-paid').textContent =
             `₦${Number(data.amountPaid).toLocaleString()}`;
-        document.getElementById('payment-method').textContent = 
+
+        document.getElementById('payment-method').textContent =
             data.paymentMethod || 'Cash';
 
         if (data.notes) {
@@ -335,29 +336,26 @@ async function loadReceiptData() {
             document.getElementById('notes-row').style.display = 'flex';
         }
 
-        // Get current balance (use encoded session for document ID)
         const encodedSession = data.session.replace(/\//g, '-');
         const paymentDocId = `${data.pupilId}_${encodedSession}_${data.term}`;
-        
-        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
 
+        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
         const balance = paymentDoc.exists ? (paymentDoc.data().balance || 0) : 0;
-        document.getElementById('balance-remaining').textContent = 
+
+        document.getElementById('balance-remaining').textContent =
             `₦${balance.toLocaleString()}`;
 
-        document.getElementById('generated-date').textContent = 
+        document.getElementById('generated-date').textContent =
             new Date().toLocaleString('en-GB');
 
-        // Auto-print after short delay
         console.log('✓ Receipt loaded successfully, printing...');
         setTimeout(() => window.print(), 1000);
 
     } catch (error) {
         console.error('❌ Receipt error:', error);
-        
-        // Show user-friendly error
+
         let errorMsg = 'Failed to load receipt.';
-        
+
         if (error.code === 'permission-denied') {
             errorMsg += ' You do not have permission to view this receipt.';
         } else if (error.code === 'unavailable') {
@@ -365,12 +363,11 @@ async function loadReceiptData() {
         } else {
             errorMsg += ' ' + error.message;
         }
-        
+
         alert(errorMsg);
     }
 }
 
-// Start loading
 loadReceiptData();
 </script>
 </body>
