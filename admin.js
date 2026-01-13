@@ -786,10 +786,14 @@ async function loadPupilPaymentStatus() {
     const session = settings.session;
     const term = settings.term;
     
+    // FIXED: Encode session for document IDs
+    const encodedSession = session.replace(/\//g, '-');
+    
     // Get fee structure directly from Firestore
+    // NOTE: Query uses ORIGINAL session format (stored in field)
     const feeStructureSnap = await db.collection('fee_structures')
       .where('classId', '==', classId)
-      .where('session', '==', session)
+      .where('session', '==', session)  // Query with original format
       .where('term', '==', term)
       .limit(1)
       .get();
@@ -807,8 +811,8 @@ async function loadPupilPaymentStatus() {
     
     const feeStructure = feeStructureSnap.docs[0].data();
     
-    // Get payment summary directly from Firestore
-    const paymentDocId = `${pupilId}_${session}_${term}`;
+    // FIXED: Use encoded session for document ID
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
     
     let amountDue = feeStructure.total || 0;
@@ -886,10 +890,14 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
   
   try {
+    // FIXED: Decode session if it was passed encoded
+    const displaySession = session.includes('-') ? session.replace(/-/g, '/') : session;
+    
     // Query transactions directly from Firestore
+    // Use decoded session for query (matches stored field value)
     const transactionsSnap = await db.collection('transactions')
       .where('pupilId', '==', pupilId)
-      .where('session', '==', session)
+      .where('session', '==', displaySession)  // Use decoded format
       .where('term', '==', term)
       .orderBy('paymentDate', 'desc')
       .get();
