@@ -633,40 +633,65 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* =====================================================
-   UNSAVED CHANGES PROTECTION
+   SMART UNSAVED CHANGES PROTECTION
+   - Ignores portal/login sections
+   - Ignores search/filter fields
+   - Only triggers for real unsaved changes
 ===================================================== */
 
-// Track if there are unsaved changes in forms
 let hasUnsavedChanges = false;
 
-// Monitor all input fields in teacher and admin portals
-document.addEventListener('input', (e) => {
-  const target = e.target;
-  
-  // Only track form inputs, not search/filter fields
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-    const isFilterField = target.id?.includes('filter') || 
-                         target.id?.includes('search') ||
-                         target.id?.includes('term') ||
-                         target.id?.includes('session');
-    
-    if (!isFilterField) {
-      hasUnsavedChanges = true;
-    }
-  }
+// Helper: fields or sections to ignore
+const ignoredFieldIds = ['filter', 'search', 'term', 'session', 'login', 'portal'];
+const ignoredSections = ['login-section', 'portal-section']; // add container IDs/classes to ignore
+
+// Function to check if an element is ignored
+function isIgnoredElement(el) {
+  if (!el) return true;
+  const inIgnoredSection = ignoredSections.some(sec => el.closest(`#${sec}`) || el.closest(`.${sec}`));
+  const isIgnoredField = ignoredFieldIds.some(id => el.id?.includes(id));
+  return inIgnoredSection || isIgnoredField;
+}
+
+// Track changes on actual form fields
+const forms = document.querySelectorAll('form');
+
+forms.forEach(form => {
+  const initialData = new FormData(form);
+
+  form.querySelectorAll('input, textarea, select').forEach(el => {
+    el.addEventListener('input', () => {
+      if (isIgnoredElement(el)) return; // ignore portal/login/filter fields
+
+      const currentData = new FormData(form);
+      hasUnsavedChanges = false;
+
+      for (let [key, value] of currentData) {
+        if (value !== initialData.get(key)) {
+          hasUnsavedChanges = true;
+          break;
+        }
+      }
+    });
+  });
+
+  // Reset on form submit buttons
+  form.addEventListener('submit', () => {
+    hasUnsavedChanges = false;
+  });
 });
 
-// Reset flag when save buttons are clicked
+// Reset flag when manual save buttons are clicked
 document.addEventListener('click', (e) => {
   const target = e.target;
-  
+  if (!target) return;
+
   if (target.classList.contains('btn-primary') || 
       target.textContent?.includes('Save') ||
       target.textContent?.includes('Submit')) {
-    // Small delay to allow save operation to complete
     setTimeout(() => {
       hasUnsavedChanges = false;
-    }, 1000);
+    }, 500); // small delay for save to finish
   }
 });
 
@@ -675,31 +700,27 @@ window.addEventListener('beforeunload', (e) => {
   if (hasUnsavedChanges) {
     const message = 'You have unsaved changes. Are you sure you want to leave?';
     e.preventDefault();
-    e.returnValue = message; // Standard way
-    return message; // For older browsers
+    e.returnValue = message; // standard
+    return message;
   }
 });
 
-// Warn before navigating away in single-page app
+// For single-page app navigation
 if (typeof window.showSection === 'function') {
   const originalShowSection = window.showSection;
-  
+
   window.showSection = function(sectionId) {
-    if (hasUnsavedChanges) {
-      const confirm = window.confirm(
+    const sectionEl = document.getElementById(sectionId) || document.querySelector(`.${sectionId}`);
+    if (hasUnsavedChanges && !ignoredSections.some(sec => sectionEl?.closest(`#${sec}`) || sectionEl?.closest(`.${sec}`))) {
+      const confirmLeave = window.confirm(
         'You have unsaved changes that will be lost.\n\n' +
         'Do you want to leave this section without saving?'
       );
-      
-      if (!confirm) {
-        return; // Don't navigate
-      }
-      
-      hasUnsavedChanges = false; // Reset if user confirms
+      if (!confirmLeave) return; // cancel navigation
+      hasUnsavedChanges = false; // reset if user confirms
     }
-    
     return originalShowSection(sectionId);
   };
 }
 
-console.log('✓ Unsaved changes protection enabled');
+console.log('✓ Smart unsaved changes protection enabled');
