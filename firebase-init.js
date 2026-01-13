@@ -408,3 +408,43 @@ window.firestoreDelete = async function(ref, operationName = 'Delete document') 
 };
 
 console.log('✓ Network retry helpers loaded');
+
+/* =====================================================
+   SESSION ENCODING UTILITIES
+===================================================== */
+
+/**
+ * Encode session for use in Firestore document IDs
+ * Converts "2025/2026" to "2025-2026"
+ */
+window.encodeSession = function(session) {
+  if (!session) return '';
+  return session.replace(/\//g, '-');
+};
+
+/**
+ * Decode session for display
+ * Converts "2025-2026" to "2025/2026"
+ */
+window.decodeSession = function(encodedSession) {
+  if (!encodedSession) return '';
+  return encodedSession.replace(/-/g, '/');
+};
+
+/**
+ * Generate payment document ID with encoded session
+ */
+window.generatePaymentDocId = function(pupilId, session, term) {
+  const encodedSession = window.encodeSession(session);
+  return `${pupilId}_${encodedSession}_${term}`;
+};
+
+/**
+ * Generate fee structure document ID with encoded session
+ */
+window.generateFeeStructureDocId = function(classId, session, term) {
+  const encodedSession = window.encodeSession(session);
+  return `${classId}_${encodedSession}_${term}`;
+};
+
+console.log('✓ Session encoding utilities loaded');
