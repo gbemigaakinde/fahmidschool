@@ -917,7 +917,7 @@ async function loadPaymentHistory(pupilId, session, term) {
     // No decoding needed - just use it directly for query
     
     // Query transactions (use ORIGINAL session format)
-    const transactionsSnap = await db.collection('transactions')
+    const transactionsSnap = await db.collection('payment_transactions')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)  // Use ORIGINAL format "2025/2026"
       .where('term', '==', term)
@@ -1351,9 +1351,9 @@ async function recordPayment() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // Add transaction record (store ORIGINAL session format in field)
-    const transactionRef = db.collection('transactions').doc();
-    batch.set(transactionRef, {
+    // CRITICAL FIX: Use receiptNo as document ID for payment_transactions (not 'transactions')
+const transactionRef = db.collection('payment_transactions').doc(receiptNo);
+batch.set(transactionRef, {
       pupilId,
       pupilName,
       classId,
