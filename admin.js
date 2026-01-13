@@ -536,13 +536,13 @@ function loadSectionData(sectionId) {
   }
 }
 
-/* ========================================
-   MISSING SECTION LOADERS - RESTORED
+/* ======================================== 
+   PROMOTION REQUESTS MANAGEMENT
 ======================================== */
 
-/**
- * Load promotion requests section
- */
+let currentPromotionId = null;
+let currentPromotionData = null;
+
 async function loadPromotionRequests() {
   try {
     // Load promotion period status
@@ -638,6 +638,755 @@ async function loadPromotionRequests() {
   }
 }
 
+async function togglePromotionPeriod() {
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    const currentStatus = settingsDoc.exists && settingsDoc.data().promotionPeriodActive === true;
+    const newStatus = !currentStatus;
+    
+    const action = newStatus ? 'open' : 'close';
+    const confirmation = confirm(
+      `${action.toUpperCase()} Promotion Period?\n\n` +
+      (newStatus 
+        ? 'Teachers will be able to submit promotion requests.'
+        : 'Teachers will no longer be able to submit promotion requests.\nExisting pending requests will remain.')
+    );
+    
+    if (!confirmation) return;
+    
+    await db.collection('settings').doc('current').set({
+      promotionPeriodActive: newStatus,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    window.showToast?.(
+      `✓ Promotion period ${newStatus ? 'opened' : 'closed'} successfully`,
+      'success'
+    );
+    
+    await loadPromotionPeriodStatus();
+    
+  } catch (error) {
+    console.error('Error toggling promotion period:', error);
+    window.handleError(error, 'Failed to toggle promotion period');
+  }
+}
+
+async function viewPromotionDetails(promotionId) {
+  try {
+    const doc = await db.collection('promotions').doc(promotionId).get();
+    
+    if (!doc.exists) {
+      window.showToast?.('Promotion request not found', 'danger');
+      return;
+    }
+    
+    currentPromotionId = promotionId;
+    currentPromotionData = doc.data();
+    
+    // Get teacher name
+    let teacherName = 'Unknown';
+    if (currentPromotionData.initiatedBy) {
+      const teacherDoc = await db.collection('teachers').doc(currentPromotionData.initiatedBy).get();
+      if (teacherDoc.exists) {
+        teacherName = teacherDoc.data().name;
+      }
+    }
+    
+    const modal = document.getElementById('promotion-details-modal');
+    const content = document.getElementById('promotion-details-content');
+    const approveBtn = document.getElementById('approve-promotion-btn');
+    const rejectBtn = document.getElementById('reject-promotion-btn');
+    
+    if (!modal || !content) return;
+    
+    // Build details HTML
+    let html = `
+      <div class="promotion-details-section">
+        <h3>Request Information</h3>
+        <p><strong>Submitted by:</strong> ${teacherName}</p>
+        <p><strong>From Class:</strong> ${currentPromotionData.fromClass?.name || '-'}</p>
+        <p><strong>To Class:</strong> ${currentPromotionData.toClass?.name || '-'}</p>
+        <p><strong>Session:</strong> ${currentPromotionData.fromSession || '-'}</p>
+        <p><strong>Status:</strong> ${currentPromotionData.status.toUpperCase()}</p>
+        ${currentPromotionData.isTerminalClass ? '<p><strong>⚠️ Terminal Class:</strong> Pupils will be moved to Alumni</p>' : ''}
+      </div>
+      
+      <div class="promotion-details-section">
+        <h3>Pupils to Promote (${currentPromotionData.promotedPupils?.length || 0})</h3>
+        <div class="pupil-list">
+    `;
+    
+    if (currentPromotionData.promotedPupilsDetails && currentPromotionData.promotedPupilsDetails.length > 0) {
+      currentPromotionData.promotedPupilsDetails.forEach(pupil => {
+        html += `
+          <div class="pupil-list-item">
+            <input type="checkbox" 
+                   class="override-promote-checkbox" 
+                   data-pupil-id="${pupil.id}" 
+                   checked 
+                   onchange="handlePromotionOverride()">
+            <span>${pupil.name}</span>
+          </div>
+        `;
+      });
+    } else {
+      html += '<p style="color:var(--color-gray-600);">No pupils selected for promotion</p>';
+    }
+    
+    html += `
+        </div>
+      </div>
+      
+      <div class="promotion-details-section">
+        <h3>Pupils to Hold Back (${currentPromotionData.heldBackPupils?.length || 0})</h3>
+        <div class="pupil-list">
+    `;
+    
+    if (currentPromotionData.heldBackPupilsDetails && currentPromotionData.heldBackPupilsDetails.length > 0) {
+      currentPromotionData.heldBackPupilsDetails.forEach(pupil => {
+        html += `
+          <div class="pupil-list-item">
+            <input type="checkbox" 
+                   class="override-hold-checkbox" 
+                   data-pupil-id="${pupil.id}" 
+                   onchange="handlePromotionOverride()">
+            <span>${pupil.name}</span>
+          </div>
+        `;
+      });
+    } else {
+      html += '<p style="color:var(--color-gray-600);">No pupils held back</p>';
+    }
+    
+    html += `
+        </div>
+      </div>
+      
+      <div class="override-section">
+        <h3>⚙️ Manual Overrides</h3>
+        <p style="margin-bottom:var(--space-md);">You can override the teacher's recommendations by checking/unchecking pupils above, or manually move individual pupils to different classes below.</p>
+        <div class="override-controls">
+          <div class="form-group">
+            <label>Move Pupil:</label>
+            <select id="override-pupil-select" style="width:100%;">
+              <option value="">-- Select Pupil --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>To Class:</label>
+            <select id="override-class-select" style="width:100%;">
+              <option value="">-- Select Class --</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary" onclick="addManualOverride()" style="align-self: flex-end;">
+            Add Override
+          </button>
+        </div>
+        <div id="manual-overrides-list" style="margin-top:var(--space-md);"></div>
+      </div>
+    `;
+    
+    content.innerHTML = html;
+    
+    // Populate override dropdowns
+    await populateOverrideDropdowns();
+    
+    // Show/hide buttons based on status
+    if (currentPromotionData.status === 'pending') {
+      approveBtn.style.display = 'inline-block';
+      rejectBtn.style.display = 'inline-block';
+    } else {
+      approveBtn.style.display = 'none';
+      rejectBtn.style.display = 'none';
+    }
+    
+    modal.style.display = 'block';
+    
+  } catch (error) {
+    console.error('Error loading promotion details:', error);
+    window.showToast?.('Failed to load promotion details', 'danger');
+  }
+}
+
+function closePromotionDetailsModal() {
+  const modal = document.getElementById('promotion-details-modal');
+  if (modal) modal.style.display = 'none';
+  currentPromotionId = null;
+  currentPromotionData = null;
+}
+
+async function populateOverrideDropdowns() {
+  try {
+    // Populate pupil dropdown
+    const pupilSelect = document.getElementById('override-pupil-select');
+    if (pupilSelect && currentPromotionData) {
+      const allPupils = [
+        ...(currentPromotionData.promotedPupilsDetails || []),
+        ...(currentPromotionData.heldBackPupilsDetails || [])
+      ];
+      
+      allPupils.forEach(pupil => {
+        const opt = document.createElement('option');
+        opt.value = pupil.id;
+        opt.textContent = pupil.name;
+        pupilSelect.appendChild(opt);
+      });
+    }
+    
+    // Populate class dropdown
+    const classSelect = document.getElementById('override-class-select');
+    if (classSelect) {
+      const classesSnap = await db.collection('classes').orderBy('name').get();
+      classesSnap.forEach(doc => {
+        const opt = document.createElement('option');
+        opt.value = doc.id;
+        opt.textContent = doc.data().name;
+        classSelect.appendChild(opt);
+      });
+      
+      // Add Alumni option
+      const alumniOpt = document.createElement('option');
+      alumniOpt.value = 'alumni';
+      alumniOpt.textContent = 'Alumni (Graduate)';
+      classSelect.appendChild(alumniOpt);
+    }
+  } catch (error) {
+    console.error('Error populating override dropdowns:', error);
+  }
+}
+
+let manualOverrides = [];
+
+function handlePromotionOverride() {
+  // This function is called when checkboxes change
+  // We'll collect the overrides when approving
+  console.log('Promotion overrides changed');
+}
+
+function addManualOverride() {
+  const pupilSelect = document.getElementById('override-pupil-select');
+  const classSelect = document.getElementById('override-class-select');
+  
+  if (!pupilSelect || !classSelect) return;
+  
+  const pupilId = pupilSelect.value;
+  const classId = classSelect.value;
+  
+  if (!pupilId || !classId) {
+    window.showToast?.('Please select both pupil and class', 'warning');
+    return;
+  }
+  
+  const pupilName = pupilSelect.options[pupilSelect.selectedIndex].text;
+  const className = classSelect.options[classSelect.selectedIndex].text;
+  
+  // Check if already exists
+  const exists = manualOverrides.find(o => o.pupilId === pupilId);
+  if (exists) {
+    window.showToast?.('Override for this pupil already exists', 'warning');
+    return;
+  }
+  
+  manualOverrides.push({ pupilId, classId, pupilName, className });
+  
+  renderManualOverrides();
+  
+  // Reset selects
+  pupilSelect.value = '';
+  classSelect.value = '';
+}
+
+function renderManualOverrides() {
+  const container = document.getElementById('manual-overrides-list');
+  if (!container) return;
+  
+  if (manualOverrides.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  container.innerHTML = '<p style="margin-bottom:var(--space-sm);"><strong>Manual Overrides:</strong></p>';
+  
+  manualOverrides.forEach((override, index) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:var(--space-sm); background:white; border-radius:var(--radius-sm); margin-bottom:var(--space-xs); display:flex; justify-content:space-between; align-items:center;';
+    div.innerHTML = `
+      <span>${override.pupilName} → ${override.className}</span>
+      <button class="btn-small btn-danger" onclick="removeManualOverride(${index})">Remove</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function removeManualOverride(index) {
+  manualOverrides.splice(index, 1);
+  renderManualOverrides();
+}
+
+async function approvePromotion() {
+  if (!currentPromotionId || !currentPromotionData) {
+    window.showToast?.('No promotion selected', 'danger');
+    return;
+  }
+
+  const confirmation = confirm(
+    'Approve and Execute Promotion?\n\n' +
+      'This will:\n' +
+      '✓ Move pupils to their new classes\n' +
+      '✓ Update all pupil records\n' +
+      '✓ Move terminal class pupils to alumni (if applicable)\n\n' +
+      'This action cannot be undone. Continue?'
+  );
+
+  if (!confirmation) return;
+
+  const approveBtn = document.getElementById('approve-promotion-btn');
+  if (approveBtn) {
+    approveBtn.disabled = true;
+    approveBtn.innerHTML = '<span class="btn-loading">Processing...</span>';
+  }
+
+  try {
+    // Collect overrides from checkboxes
+    const finalPromotedPupils = [];
+    const finalHeldBackPupils = [];
+
+    document.querySelectorAll('.override-promote-checkbox').forEach(checkbox => {
+      if (checkbox.checked) {
+        finalPromotedPupils.push(checkbox.dataset.pupilId);
+      } else {
+        finalHeldBackPupils.push(checkbox.dataset.pupilId);
+      }
+    });
+
+    document.querySelectorAll('.override-hold-checkbox').forEach(checkbox => {
+      if (checkbox.checked) {
+        finalPromotedPupils.push(checkbox.dataset.pupilId);
+      }
+    });
+
+    // Execute promotion
+    await executePromotion(
+      currentPromotionId,
+      finalPromotedPupils,
+      finalHeldBackPupils,
+      manualOverrides
+    );
+
+    window.showToast?.(
+      '✓ Promotion approved and executed successfully!',
+      'success',
+      6000
+    );
+
+    closePromotionDetailsModal();
+    manualOverrides = [];
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error approving promotion:', error);
+    window.handleError(error, 'Failed to approve promotion');
+  } finally {
+    if (approveBtn) {
+      approveBtn.disabled = false;
+      approveBtn.innerHTML = '✓ Approve & Execute';
+    }
+  }
+}
+
+async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
+  const promotionDoc = await db.collection('promotions').doc(promotionId).get();
+  
+  if (!promotionDoc.exists) {
+    throw new Error('Promotion request not found');
+  }
+  
+  const data = promotionDoc.data();
+  
+  if (!data.toClass || !data.toClass.id) {
+    throw new Error('Invalid promotion data: missing target class');
+  }
+  
+  // CRITICAL FIX: Proper batch size limit
+  const BATCH_SIZE = 400; // Safe limit under Firestore's 500
+  let currentBatch = db.batch();
+  let operationCount = 0;
+  let batchNumber = 1;
+  let totalOperations = 0;
+
+  // Helper function to commit current batch safely
+  async function commitCurrentBatch() {
+    if (operationCount > 0) {
+      console.log(`📦 Committing batch ${batchNumber} with ${operationCount} operations...`);
+      
+      try {
+        await currentBatch.commit();
+        console.log(`✅ Batch ${batchNumber} committed successfully`);
+        
+        batchNumber++;
+        currentBatch = db.batch();
+        operationCount = 0;
+        
+        // Small delay between batches to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`❌ Batch ${batchNumber} failed:`, error);
+        throw new Error(`Promotion failed at batch ${batchNumber}. Error: ${error.message}`);
+      }
+    }
+  }
+
+  // Get class details if not terminal
+  let toClassDetails = null;
+  if (!data.isTerminalClass) {
+    const toClassDoc = await db.collection('classes').doc(data.toClass.id).get();
+    if (toClassDoc.exists) {
+      toClassDetails = toClassDoc.data();
+    }
+  }
+
+  // Process promoted pupils
+  console.log(`📝 Processing ${promotedPupils.length} promoted pupils...`);
+  
+  for (const pupilId of promotedPupils) {
+    const pupilRef = db.collection('pupils').doc(pupilId);
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
+      continue;
+    }
+    
+    const pupilData = pupilDoc.data();
+
+    if (data.isTerminalClass) {
+      // Move to alumni (2 operations)
+      const alumniRef = db.collection('alumni').doc(pupilId);
+      
+      currentBatch.set(alumniRef, {
+        ...pupilData,
+        graduationSession: data.fromSession,
+        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+        finalClass: data.fromClass.name,
+        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      totalOperations++;
+      
+      currentBatch.delete(pupilRef);
+      operationCount++;
+      totalOperations++;
+      
+    } else {
+      // Regular promotion (1 operation)
+      currentBatch.update(pupilRef, {
+        'class.id': data.toClass.id,
+        'class.name': data.toClass.name,
+        subjects: toClassDetails?.subjects || [],
+        promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+          session: data.fromSession,
+          fromClass: data.fromClass.name,
+          toClass: data.toClass.name,
+          promoted: true,
+          date: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      totalOperations++;
+    }
+    
+    // Commit if batch is full
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
+    }
+  }
+
+  // Process held back pupils
+  console.log(`📝 Processing ${heldBackPupils.length} held back pupils...`);
+  
+  for (const pupilId of heldBackPupils) {
+    const pupilRef = db.collection('pupils').doc(pupilId);
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
+      continue;
+    }
+    
+    currentBatch.update(pupilRef, {
+      promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+        session: data.fromSession,
+        fromClass: data.fromClass.name,
+        toClass: data.fromClass.name,
+        promoted: false,
+        reason: 'Held back by admin/teacher decision',
+        date: firebase.firestore.FieldValue.serverTimestamp()
+      }),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    operationCount++;
+    totalOperations++;
+    
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
+    }
+  }
+
+  // Process manual overrides
+  console.log(`📝 Processing ${manualOverrides.length} manual overrides...`);
+  
+  for (const override of manualOverrides) {
+    const pupilRef = db.collection('pupils').doc(override.pupilId);
+    const pupilDoc = await pupilRef.get();
+    
+    if (!pupilDoc.exists) {
+      console.warn(`⚠️ Pupil ${override.pupilId} not found, skipping`);
+      continue;
+    }
+    
+    const pupilData = pupilDoc.data();
+
+    if (override.classId === 'alumni') {
+      // Move to alumni (2 operations)
+      const alumniRef = db.collection('alumni').doc(override.pupilId);
+      
+      currentBatch.set(alumniRef, {
+        ...pupilData,
+        graduationSession: data.fromSession,
+        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+        finalClass: data.fromClass.name,
+        manualOverride: true,
+        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      totalOperations++;
+      
+      currentBatch.delete(pupilRef);
+      operationCount++;
+      totalOperations++;
+      
+    } else {
+      // Move to specific class
+      const overrideClassDoc = await db.collection('classes').doc(override.classId).get();
+      
+      if (overrideClassDoc.exists) {
+        const overrideClassData = overrideClassDoc.data();
+        
+        currentBatch.update(pupilRef, {
+          'class.id': override.classId,
+          'class.name': overrideClassData.name,
+          subjects: overrideClassData.subjects || [],
+          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+            session: data.fromSession,
+            fromClass: data.fromClass.name,
+            toClass: overrideClassData.name,
+            promoted: true,
+            manualOverride: true,
+            date: firebase.firestore.FieldValue.serverTimestamp()
+          }),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        operationCount++;
+        totalOperations++;
+      }
+    }
+    
+    if (operationCount >= BATCH_SIZE) {
+      await commitCurrentBatch();
+    }
+  }
+
+  // Mark promotion as completed (1 operation)
+  currentBatch.update(promotionDoc.ref, {
+    status: 'completed',
+    approvedBy: auth.currentUser.uid,
+    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    executedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  operationCount++;
+  totalOperations++;
+
+  // Commit final batch
+  await commitCurrentBatch();
+  
+  console.log(`✅ Promotion completed successfully!`);
+  console.log(`   - ${promotedPupils.length} pupils promoted`);
+  console.log(`   - ${heldBackPupils.length} pupils held back`);
+  console.log(`   - ${manualOverrides.length} manual overrides`);
+  console.log(`   - Total batches: ${batchNumber - 1}`);
+  console.log(`   - Total operations: ${totalOperations}`);
+}
+
+async function rejectPromotion() {
+  if (!currentPromotionId) {
+    window.showToast?.('No promotion selected', 'danger');
+    return;
+  }
+
+  const reason = prompt('Reason for rejection (optional):');
+
+  try {
+    await db.collection('promotions').doc(currentPromotionId).update({
+      status: 'rejected',
+      rejectedBy: auth.currentUser.uid,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: reason || 'No reason provided'
+    });
+
+    window.showToast?.('✓ Promotion request rejected', 'success');
+
+    closePromotionDetailsModal();
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error rejecting promotion:', error);
+    window.handleError(error, 'Failed to reject promotion');
+  }
+}
+
+async function quickApprovePromotion(promotionId) {
+  const confirmation = confirm('Approve this promotion request without modifications?');
+  if (!confirmation) return;
+
+  try {
+    const doc = await db.collection('promotions').doc(promotionId).get();
+    const data = doc.data();
+
+    await executePromotion(
+      promotionId,
+      data.promotedPupils || [],
+      data.heldBackPupils || [],
+      []
+    );
+
+    window.showToast?.('✓ Promotion approved and executed', 'success');
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error quick approving:', error);
+    window.handleError(error, 'Failed to approve promotion');
+  }
+}
+
+async function quickRejectPromotion(promotionId) {
+  const confirmation = confirm('Reject this promotion request?');
+  if (!confirmation) return;
+
+  try {
+    await db.collection('promotions').doc(promotionId).update({
+      status: 'rejected',
+      rejectedBy: auth.currentUser.uid,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    window.showToast?.('✓ Promotion request rejected', 'success');
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error quick rejecting:', error);
+    window.handleError(error, 'Failed to reject promotion');
+  }
+}
+
+async function approveAllPendingPromotions() {
+  const confirmation = confirm(
+    'Approve ALL pending promotion requests?\n\n' +
+      'This will execute all promotions without modifications.\n' +
+      'Continue?'
+  );
+  if (!confirmation) return;
+
+  try {
+    const snapshot = await db
+      .collection('promotions')
+      .where('status', '==', 'pending')
+      .get();
+
+    if (snapshot.empty) {
+      window.showToast?.('No pending requests to approve', 'info');
+      return;
+    }
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      await executePromotion(
+        doc.id,
+        data.promotedPupils || [],
+        data.heldBackPupils || [],
+        []
+      );
+    }
+
+    window.showToast?.(
+      `✓ Approved and executed ${snapshot.size} promotion request(s)`,
+      'success',
+      6000
+    );
+
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error approving all promotions:', error);
+    window.handleError(error, 'Failed to approve all promotions');
+  }
+}
+
+async function rejectAllPendingPromotions() {
+  const confirmation = confirm(
+    'Reject ALL pending promotion requests?\n\n' +
+      'This action cannot be undone.\n' +
+      'Continue?'
+  );
+  if (!confirmation) return;
+
+  try {
+    const snapshot = await db
+      .collection('promotions')
+      .where('status', '==', 'pending')
+      .get();
+
+    if (snapshot.empty) {
+      window.showToast?.('No pending requests to reject', 'info');
+      return;
+    }
+
+    const batch = db.batch();
+
+    snapshot.forEach(doc => {
+      batch.update(doc.ref, {
+        status: 'rejected',
+        rejectedBy: auth.currentUser.uid,
+        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        rejectionReason: 'Bulk rejection by admin'
+      });
+    });
+
+    await batch.commit();
+
+    window.showToast?.(
+      `✓ Rejected ${snapshot.size} promotion request(s)`,
+      'success'
+    );
+
+    await loadPromotionRequests();
+  } catch (error) {
+    console.error('Error rejecting all promotions:', error);
+    window.handleError(error, 'Failed to reject all promotions');
+  }
+}
+
+// Make functions globally available
+window.togglePromotionPeriod = togglePromotionPeriod;
+window.viewPromotionDetails = viewPromotionDetails;
+window.closePromotionDetailsModal = closePromotionDetailsModal;
+window.handlePromotionOverride = handlePromotionOverride;
+window.addManualOverride = addManualOverride;
+window.removeManualOverride = removeManualOverride;
+window.approvePromotion = approvePromotion;
+window.rejectPromotion = rejectPromotion;
+window.quickApprovePromotion = quickApprovePromotion;
+window.quickRejectPromotion = quickRejectPromotion;
+window.approveAllPendingPromotions = approveAllPendingPromotions;
+window.rejectAllPendingPromotions = rejectAllPendingPromotions;
+
 /**
  * Load promotion period status
  */
@@ -725,9 +1474,14 @@ async function loadResultApprovals() {
   }
 }
 
-/**
- * Load view results section
- */
+/* ========================================
+   ADMIN: VIEW PUPIL RESULTS BY SESSION
+======================================== */
+
+let currentResultsPupilId = null;
+let currentResultsSession = null;
+let currentResultsData = null;
+
 async function loadViewResultsSection() {
   console.log('📊 Loading View Results section...');
   
@@ -747,9 +1501,6 @@ async function loadViewResultsSection() {
   }
 }
 
-/**
- * Populate session filter dropdown
- */
 async function populateSessionFilter() {
   const sessionSelect = document.getElementById('filter-session');
   if (!sessionSelect) return;
@@ -786,6 +1537,178 @@ async function populateSessionFilter() {
   } catch (error) {
     console.error('Error populating session filter:', error);
     sessionSelect.innerHTML = '<option value="">Error loading sessions</option>';
+  }
+}
+
+async function loadFilteredClasses() {
+  const sessionSelect = document.getElementById('filter-session');
+  const classSelect = document.getElementById('filter-class');
+  const pupilSelect = document.getElementById('filter-pupil');
+  
+  if (!sessionSelect || !classSelect || !pupilSelect) return;
+  
+  const selectedSession = sessionSelect.value;
+  
+  // Reset dependent filters
+  classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+  classSelect.disabled = true;
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  pupilSelect.disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  if (!selectedSession) return;
+  
+  try {
+    // Get actual session name
+    let actualSession;
+    if (selectedSession === 'current') {
+      const settings = await window.getCurrentSettings();
+      actualSession = settings.session;
+    } else {
+      actualSession = selectedSession;
+    }
+    
+    currentResultsSession = actualSession;
+    
+    // Get all results for this session to find which classes have data
+    const resultsSnap = await db.collection('results')
+      .where('session', '==', actualSession)
+      .get();
+    
+    // Extract unique classes from results
+    const classesWithResults = new Set();
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      if (data.pupilId) {
+        classesWithResults.add(data.pupilId); // We'll use this to find classes
+      }
+    });
+    
+    // Get all classes
+    const classesSnap = await db.collection('classes')
+      .orderBy('name')
+      .get();
+    
+    const classOptions = [];
+    
+    for (const classDoc of classesSnap.docs) {
+      const className = classDoc.data().name;
+      const classId = classDoc.id;
+      
+      // Check if this class has pupils with results in this session
+      const pupilsInClassSnap = await db.collection('pupils')
+        .where('class.id', '==', classId)
+        .limit(1)
+        .get();
+      
+      if (!pupilsInClassSnap.empty) {
+        classOptions.push({
+          id: classId,
+          name: className
+        });
+      }
+    }
+    
+    if (classOptions.length === 0) {
+      classSelect.innerHTML = '<option value="">No classes with results in this session</option>';
+      window.showToast?.('No results found for this session', 'warning', 4000);
+      return;
+    }
+    
+    // Populate class dropdown
+    classOptions.forEach(cls => {
+      const opt = document.createElement('option');
+      opt.value = cls.id;
+      opt.textContent = cls.name;
+      classSelect.appendChild(opt);
+    });
+    
+    classSelect.disabled = false;
+    
+    console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
+    
+  } catch (error) {
+    console.error('Error loading classes:', error);
+    window.showToast?.('Failed to load classes', 'danger');
+  }
+}
+
+async function loadFilteredPupils() {
+  const classSelect = document.getElementById('filter-class');
+  const pupilSelect = document.getElementById('filter-pupil');
+  
+  if (!classSelect || !pupilSelect) return;
+  
+  const selectedClass = classSelect.value;
+  
+  // Reset pupil filter
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  pupilSelect.disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  if (!selectedClass || !currentResultsSession) return;
+  
+  try {
+    // Get all pupils in this class
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', selectedClass)
+      .get();
+    
+    if (pupilsSnap.empty) {
+      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
+      window.showToast?.('No pupils found in this class', 'warning', 3000);
+      return;
+    }
+    
+    // Check which pupils have results in the selected session
+    const pupilsWithResults = [];
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      
+      // Check if pupil has results in this session
+      const resultsSnap = await db.collection('results')
+        .where('pupilId', '==', pupilId)
+        .where('session', '==', currentResultsSession)
+        .limit(1)
+        .get();
+      
+      if (!resultsSnap.empty) {
+        pupilsWithResults.push({
+          id: pupilId,
+          name: pupilData.name || 'Unknown',
+          data: pupilData
+        });
+      }
+    }
+    
+    if (pupilsWithResults.length === 0) {
+      pupilSelect.innerHTML = '<option value="">No results found for pupils in this class</option>';
+      window.showToast?.('No results found for this class in selected session', 'warning', 4000);
+      return;
+    }
+    
+    // Sort by name
+    pupilsWithResults.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Populate pupil dropdown
+    pupilsWithResults.forEach(pupil => {
+      const opt = document.createElement('option');
+      opt.value = pupil.id;
+      opt.textContent = pupil.name;
+      opt.dataset.pupilData = JSON.stringify(pupil.data);
+      pupilSelect.appendChild(opt);
+    });
+    
+    pupilSelect.disabled = false;
+    document.getElementById('view-results-btn').disabled = false;
+    
+    console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
+    
+  } catch (error) {
+    console.error('Error loading pupils:', error);
+    window.showToast?.('Failed to load pupils', 'danger');
   }
 }
 
@@ -4626,884 +5549,6 @@ async function deleteItem(collectionName, docId) {
   }
 }
 
-/* ======================================== 
-   PROMOTION REQUESTS MANAGEMENT
-======================================== */
-
-let currentPromotionId = null;
-let currentPromotionData = null;
-
-async function loadPromotionRequests() {
-  try {
-    // Load promotion period status
-    await loadPromotionPeriodStatus();
-    
-    // Load promotion requests
-    const tbody = document.getElementById('promotion-requests-table');
-    const noRequestsMsg = document.getElementById('no-requests-message');
-    const bulkActions = document.getElementById('bulk-actions');
-    
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading promotion requests...</td></tr>';
-    
-    const snapshot = await db.collection('promotions')
-      .orderBy('createdAt', 'desc')
-      .get();
-    
-    tbody.innerHTML = '';
-    
-    if (snapshot.empty) {
-      if (noRequestsMsg) noRequestsMsg.style.display = 'block';
-      if (bulkActions) bulkActions.style.display = 'none';
-      return;
-    }
-    
-    if (noRequestsMsg) noRequestsMsg.style.display = 'none';
-    
-    // Check if there are any pending requests
-    const hasPending = snapshot.docs.some(doc => doc.data().status === 'pending');
-    if (bulkActions) bulkActions.style.display = hasPending ? 'flex' : 'none';
-    
-    // Get all teacher names
-    const teacherIds = new Set();
-    snapshot.docs.forEach(doc => {
-      const data = doc.data();
-      if (data.initiatedBy) teacherIds.add(data.initiatedBy);
-    });
-    
-    const teacherNames = {};
-    for (const teacherId of teacherIds) {
-      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
-      if (teacherDoc.exists) {
-        teacherNames[teacherId] = teacherDoc.data().name;
-      }
-    }
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const teacherName = teacherNames[data.initiatedBy] || 'Unknown';
-      
-      let statusBadge = '';
-      if (data.status === 'pending') {
-        statusBadge = '<span class="status-pending">Pending</span>';
-      } else if (data.status === 'approved') {
-        statusBadge = '<span class="status-approved">Approved</span>';
-      } else if (data.status === 'rejected') {
-        statusBadge = '<span class="status-rejected">Rejected</span>';
-      } else if (data.status === 'completed') {
-        statusBadge = '<span class="status-completed">Completed</span>';
-      }
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Teacher">${teacherName}</td>
-        <td data-label="From Class">${data.fromClass?.name || '-'}</td>
-        <td data-label="To Class">${data.toClass?.name || '-'}</td>
-        <td data-label="Promote" style="text-align:center;">${data.promotedPupils?.length || 0}</td>
-        <td data-label="Hold" style="text-align:center;">${data.heldBackPupils?.length || 0}</td>
-        <td data-label="Status">${statusBadge}</td>
-        <td data-label="Actions">
-          <button class="btn-small btn-primary" onclick="viewPromotionDetails('${doc.id}')">
-            View Details
-          </button>
-          ${data.status === 'pending' ? `
-            <button class="btn-small btn-success" onclick="quickApprovePromotion('${doc.id}')">
-              ✓ Approve
-            </button>
-            <button class="btn-small btn-danger" onclick="quickRejectPromotion('${doc.id}')">
-              ✗ Reject
-            </button>
-          ` : ''}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    
-  } catch (error) {
-    console.error('Error loading promotion requests:', error);
-    window.showToast?.('Failed to load promotion requests', 'danger');
-    document.getElementById('promotion-requests-table').innerHTML = 
-      '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading requests</td></tr>';
-  }
-}
-
-async function loadPromotionPeriodStatus() {
-  const statusEl = document.getElementById('promotion-period-status');
-  const toggleBtn = document.getElementById('toggle-promotion-period-btn');
-  
-  if (!statusEl || !toggleBtn) return;
-  
-  try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
-    const isActive = settingsDoc.exists && settingsDoc.data().promotionPeriodActive === true;
-    
-    if (isActive) {
-      statusEl.textContent = '✓ Promotion period is currently ACTIVE. Teachers can submit promotion requests.';
-      statusEl.className = 'status-active';
-      toggleBtn.textContent = '🔒 Close Promotion Period';
-      toggleBtn.className = 'btn btn-danger';
-    } else {
-      statusEl.textContent = '✗ Promotion period is currently CLOSED. Teachers cannot submit requests.';
-      statusEl.className = 'status-inactive';
-      toggleBtn.textContent = '🔓 Open Promotion Period';
-      toggleBtn.className = 'btn btn-success';
-    }
-  } catch (error) {
-    console.error('Error loading promotion period status:', error);
-    statusEl.textContent = 'Error loading status';
-  }
-}
-
-async function togglePromotionPeriod() {
-  try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
-    const currentStatus = settingsDoc.exists && settingsDoc.data().promotionPeriodActive === true;
-    const newStatus = !currentStatus;
-    
-    const action = newStatus ? 'open' : 'close';
-    const confirmation = confirm(
-      `${action.toUpperCase()} Promotion Period?\n\n` +
-      (newStatus 
-        ? 'Teachers will be able to submit promotion requests.'
-        : 'Teachers will no longer be able to submit promotion requests.\nExisting pending requests will remain.')
-    );
-    
-    if (!confirmation) return;
-    
-    await db.collection('settings').doc('current').set({
-      promotionPeriodActive: newStatus,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    
-    window.showToast?.(
-      `✓ Promotion period ${newStatus ? 'opened' : 'closed'} successfully`,
-      'success'
-    );
-    
-    await loadPromotionPeriodStatus();
-    
-  } catch (error) {
-    console.error('Error toggling promotion period:', error);
-    window.handleError(error, 'Failed to toggle promotion period');
-  }
-}
-
-async function viewPromotionDetails(promotionId) {
-  try {
-    const doc = await db.collection('promotions').doc(promotionId).get();
-    
-    if (!doc.exists) {
-      window.showToast?.('Promotion request not found', 'danger');
-      return;
-    }
-    
-    currentPromotionId = promotionId;
-    currentPromotionData = doc.data();
-    
-    // Get teacher name
-    let teacherName = 'Unknown';
-    if (currentPromotionData.initiatedBy) {
-      const teacherDoc = await db.collection('teachers').doc(currentPromotionData.initiatedBy).get();
-      if (teacherDoc.exists) {
-        teacherName = teacherDoc.data().name;
-      }
-    }
-    
-    const modal = document.getElementById('promotion-details-modal');
-    const content = document.getElementById('promotion-details-content');
-    const approveBtn = document.getElementById('approve-promotion-btn');
-    const rejectBtn = document.getElementById('reject-promotion-btn');
-    
-    if (!modal || !content) return;
-    
-    // Build details HTML
-    let html = `
-      <div class="promotion-details-section">
-        <h3>Request Information</h3>
-        <p><strong>Submitted by:</strong> ${teacherName}</p>
-        <p><strong>From Class:</strong> ${currentPromotionData.fromClass?.name || '-'}</p>
-        <p><strong>To Class:</strong> ${currentPromotionData.toClass?.name || '-'}</p>
-        <p><strong>Session:</strong> ${currentPromotionData.fromSession || '-'}</p>
-        <p><strong>Status:</strong> ${currentPromotionData.status.toUpperCase()}</p>
-        ${currentPromotionData.isTerminalClass ? '<p><strong>⚠️ Terminal Class:</strong> Pupils will be moved to Alumni</p>' : ''}
-      </div>
-      
-      <div class="promotion-details-section">
-        <h3>Pupils to Promote (${currentPromotionData.promotedPupils?.length || 0})</h3>
-        <div class="pupil-list">
-    `;
-    
-    if (currentPromotionData.promotedPupilsDetails && currentPromotionData.promotedPupilsDetails.length > 0) {
-      currentPromotionData.promotedPupilsDetails.forEach(pupil => {
-        html += `
-          <div class="pupil-list-item">
-            <input type="checkbox" 
-                   class="override-promote-checkbox" 
-                   data-pupil-id="${pupil.id}" 
-                   checked 
-                   onchange="handlePromotionOverride()">
-            <span>${pupil.name}</span>
-          </div>
-        `;
-      });
-    } else {
-      html += '<p style="color:var(--color-gray-600);">No pupils selected for promotion</p>';
-    }
-    
-    html += `
-        </div>
-      </div>
-      
-      <div class="promotion-details-section">
-        <h3>Pupils to Hold Back (${currentPromotionData.heldBackPupils?.length || 0})</h3>
-        <div class="pupil-list">
-    `;
-    
-    if (currentPromotionData.heldBackPupilsDetails && currentPromotionData.heldBackPupilsDetails.length > 0) {
-      currentPromotionData.heldBackPupilsDetails.forEach(pupil => {
-        html += `
-          <div class="pupil-list-item">
-            <input type="checkbox" 
-                   class="override-hold-checkbox" 
-                   data-pupil-id="${pupil.id}" 
-                   onchange="handlePromotionOverride()">
-            <span>${pupil.name}</span>
-          </div>
-        `;
-      });
-    } else {
-      html += '<p style="color:var(--color-gray-600);">No pupils held back</p>';
-    }
-    
-    html += `
-        </div>
-      </div>
-      
-      <div class="override-section">
-        <h3>⚙️ Manual Overrides</h3>
-        <p style="margin-bottom:var(--space-md);">You can override the teacher's recommendations by checking/unchecking pupils above, or manually move individual pupils to different classes below.</p>
-        <div class="override-controls">
-          <div class="form-group">
-            <label>Move Pupil:</label>
-            <select id="override-pupil-select" style="width:100%;">
-              <option value="">-- Select Pupil --</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>To Class:</label>
-            <select id="override-class-select" style="width:100%;">
-              <option value="">-- Select Class --</option>
-            </select>
-          </div>
-          <button class="btn btn-secondary" onclick="addManualOverride()" style="align-self: flex-end;">
-            Add Override
-          </button>
-        </div>
-        <div id="manual-overrides-list" style="margin-top:var(--space-md);"></div>
-      </div>
-    `;
-    
-    content.innerHTML = html;
-    
-    // Populate override dropdowns
-    await populateOverrideDropdowns();
-    
-    // Show/hide buttons based on status
-    if (currentPromotionData.status === 'pending') {
-      approveBtn.style.display = 'inline-block';
-      rejectBtn.style.display = 'inline-block';
-    } else {
-      approveBtn.style.display = 'none';
-      rejectBtn.style.display = 'none';
-    }
-    
-    modal.style.display = 'block';
-    
-  } catch (error) {
-    console.error('Error loading promotion details:', error);
-    window.showToast?.('Failed to load promotion details', 'danger');
-  }
-}
-
-function closePromotionDetailsModal() {
-  const modal = document.getElementById('promotion-details-modal');
-  if (modal) modal.style.display = 'none';
-  currentPromotionId = null;
-  currentPromotionData = null;
-}
-
-async function populateOverrideDropdowns() {
-  try {
-    // Populate pupil dropdown
-    const pupilSelect = document.getElementById('override-pupil-select');
-    if (pupilSelect && currentPromotionData) {
-      const allPupils = [
-        ...(currentPromotionData.promotedPupilsDetails || []),
-        ...(currentPromotionData.heldBackPupilsDetails || [])
-      ];
-      
-      allPupils.forEach(pupil => {
-        const opt = document.createElement('option');
-        opt.value = pupil.id;
-        opt.textContent = pupil.name;
-        pupilSelect.appendChild(opt);
-      });
-    }
-    
-    // Populate class dropdown
-    const classSelect = document.getElementById('override-class-select');
-    if (classSelect) {
-      const classesSnap = await db.collection('classes').orderBy('name').get();
-      classesSnap.forEach(doc => {
-        const opt = document.createElement('option');
-        opt.value = doc.id;
-        opt.textContent = doc.data().name;
-        classSelect.appendChild(opt);
-      });
-      
-      // Add Alumni option
-      const alumniOpt = document.createElement('option');
-      alumniOpt.value = 'alumni';
-      alumniOpt.textContent = 'Alumni (Graduate)';
-      classSelect.appendChild(alumniOpt);
-    }
-  } catch (error) {
-    console.error('Error populating override dropdowns:', error);
-  }
-}
-
-let manualOverrides = [];
-
-function handlePromotionOverride() {
-  // This function is called when checkboxes change
-  // We'll collect the overrides when approving
-  console.log('Promotion overrides changed');
-}
-
-function addManualOverride() {
-  const pupilSelect = document.getElementById('override-pupil-select');
-  const classSelect = document.getElementById('override-class-select');
-  
-  if (!pupilSelect || !classSelect) return;
-  
-  const pupilId = pupilSelect.value;
-  const classId = classSelect.value;
-  
-  if (!pupilId || !classId) {
-    window.showToast?.('Please select both pupil and class', 'warning');
-    return;
-  }
-  
-  const pupilName = pupilSelect.options[pupilSelect.selectedIndex].text;
-  const className = classSelect.options[classSelect.selectedIndex].text;
-  
-  // Check if already exists
-  const exists = manualOverrides.find(o => o.pupilId === pupilId);
-  if (exists) {
-    window.showToast?.('Override for this pupil already exists', 'warning');
-    return;
-  }
-  
-  manualOverrides.push({ pupilId, classId, pupilName, className });
-  
-  renderManualOverrides();
-  
-  // Reset selects
-  pupilSelect.value = '';
-  classSelect.value = '';
-}
-
-function renderManualOverrides() {
-  const container = document.getElementById('manual-overrides-list');
-  if (!container) return;
-  
-  if (manualOverrides.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-  
-  container.innerHTML = '<p style="margin-bottom:var(--space-sm);"><strong>Manual Overrides:</strong></p>';
-  
-  manualOverrides.forEach((override, index) => {
-    const div = document.createElement('div');
-    div.style.cssText = 'padding:var(--space-sm); background:white; border-radius:var(--radius-sm); margin-bottom:var(--space-xs); display:flex; justify-content:space-between; align-items:center;';
-    div.innerHTML = `
-      <span>${override.pupilName} → ${override.className}</span>
-      <button class="btn-small btn-danger" onclick="removeManualOverride(${index})">Remove</button>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function removeManualOverride(index) {
-  manualOverrides.splice(index, 1);
-  renderManualOverrides();
-}
-
-async function approvePromotion() {
-  if (!currentPromotionId || !currentPromotionData) {
-    window.showToast?.('No promotion selected', 'danger');
-    return;
-  }
-
-  const confirmation = confirm(
-    'Approve and Execute Promotion?\n\n' +
-      'This will:\n' +
-      '✓ Move pupils to their new classes\n' +
-      '✓ Update all pupil records\n' +
-      '✓ Move terminal class pupils to alumni (if applicable)\n\n' +
-      'This action cannot be undone. Continue?'
-  );
-
-  if (!confirmation) return;
-
-  const approveBtn = document.getElementById('approve-promotion-btn');
-  if (approveBtn) {
-    approveBtn.disabled = true;
-    approveBtn.innerHTML = '<span class="btn-loading">Processing...</span>';
-  }
-
-  try {
-    // Collect overrides from checkboxes
-    const finalPromotedPupils = [];
-    const finalHeldBackPupils = [];
-
-    document.querySelectorAll('.override-promote-checkbox').forEach(checkbox => {
-      if (checkbox.checked) {
-        finalPromotedPupils.push(checkbox.dataset.pupilId);
-      } else {
-        finalHeldBackPupils.push(checkbox.dataset.pupilId);
-      }
-    });
-
-    document.querySelectorAll('.override-hold-checkbox').forEach(checkbox => {
-      if (checkbox.checked) {
-        finalPromotedPupils.push(checkbox.dataset.pupilId);
-      }
-    });
-
-    // Execute promotion
-    await executePromotion(
-      currentPromotionId,
-      finalPromotedPupils,
-      finalHeldBackPupils,
-      manualOverrides
-    );
-
-    window.showToast?.(
-      '✓ Promotion approved and executed successfully!',
-      'success',
-      6000
-    );
-
-    closePromotionDetailsModal();
-    manualOverrides = [];
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error approving promotion:', error);
-    window.handleError(error, 'Failed to approve promotion');
-  } finally {
-    if (approveBtn) {
-      approveBtn.disabled = false;
-      approveBtn.innerHTML = '✓ Approve & Execute';
-    }
-  }
-}
-
-async function executePromotion(promotionId, promotedPupils, heldBackPupils, manualOverrides) {
-  const promotionDoc = await db.collection('promotions').doc(promotionId).get();
-  
-  if (!promotionDoc.exists) {
-    throw new Error('Promotion request not found');
-  }
-  
-  const data = promotionDoc.data();
-  
-  if (!data.toClass || !data.toClass.id) {
-    throw new Error('Invalid promotion data: missing target class');
-  }
-  
-  // CRITICAL FIX: Proper batch size limit
-  const BATCH_SIZE = 400; // Safe limit under Firestore's 500
-  let currentBatch = db.batch();
-  let operationCount = 0;
-  let batchNumber = 1;
-  let totalOperations = 0;
-
-  // Helper function to commit current batch safely
-  async function commitCurrentBatch() {
-    if (operationCount > 0) {
-      console.log(`📦 Committing batch ${batchNumber} with ${operationCount} operations...`);
-      
-      try {
-        await currentBatch.commit();
-        console.log(`✅ Batch ${batchNumber} committed successfully`);
-        
-        batchNumber++;
-        currentBatch = db.batch();
-        operationCount = 0;
-        
-        // Small delay between batches to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-      } catch (error) {
-        console.error(`❌ Batch ${batchNumber} failed:`, error);
-        throw new Error(`Promotion failed at batch ${batchNumber}. Error: ${error.message}`);
-      }
-    }
-  }
-
-  // Get class details if not terminal
-  let toClassDetails = null;
-  if (!data.isTerminalClass) {
-    const toClassDoc = await db.collection('classes').doc(data.toClass.id).get();
-    if (toClassDoc.exists) {
-      toClassDetails = toClassDoc.data();
-    }
-  }
-
-  // Process promoted pupils
-  console.log(`📝 Processing ${promotedPupils.length} promoted pupils...`);
-  
-  for (const pupilId of promotedPupils) {
-    const pupilRef = db.collection('pupils').doc(pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
-      continue;
-    }
-    
-    const pupilData = pupilDoc.data();
-
-    if (data.isTerminalClass) {
-      // Move to alumni (2 operations)
-      const alumniRef = db.collection('alumni').doc(pupilId);
-      
-      currentBatch.set(alumniRef, {
-        ...pupilData,
-        graduationSession: data.fromSession,
-        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-        finalClass: data.fromClass.name,
-        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-      
-      currentBatch.delete(pupilRef);
-      operationCount++;
-      totalOperations++;
-      
-    } else {
-      // Regular promotion (1 operation)
-      currentBatch.update(pupilRef, {
-        'class.id': data.toClass.id,
-        'class.name': data.toClass.name,
-        subjects: toClassDetails?.subjects || [],
-        promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-          session: data.fromSession,
-          fromClass: data.fromClass.name,
-          toClass: data.toClass.name,
-          promoted: true,
-          date: firebase.firestore.FieldValue.serverTimestamp()
-        }),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-    }
-    
-    // Commit if batch is full
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
-  }
-
-  // Process held back pupils
-  console.log(`📝 Processing ${heldBackPupils.length} held back pupils...`);
-  
-  for (const pupilId of heldBackPupils) {
-    const pupilRef = db.collection('pupils').doc(pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
-      continue;
-    }
-    
-    currentBatch.update(pupilRef, {
-      promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-        session: data.fromSession,
-        fromClass: data.fromClass.name,
-        toClass: data.fromClass.name,
-        promoted: false,
-        reason: 'Held back by admin/teacher decision',
-        date: firebase.firestore.FieldValue.serverTimestamp()
-      }),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    operationCount++;
-    totalOperations++;
-    
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
-  }
-
-  // Process manual overrides
-  console.log(`📝 Processing ${manualOverrides.length} manual overrides...`);
-  
-  for (const override of manualOverrides) {
-    const pupilRef = db.collection('pupils').doc(override.pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${override.pupilId} not found, skipping`);
-      continue;
-    }
-    
-    const pupilData = pupilDoc.data();
-
-    if (override.classId === 'alumni') {
-      // Move to alumni (2 operations)
-      const alumniRef = db.collection('alumni').doc(override.pupilId);
-      
-      currentBatch.set(alumniRef, {
-        ...pupilData,
-        graduationSession: data.fromSession,
-        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-        finalClass: data.fromClass.name,
-        manualOverride: true,
-        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-      
-      currentBatch.delete(pupilRef);
-      operationCount++;
-      totalOperations++;
-      
-    } else {
-      // Move to specific class
-      const overrideClassDoc = await db.collection('classes').doc(override.classId).get();
-      
-      if (overrideClassDoc.exists) {
-        const overrideClassData = overrideClassDoc.data();
-        
-        currentBatch.update(pupilRef, {
-          'class.id': override.classId,
-          'class.name': overrideClassData.name,
-          subjects: overrideClassData.subjects || [],
-          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-            session: data.fromSession,
-            fromClass: data.fromClass.name,
-            toClass: overrideClassData.name,
-            promoted: true,
-            manualOverride: true,
-            date: firebase.firestore.FieldValue.serverTimestamp()
-          }),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        operationCount++;
-        totalOperations++;
-      }
-    }
-    
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
-  }
-
-  // Mark promotion as completed (1 operation)
-  currentBatch.update(promotionDoc.ref, {
-    status: 'completed',
-    approvedBy: auth.currentUser.uid,
-    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    executedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  operationCount++;
-  totalOperations++;
-
-  // Commit final batch
-  await commitCurrentBatch();
-  
-  console.log(`✅ Promotion completed successfully!`);
-  console.log(`   - ${promotedPupils.length} pupils promoted`);
-  console.log(`   - ${heldBackPupils.length} pupils held back`);
-  console.log(`   - ${manualOverrides.length} manual overrides`);
-  console.log(`   - Total batches: ${batchNumber - 1}`);
-  console.log(`   - Total operations: ${totalOperations}`);
-}
-
-async function rejectPromotion() {
-  if (!currentPromotionId) {
-    window.showToast?.('No promotion selected', 'danger');
-    return;
-  }
-
-  const reason = prompt('Reason for rejection (optional):');
-
-  try {
-    await db.collection('promotions').doc(currentPromotionId).update({
-      status: 'rejected',
-      rejectedBy: auth.currentUser.uid,
-      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      rejectionReason: reason || 'No reason provided'
-    });
-
-    window.showToast?.('✓ Promotion request rejected', 'success');
-
-    closePromotionDetailsModal();
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error rejecting promotion:', error);
-    window.handleError(error, 'Failed to reject promotion');
-  }
-}
-
-async function quickApprovePromotion(promotionId) {
-  const confirmation = confirm('Approve this promotion request without modifications?');
-  if (!confirmation) return;
-
-  try {
-    const doc = await db.collection('promotions').doc(promotionId).get();
-    const data = doc.data();
-
-    await executePromotion(
-      promotionId,
-      data.promotedPupils || [],
-      data.heldBackPupils || [],
-      []
-    );
-
-    window.showToast?.('✓ Promotion approved and executed', 'success');
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error quick approving:', error);
-    window.handleError(error, 'Failed to approve promotion');
-  }
-}
-
-async function quickRejectPromotion(promotionId) {
-  const confirmation = confirm('Reject this promotion request?');
-  if (!confirmation) return;
-
-  try {
-    await db.collection('promotions').doc(promotionId).update({
-      status: 'rejected',
-      rejectedBy: auth.currentUser.uid,
-      rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    window.showToast?.('✓ Promotion request rejected', 'success');
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error quick rejecting:', error);
-    window.handleError(error, 'Failed to reject promotion');
-  }
-}
-
-async function approveAllPendingPromotions() {
-  const confirmation = confirm(
-    'Approve ALL pending promotion requests?\n\n' +
-      'This will execute all promotions without modifications.\n' +
-      'Continue?'
-  );
-  if (!confirmation) return;
-
-  try {
-    const snapshot = await db
-      .collection('promotions')
-      .where('status', '==', 'pending')
-      .get();
-
-    if (snapshot.empty) {
-      window.showToast?.('No pending requests to approve', 'info');
-      return;
-    }
-
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      await executePromotion(
-        doc.id,
-        data.promotedPupils || [],
-        data.heldBackPupils || [],
-        []
-      );
-    }
-
-    window.showToast?.(
-      `✓ Approved and executed ${snapshot.size} promotion request(s)`,
-      'success',
-      6000
-    );
-
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error approving all promotions:', error);
-    window.handleError(error, 'Failed to approve all promotions');
-  }
-}
-
-async function rejectAllPendingPromotions() {
-  const confirmation = confirm(
-    'Reject ALL pending promotion requests?\n\n' +
-      'This action cannot be undone.\n' +
-      'Continue?'
-  );
-  if (!confirmation) return;
-
-  try {
-    const snapshot = await db
-      .collection('promotions')
-      .where('status', '==', 'pending')
-      .get();
-
-    if (snapshot.empty) {
-      window.showToast?.('No pending requests to reject', 'info');
-      return;
-    }
-
-    const batch = db.batch();
-
-    snapshot.forEach(doc => {
-      batch.update(doc.ref, {
-        status: 'rejected',
-        rejectedBy: auth.currentUser.uid,
-        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        rejectionReason: 'Bulk rejection by admin'
-      });
-    });
-
-    await batch.commit();
-
-    window.showToast?.(
-      `✓ Rejected ${snapshot.size} promotion request(s)`,
-      'success'
-    );
-
-    await loadPromotionRequests();
-  } catch (error) {
-    console.error('Error rejecting all promotions:', error);
-    window.handleError(error, 'Failed to reject all promotions');
-  }
-}
-
-// Make functions globally available
-window.togglePromotionPeriod = togglePromotionPeriod;
-window.viewPromotionDetails = viewPromotionDetails;
-window.closePromotionDetailsModal = closePromotionDetailsModal;
-window.handlePromotionOverride = handlePromotionOverride;
-window.addManualOverride = addManualOverride;
-window.removeManualOverride = removeManualOverride;
-window.approvePromotion = approvePromotion;
-window.rejectPromotion = rejectPromotion;
-window.quickApprovePromotion = quickApprovePromotion;
-window.quickRejectPromotion = quickRejectPromotion;
-window.approveAllPendingPromotions = approveAllPendingPromotions;
-window.rejectAllPendingPromotions = rejectAllPendingPromotions;
-
 /**
  * Load result approvals section
  */
@@ -6078,244 +6123,6 @@ async function backfillSessionData() {
 
 // Make function globally available
 window.backfillSessionData = backfillSessionData;
-
-/* ========================================
-   ADMIN: VIEW PUPIL RESULTS BY SESSION
-======================================== */
-
-let currentResultsPupilId = null;
-let currentResultsSession = null;
-let currentResultsData = null;
-
-async function loadViewResultsSection() {
-  console.log('📊 Loading View Results section...');
-  
-  try {
-    // Populate session dropdown
-    await populateSessionFilter();
-    
-    // Reset filters
-    document.getElementById('filter-class').disabled = true;
-    document.getElementById('filter-pupil').disabled = true;
-    document.getElementById('view-results-btn').disabled = true;
-    
-    console.log('✓ View Results section ready');
-  } catch (error) {
-    console.error('Error loading View Results section:', error);
-    window.showToast?.('Failed to load results section', 'danger');
-  }
-}
-
-async function populateSessionFilter() {
-  const sessionSelect = document.getElementById('filter-session');
-  if (!sessionSelect) return;
-  
-  try {
-    // Get current session
-    const settings = await window.getCurrentSettings();
-    const currentSession = settings.session || 'Current Session';
-    
-    // Clear and rebuild
-    sessionSelect.innerHTML = '<option value="">-- Select Session --</option>';
-    
-    // Add current session
-    const currentOpt = document.createElement('option');
-    currentOpt.value = 'current';
-    currentOpt.textContent = `Current Session (${currentSession})`;
-    sessionSelect.appendChild(currentOpt);
-    
-    // Get all archived sessions
-    const sessionsSnap = await db.collection('sessions')
-      .orderBy('startYear', 'desc')
-      .get();
-    
-    sessionsSnap.forEach(doc => {
-      const data = doc.data();
-      const opt = document.createElement('option');
-      opt.value = data.name;
-      opt.textContent = `${data.name} Session`;
-      sessionSelect.appendChild(opt);
-    });
-    
-    console.log(`✓ Session filter populated: Current + ${sessionsSnap.size} archived`);
-    
-  } catch (error) {
-    console.error('Error populating session filter:', error);
-    sessionSelect.innerHTML = '<option value="">Error loading sessions</option>';
-  }
-}
-
-async function loadFilteredClasses() {
-  const sessionSelect = document.getElementById('filter-session');
-  const classSelect = document.getElementById('filter-class');
-  const pupilSelect = document.getElementById('filter-pupil');
-  
-  if (!sessionSelect || !classSelect || !pupilSelect) return;
-  
-  const selectedSession = sessionSelect.value;
-  
-  // Reset dependent filters
-  classSelect.innerHTML = '<option value="">-- Select Class --</option>';
-  classSelect.disabled = true;
-  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  pupilSelect.disabled = true;
-  document.getElementById('view-results-btn').disabled = true;
-  
-  if (!selectedSession) return;
-  
-  try {
-    // Get actual session name
-    let actualSession;
-    if (selectedSession === 'current') {
-      const settings = await window.getCurrentSettings();
-      actualSession = settings.session;
-    } else {
-      actualSession = selectedSession;
-    }
-    
-    currentResultsSession = actualSession;
-    
-    // Get all results for this session to find which classes have data
-    const resultsSnap = await db.collection('results')
-      .where('session', '==', actualSession)
-      .get();
-    
-    // Extract unique classes from results
-    const classesWithResults = new Set();
-    resultsSnap.forEach(doc => {
-      const data = doc.data();
-      if (data.pupilId) {
-        classesWithResults.add(data.pupilId); // We'll use this to find classes
-      }
-    });
-    
-    // Get all classes
-    const classesSnap = await db.collection('classes')
-      .orderBy('name')
-      .get();
-    
-    const classOptions = [];
-    
-    for (const classDoc of classesSnap.docs) {
-      const className = classDoc.data().name;
-      const classId = classDoc.id;
-      
-      // Check if this class has pupils with results in this session
-      const pupilsInClassSnap = await db.collection('pupils')
-        .where('class.id', '==', classId)
-        .limit(1)
-        .get();
-      
-      if (!pupilsInClassSnap.empty) {
-        classOptions.push({
-          id: classId,
-          name: className
-        });
-      }
-    }
-    
-    if (classOptions.length === 0) {
-      classSelect.innerHTML = '<option value="">No classes with results in this session</option>';
-      window.showToast?.('No results found for this session', 'warning', 4000);
-      return;
-    }
-    
-    // Populate class dropdown
-    classOptions.forEach(cls => {
-      const opt = document.createElement('option');
-      opt.value = cls.id;
-      opt.textContent = cls.name;
-      classSelect.appendChild(opt);
-    });
-    
-    classSelect.disabled = false;
-    
-    console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
-    
-  } catch (error) {
-    console.error('Error loading classes:', error);
-    window.showToast?.('Failed to load classes', 'danger');
-  }
-}
-
-async function loadFilteredPupils() {
-  const classSelect = document.getElementById('filter-class');
-  const pupilSelect = document.getElementById('filter-pupil');
-  
-  if (!classSelect || !pupilSelect) return;
-  
-  const selectedClass = classSelect.value;
-  
-  // Reset pupil filter
-  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  pupilSelect.disabled = true;
-  document.getElementById('view-results-btn').disabled = true;
-  
-  if (!selectedClass || !currentResultsSession) return;
-  
-  try {
-    // Get all pupils in this class
-    const pupilsSnap = await db.collection('pupils')
-      .where('class.id', '==', selectedClass)
-      .get();
-    
-    if (pupilsSnap.empty) {
-      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
-      window.showToast?.('No pupils found in this class', 'warning', 3000);
-      return;
-    }
-    
-    // Check which pupils have results in the selected session
-    const pupilsWithResults = [];
-    
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
-      const pupilData = pupilDoc.data();
-      
-      // Check if pupil has results in this session
-      const resultsSnap = await db.collection('results')
-        .where('pupilId', '==', pupilId)
-        .where('session', '==', currentResultsSession)
-        .limit(1)
-        .get();
-      
-      if (!resultsSnap.empty) {
-        pupilsWithResults.push({
-          id: pupilId,
-          name: pupilData.name || 'Unknown',
-          data: pupilData
-        });
-      }
-    }
-    
-    if (pupilsWithResults.length === 0) {
-      pupilSelect.innerHTML = '<option value="">No results found for pupils in this class</option>';
-      window.showToast?.('No results found for this class in selected session', 'warning', 4000);
-      return;
-    }
-    
-    // Sort by name
-    pupilsWithResults.sort((a, b) => a.name.localeCompare(b.name));
-    
-    // Populate pupil dropdown
-    pupilsWithResults.forEach(pupil => {
-      const opt = document.createElement('option');
-      opt.value = pupil.id;
-      opt.textContent = pupil.name;
-      opt.dataset.pupilData = JSON.stringify(pupil.data);
-      pupilSelect.appendChild(opt);
-    });
-    
-    pupilSelect.disabled = false;
-    document.getElementById('view-results-btn').disabled = false;
-    
-    console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
-    
-  } catch (error) {
-    console.error('Error loading pupils:', error);
-    window.showToast?.('Failed to load pupils', 'danger');
-  }
-}
 
 /**
  * FIX #2: LOAD PUPIL RESULTS WITH BETTER ERROR HANDLING
