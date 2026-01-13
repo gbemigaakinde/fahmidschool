@@ -537,6 +537,268 @@ function loadSectionData(sectionId) {
 }
 
 /* ========================================
+   MISSING SECTION LOADERS - RESTORED
+======================================== */
+
+/**
+ * Load promotion requests section
+ */
+async function loadPromotionRequests() {
+  try {
+    // Load promotion period status
+    await loadPromotionPeriodStatus();
+    
+    // Load promotion requests
+    const tbody = document.getElementById('promotion-requests-table');
+    const noRequestsMsg = document.getElementById('no-requests-message');
+    const bulkActions = document.getElementById('bulk-actions');
+    
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading promotion requests...</td></tr>';
+    
+    const snapshot = await db.collection('promotions')
+      .orderBy('createdAt', 'desc')
+      .get();
+    
+    tbody.innerHTML = '';
+    
+    if (snapshot.empty) {
+      if (noRequestsMsg) noRequestsMsg.style.display = 'block';
+      if (bulkActions) bulkActions.style.display = 'none';
+      return;
+    }
+    
+    if (noRequestsMsg) noRequestsMsg.style.display = 'none';
+    
+    // Check if there are any pending requests
+    const hasPending = snapshot.docs.some(doc => doc.data().status === 'pending');
+    if (bulkActions) bulkActions.style.display = hasPending ? 'flex' : 'none';
+    
+    // Get all teacher names
+    const teacherIds = new Set();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.initiatedBy) teacherIds.add(data.initiatedBy);
+    });
+    
+    const teacherNames = {};
+    for (const teacherId of teacherIds) {
+      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+      if (teacherDoc.exists) {
+        teacherNames[teacherId] = teacherDoc.data().name;
+      }
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const teacherName = teacherNames[data.initiatedBy] || 'Unknown';
+      
+      let statusBadge = '';
+      if (data.status === 'pending') {
+        statusBadge = '<span class="status-pending">Pending</span>';
+      } else if (data.status === 'approved') {
+        statusBadge = '<span class="status-approved">Approved</span>';
+      } else if (data.status === 'rejected') {
+        statusBadge = '<span class="status-rejected">Rejected</span>';
+      } else if (data.status === 'completed') {
+        statusBadge = '<span class="status-completed">Completed</span>';
+      }
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Teacher">${teacherName}</td>
+        <td data-label="From Class">${data.fromClass?.name || '-'}</td>
+        <td data-label="To Class">${data.toClass?.name || '-'}</td>
+        <td data-label="Promote" style="text-align:center;">${data.promotedPupils?.length || 0}</td>
+        <td data-label="Hold" style="text-align:center;">${data.heldBackPupils?.length || 0}</td>
+        <td data-label="Status">${statusBadge}</td>
+        <td data-label="Actions">
+          <button class="btn-small btn-primary" onclick="viewPromotionDetails('${doc.id}')">
+            View Details
+          </button>
+          ${data.status === 'pending' ? `
+            <button class="btn-small btn-success" onclick="quickApprovePromotion('${doc.id}')">
+              ✓ Approve
+            </button>
+            <button class="btn-small btn-danger" onclick="quickRejectPromotion('${doc.id}')">
+              ✗ Reject
+            </button>
+          ` : ''}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+  } catch (error) {
+    console.error('Error loading promotion requests:', error);
+    window.showToast?.('Failed to load promotion requests', 'danger');
+    document.getElementById('promotion-requests-table').innerHTML = 
+      '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading requests</td></tr>';
+  }
+}
+
+/**
+ * Load promotion period status
+ */
+async function loadPromotionPeriodStatus() {
+  const statusEl = document.getElementById('promotion-period-status');
+  const toggleBtn = document.getElementById('toggle-promotion-period-btn');
+  
+  if (!statusEl || !toggleBtn) return;
+  
+  try {
+    const settingsDoc = await db.collection('settings').doc('current').get();
+    const isActive = settingsDoc.exists && settingsDoc.data().promotionPeriodActive === true;
+    
+    if (isActive) {
+      statusEl.textContent = '✓ Promotion period is currently ACTIVE. Teachers can submit promotion requests.';
+      statusEl.className = 'status-active';
+      toggleBtn.textContent = '🔒 Close Promotion Period';
+      toggleBtn.className = 'btn btn-danger';
+    } else {
+      statusEl.textContent = '✗ Promotion period is currently CLOSED. Teachers cannot submit requests.';
+      statusEl.className = 'status-inactive';
+      toggleBtn.textContent = '🔓 Open Promotion Period';
+      toggleBtn.className = 'btn btn-success';
+    }
+  } catch (error) {
+    console.error('Error loading promotion period status:', error);
+    statusEl.textContent = 'Error loading status';
+  }
+}
+
+/**
+ * Load result approvals section
+ */
+async function loadResultApprovals() {
+  const tbody = document.getElementById('result-approvals-table');
+  const noApprovalsMsg = document.getElementById('no-approvals-message');
+  
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
+  
+  try {
+    const submissions = await window.resultLocking.getSubmittedResults();
+    
+    tbody.innerHTML = '';
+    
+    if (submissions.length === 0) {
+      if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
+      return;
+    }
+    
+    if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+    
+    for (const submission of submissions) {
+      const submittedDate = submission.submittedAt 
+        ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
+        : '-';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
+        <td data-label="Class">${submission.className || '-'}</td>
+        <td data-label="Subject">${submission.subject || '-'}</td>
+        <td data-label="Term">${submission.term || '-'}</td>
+        <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
+        <td data-label="Submitted">${submittedDate}</td>
+        <td data-label="Status">
+          <span class="status-pending">Pending</span>
+        </td>
+        <td data-label="Actions">
+          <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
+            ✓ Approve
+          </button>
+          <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
+            ✗ Reject
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+    
+  } catch (error) {
+    console.error('Error loading result approvals:', error);
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
+  }
+}
+
+/**
+ * Load view results section
+ */
+async function loadViewResultsSection() {
+  console.log('📊 Loading View Results section...');
+  
+  try {
+    // Populate session dropdown
+    await populateSessionFilter();
+    
+    // Reset filters
+    document.getElementById('filter-class').disabled = true;
+    document.getElementById('filter-pupil').disabled = true;
+    document.getElementById('view-results-btn').disabled = true;
+    
+    console.log('✓ View Results section ready');
+  } catch (error) {
+    console.error('Error loading View Results section:', error);
+    window.showToast?.('Failed to load results section', 'danger');
+  }
+}
+
+/**
+ * Populate session filter dropdown
+ */
+async function populateSessionFilter() {
+  const sessionSelect = document.getElementById('filter-session');
+  if (!sessionSelect) return;
+  
+  try {
+    // Get current session
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session || 'Current Session';
+    
+    // Clear and rebuild
+    sessionSelect.innerHTML = '<option value="">-- Select Session --</option>';
+    
+    // Add current session
+    const currentOpt = document.createElement('option');
+    currentOpt.value = 'current';
+    currentOpt.textContent = `Current Session (${currentSession})`;
+    sessionSelect.appendChild(currentOpt);
+    
+    // Get all archived sessions
+    const sessionsSnap = await db.collection('sessions')
+      .orderBy('startYear', 'desc')
+      .get();
+    
+    sessionsSnap.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = data.name;
+      opt.textContent = `${data.name} Session`;
+      sessionSelect.appendChild(opt);
+    });
+    
+    console.log(`✓ Session filter populated: Current + ${sessionsSnap.size} archived`);
+    
+  } catch (error) {
+    console.error('Error populating session filter:', error);
+    sessionSelect.innerHTML = '<option value="">Error loading sessions</option>';
+  }
+}
+
+// Make functions globally available
+window.loadPromotionRequests = loadPromotionRequests;
+window.loadPromotionPeriodStatus = loadPromotionPeriodStatus;
+window.loadResultApprovals = loadResultApprovals;
+window.loadViewResultsSection = loadViewResultsSection;
+window.populateSessionFilter = populateSessionFilter;
+
+console.log('✓ Missing section loaders restored');
+
+/* ========================================
    FINANCIAL MANAGEMENT SECTION LOADERS
 ======================================== */
 
