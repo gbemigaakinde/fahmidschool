@@ -2187,33 +2187,39 @@ async function loadPupils() {
     if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
 
     paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
-      // FIXED: Safely extract class name from both old and new formats
-      let className = '-';
-      if (pupil.class) {
-        if (typeof pupil.class === 'object' && pupil.class.name) {
-          className = pupil.class.name;
-        } else if (typeof pupil.class === 'string') {
-          className = pupil.class;
-        }
-      }
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Select" style="text-align:center;">
-          <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}" onchange="updateBulkActionButtons()">
-        </td>
-        <td data-label="Name">${pupil.name}</td>
-        <td data-label="Class">${className}</td>
-        <td data-label="Gender">${pupil.gender || '-'}</td>
-        <td data-label="Parent Name">${pupil.parentName || '-'}</td>
-        <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
-        <td data-label="Actions">
-          <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
-          <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+  // FIXED: Safely extract class name from both old and new formats
+  let className = '-';
+  if (pupil.class) {
+    if (typeof pupil.class === 'object' && pupil.class.name) {
+      className = pupil.class.name;
+    } else if (typeof pupil.class === 'string') {
+      className = pupil.class;
+    }
+  }
+  
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td data-label="Select" style="text-align:center;">
+      <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}">
+    </td>
+    <td data-label="Name">${pupil.name}</td>
+    <td data-label="Class">${className}</td>
+    <td data-label="Gender">${pupil.gender || '-'}</td>
+    <td data-label="Parent Name">${pupil.parentName || '-'}</td>
+    <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
+    <td data-label="Actions">
+      <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
+      <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+  
+  // CRITICAL FIX: Attach event listener AFTER adding to DOM
+  const checkbox = tr.querySelector('.pupil-checkbox');
+  if (checkbox) {
+    checkbox.addEventListener('change', window.updateBulkActionButtons);
+  }
+});
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
