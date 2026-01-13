@@ -360,44 +360,53 @@ function showSection(sectionId) {
     console.error('❌ showSection called with no sectionId');
     return;
   }
-  
+
   console.log(`📄 Showing section: ${sectionId}`);
-  
+
   // TEACHER-STYLE: Check if data is loaded (except dashboard)
   if (!adminDataLoaded && sectionId !== 'dashboard' && !isLoadingAdminData) {
     window.showToast?.('Loading data, please wait...', 'info', 3000);
     console.warn('⚠️ Data not loaded yet, showing dashboard instead');
     sectionId = 'dashboard'; // Fallback to dashboard
   }
-  
-  // Hide all sections
-  document.querySelectorAll('.admin-card').forEach(card => {
-    card.style.display = 'none';
-  });
-  
+
+  // ✅ FIXED: Hide only TOP-LEVEL sections, not nested .admin-card elements
+  document
+    .querySelectorAll('main > .content-wrapper > .admin-card')
+    .forEach(card => {
+      card.style.display = 'none';
+    });
+
   // Show target section
   const section = document.getElementById(sectionId);
   if (!section) {
     console.error(`❌ Section not found: ${sectionId}`);
     return;
   }
-  
+
   section.style.display = 'block';
-  
+
   // Update active link
   document.querySelectorAll('.sidebar-link').forEach(link => {
     link.classList.remove('active');
   });
-  
-  const activeLink = document.querySelector(`.sidebar-link[data-section="${sectionId}"]`);
+
+  const activeLink = document.querySelector(
+    `.sidebar-link[data-section="${sectionId}"]`
+  );
+
   if (activeLink) {
     activeLink.classList.add('active');
-    
+
     // Expand parent group if nested
-    const parentGroup = activeLink.closest('.sidebar-group-content-modern');
+    const parentGroup = activeLink.closest(
+      '.sidebar-group-content-modern'
+    );
+
     if (parentGroup) {
       parentGroup.classList.add('active');
       const toggle = parentGroup.previousElementSibling;
+
       if (toggle?.classList.contains('sidebar-group-toggle-modern')) {
         toggle.setAttribute('aria-expanded', 'true');
         const icon = toggle.querySelector('.toggle-icon');
@@ -405,13 +414,14 @@ function showSection(sectionId) {
       }
     }
   }
-  
+
   // Load section data
   loadSectionData(sectionId);
-  
+
   // Close mobile sidebar
   const sidebar = document.getElementById('admin-sidebar');
   const hamburger = document.getElementById('hamburger');
+
   if (sidebar?.classList.contains('active')) {
     sidebar.classList.remove('active');
     hamburger?.classList.remove('active');
@@ -419,6 +429,7 @@ function showSection(sectionId) {
     document.body.style.overflow = '';
   }
 }
+
 
 // ============================================
 // LOAD SECTION DATA (Defensive loading)
@@ -534,76 +545,41 @@ function loadSectionData(sectionId) {
  */
 async function loadFeeManagementSection() {
   console.log('💰 Loading fee management section...');
-  
+
   try {
-    // CRITICAL FIX: Ensure form is visible
-    const feeConfigForm = document.querySelector('#fee-management .admin-card[style*="display:block"]');
-    if (feeConfigForm) {
-      feeConfigForm.style.display = 'block';
-      console.log('✓ Fee configuration form is visible');
+    // ✅ FIXED: Directly target and force-show the nested form card
+    const feeConfigFormCard = document.querySelector(
+      '#fee-management .admin-card'
+    );
+
+    if (feeConfigFormCard) {
+      feeConfigFormCard.style.display = 'block';
+      console.log('✓ Fee configuration form card forced visible');
+    } else {
+      console.error('❌ Fee configuration form card not found in DOM');
     }
-    
+
     // Populate class selector
     await populateFeeClassSelector();
-    
+
     // Load current session/term
     const settings = await window.getCurrentSettings();
-    
+
     const sessionDisplay = document.getElementById('fee-session-display');
     const termDisplay = document.getElementById('fee-term-display');
-    
+
     if (sessionDisplay) sessionDisplay.textContent = settings.session;
     if (termDisplay) termDisplay.textContent = settings.term;
-    
+
     // Load existing fee structures
     await loadFeeStructures();
-    
+
     console.log('✓ Fee management section loaded successfully');
-    
   } catch (error) {
     console.error('❌ Error loading fee management:', error);
     window.showToast?.('Failed to load fee management section', 'danger');
   }
 }
-
-/**
- * Diagnostic: Check Fee Form Visibility
- * Run this in console: diagnoseFeeForm()
- */
-window.diagnoseFeeForm = function() {
-  console.log('🔍 FEE FORM DIAGNOSTIC');
-  console.log('═══════════════════════════════════════');
-  
-  const section = document.getElementById('fee-management');
-  console.log('Fee Management Section:', section ? '✓ Found' : '❌ Missing');
-  console.log('  Display:', section?.style.display || 'default');
-  
-  const form = section?.querySelector('.admin-card');
-  console.log('Fee Configuration Form:', form ? '✓ Found' : '❌ Missing');
-  console.log('  Display:', form?.style.display || 'default');
-  
-  const classSelect = document.getElementById('fee-config-class');
-  console.log('Class Selector:', classSelect ? '✓ Found' : '❌ Missing');
-  console.log('  Options:', classSelect?.options.length || 0);
-  
-  const saveBtn = document.getElementById('save-fee-structure-btn');
-  console.log('Save Button:', saveBtn ? '✓ Found' : '❌ Missing');
-  
-  // Check all fee input fields
-  const feeInputs = [
-    'fee-tuition', 'fee-exam', 'fee-uniform', 
-    'fee-books', 'fee-pta', 'fee-other'
-  ];
-  
-  console.log('\nFee Input Fields:');
-  feeInputs.forEach(id => {
-    const input = document.getElementById(id);
-    console.log(`  ${id}:`, input ? '✓' : '❌');
-  });
-  
-  console.log('═══════════════════════════════════════');
-  console.log('💡 If form is hidden, run: document.querySelector("#fee-management .admin-card").style.display = "block"');
-};
 
 /**
  * Populate class selector for fee configuration
