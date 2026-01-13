@@ -258,8 +258,10 @@
     console.log('Receipt number from URL:', receiptNo);
     
     if (!receiptNo) {
-        alert('No receipt number provided');
+        alert('No receipt number provided in URL');
+        document.body.innerHTML = '<h2 style="text-align:center; color:red; margin-top:50px;">Error: No receipt number provided</h2>';
         window.close();
+        return;
     }
     
     // Wait for Firebase to be ready
@@ -277,7 +279,7 @@
                     resolve();
                 } else if (attempts >= maxAttempts) {
                     clearInterval(checkFirebase);
-                    reject(new Error('Firebase failed to initialize'));
+                    reject(new Error('Firebase failed to initialize after ' + maxAttempts + ' attempts'));
                 }
             }, 100);
         });
@@ -292,19 +294,19 @@
                 unsubscribe();
                 
                 if (user) {
-                    console.log('✓ User authenticated:', user.email);
+                    console.log('✓ User authenticated:', user.email || user.uid);
                     resolve(user);
                 } else {
                     console.error('❌ No user authenticated');
-                    reject(new Error('User not authenticated'));
+                    reject(new Error('No authenticated user found'));
                 }
             });
             
-            // Timeout after 10 seconds
+            // Timeout after 12 seconds
             setTimeout(() => {
                 unsubscribe();
-                reject(new Error('Authentication timeout'));
-            }, 10000);
+                reject(new Error('Authentication check timed out after 12 seconds'));
+            }, 12000);
         });
     }
     
@@ -313,111 +315,115 @@
         try {
             console.log('🔄 Starting receipt load process...');
             
-            // Wait for Firebase
             await waitForFirebase();
             console.log('✓ Firebase ready');
             
-            // Wait for authentication
             const user = await waitForAuth();
-            console.log('✓ Authentication complete:', user.uid);
+            console.log('✓ Authentication complete. User ID:', user.uid);
             
-            // Query transactions
-            console.log('🔍 Querying transactions collection...');
-            console.log('Query params: receiptNo =', receiptNo);
+            console.log('🔍 Querying transactions for receiptNo:', receiptNo);
             
             const transactionsSnap = await db.collection('transactions')
                 .where('receiptNo', '==', receiptNo)
+                .where('pupilId', '==', user.uid)           // ← Added: helps pass pupil ownership rules
                 .limit(1)
                 .get();
             
-            console.log('✓ Query completed');
-            console.log('Documents found:', transactionsSnap.size);
+            console.log('Query completed. Documents found:', transactionsSnap.size);
             
             if (transactionsSnap.empty) {
-                console.error('❌ No transaction found for receipt:', receiptNo);
-                alert('Receipt not found: ' + receiptNo);
+                console.warn('⚠️ No matching transaction found for this receipt and user');
+                alert('Receipt not found or you do not have permission to view it.\nReceipt: ' + receiptNo);
+                document.body.innerHTML += '<h3 style="text-align:center; color:#d32f2f;">Receipt not found or access denied</h3>';
                 return;
             }
             
             const receiptData = transactionsSnap.docs[0].data();
-            console.log('✓ Receipt data loaded:', receiptData);
+            console.log('✓ Receipt data loaded successfully');
             
             // Populate receipt fields
-            document.getElementById('receipt-no').textContent = receiptData.receiptNo || 'N/A';
+            document.getElementById('receipt-no').textContent    = receiptData.receiptNo || 'N/A';
+            document.getElementById('student-name').textContent  = receiptData.pupilName || 'N/A';
+            document.getElementById('student-class').textContent = receiptData.className || 'N/A';
             
             const paymentDate = receiptData.paymentDate 
                 ? receiptData.paymentDate.toDate().toLocaleDateString('en-GB', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+                      year: 'numeric', month: 'long', day: 'numeric'
                   })
                 : 'N/A';
-            
             document.getElementById('receipt-date').textContent = paymentDate;
-            document.getElementById('student-name').textContent = receiptData.pupilName || 'N/A';
-            document.getElementById('student-class').textContent = receiptData.className || 'N/A';
-            document.getElementById('receipt-session').textContent = receiptData.session || 'N/A';
-            document.getElementById('receipt-term').textContent = receiptData.term || 'N/A';
             
-            const amountPaid = parseFloat(receiptData.amountPaid) || 0;
-            document.getElementById('amount-paid').textContent = `₦${amountPaid.toLocaleString()}`;
+            document.getElementById('receipt-session').textContent = receiptData.session || 'N/A';
+            document.getElementById('receipt-term').textContent   = receiptData.term || 'N/A';
+            
+            const amountPaid = Number(receiptData.amountPaid) || 0;
+            document.getElementById('amount-paid').textContent = `₦${amountPaid.toLocaleString('en-NG')}`;
+            
             document.getElementById('payment-method').textContent = receiptData.paymentMethod || 'Cash';
             
-            // Show notes if present
             if (receiptData.notes) {
                 document.getElementById('payment-notes').textContent = receiptData.notes;
                 document.getElementById('notes-row').style.display = 'flex';
             }
             
-            // Get balance
+            // Fetch balance from payments collection
             const session = receiptData.session || '';
             const term = receiptData.term || '';
             const encodedSession = session.replace(/\//g, '-');
-            
             const paymentRecordId = `${receiptData.pupilId}_${encodedSession}_${term}`;
-            console.log('🔍 Looking up payment record:', paymentRecordId);
+            
+            console.log('🔍 Fetching payment record:', paymentRecordId);
             
             const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
             
             let balance = 0;
             if (paymentDoc.exists) {
-                balance = parseFloat(paymentDoc.data().balance) || 0;
-                console.log('✓ Balance found:', balance);
+                balance = Number(paymentDoc.data().balance) || 0;
+                console.log('✓ Balance loaded:', balance);
             } else {
-                console.warn('⚠️ Payment record not found');
+                console.warn('⚠️ Payment summary record not found for ID:', paymentRecordId);
             }
             
-            document.getElementById('balance-remaining').textContent = `₦${balance.toLocaleString()}`;
+            document.getElementById('balance-remaining').textContent = `₦${balance.toLocaleString('en-NG')}`;
             
-            // Set generated date
-            document.getElementById('generated-date').textContent = new Date().toLocaleString('en-GB');
+            // Set generation timestamp
+            document.getElementById('generated-date').textContent = 
+                new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
             
-            console.log('✅ Receipt loaded successfully');
+            console.log('✅ Receipt fully loaded — initiating print in 1.5 seconds');
             
-            // Auto-print after short delay
+            // Auto-print after short delay (increased slightly for rendering safety)
             setTimeout(() => {
                 window.print();
-            }, 1000);
+            }, 1500);
             
         } catch (error) {
-            console.error('❌ RECEIPT LOAD ERROR:', error);
+            console.error('❌ RECEIPT LOAD FAILED:', error);
             console.error('Error code:', error.code);
             console.error('Error message:', error.message);
-            console.error('Full error:', JSON.stringify(error, null, 2));
             
-            let errorMsg = 'Failed to load receipt data: ' + error.message;
+            let userFriendlyMsg = 'Failed to load receipt. ';
             
             if (error.code === 'permission-denied') {
-                errorMsg = 'Permission denied. Please ensure you are logged in as an admin.';
-            } else if (error.message.includes('not authenticated')) {
-                errorMsg = 'You must be logged in to view receipts.';
+                userFriendlyMsg += 'Permission denied. You may need to be logged in as an admin or the receipt owner.';
+            } else if (error.message.includes('not authenticated') || error.message.includes('Authentication')) {
+                userFriendlyMsg += 'Please log in to view this receipt.';
+            } else if (error.message.includes('Firebase failed')) {
+                userFriendlyMsg += 'Firebase connection issue. Please refresh the page.';
+            } else {
+                userFriendlyMsg += error.message;
             }
             
-            alert(errorMsg);
+            alert(userFriendlyMsg);
+            document.body.innerHTML += `<div style="text-align:center; color:#d32f2f; margin:40px 0;">
+                <h3>Error Loading Receipt</h3>
+                <p>${userFriendlyMsg}</p>
+                <small>Error code: ${error.code || 'unknown'}</small>
+            </div>`;
         }
     }
     
-    // Load when page ready
+    // Start loading when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', loadReceiptData);
     } else {
