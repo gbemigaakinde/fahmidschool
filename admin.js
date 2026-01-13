@@ -1490,9 +1490,34 @@ async function loadViewResultsSection() {
     await populateSessionFilter();
     
     // Reset filters
-    document.getElementById('filter-class').disabled = true;
-    document.getElementById('filter-pupil').disabled = true;
-    document.getElementById('view-results-btn').disabled = true;
+    const classSelect = document.getElementById('filter-class');
+    const pupilSelect = document.getElementById('filter-pupil');
+    const viewBtn = document.getElementById('view-results-btn');
+    const sessionSelect = document.getElementById('filter-session');
+    
+    if (classSelect) classSelect.disabled = true;
+    if (pupilSelect) pupilSelect.disabled = true;
+    if (viewBtn) viewBtn.disabled = true;
+    
+    // CRITICAL FIX: Attach all event listeners properly
+    
+    // 1. Session select listener
+    if (sessionSelect) {
+      const newSessionSelect = sessionSelect.cloneNode(true);
+      sessionSelect.parentNode.replaceChild(newSessionSelect, sessionSelect);
+      
+      newSessionSelect.addEventListener('change', loadFilteredClasses);
+      console.log('✓ Session select listener attached');
+    }
+    
+    // 2. View Results button listener
+    if (viewBtn) {
+      const newViewBtn = viewBtn.cloneNode(true);
+      viewBtn.parentNode.replaceChild(newViewBtn, viewBtn);
+      
+      newViewBtn.addEventListener('click', loadPupilResults);
+      console.log('✓ View Results button listener attached');
+    }
     
     console.log('✓ View Results section ready');
   } catch (error) {
@@ -1580,7 +1605,7 @@ async function loadFilteredClasses() {
     resultsSnap.forEach(doc => {
       const data = doc.data();
       if (data.pupilId) {
-        classesWithResults.add(data.pupilId); // We'll use this to find classes
+        classesWithResults.add(data.pupilId);
       }
     });
     
@@ -1624,6 +1649,12 @@ async function loadFilteredClasses() {
     });
     
     classSelect.disabled = false;
+    
+    // CRITICAL FIX: Attach event listener to class select
+    const newClassSelect = classSelect.cloneNode(true);
+    classSelect.parentNode.replaceChild(newClassSelect, classSelect);
+    
+    newClassSelect.addEventListener('change', loadFilteredPupils);
     
     console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
     
@@ -1702,7 +1733,17 @@ async function loadFilteredPupils() {
     });
     
     pupilSelect.disabled = false;
-    document.getElementById('view-results-btn').disabled = false;
+    
+    // CRITICAL FIX: Attach event listener to pupil select
+    const newPupilSelect = pupilSelect.cloneNode(true);
+    pupilSelect.parentNode.replaceChild(newPupilSelect, pupilSelect);
+    
+    newPupilSelect.addEventListener('change', function() {
+      const viewBtn = document.getElementById('view-results-btn');
+      if (viewBtn) {
+        viewBtn.disabled = !this.value;
+      }
+    });
     
     console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
     
@@ -1711,6 +1752,714 @@ async function loadFilteredPupils() {
     window.showToast?.('Failed to load pupils', 'danger');
   }
 }
+
+async function loadPupilResults() {
+    const pupilSelect = document.getElementById('filter-pupil');
+    const container = document.getElementById('results-display-container');
+    const infoCard = document.getElementById('pupil-info-card');
+    
+    if (!pupilSelect || !container) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    const selectedPupil = pupilSelect.value;
+    
+    // Validate all required data before proceeding
+    if (!selectedPupil) {
+        infoCard.style.display = 'none';
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+                <p>Select a pupil to view results</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (!currentResultsSession) {
+        console.error('Session not selected');
+        infoCard.style.display = 'none';
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-warning);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
+                <p style="font-weight: 600;">Session not selected</p>
+                <p>Please select a session from the filter above</p>
+            </div>
+        `;
+        return;
+    }
+    
+    currentResultsPupilId = selectedPupil;
+    
+    // Show loading
+    container.innerHTML = `
+        <div style="text-align: center; padding: var(--space-2xl);">
+            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+            <p style="color: var(--color-gray-600);">Loading results for session: ${currentResultsSession}</p>
+        </div>
+    `;
+    
+    try {
+        // Get pupil data
+        const pupilDoc = await db.collection('pupils').doc(selectedPupil).get();
+        
+        if (!pupilDoc.exists) {
+            throw new Error('Pupil not found');
+        }
+        
+        const pupilData = pupilDoc.data();
+        
+        // Get pupil's class name
+        let className = 'Unknown';
+        if (pupilData.class) {
+            if (typeof pupilData.class === 'object' && pupilData.class.name) {
+                className = pupilData.class.name;
+            } else if (typeof pupilData.class === 'string') {
+                className = pupilData.class;
+            }
+        }
+        
+        // Update info card
+        document.getElementById('pupil-info-name').textContent = pupilData.name || 'Unknown';
+        document.getElementById('pupil-info-class').textContent = className;
+        document.getElementById('pupil-info-session').textContent = currentResultsSession;
+        document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
+        infoCard.style.display = 'block';
+        
+        console.log('🔍 Querying results with:', {
+            pupilId: selectedPupil,
+            session: currentResultsSession
+        });
+        
+        // PRIMARY QUERY: Try with composite query first
+        let results = [];
+        let queryMethod = 'unknown';
+        
+        try {
+            const resultsSnap = await db.collection('results')
+                .where('pupilId', '==', selectedPupil)
+                .where('session', '==', currentResultsSession)
+                .get();
+            
+            console.log(`✓ Primary query returned ${resultsSnap.size} results`);
+            
+            if (!resultsSnap.empty) {
+                resultsSnap.forEach(doc => {
+                    const data = doc.data();
+                    results.push({
+                        term: data.term || 'Unknown',
+                        subject: data.subject || 'Unknown',
+                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
+                        total: (data.caScore || 0) + (data.examScore || 0)
+                    });
+                });
+                queryMethod = 'primary';
+            }
+        } catch (primaryError) {
+            console.warn('⚠️ Primary query failed (possibly missing index):', primaryError.code);
+            
+            // FALLBACK METHOD: Query without session filter
+            if (primaryError.code === 'failed-precondition') {
+                console.log('📋 Using fallback method: querying all pupil results and filtering manually');
+                
+                window.showToast?.(
+                    'Loading results using alternative method...',
+                    'info',
+                    3000
+                );
+            }
+        }
+        
+        // FALLBACK QUERY: If primary failed or returned empty
+        if (results.length === 0) {
+            console.log('🔄 Trying fallback method: manual filtering');
+            
+            const allResultsSnap = await db.collection('results')
+                .where('pupilId', '==', selectedPupil)
+                .get();
+            
+            console.log(`📊 Fallback query found ${allResultsSnap.size} total results for pupil`);
+            
+            // Filter manually by session
+            allResultsSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.session === currentResultsSession) {
+                    results.push({
+                        term: data.term || 'Unknown',
+                        subject: data.subject || 'Unknown',
+                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
+                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
+                        total: (data.caScore || 0) + (data.examScore || 0)
+                    });
+                }
+            });
+            
+            console.log(`✓ Fallback filtered to ${results.length} results for session "${currentResultsSession}"`);
+            queryMethod = 'fallback';
+        }
+        
+        // Check if we found any results
+        if (results.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+                    <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
+                    <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
+                    <p>This pupil has no recorded results for session: <strong>${currentResultsSession}</strong></p>
+                    <p style="font-size: var(--text-sm); margin-top: var(--space-md); color: var(--color-gray-500);">
+                        Make sure results have been entered by the class teacher.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Success! Render results
+        console.log(`✅ Successfully loaded ${results.length} results using ${queryMethod} method`);
+        currentResultsData = results;
+        renderResultsDisplay(results, container);
+
+    } catch (error) {
+        console.error('❌ Error loading pupil results:', error);
+        
+        // Detailed error handling
+        let errorMessage = 'Error loading results';
+        let errorDetails = error.message || 'Unknown error';
+        let showRetry = true;
+        
+        if (error.code === 'permission-denied') {
+            errorMessage = 'Permission denied';
+            errorDetails = 'You do not have permission to view this data';
+            showRetry = false;
+        } else if (error.code === 'unavailable') {
+            errorMessage = 'Service unavailable';
+            errorDetails = 'Cannot connect to server. Check your internet connection.';
+        } else if (error.code === 'failed-precondition') {
+            errorMessage = 'Database Configuration Issue';
+            errorDetails = 'A required database index is missing. Please contact your system administrator.';
+            showRetry = false;
+        }
+        
+        container.innerHTML = `
+            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
+                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
+                <p style="font-size: var(--text-lg); font-weight: 600;">${errorMessage}</p>
+                <p style="margin-bottom: var(--space-lg);">${errorDetails}</p>
+                ${showRetry ? `
+                    <button class="btn btn-primary" onclick="loadPupilResults()" style="margin-top: var(--space-lg);">
+                        🔄 Retry
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        
+        window.showToast?.(errorMessage, 'danger', 5000);
+    }
+}
+
+function renderResultsDisplay(results, container) {
+    container.innerHTML = '';
+    
+    // Group by term
+    const terms = {};
+    results.forEach(r => {
+        if (!terms[r.term]) terms[r.term] = [];
+        terms[r.term].push(r);
+    });
+    
+    let overallTotal = 0;
+    let overallCount = 0;
+    
+    ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
+        if (!terms[termName]) return;
+        
+        const termSection = document.createElement('div');
+        termSection.style.marginBottom = 'var(--space-2xl)';
+        
+        const heading = document.createElement('h3');
+        heading.textContent = termName;
+        heading.style.marginBottom = 'var(--space-md)';
+        heading.style.color = '#0f172a';
+        heading.style.fontSize = 'var(--text-xl)';
+        termSection.appendChild(heading);
+        
+        const table = document.createElement('table');
+        table.className = 'responsive-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th style="text-align: center;">CA (40)</th>
+                    <th style="text-align: center;">Exam (60)</th>
+                    <th style="text-align: center;">Total (100)</th>
+                    <th style="text-align: center;">Grade</th>
+                    <th style="text-align: center;">Remark</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+        
+        const tbody = table.querySelector('tbody');
+        
+        let termTotal = 0;
+        let subjectCount = 0;
+        
+        // Sort by subject name
+        terms[termName].sort((a, b) => a.subject.localeCompare(b.subject));
+        
+        terms[termName].forEach(result => {
+            const total = result.caScore + result.examScore;
+            const grade = getGrade(total);
+            const remark = getRemark(total);
+            const gradeClass = `grade-${grade}`;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Subject"><strong>${result.subject}</strong></td>
+                <td data-label="CA" style="text-align: center;">${result.caScore}</td>
+                <td data-label="Exam" style="text-align: center;">${result.examScore}</td>
+                <td data-label="Total" style="text-align: center; font-weight: 700;">${total}</td>
+                <td data-label="Grade" style="text-align: center;" class="${gradeClass}"><strong>${grade}</strong></td>
+                <td data-label="Remark" style="text-align: center;">${remark}</td>
+            `;
+            tbody.appendChild(tr);
+            
+            termTotal += total;
+            subjectCount++;
+            overallTotal += total;
+            overallCount++;
+        });
+        
+        // Add term summary
+        if (subjectCount > 0) {
+            const average = (termTotal / subjectCount).toFixed(1);
+            const avgGrade = getGrade(parseFloat(average));
+            
+            tbody.innerHTML += `
+                <tr style="background: #f1f5f9; font-weight: 700;">
+                    <td colspan="3"><strong>TERM TOTAL</strong></td>
+                    <td colspan="3" style="text-align: center;"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
+                </tr>
+                <tr style="background: #e0f2fe; font-weight: 700; color: #0369a1;">
+                    <td colspan="3"><strong>TERM AVERAGE</strong></td>
+                    <td colspan="3" style="text-align: center;"><strong>${average}% (${avgGrade})</strong></td>
+                </tr>
+            `;
+        }
+        
+        termSection.appendChild(table);
+        container.appendChild(termSection);
+    });
+    
+    // Add overall session summary
+    if (overallCount > 0) {
+        const overallAverage = (overallTotal / overallCount).toFixed(1);
+        const overallGrade = getGrade(parseFloat(overallAverage));
+        
+        const summaryCard = document.createElement('div');
+        summaryCard.style.cssText = `
+            background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
+            color: white;
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            margin-top: var(--space-2xl);
+            box-shadow: 0 4px 20px rgba(0, 178, 255, 0.3);
+        `;
+        
+        summaryCard.innerHTML = `
+            <h3 style="margin: 0 0 var(--space-lg); color: white; font-size: var(--text-xl);">
+                📊 Session Summary: ${currentResultsSession}
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Total Subjects</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallCount}</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Score</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallTotal} / ${overallCount * 100}</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session Average</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallAverage}%</div>
+                </div>
+                <div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Grade</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallGrade}</div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(summaryCard);
+    }
+    
+    // Show session comparison button
+    const comparisonBtn = document.createElement('button');
+    comparisonBtn.className = 'btn';
+    comparisonBtn.style.cssText = 'margin-top: var(--space-xl);';
+    comparisonBtn.onclick = loadSessionComparison;
+    comparisonBtn.innerHTML = '📈 Compare Across Sessions';
+    container.appendChild(comparisonBtn);
+    
+    console.log(`✓ Rendered ${results.length} results successfully`);
+}
+
+function getGrade(score) {
+  if (score >= 75) return 'A1';
+  if (score >= 70) return 'B2';
+  if (score >= 65) return 'B3';
+  if (score >= 60) return 'C4';
+  if (score >= 55) return 'C5';
+  if (score >= 50) return 'C6';
+  if (score >= 45) return 'D7';
+  if (score >= 40) return 'D8';
+  return 'F9';
+}
+
+function getRemark(score) {
+    if (score >= 75) return 'Excellent';
+    if (score >= 70) return 'Very Good';
+    if (score >= 65) return 'Good';
+    if (score >= 60) return 'Credit';
+    if (score >= 50) return 'Credit';
+    if (score >= 45) return 'Pass';
+    return 'Fail';
+}
+
+function clearResultsFilter() {
+  document.getElementById('filter-session').value = '';
+  document.getElementById('filter-class').innerHTML = '<option value="">-- Select Class --</option>';
+  document.getElementById('filter-class').disabled = true;
+  document.getElementById('filter-pupil').innerHTML = '<option value="">-- Select Pupil --</option>';
+  document.getElementById('filter-pupil').disabled = true;
+  document.getElementById('view-results-btn').disabled = true;
+  
+  document.getElementById('pupil-info-card').style.display = 'none';
+  document.getElementById('results-display-container').innerHTML = `
+    <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+      <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
+      <p style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
+        Select filters to view results
+      </p>
+      <p style="font-size: var(--text-sm);">
+        Choose session, class, and pupil from the filters above
+      </p>
+    </div>
+  `;
+  
+  currentResultsPupilId = null;
+  currentResultsSession = null;
+  currentResultsData = null;
+  
+  document.getElementById('session-comparison-section').style.display = 'none';
+}
+
+async function exportPupilResults() {
+  if (!currentResultsPupilId || !currentResultsSession || !currentResultsData) {
+    window.showToast?.('No results to export', 'warning');
+    return;
+  }
+  
+  try {
+    // Get pupil data
+    const pupilDoc = await db.collection('pupils').doc(currentResultsPupilId).get();
+    const pupilData = pupilDoc.data();
+    
+    // Create CSV content
+    let csv = 'Session,Term,Subject,CA Score,Exam Score,Total,Grade\n';
+    
+    currentResultsData.forEach(result => {
+      const grade = getGrade(result.total);
+      csv += `${currentResultsSession},${result.term},${result.subject},${result.caScore},${result.examScore},${result.total},${grade}\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pupilData.name}_${currentResultsSession}_Results.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    window.showToast?.('✓ Results exported successfully', 'success');
+    
+  } catch (error) {
+    console.error('Error exporting results:', error);
+    window.showToast?.('Failed to export results', 'danger');
+  }
+}
+
+// Make functions globally available
+window.loadViewResultsSection = loadViewResultsSection;
+window.loadFilteredClasses = loadFilteredClasses;
+window.loadFilteredPupils = loadFilteredPupils;
+window.loadPupilResults = loadPupilResults;
+window.clearResultsFilter = clearResultsFilter;
+window.exportPupilResults = exportPupilResults;
+
+/* ========================================
+   SESSION COMPARISON & PROGRESS TRACKING
+======================================== */
+
+async function loadSessionComparison() {
+  if (!currentResultsPupilId) {
+    window.showToast?.('No pupil selected', 'warning');
+    return;
+  }
+  
+  const section = document.getElementById('session-comparison-section');
+  const content = document.getElementById('session-comparison-content');
+  
+  if (!section || !content) return;
+  
+  section.style.display = 'block';
+  content.innerHTML = `
+    <div style="text-align: center; padding: var(--space-2xl);">
+      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+      <p style="color: var(--color-gray-600);">Loading comparison data...</p>
+    </div>
+  `;
+  
+  // Scroll to comparison section
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  try {
+    // Get all results for this pupil across all sessions
+    const allResultsSnap = await db.collection('results')
+      .where('pupilId', '==', currentResultsPupilId)
+      .get();
+    
+    if (allResultsSnap.empty) {
+      content.innerHTML = `
+        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
+          <p>No results found for comparison</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Group by session
+    const sessionData = {};
+    
+    allResultsSnap.forEach(doc => {
+      const data = doc.data();
+      const session = data.session || 'Unknown';
+      
+      if (!sessionData[session]) {
+        sessionData[session] = {
+          results: [],
+          totalScore: 0,
+          subjectCount: 0
+        };
+      }
+      
+      const total = (data.caScore || 0) + (data.examScore || 0);
+      sessionData[session].results.push({
+        term: data.term,
+        subject: data.subject,
+        total: total
+      });
+      sessionData[session].totalScore += total;
+      sessionData[session].subjectCount++;
+    });
+    
+    // Calculate averages for each session
+    const sessions = [];
+    for (const [sessionName, data] of Object.entries(sessionData)) {
+      const average = data.subjectCount > 0 ? (data.totalScore / data.subjectCount).toFixed(1) : 0;
+      sessions.push({
+        name: sessionName,
+        average: parseFloat(average),
+        subjectCount: data.subjectCount,
+        totalScore: data.totalScore,
+        grade: getGrade(parseFloat(average))
+      });
+    }
+    
+    // Sort by session year (newest first)
+    sessions.sort((a, b) => {
+      const yearA = parseInt(a.name.split('/')[0]) || 0;
+      const yearB = parseInt(b.name.split('/')[0]) || 0;
+      return yearB - yearA;
+    });
+    
+    if (sessions.length < 2) {
+      content.innerHTML = `
+        <div class="alert alert-info">
+          <strong>ℹ️ Comparison Not Available</strong>
+          <p>This pupil only has results in one session (${sessions[0].name}). Comparison requires results from at least 2 sessions.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Calculate progress
+    const progressData = [];
+    for (let i = 1; i < sessions.length; i++) {
+      const current = sessions[i - 1];
+      const previous = sessions[i];
+      const change = current.average - previous.average;
+      const percentChange = previous.average > 0 ? ((change / previous.average) * 100).toFixed(1) : 0;
+      
+      progressData.push({
+        from: previous.name,
+        to: current.name,
+        change: change,
+        percentChange: percentChange,
+        improving: change > 0
+      });
+    }
+    
+    // Render comparison
+    content.innerHTML = `
+      <!-- Sessions Overview -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-2xl);">
+        ${sessions.map((session, index) => `
+          <div style="background: ${index === 0 ? 'linear-gradient(135deg, #00B2FF 0%, #0090CC 100%)' : 'white'}; 
+                      color: ${index === 0 ? 'white' : 'inherit'};
+                      padding: var(--space-xl); 
+                      border-radius: var(--radius-lg); 
+                      border: 2px solid ${index === 0 ? '#00B2FF' : '#e2e8f0'};
+                      position: relative;
+                      box-shadow: ${index === 0 ? '0 4px 20px rgba(0, 178, 255, 0.3)' : '0 2px 8px rgba(0,0,0,0.05)'};;">
+            ${index === 0 ? '<div style="position: absolute; top: var(--space-sm); right: var(--space-sm); background: rgba(255,255,255,0.3); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">LATEST</div>' : ''}
+            <div style="font-size: var(--text-sm); opacity: ${index === 0 ? '0.9' : '0.6'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">
+              Session
+            </div>
+            <div style="font-size: var(--text-xl); font-weight: 700; margin-bottom: var(--space-lg);">
+              ${session.name}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+              <div>
+                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Average</div>
+                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.average}%</div>
+              </div>
+              <div>
+                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Grade</div>
+                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.grade}</div>
+              </div>
+            </div>
+            <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'};">
+              ${session.subjectCount} subjects • ${session.totalScore} total points
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- Progress Analysis -->
+      <div style="background: #f8fafc; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-2xl);">
+        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📊 Progress Analysis</h4>
+        ${progressData.map(progress => `
+          <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-md); margin-bottom: var(--space-sm); border-left: 4px solid ${progress.improving ? '#10b981' : '#ef4444'};">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: var(--space-xs);">
+                ${progress.from} → ${progress.to}
+              </div>
+              <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
+                ${progress.improving ? 'Improvement' : 'Decline'}: ${progress.change > 0 ? '+' : ''}${progress.change.toFixed(1)} points (${progress.percentChange > 0 ? '+' : ''}${progress.percentChange}%)
+              </div>
+            </div>
+            <div style="font-size: var(--text-3xl);">
+              ${progress.improving ? '📈' : '📉'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- Performance Trend -->
+      <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
+        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📈 Performance Trend</h4>
+        <div style="display: flex; align-items: flex-end; gap: var(--space-sm); height: 200px; padding: var(--space-md) 0;">
+          ${sessions.slice().reverse().map((session, index) => {
+            const maxAverage = Math.max(...sessions.map(s => s.average));
+            const height = (session.average / maxAverage) * 100;
+            const isHighest = session.average === maxAverage;
+            
+            return `
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
+                <div style="font-weight: 700; font-size: var(--text-lg); color: ${isHighest ? '#00B2FF' : '#0f172a'};">
+                  ${session.average}%
+                </div>
+                <div style="width: 100%; height: ${height}%; background: ${isHighest ? 'linear-gradient(to top, #00B2FF, #0090CC)' : 'linear-gradient(to top, #cbd5e1, #94a3b8)'}; border-radius: var(--radius-sm); min-height: 20px; transition: all 0.3s ease;"></div>
+                <div style="font-size: var(--text-xs); color: var(--color-gray-600); text-align: center; margin-top: var(--space-xs);">
+                  ${session.name}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      
+      <!-- Summary Insights -->
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: var(--space-xl); border-radius: var(--radius-lg); margin-top: var(--space-2xl); border: 2px solid #10b981;">
+        <h4 style="margin: 0 0 var(--space-md); color: #065f46;">🎯 Summary Insights</h4>
+        ${generateInsights(sessions, progressData)}
+      </div>
+    `;
+    
+    console.log(`✓ Loaded comparison across ${sessions.length} sessions`);
+    
+  } catch (error) {
+    console.error('Error loading session comparison:', error);
+    content.innerHTML = `
+      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
+        <p style="font-weight: 600;">Error loading comparison data</p>
+        <p style="font-size: var(--text-sm);">${error.message}</p>
+      </div>
+    `;
+  }
+}
+
+function generateInsights(sessions, progressData) {
+  const insights = [];
+  
+  // Find best and worst sessions
+  const sortedByAvg = [...sessions].sort((a, b) => b.average - a.average);
+  const bestSession = sortedByAvg[0];
+  const worstSession = sortedByAvg[sortedByAvg.length - 1];
+  
+  insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Best Performance:</strong> ${bestSession.name} with ${bestSession.average}% average (Grade ${bestSession.grade})</p>`);
+  
+  if (sessions.length > 1) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Lowest Performance:</strong> ${worstSession.name} with ${worstSession.average}% average (Grade ${worstSession.grade})</p>`);
+  }
+  
+  // Overall trend
+  const improvements = progressData.filter(p => p.improving).length;
+  const declines = progressData.filter(p => !p.improving).length;
+  
+  if (improvements > declines) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Generally improving (${improvements} improvement(s), ${declines} decline(s))</p>`);
+  } else if (declines > improvements) {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Needs attention (${declines} decline(s), ${improvements} improvement(s))</p>`);
+  } else {
+    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Stable performance with mixed results</p>`);
+  }
+  
+  // Average improvement
+  if (progressData.length > 0) {
+    const avgChange = progressData.reduce((sum, p) => sum + p.change, 0) / progressData.length;
+    const direction = avgChange > 0 ? 'improved' : 'declined';
+    insights.push(`<p style="margin: 0;"><strong>• Average Change:</strong> Performance has ${direction} by ${Math.abs(avgChange).toFixed(1)} points per session</p>`);
+  }
+  
+  return insights.join('');
+}
+
+function toggleSessionComparison() {
+  const section = document.getElementById('session-comparison-section');
+  if (section) {
+    section.style.display = 'none';
+  }
+}
+
+// Make functions globally available
+window.loadSessionComparison = loadSessionComparison;
+window.toggleSessionComparison = toggleSessionComparison;
 
 // Make functions globally available
 window.loadPromotionRequests = loadPromotionRequests;
@@ -6123,722 +6872,6 @@ async function backfillSessionData() {
 
 // Make function globally available
 window.backfillSessionData = backfillSessionData;
-
-/**
- * FIX #2: LOAD PUPIL RESULTS WITH BETTER ERROR HANDLING
- * Copy this ENTIRE function to replace loadPupilResults() in admin.js
- */
-
-async function loadPupilResults() {
-    const pupilSelect = document.getElementById('filter-pupil');
-    const container = document.getElementById('results-display-container');
-    const infoCard = document.getElementById('pupil-info-card');
-    
-    if (!pupilSelect || !container) {
-        console.error('Required elements not found');
-        return;
-    }
-    
-    const selectedPupil = pupilSelect.value;
-    
-    // Validate all required data before proceeding
-    if (!selectedPupil) {
-        infoCard.style.display = 'none';
-        container.innerHTML = `
-            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-                <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
-                <p>Select a pupil to view results</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (!currentResultsSession) {
-        console.error('Session not selected');
-        infoCard.style.display = 'none';
-        container.innerHTML = `
-            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-warning);">
-                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
-                <p style="font-weight: 600;">Session not selected</p>
-                <p>Please select a session from the filter above</p>
-            </div>
-        `;
-        return;
-    }
-    
-    currentResultsPupilId = selectedPupil;
-    
-    // Show loading
-    container.innerHTML = `
-        <div style="text-align: center; padding: var(--space-2xl);">
-            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
-            <p style="color: var(--color-gray-600);">Loading results for session: ${currentResultsSession}</p>
-        </div>
-    `;
-    
-    try {
-        // Get pupil data
-        const pupilDoc = await db.collection('pupils').doc(selectedPupil).get();
-        
-        if (!pupilDoc.exists) {
-            throw new Error('Pupil not found');
-        }
-        
-        const pupilData = pupilDoc.data();
-        
-        // Get pupil's class name
-        let className = 'Unknown';
-        if (pupilData.class) {
-            if (typeof pupilData.class === 'object' && pupilData.class.name) {
-                className = pupilData.class.name;
-            } else if (typeof pupilData.class === 'string') {
-                className = pupilData.class;
-            }
-        }
-        
-        // Update info card
-        document.getElementById('pupil-info-name').textContent = pupilData.name || 'Unknown';
-        document.getElementById('pupil-info-class').textContent = className;
-        document.getElementById('pupil-info-session').textContent = currentResultsSession;
-        document.getElementById('pupil-info-gender').textContent = pupilData.gender || '-';
-        infoCard.style.display = 'block';
-        
-        console.log('🔍 Querying results with:', {
-            pupilId: selectedPupil,
-            session: currentResultsSession
-        });
-        
-        // PRIMARY QUERY: Try with composite query first
-        let results = [];
-        let queryMethod = 'unknown';
-        
-        try {
-            const resultsSnap = await db.collection('results')
-                .where('pupilId', '==', selectedPupil)
-                .where('session', '==', currentResultsSession)
-                .get();
-            
-            console.log(`✓ Primary query returned ${resultsSnap.size} results`);
-            
-            if (!resultsSnap.empty) {
-                resultsSnap.forEach(doc => {
-                    const data = doc.data();
-                    results.push({
-                        term: data.term || 'Unknown',
-                        subject: data.subject || 'Unknown',
-                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
-                        total: (data.caScore || 0) + (data.examScore || 0)
-                    });
-                });
-                queryMethod = 'primary';
-            }
-        } catch (primaryError) {
-            console.warn('⚠️ Primary query failed (possibly missing index):', primaryError.code);
-            
-            // FALLBACK METHOD: Query without session filter
-            if (primaryError.code === 'failed-precondition') {
-                console.log('📋 Using fallback method: querying all pupil results and filtering manually');
-                
-                window.showToast?.(
-                    'Loading results using alternative method...',
-                    'info',
-                    3000
-                );
-            }
-        }
-        
-        // FALLBACK QUERY: If primary failed or returned empty
-        if (results.length === 0) {
-            console.log('🔄 Trying fallback method: manual filtering');
-            
-            const allResultsSnap = await db.collection('results')
-                .where('pupilId', '==', selectedPupil)
-                .get();
-            
-            console.log(`📊 Fallback query found ${allResultsSnap.size} total results for pupil`);
-            
-            // Filter manually by session
-            allResultsSnap.forEach(doc => {
-                const data = doc.data();
-                if (data.session === currentResultsSession) {
-                    results.push({
-                        term: data.term || 'Unknown',
-                        subject: data.subject || 'Unknown',
-                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                        examScore: typeof data.examScore === 'number' ? data.examScore : 0,
-                        total: (data.caScore || 0) + (data.examScore || 0)
-                    });
-                }
-            });
-            
-            console.log(`✓ Fallback filtered to ${results.length} results for session "${currentResultsSession}"`);
-            queryMethod = 'fallback';
-        }
-        
-        // Check if we found any results
-        if (results.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-                    <div style="font-size: 3rem; margin-bottom: var(--space-md);">📋</div>
-                    <p style="font-size: var(--text-lg); font-weight: 600;">No results found</p>
-                    <p>This pupil has no recorded results for session: <strong>${currentResultsSession}</strong></p>
-                    <p style="font-size: var(--text-sm); margin-top: var(--space-md); color: var(--color-gray-500);">
-                        Make sure results have been entered by the class teacher.
-                    </p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Success! Render results
-        console.log(`✅ Successfully loaded ${results.length} results using ${queryMethod} method`);
-        currentResultsData = results;
-        renderResultsDisplay(results, container);
-
-    } catch (error) {
-        console.error('❌ Error loading pupil results:', error);
-        
-        // Detailed error handling
-        let errorMessage = 'Error loading results';
-        let errorDetails = error.message || 'Unknown error';
-        let showRetry = true;
-        
-        if (error.code === 'permission-denied') {
-            errorMessage = 'Permission denied';
-            errorDetails = 'You do not have permission to view this data';
-            showRetry = false;
-        } else if (error.code === 'unavailable') {
-            errorMessage = 'Service unavailable';
-            errorDetails = 'Cannot connect to server. Check your internet connection.';
-        } else if (error.code === 'failed-precondition') {
-            errorMessage = 'Database Configuration Issue';
-            errorDetails = 'A required database index is missing. Please contact your system administrator.';
-            showRetry = false;
-        }
-        
-        container.innerHTML = `
-            <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
-                <div style="font-size: 3rem; margin-bottom: var(--space-md);">⚠️</div>
-                <p style="font-size: var(--text-lg); font-weight: 600;">${errorMessage}</p>
-                <p style="margin-bottom: var(--space-lg);">${errorDetails}</p>
-                ${showRetry ? `
-                    <button class="btn btn-primary" onclick="loadPupilResults()" style="margin-top: var(--space-lg);">
-                        🔄 Retry
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        
-        window.showToast?.(errorMessage, 'danger', 5000);
-    }
-}
-
-/**
- * Helper function to render results display
- */
-function renderResultsDisplay(results, container) {
-    container.innerHTML = '';
-    
-    // Group by term
-    const terms = {};
-    results.forEach(r => {
-        if (!terms[r.term]) terms[r.term] = [];
-        terms[r.term].push(r);
-    });
-    
-    let overallTotal = 0;
-    let overallCount = 0;
-    
-    ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
-        if (!terms[termName]) return;
-        
-        const termSection = document.createElement('div');
-        termSection.style.marginBottom = 'var(--space-2xl)';
-        
-        const heading = document.createElement('h3');
-        heading.textContent = termName;
-        heading.style.marginBottom = 'var(--space-md)';
-        heading.style.color = '#0f172a';
-        heading.style.fontSize = 'var(--text-xl)';
-        termSection.appendChild(heading);
-        
-        const table = document.createElement('table');
-        table.className = 'responsive-table';
-        table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th style="text-align: center;">CA (40)</th>
-                    <th style="text-align: center;">Exam (60)</th>
-                    <th style="text-align: center;">Total (100)</th>
-                    <th style="text-align: center;">Grade</th>
-                    <th style="text-align: center;">Remark</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        `;
-        
-        const tbody = table.querySelector('tbody');
-        
-        let termTotal = 0;
-        let subjectCount = 0;
-        
-        // Sort by subject name
-        terms[termName].sort((a, b) => a.subject.localeCompare(b.subject));
-        
-        terms[termName].forEach(result => {
-            const total = result.caScore + result.examScore;
-            const grade = getGrade(total);
-            const remark = getRemark(total);
-            const gradeClass = `grade-${grade}`;
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Subject"><strong>${result.subject}</strong></td>
-                <td data-label="CA" style="text-align: center;">${result.caScore}</td>
-                <td data-label="Exam" style="text-align: center;">${result.examScore}</td>
-                <td data-label="Total" style="text-align: center; font-weight: 700;">${total}</td>
-                <td data-label="Grade" style="text-align: center;" class="${gradeClass}"><strong>${grade}</strong></td>
-                <td data-label="Remark" style="text-align: center;">${remark}</td>
-            `;
-            tbody.appendChild(tr);
-            
-            termTotal += total;
-            subjectCount++;
-            overallTotal += total;
-            overallCount++;
-        });
-        
-        // Add term summary
-        if (subjectCount > 0) {
-            const average = (termTotal / subjectCount).toFixed(1);
-            const avgGrade = getGrade(parseFloat(average));
-            
-            tbody.innerHTML += `
-                <tr style="background: #f1f5f9; font-weight: 700;">
-                    <td colspan="3"><strong>TERM TOTAL</strong></td>
-                    <td colspan="3" style="text-align: center;"><strong>${termTotal} / ${subjectCount * 100}</strong></td>
-                </tr>
-                <tr style="background: #e0f2fe; font-weight: 700; color: #0369a1;">
-                    <td colspan="3"><strong>TERM AVERAGE</strong></td>
-                    <td colspan="3" style="text-align: center;"><strong>${average}% (${avgGrade})</strong></td>
-                </tr>
-            `;
-        }
-        
-        termSection.appendChild(table);
-        container.appendChild(termSection);
-    });
-    
-    // Add overall session summary
-    if (overallCount > 0) {
-        const overallAverage = (overallTotal / overallCount).toFixed(1);
-        const overallGrade = getGrade(parseFloat(overallAverage));
-        
-        const summaryCard = document.createElement('div');
-        summaryCard.style.cssText = `
-            background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-            color: white;
-            padding: var(--space-xl);
-            border-radius: var(--radius-lg);
-            margin-top: var(--space-2xl);
-            box-shadow: 0 4px 20px rgba(0, 178, 255, 0.3);
-        `;
-        
-        summaryCard.innerHTML = `
-            <h3 style="margin: 0 0 var(--space-lg); color: white; font-size: var(--text-xl);">
-                📊 Session Summary: ${currentResultsSession}
-            </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg);">
-                <div>
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Total Subjects</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallCount}</div>
-                </div>
-                <div>
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Score</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallTotal} / ${overallCount * 100}</div>
-                </div>
-                <div>
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session Average</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallAverage}%</div>
-                </div>
-                <div>
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Overall Grade</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700; margin-top: var(--space-xs);">${overallGrade}</div>
-                </div>
-            </div>
-        `;
-        
-        container.appendChild(summaryCard);
-    }
-    
-    // Show session comparison button
-    const comparisonBtn = document.createElement('button');
-    comparisonBtn.className = 'btn';
-    comparisonBtn.style.cssText = 'margin-top: var(--space-xl);';
-    comparisonBtn.onclick = loadSessionComparison;
-    comparisonBtn.innerHTML = '📈 Compare Across Sessions';
-    container.appendChild(comparisonBtn);
-    
-    console.log(`✓ Rendered ${results.length} results successfully`);
-}
-
-function getRemark(score) {
-    if (score >= 75) return 'Excellent';
-    if (score >= 70) return 'Very Good';
-    if (score >= 65) return 'Good';
-    if (score >= 60) return 'Credit';
-    if (score >= 50) return 'Credit';
-    if (score >= 45) return 'Pass';
-    return 'Fail';
-}
-
-function getGrade(score) {
-  if (score >= 75) return 'A1';
-  if (score >= 70) return 'B2';
-  if (score >= 65) return 'B3';
-  if (score >= 60) return 'C4';
-  if (score >= 55) return 'C5';
-  if (score >= 50) return 'C6';
-  if (score >= 45) return 'D7';
-  if (score >= 40) return 'D8';
-  return 'F9';
-}
-
-function clearResultsFilter() {
-  document.getElementById('filter-session').value = '';
-  document.getElementById('filter-class').innerHTML = '<option value="">-- Select Class --</option>';
-  document.getElementById('filter-class').disabled = true;
-  document.getElementById('filter-pupil').innerHTML = '<option value="">-- Select Pupil --</option>';
-  document.getElementById('filter-pupil').disabled = true;
-  document.getElementById('view-results-btn').disabled = true;
-  
-  document.getElementById('pupil-info-card').style.display = 'none';
-  document.getElementById('results-display-container').innerHTML = `
-    <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-      <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
-      <p style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
-        Select filters to view results
-      </p>
-      <p style="font-size: var(--text-sm);">
-        Choose session, class, and pupil from the filters above
-      </p>
-    </div>
-  `;
-  
-  currentResultsPupilId = null;
-  currentResultsSession = null;
-  currentResultsData = null;
-  
-  document.getElementById('session-comparison-section').style.display = 'none';
-}
-
-async function exportPupilResults() {
-  if (!currentResultsPupilId || !currentResultsSession || !currentResultsData) {
-    window.showToast?.('No results to export', 'warning');
-    return;
-  }
-  
-  try {
-    // Get pupil data
-    const pupilDoc = await db.collection('pupils').doc(currentResultsPupilId).get();
-    const pupilData = pupilDoc.data();
-    
-    // Create CSV content
-    let csv = 'Session,Term,Subject,CA Score,Exam Score,Total,Grade\n';
-    
-    currentResultsData.forEach(result => {
-      const grade = getGrade(result.total);
-      csv += `${currentResultsSession},${result.term},${result.subject},${result.caScore},${result.examScore},${result.total},${grade}\n`;
-    });
-    
-    // Download CSV
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${pupilData.name}_${currentResultsSession}_Results.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    window.showToast?.('✓ Results exported successfully', 'success');
-    
-  } catch (error) {
-    console.error('Error exporting results:', error);
-    window.showToast?.('Failed to export results', 'danger');
-  }
-}
-
-// Make functions globally available
-window.loadViewResultsSection = loadViewResultsSection;
-window.loadFilteredClasses = loadFilteredClasses;
-window.loadFilteredPupils = loadFilteredPupils;
-window.loadPupilResults = loadPupilResults;
-window.clearResultsFilter = clearResultsFilter;
-window.exportPupilResults = exportPupilResults;
-
-/* ========================================
-   SESSION COMPARISON & PROGRESS TRACKING
-======================================== */
-
-async function loadSessionComparison() {
-  if (!currentResultsPupilId) {
-    window.showToast?.('No pupil selected', 'warning');
-    return;
-  }
-  
-  const section = document.getElementById('session-comparison-section');
-  const content = document.getElementById('session-comparison-content');
-  
-  if (!section || !content) return;
-  
-  section.style.display = 'block';
-  content.innerHTML = `
-    <div style="text-align: center; padding: var(--space-2xl);">
-      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
-      <p style="color: var(--color-gray-600);">Loading comparison data...</p>
-    </div>
-  `;
-  
-  // Scroll to comparison section
-  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  
-  try {
-    // Get all results for this pupil across all sessions
-    const allResultsSnap = await db.collection('results')
-      .where('pupilId', '==', currentResultsPupilId)
-      .get();
-    
-    if (allResultsSnap.empty) {
-      content.innerHTML = `
-        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-          <p>No results found for comparison</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Group by session
-    const sessionData = {};
-    
-    allResultsSnap.forEach(doc => {
-      const data = doc.data();
-      const session = data.session || 'Unknown';
-      
-      if (!sessionData[session]) {
-        sessionData[session] = {
-          results: [],
-          totalScore: 0,
-          subjectCount: 0
-        };
-      }
-      
-      const total = (data.caScore || 0) + (data.examScore || 0);
-      sessionData[session].results.push({
-        term: data.term,
-        subject: data.subject,
-        total: total
-      });
-      sessionData[session].totalScore += total;
-      sessionData[session].subjectCount++;
-    });
-    
-    // Calculate averages for each session
-    const sessions = [];
-    for (const [sessionName, data] of Object.entries(sessionData)) {
-      const average = data.subjectCount > 0 ? (data.totalScore / data.subjectCount).toFixed(1) : 0;
-      sessions.push({
-        name: sessionName,
-        average: parseFloat(average),
-        subjectCount: data.subjectCount,
-        totalScore: data.totalScore,
-        grade: getGrade(parseFloat(average))
-      });
-    }
-    
-    // Sort by session year (newest first)
-    sessions.sort((a, b) => {
-      const yearA = parseInt(a.name.split('/')[0]) || 0;
-      const yearB = parseInt(b.name.split('/')[0]) || 0;
-      return yearB - yearA;
-    });
-    
-    if (sessions.length < 2) {
-      content.innerHTML = `
-        <div class="alert alert-info">
-          <strong>ℹ️ Comparison Not Available</strong>
-          <p>This pupil only has results in one session (${sessions[0].name}). Comparison requires results from at least 2 sessions.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Calculate progress
-    const progressData = [];
-    for (let i = 1; i < sessions.length; i++) {
-      const current = sessions[i - 1];
-      const previous = sessions[i];
-      const change = current.average - previous.average;
-      const percentChange = previous.average > 0 ? ((change / previous.average) * 100).toFixed(1) : 0;
-      
-      progressData.push({
-        from: previous.name,
-        to: current.name,
-        change: change,
-        percentChange: percentChange,
-        improving: change > 0
-      });
-    }
-    
-    // Render comparison
-    content.innerHTML = `
-      <!-- Sessions Overview -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-2xl);">
-        ${sessions.map((session, index) => `
-          <div style="background: ${index === 0 ? 'linear-gradient(135deg, #00B2FF 0%, #0090CC 100%)' : 'white'}; 
-                      color: ${index === 0 ? 'white' : 'inherit'};
-                      padding: var(--space-xl); 
-                      border-radius: var(--radius-lg); 
-                      border: 2px solid ${index === 0 ? '#00B2FF' : '#e2e8f0'};
-                      position: relative;
-                      box-shadow: ${index === 0 ? '0 4px 20px rgba(0, 178, 255, 0.3)' : '0 2px 8px rgba(0,0,0,0.05)'};;">
-            ${index === 0 ? '<div style="position: absolute; top: var(--space-sm); right: var(--space-sm); background: rgba(255,255,255,0.3); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">LATEST</div>' : ''}
-            <div style="font-size: var(--text-sm); opacity: ${index === 0 ? '0.9' : '0.6'}; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">
-              Session
-            </div>
-            <div style="font-size: var(--text-xl); font-weight: 700; margin-bottom: var(--space-lg);">
-              ${session.name}
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
-              <div>
-                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Average</div>
-                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.average}%</div>
-              </div>
-              <div>
-                <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'}; margin-bottom: 4px;">Grade</div>
-                <div style="font-size: var(--text-2xl); font-weight: 700;">${session.grade}</div>
-              </div>
-            </div>
-            <div style="font-size: var(--text-xs); opacity: ${index === 0 ? '0.9' : '0.6'};">
-              ${session.subjectCount} subjects • ${session.totalScore} total points
-            </div>
-          </div>
-        `).join('')}
-      </div>
-      
-      <!-- Progress Analysis -->
-      <div style="background: #f8fafc; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-2xl);">
-        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📊 Progress Analysis</h4>
-        ${progressData.map(progress => `
-          <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-md); margin-bottom: var(--space-sm); border-left: 4px solid ${progress.improving ? '#10b981' : '#ef4444'};">
-            <div style="flex: 1;">
-              <div style="font-weight: 600; margin-bottom: var(--space-xs);">
-                ${progress.from} → ${progress.to}
-              </div>
-              <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
-                ${progress.improving ? 'Improvement' : 'Decline'}: ${progress.change > 0 ? '+' : ''}${progress.change.toFixed(1)} points (${progress.percentChange > 0 ? '+' : ''}${progress.percentChange}%)
-              </div>
-            </div>
-            <div style="font-size: var(--text-3xl);">
-              ${progress.improving ? '📈' : '📉'}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-      
-      <!-- Performance Trend -->
-      <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
-        <h4 style="margin: 0 0 var(--space-lg); color: #0f172a;">📈 Performance Trend</h4>
-        <div style="display: flex; align-items: flex-end; gap: var(--space-sm); height: 200px; padding: var(--space-md) 0;">
-          ${sessions.slice().reverse().map((session, index) => {
-            const maxAverage = Math.max(...sessions.map(s => s.average));
-            const height = (session.average / maxAverage) * 100;
-            const isHighest = session.average === maxAverage;
-            
-            return `
-              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--space-xs);">
-                <div style="font-weight: 700; font-size: var(--text-lg); color: ${isHighest ? '#00B2FF' : '#0f172a'};">
-                  ${session.average}%
-                </div>
-                <div style="width: 100%; height: ${height}%; background: ${isHighest ? 'linear-gradient(to top, #00B2FF, #0090CC)' : 'linear-gradient(to top, #cbd5e1, #94a3b8)'}; border-radius: var(--radius-sm); min-height: 20px; transition: all 0.3s ease;"></div>
-                <div style="font-size: var(--text-xs); color: var(--color-gray-600); text-align: center; margin-top: var(--space-xs);">
-                  ${session.name}
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-      
-      <!-- Summary Insights -->
-      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: var(--space-xl); border-radius: var(--radius-lg); margin-top: var(--space-2xl); border: 2px solid #10b981;">
-        <h4 style="margin: 0 0 var(--space-md); color: #065f46;">🎯 Summary Insights</h4>
-        ${generateInsights(sessions, progressData)}
-      </div>
-    `;
-    
-    console.log(`✓ Loaded comparison across ${sessions.length} sessions`);
-    
-  } catch (error) {
-    console.error('Error loading session comparison:', error);
-    content.innerHTML = `
-      <div style="text-align: center; padding: var(--space-2xl); color: var(--color-danger);">
-        <p style="font-weight: 600;">Error loading comparison data</p>
-        <p style="font-size: var(--text-sm);">${error.message}</p>
-      </div>
-    `;
-  }
-}
-
-function generateInsights(sessions, progressData) {
-  const insights = [];
-  
-  // Find best and worst sessions
-  const sortedByAvg = [...sessions].sort((a, b) => b.average - a.average);
-  const bestSession = sortedByAvg[0];
-  const worstSession = sortedByAvg[sortedByAvg.length - 1];
-  
-  insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Best Performance:</strong> ${bestSession.name} with ${bestSession.average}% average (Grade ${bestSession.grade})</p>`);
-  
-  if (sessions.length > 1) {
-    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Lowest Performance:</strong> ${worstSession.name} with ${worstSession.average}% average (Grade ${worstSession.grade})</p>`);
-  }
-  
-  // Overall trend
-  const improvements = progressData.filter(p => p.improving).length;
-  const declines = progressData.filter(p => !p.improving).length;
-  
-  if (improvements > declines) {
-    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Generally improving (${improvements} improvement(s), ${declines} decline(s))</p>`);
-  } else if (declines > improvements) {
-    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Needs attention (${declines} decline(s), ${improvements} improvement(s))</p>`);
-  } else {
-    insights.push(`<p style="margin: 0 0 var(--space-xs);"><strong>• Overall Trend:</strong> Stable performance with mixed results</p>`);
-  }
-  
-  // Average improvement
-  if (progressData.length > 0) {
-    const avgChange = progressData.reduce((sum, p) => sum + p.change, 0) / progressData.length;
-    const direction = avgChange > 0 ? 'improved' : 'declined';
-    insights.push(`<p style="margin: 0;"><strong>• Average Change:</strong> Performance has ${direction} by ${Math.abs(avgChange).toFixed(1)} points per session</p>`);
-  }
-  
-  return insights.join('');
-}
-
-function toggleSessionComparison() {
-  const section = document.getElementById('session-comparison-section');
-  if (section) {
-    section.style.display = 'none';
-  }
-}
-
-// Make functions globally available
-window.loadSessionComparison = loadSessionComparison;
-window.toggleSessionComparison = toggleSessionComparison;
 
 // Make all UI functions globally available
 window.showTeacherForm = showTeacherForm;
