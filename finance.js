@@ -16,9 +16,6 @@
 
 const finance = {
 
-  /**
-   * Configure fee structure for a specific class and term
-   */
   async configureFeeStructure(classId, className, session, term, feeBreakdown) {
     try {
       const feeStructureId = `${classId}_${session}_${term}`;
@@ -43,7 +40,6 @@ const finance = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      console.log(`✓ Fee structure configured for ${className} - ${term}`);
       return { success: true, total: total };
 
     } catch (error) {
@@ -52,9 +48,6 @@ const finance = {
     }
   },
 
-  /**
-   * Get fee structure for a class
-   */
   async getFeeStructure(classId, session, term) {
     try {
       const feeStructureId = `${classId}_${session}_${term}`;
@@ -72,9 +65,6 @@ const finance = {
     }
   },
 
-  /**
-   * Record payment and generate receipt
-   */
   async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
     try {
       if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
@@ -94,12 +84,10 @@ const finance = {
       const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
 
       let totalPaidSoFar = amountPaid;
-      let previousBalance = amountDue;
 
       if (existingPaymentDoc.exists) {
         const existingData = existingPaymentDoc.data();
         totalPaidSoFar = (existingData.totalPaid || 0) + amountPaid;
-        previousBalance = existingData.balance || amountDue;
       }
 
       const newBalance = amountDue - totalPaidSoFar;
@@ -107,7 +95,9 @@ const finance = {
         newBalance <= 0 ? 'paid' : totalPaidSoFar > 0 ? 'partial' : 'owing';
 
       const receiptNo = await this.generateReceiptNumber();
-      const transactionId = db.collection('payment_transactions').doc().id;
+
+      // OPTION A FIX: use receiptNo as document ID
+      const transactionId = receiptNo;
 
       await db.collection('payment_transactions').doc(transactionId).set({
         pupilId: pupilId,
@@ -141,8 +131,6 @@ const finance = {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      console.log(`✓ Payment recorded: Receipt #${receiptNo}`);
-
       return {
         success: true,
         receiptNo: receiptNo,
@@ -159,9 +147,6 @@ const finance = {
     }
   },
 
-  /**
-   * Generate unique receipt number
-   */
   async generateReceiptNumber() {
     const date = new Date();
     const year = date.getFullYear();
@@ -191,29 +176,25 @@ const finance = {
         }
       });
     } catch (error) {
-      console.error('Error generating receipt number:', error);
       counter = Date.now() % 10000;
     }
 
     return `RCT${year}${month}${day}${String(counter).padStart(4, '0')}`;
   },
 
-  /**
-   * Get receipt data for printing
-   */
+  // OPTION A FIX: direct document read by receiptNo
   async getReceiptData(receiptNo) {
     try {
-      const snapshot = await db
+      const doc = await db
         .collection('payment_transactions')
-        .where('receiptNo', '==', receiptNo)
-        .limit(1)
+        .doc(receiptNo)
         .get();
 
-      if (snapshot.empty) {
+      if (!doc.exists) {
         throw new Error('Receipt not found');
       }
 
-      return snapshot.docs[0].data();
+      return doc.data();
 
     } catch (error) {
       console.error('Error getting receipt data:', error);
@@ -221,9 +202,6 @@ const finance = {
     }
   },
 
-  /**
-   * Get payment summary for a pupil
-   */
   async getPupilPaymentSummary(pupilId, session, term) {
     try {
       const paymentRecordId = `${pupilId}_${session}_${term}`;
@@ -241,9 +219,6 @@ const finance = {
     }
   },
 
-  /**
-   * Get all payment transactions for a pupil
-   */
   async getPupilPaymentHistory(pupilId, session, term) {
     try {
       const snapshot = await db
@@ -267,9 +242,6 @@ const finance = {
     }
   },
 
-  /**
-   * Get outstanding fees report
-   */
   async getOutstandingFeesReport(classId = null, session, term) {
     try {
       let query = db
@@ -301,9 +273,6 @@ const finance = {
     }
   },
 
-  /**
-   * Get financial summary
-   */
   async getFinancialSummary(session, term) {
     try {
       const snapshot = await db
