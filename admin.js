@@ -7255,6 +7255,54 @@ window.applyBulkAction = applyBulkAction;
 window.executeBulkReassign = executeBulkReassign;
 
 /**
+ * Toggle all pupils selection for bulk operations
+ * Replace or add this function in admin.js after the bulk operations section
+ */
+function toggleAllPupils(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.pupil-checkbox');
+  const isChecked = masterCheckbox.checked;
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = isChecked;
+  });
+  
+  updateBulkActionButtons();
+}
+
+/**
+ * Update bulk action buttons based on selection
+ */
+function updateBulkActionButtons() {
+  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
+  const count = checkboxes.length;
+  
+  const countDisplay = document.getElementById('selected-count');
+  const actionSelect = document.getElementById('bulk-action-select');
+  const applyBtn = document.getElementById('apply-bulk-action-btn');
+  const selectAllCheckbox = document.getElementById('select-all-pupils');
+  
+  if (countDisplay) {
+    countDisplay.textContent = `${count} selected`;
+    countDisplay.style.fontWeight = count > 0 ? '600' : 'normal';
+    countDisplay.style.color = count > 0 ? 'var(--color-primary)' : 'var(--color-gray-600)';
+  }
+  
+  if (actionSelect) actionSelect.disabled = count === 0;
+  if (applyBtn) applyBtn.disabled = count === 0;
+  
+  // Update "Select All" checkbox state
+  const allCheckboxes = document.querySelectorAll('.pupil-checkbox');
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = count === allCheckboxes.length;
+    selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
+  }
+}
+
+// Make functions globally available
+window.toggleAllPupils = toggleAllPupils;
+window.updateBulkActionButtons = updateBulkActionButtons;
+
+/**
  * AUDIT LOG VIEWER
  */
 async function loadAuditLog() {
