@@ -505,8 +505,18 @@ function loadSectionData(sectionId) {
         loadSessionHistory();
         break;
       case 'fee-management':
-        loadFeeManagementSection();
-        break;
+  console.log('📍 Loading Fee Management section');
+  await loadFeeManagementSection();
+  
+  // CRITICAL: Double-check form visibility after load
+  setTimeout(() => {
+    const form = document.querySelector('#fee-management .admin-card');
+    if (form && form.style.display !== 'block') {
+      console.warn('⚠️ Form hidden after load, forcing visible');
+      form.style.display = 'block';
+    }
+  }, 100);
+  break;
       case 'record-payment':
         loadPaymentRecordingSection();
         break;
@@ -536,11 +546,13 @@ async function loadFeeManagementSection() {
   console.log('💰 Loading fee management section...');
   
   try {
-    // CRITICAL FIX: Ensure form is visible
-    const feeConfigForm = document.querySelector('#fee-management .admin-card[style*="display:block"]');
-    if (feeConfigForm) {
-      feeConfigForm.style.display = 'block';
-      console.log('✓ Fee configuration form is visible');
+    // CRITICAL FIX: Force form visibility FIRST
+    const feeForm = document.querySelector('#fee-management .admin-card');
+    if (feeForm) {
+      feeForm.style.display = 'block';
+      console.log('✓ Fee form forced visible');
+    } else {
+      console.error('❌ Fee form not found in DOM');
     }
     
     // Populate class selector
@@ -568,7 +580,7 @@ async function loadFeeManagementSection() {
 
 /**
  * Diagnostic: Check Fee Form Visibility
- * Run this in console: diagnoseFeeForm()
+ * Run this in console: window.diagnoseFeeForm()
  */
 window.diagnoseFeeForm = function() {
   console.log('🔍 FEE FORM DIAGNOSTIC');
