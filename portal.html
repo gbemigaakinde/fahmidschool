@@ -40,61 +40,122 @@
     
     <script>
         /**
-         * Portal Redirect Logic
-         * Determines user role and redirects to appropriate dashboard
+         * FIXED: Portal Redirect Logic
+         * Prevents premature redirects during Firebase initialization
          */
+        
+        const roleMessage = document.getElementById('role-message');
+        let authCheckComplete = false;
+        let redirectTimeout = null;
+        
+        // CRITICAL FIX: Wait for Firebase to fully initialize
         auth.onAuthStateChanged(async (user) => {
-            const roleMessage = document.getElementById('role-message');
+            // Clear any pending redirect
+            if (redirectTimeout) {
+                clearTimeout(redirectTimeout);
+                redirectTimeout = null;
+            }
             
             if (user) {
                 try {
                     roleMessage.textContent = 'Checking your access level...';
                     
-                    const doc = await db.collection('users').doc(user.uid).get();
+                    // FIXED: Add retry logic for network issues
+                    let attempts = 0;
+                    let userDoc = null;
                     
-                    if (doc.exists) {
-                        const role = doc.data().role;
+                    while (attempts < 3 && !userDoc) {
+                        try {
+                            const doc = await db.collection('users').doc(user.uid).get();
+                            if (doc.exists) {
+                                userDoc = doc;
+                                break;
+                            }
+                        } catch (error) {
+                            attempts++;
+                            console.warn(`Attempt ${attempts}/3 failed:`, error.code);
+                            
+                            // Wait before retry (exponential backoff)
+                            if (attempts < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+                            }
+                        }
+                    }
+                    
+                    if (userDoc && userDoc.exists) {
+                        const role = userDoc.data().role;
                         roleMessage.textContent = `Welcome! Redirecting to ${role} portal...`;
                         
-                        // Small delay for better UX
-setTimeout(() => {
-    if (role === 'admin') {
-        window.location.replace('admin.html');
-    } else if (role === 'teacher') {
-        window.location.replace('teacher.html');
-    } else if (role === 'pupil') {
-        window.location.replace('pupil.html');
-    } else {
-        throw new Error('Unknown role');
-    }
-}, 800);
+                        authCheckComplete = true;
+                        
+                        // FIXED: Only redirect after successful role verification
+                        redirectTimeout = setTimeout(() => {
+                            if (role === 'admin') {
+                                window.location.replace('admin.html');
+                            } else if (role === 'teacher') {
+                                window.location.replace('teacher.html');
+                            } else if (role === 'pupil') {
+                                window.location.replace('pupil.html');
+                            } else {
+                                throw new Error('Unknown role: ' + role);
+                            }
+                        }, 800);
                     } else {
-                        throw new Error('User profile not found');
+                        throw new Error('User profile not found after 3 attempts');
                     }
+                    
                 } catch (error) {
                     console.error('Portal redirect error:', error);
                     roleMessage.textContent = 'Error loading your profile';
+                    authCheckComplete = true;
                     
                     if (window.showToast) {
-                        window.showToast('Unable to load your profile. Please contact support.', 'danger');
+                        window.showToast(
+                            'Unable to load your profile. Please try logging in again.',
+                            'danger',
+                            5000
+                        );
                     }
                     
-                    setTimeout(() => {
-                        window.location.replace('index.html');
+                    // FIXED: Sign out before redirecting to prevent loop
+                    await auth.signOut();
+                    
+                    redirectTimeout = setTimeout(() => {
+                        window.location.replace('login.html');
                     }, 3000);
                 }
             } else {
-                roleMessage.textContent = 'Please log in to continue';
-                
-                if (window.showToast) {
-                    window.showToast('Please log in to access your portal', 'warning');
+                // FIXED: Only redirect if auth check is complete
+                // (prevents redirect during initial Firebase initialization)
+                if (authCheckComplete) {
+                    roleMessage.textContent = 'Please log in to continue';
+                    
+                    if (window.showToast) {
+                        window.showToast('Session expired. Please log in again.', 'warning');
+                    }
+                    
+                    redirectTimeout = setTimeout(() => {
+                        window.location.replace('login.html');
+                    }, 1500);
+                } else {
+                    // Firebase is still initializing, wait a bit longer
+                    roleMessage.textContent = 'Initializing...';
+                    console.log('⏳ Waiting for Firebase auth to initialize...');
+                    
+                    // Set a safety timeout (10 seconds max wait)
+                    redirectTimeout = setTimeout(() => {
+                        console.warn('⚠️ Auth initialization timeout');
+                        roleMessage.textContent = 'Please log in to continue';
+                        window.location.replace('login.html');
+                    }, 10000);
                 }
-                
-                setTimeout(() => {
-                    window.location.replace('login.html');
-                }, 1500);
             }
         });
+        
+        // FIXED: Mark auth as initialized after first check
+        setTimeout(() => {
+            authCheckComplete = true;
+        }, 2000);
     </script>
 
     <style>
