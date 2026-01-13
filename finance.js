@@ -215,7 +215,7 @@ async generateReceiptNumber() {
   /**
    * Get receipt data for printing
    */
-  async getReceiptData(receiptNo) {
+  async function getReceiptData(receiptNo) {
     try {
       const snapshot = await db.collection('payment_transactions')
         .where('receiptNo', '==', receiptNo)
