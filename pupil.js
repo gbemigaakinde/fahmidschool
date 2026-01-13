@@ -665,7 +665,7 @@ async function loadPaymentHistory(encodedSession, term) {
     
     try {
         // Query transactions directly from Firestore
-        const transactionsSnap = await db.collection('transactions')
+        const transactionsSnap = await db.collection('payment_transactions')
             .where('pupilId', '==', currentPupilId)
             .where('session', '==', encodedSession.replace(/-/g, '/')) // Convert back to original format for query
             .where('term', '==', term)
