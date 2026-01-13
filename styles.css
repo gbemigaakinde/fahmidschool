@@ -692,7 +692,7 @@ section .container > p.lead {
 }
 
 /* ============================================
-   STAT CARDS - WHITE BACKGROUND, COLORED BORDERS & NUMBERS
+   STAT CARDS - WHITE BACKGROUND
    ============================================ */
 .stats-grid {
     display: grid;
@@ -702,7 +702,7 @@ section .container > p.lead {
 }
 
 .stat-card {
-    background: white; /* Keep all cards white */
+    background: white; /* All cards white */
     padding: 2rem;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
@@ -719,8 +719,6 @@ section .container > p.lead {
     left: 0;
     width: 4px;
     height: 100%;
-    /* Keep original gradient for each card variant */
-    background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
 }
 
 .stat-card:hover {
@@ -743,15 +741,12 @@ section .container > p.lead {
     font-weight: 700;
     line-height: 1;
     margin: 0;
-    /* Keep gradient for numbers */
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-/* Variants only affect border and numbers now; card background stays white */
-
+/* Variants – only gradients for borders and numbers remain */
 .stat-card-primary::before {
     background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
 }
