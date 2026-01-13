@@ -34,19 +34,23 @@ window.firebase = firebase;
 
 // ENABLE OFFLINE PERSISTENCE
 try {
-  window.db.enablePersistence({ synchronizeTabs: true })
-    .then(() => {
-      console.log('✓ Offline persistence enabled');
-    })
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('⚠️ Persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('⚠️ Persistence not supported by browser');
-      } else {
-        console.error('❌ Persistence error:', err);
-      }
-    });
+  if (firebase.firestore().enablePersistence) {
+    window.db.enablePersistence({ synchronizeTabs: true })
+      .then(() => {
+        console.log('✓ Offline persistence enabled');
+      })
+      .catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.warn('⚠️ Persistence failed: Multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          console.warn('⚠️ Persistence not supported by browser');
+        } else {
+          console.error('❌ Persistence error:', err);
+        }
+      });
+  } else {
+    console.warn('⚠️ Offline persistence not available in this Firebase version');
+  }
 } catch (error) {
   console.error('❌ Failed to enable persistence:', error);
 }
