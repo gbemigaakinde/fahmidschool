@@ -692,7 +692,7 @@ section .container > p.lead {
 }
 
 /* ============================================
-   STAT CARDS - WHITE BACKGROUND
+   STAT CARDS - ENHANCED DESIGN
    ============================================ */
 .stats-grid {
     display: grid;
@@ -702,7 +702,7 @@ section .container > p.lead {
 }
 
 .stat-card {
-    background: white; /* All cards white */
+    background: white;
     padding: 2rem;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
@@ -719,6 +719,7 @@ section .container > p.lead {
     left: 0;
     width: 4px;
     height: 100%;
+    background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
 }
 
 .stat-card:hover {
@@ -741,18 +742,21 @@ section .container > p.lead {
     font-weight: 700;
     line-height: 1;
     margin: 0;
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-/* Variants – only gradients for borders and numbers remain */
 .stat-card-primary::before {
     background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
 }
 
 .stat-card-primary .stat-number {
     background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-secondary::before {
@@ -761,6 +765,9 @@ section .container > p.lead {
 
 .stat-card-secondary .stat-number {
     background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-success::before {
@@ -769,6 +776,9 @@ section .container > p.lead {
 
 .stat-card-success .stat-number {
     background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-warning::before {
@@ -777,6 +787,9 @@ section .container > p.lead {
 
 .stat-card-warning .stat-number {
     background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* ============================================
