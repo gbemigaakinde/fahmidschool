@@ -1151,15 +1151,652 @@ function updateFinancialDisplays(
   if (termEl) termEl.textContent = term || '—';
 }
 
-// Make functions globally available
+/**
+ * Save fee structure configuration
+ */
+async function saveFeeStructure() {
+  const classSelect = document.getElementById('fee-config-class');
+  const classId = classSelect?.value;
+  const className = classSelect?.selectedOptions[0]?.dataset.className;
+  
+  if (!classId) {
+    window.showToast?.('Please select a class', 'warning');
+    return;
+  }
+  
+  // Get fee breakdown
+  const tuition = parseFloat(document.getElementById('fee-tuition')?.value) || 0;
+  const examFee = parseFloat(document.getElementById('fee-exam')?.value) || 0;
+  const uniform = parseFloat(document.getElementById('fee-uniform')?.value) || 0;
+  const books = parseFloat(document.getElementById('fee-books')?.value) || 0;
+  const pta = parseFloat(document.getElementById('fee-pta')?.value) || 0;
+  const other = parseFloat(document.getElementById('fee-other')?.value) || 0;
+  
+  const feeBreakdown = {
+    tuition: tuition,
+    exam_fee: examFee,
+    uniform: uniform,
+    books: books,
+    pta: pta,
+    other: other
+  };
+  
+  // Validate at least one fee is entered
+  const total = Object.values(feeBreakdown).reduce((sum, val) => sum + val, 0);
+  
+  if (total <= 0) {
+    window.showToast?.('Please enter at least one fee amount', 'warning');
+    return;
+  }
+  
+  const saveBtn = document.getElementById('save-fee-structure-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Save fee structure directly to Firestore
+    await db.collection('fee_structures').add({
+      classId,
+      className,
+      session,
+      term,
+      fees: feeBreakdown,
+      total: total,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: auth.currentUser.uid
+    });
+    
+    window.showToast?.(
+      `✓ Fee structure saved for ${className}\nTotal: ₦${total.toLocaleString()}`,
+      'success',
+      5000
+    );
+    
+    // Clear form
+    document.getElementById('fee-config-class').value = '';
+    ['fee-tuition', 'fee-exam', 'fee-uniform', 'fee-books', 'fee-pta', 'fee-other'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    
+    // Reload fee structures
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error saving fee structure:', error);
+    window.showToast?.('Failed to save fee structure: ' + error.message, 'danger');
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '💾 Save Fee Structure';
+    }
+  }
+}
+
+/**
+ * Delete fee structure
+ */
+async function deleteFeeStructure(docId, className) {
+  if (!confirm(`Delete fee structure for ${className}?\n\nThis will remove the fee configuration but will NOT delete existing payment records.`)) {
+    return;
+  }
+  
+  try {
+    await db.collection('fee_structures').doc(docId).delete();
+    
+    window.showToast?.(`✓ Fee structure for ${className} deleted`, 'success');
+    
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error deleting fee structure:', error);
+    window.handleError(error, 'Failed to delete fee structure');
+  }
+}
+
+/**
+ * Load pupils for payment recording
+ */
+async function loadPupilsForPayment() {
+  const classId = document.getElementById('payment-class-filter')?.value;
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  
+  if (!pupilSelect) return;
+  
+  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
+  
+  if (!classId) {
+    document.getElementById('payment-form-container').style.display = 'none';
+    return;
+  }
+  
+  try {
+    const snapshot = await db.collection('pupils')
+      .where('class.id', '==', classId)
+      .orderBy('name')
+      .get();
+    
+    if (snapshot.empty) {
+      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
+      document.getElementById('payment-form-container').style.display = 'none';
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = data.name;
+      opt.dataset.pupilName = data.name;
+      opt.dataset.className = data.class?.name || 'Unknown';
+      pupilSelect.appendChild(opt);
+    });
+    
+  } catch (error) {
+    console.error('Error loading pupils:', error);
+    window.showToast?.('Failed to load pupils', 'danger');
+  }
+}
+
+/**
+ * Load pupil payment status
+ */
+async function loadPupilPaymentStatus() {
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  const pupilId = pupilSelect?.value;
+  
+  if (!pupilId) {
+    document.getElementById('payment-form-container').style.display = 'none';
+    return;
+  }
+  
+  const classId = document.getElementById('payment-class-filter')?.value;
+  const pupilName = pupilSelect.selectedOptions[0]?.dataset.pupilName;
+  const className = pupilSelect.selectedOptions[0]?.dataset.className;  // ← KEEP THIS ONE
+  
+  const formContainer = document.getElementById('payment-form-container');
+  const statusContainer = document.getElementById('payment-status-display');
+  
+  formContainer.style.display = 'block';
+  statusContainer.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Get fee structure
+    const feeStructure = await window.finance.getFeeStructure(classId, session, term);
+    
+    if (!feeStructure) {
+      statusContainer.innerHTML = `
+        <div class="alert alert-warning">
+          <strong>⚠️ Fee Structure Not Configured</strong>
+          <p>No fee structure has been set for ${className} in ${term}. Please configure it in the Fee Management section first.</p>
+        </div>
+      `;
+      document.getElementById('payment-input-section').style.display = 'none';
+      return;
+    }
+    
+    // Get payment summary
+    const paymentSummary = await window.finance.getPupilPaymentSummary(pupilId, session, term);
+    
+    let amountDue = feeStructure.total;
+    let totalPaid = 0;
+    let balance = amountDue;
+    let status = 'owing';
+    
+    if (paymentSummary) {
+      totalPaid = paymentSummary.totalPaid || 0;
+      balance = paymentSummary.balance || 0;
+      status = paymentSummary.status || 'owing';
+    }
+    
+    const statusBadge = 
+      status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
+      status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
+      '<span class="status-badge" style="background:#f44336;">Owing</span>';
+    
+    statusContainer.innerHTML = `
+      <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+          <div>
+            <h3 style="margin:0;">${pupilName}</h3>
+            <p style="margin:var(--space-xs) 0 0; color:var(--color-gray-600);">${className} • ${session} • ${term}</p>
+          </div>
+          ${statusBadge}
+        </div>
+        
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Amount Due</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
+          </div>
+          
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
+          </div>
+          
+          <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Balance</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Show payment input section
+    document.getElementById('payment-input-section').style.display = 'block';
+    
+    // Set max amount to balance
+    const amountInput = document.getElementById('payment-amount');
+    if (amountInput) {
+      amountInput.max = balance;
+      amountInput.value = '';
+    }
+    
+    // Load payment history
+    await loadPaymentHistory(pupilId, session, term);
+    
+  } catch (error) {
+    console.error('Error loading payment status:', error);
+    statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
+  }
+}
+
+// Record a new payment
+async function recordPayment() {
+  const pupilSelect = document.getElementById('payment-pupil-select');
+  const pupilId = pupilSelect?.value;
+  const pupilName = pupilSelect?.selectedOptions[0]?.dataset.pupilName;
+  const className = pupilSelect?.selectedOptions[0]?.dataset.className;
+  const classId = document.getElementById('payment-class-filter')?.value;
+
+  const amountInput = document.getElementById('payment-amount');
+  const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
+
+  const paymentMethod = document.getElementById('payment-method')?.value;
+  const notes = document.getElementById('payment-notes')?.value.trim() || '';
+
+  // Validation
+  if (!pupilId || !classId) {
+    window.showToast?.('Please select a pupil and class', 'warning');
+    return;
+  }
+
+  if (isNaN(amountPaid) || amountPaid <= 0) {
+    window.showToast?.('Please enter a valid payment amount', 'warning');
+    return;
+  }
+
+  const recordBtn = document.getElementById('record-payment-btn');
+  if (recordBtn) {
+    recordBtn.disabled = true;
+    recordBtn.innerHTML = '<span class="btn-loading">Recording payment...</span>';
+  }
+
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Generate receipt number
+    const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    
+    // Get or create payment summary document
+    const paymentDocId = `${pupilId}_${session}_${term}`;
+    const paymentRef = db.collection('payments').doc(paymentDocId);
+    const paymentDoc = await paymentRef.get();
+    
+    let currentPaid = 0;
+    let amountDue = 0;
+    
+    if (paymentDoc.exists) {
+      const data = paymentDoc.data();
+      currentPaid = data.totalPaid || 0;
+      amountDue = data.amountDue || 0;
+    } else {
+      // Get fee structure to know amount due
+      const feeSnap = await db.collection('fee_structures')
+        .where('classId', '==', classId)
+        .where('session', '==', session)
+        .where('term', '==', term)
+        .limit(1)
+        .get();
+      
+      if (!feeSnap.empty) {
+        amountDue = feeSnap.docs[0].data().total || 0;
+      }
+    }
+    
+    const newTotalPaid = currentPaid + amountPaid;
+    const newBalance = Math.max(0, amountDue - newTotalPaid);
+    const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
+    
+    // Use batch for atomic updates
+    const batch = db.batch();
+    
+    // Update/create payment summary
+    batch.set(paymentRef, {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountDue,
+      totalPaid: newTotalPaid,
+      balance: newBalance,
+      status: newStatus,
+      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    // Add transaction record
+    const transactionRef = db.collection('transactions').doc();
+    batch.set(transactionRef, {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountPaid,
+      paymentMethod: paymentMethod || 'Cash',
+      receiptNo,
+      notes,
+      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      recordedBy: auth.currentUser.uid,
+      recordedByEmail: auth.currentUser.email
+    });
+    
+    await batch.commit();
+
+    window.showToast?.(
+      `✓ Payment Recorded Successfully!\n\n` +
+      `Receipt #${receiptNo}\n` +
+      `Amount: ₦${amountPaid.toLocaleString()}\n` +
+      `New Balance: ₦${newBalance.toLocaleString()}`,
+      'success',
+      8000
+    );
+
+    // Clear form
+    if (amountInput) amountInput.value = '';
+    const notesInput = document.getElementById('payment-notes');
+    if (notesInput) notesInput.value = '';
+
+    // Refresh data
+    await loadPupilPaymentStatus();
+
+    // Ask to print receipt
+    if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
+      printReceipt(receiptNo);
+    }
+
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    window.showToast?.('Failed to record payment: ' + error.message, 'danger');
+  } finally {
+    if (recordBtn) {
+      recordBtn.disabled = false;
+      recordBtn.innerHTML = '💰 Record Payment';
+    }
+  }
+}
+
+// Load payment history for selected pupil
+async function loadPaymentHistory(pupilId, session, term) {
+    const container = document.getElementById('payment-history-list');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
+
+    try {
+        const transactions = await window.finance.getPupilPaymentHistory(pupilId, session, term);
+
+        if (!transactions?.length) {
+            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
+            return;
+        }
+
+        container.innerHTML = transactions.map(txn => {
+            const date = txn.paymentDate 
+                ? new Date(txn.paymentDate).toLocaleDateString('en-GB')
+                : 'N/A';
+
+            return `
+                <div class="payment-item">
+                    <div>
+                        <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
+                        <div class="payment-meta">
+                            ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo}
+                        </div>
+                    </div>
+                    <button class="btn-small btn-secondary" 
+                            onclick="printReceipt('${txn.receiptNo}')">
+                        Print Receipt
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading payment history:', error);
+        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
+    }
+}
+
+// Open receipt in new window for printing
+function printReceipt(receiptNo) {
+    const receiptWindow = window.open(
+        `receipt.html?receipt=${receiptNo}`,
+        '_blank',
+        'width=800,height=600'
+    );
+
+    if (!receiptWindow) {
+        window.showToast?.('Please allow popups to print receipts', 'warning');
+    }
+}
+
+/**
+ * Export financial report to CSV
+ */
+async function exportFinancialReport(format) {
+    if (format !== 'csv' && format !== 'pdf') {
+        window.showToast?.('Invalid export format', 'warning');
+        return;
+    }
+    
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        const term = settings.term;
+        
+        // Get all payment data
+        const paymentsSnap = await db.collection('payments')
+            .where('session', '==', session)
+            .where('term', '==', term)
+            .get();
+        
+        if (paymentsSnap.empty) {
+            window.showToast?.('No payment data to export', 'warning');
+            return;
+        }
+        
+        if (format === 'csv') {
+            await exportFinancialCSV(paymentsSnap, session, term);
+        } else if (format === 'pdf') {
+            await exportFinancialPDF(paymentsSnap, session, term);
+        }
+        
+    } catch (error) {
+        console.error('Error exporting financial report:', error);
+        window.handleError(error, 'Failed to export report');
+    }
+}
+
+/**
+ * Export to CSV format
+ */
+async function exportFinancialCSV(paymentsSnap, session, term) {
+    const payments = [];
+    
+    paymentsSnap.forEach(doc => {
+        const data = doc.data();
+        payments.push({
+            pupilName: data.pupilName || '',
+            className: data.className || '',
+            amountDue: data.amountDue || 0,
+            totalPaid: data.totalPaid || 0,
+            balance: data.balance || 0,
+            status: data.status || '',
+            lastPaymentDate: data.lastPaymentDate 
+                ? data.lastPaymentDate.toDate().toLocaleDateString('en-GB')
+                : 'N/A'
+        });
+    });
+    
+    // Create CSV content
+    const headers = ['Pupil Name', 'Class', 'Amount Due', 'Total Paid', 'Balance', 'Status', 'Last Payment Date'];
+    const csvRows = [headers.join(',')];
+    
+    payments.forEach(p => {
+        const row = [
+            `"${p.pupilName}"`,
+            `"${p.className}"`,
+            p.amountDue,
+            p.totalPaid,
+            p.balance,
+            `"${p.status}"`,
+            `"${p.lastPaymentDate}"`
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Financial_Report_${session}_${term}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    window.showToast?.('✓ CSV report downloaded', 'success');
+}
+
+/**
+ * Export to PDF format
+ */
+async function exportFinancialPDF(paymentsSnap, session, term) {
+    // Check if jsPDF is available
+    if (typeof window.jspdf === 'undefined') {
+        window.showToast?.('PDF library not loaded. Please refresh the page.', 'danger');
+        return;
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text('FAHMID NURSERY & PRIMARY SCHOOL', 105, 15, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.text('Financial Report', 105, 25, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.text(`Session: ${session} | Term: ${term}`, 105, 32, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 38, { align: 'center' });
+    
+    // Table data
+    const tableData = [];
+    let totalExpected = 0;
+    let totalCollected = 0;
+    let totalOutstanding = 0;
+    
+    paymentsSnap.forEach(doc => {
+        const data = doc.data();
+        totalExpected += data.amountDue || 0;
+        totalCollected += data.totalPaid || 0;
+        totalOutstanding += data.balance || 0;
+        
+        tableData.push([
+            data.pupilName || '',
+            data.className || '',
+            `₦${(data.amountDue || 0).toLocaleString()}`,
+            `₦${(data.totalPaid || 0).toLocaleString()}`,
+            `₦${(data.balance || 0).toLocaleString()}`,
+            data.status || ''
+        ]);
+    });
+    
+    // Add table
+    doc.autoTable({
+        startY: 45,
+        head: [['Pupil Name', 'Class', 'Amount Due', 'Paid', 'Balance', 'Status']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [0, 178, 255] }
+    });
+    
+    // Summary section
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFontSize(12);
+    doc.text('Summary', 14, finalY);
+    
+    doc.setFontSize(10);
+    doc.text(`Total Expected: ₦${totalExpected.toLocaleString()}`, 14, finalY + 8);
+    doc.text(`Total Collected: ₦${totalCollected.toLocaleString()}`, 14, finalY + 14);
+    doc.text(`Total Outstanding: ₦${totalOutstanding.toLocaleString()}`, 14, finalY + 20);
+    
+    const collectionRate = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
+    doc.text(`Collection Rate: ${collectionRate}%`, 14, finalY + 26);
+    
+    // Save PDF
+    doc.save(`Financial_Report_${session}_${term}_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    window.showToast?.('✓ PDF report downloaded', 'success');
+}
+
+// Export and reporting
+window.exportFinancialReport = exportFinancialReport;
+window.printReceipt = printReceipt;
+
+// Payment actions and records
+window.recordPayment = recordPayment;
+window.loadPaymentHistory = loadPaymentHistory;
+window.loadPupilPaymentStatus = loadPupilPaymentStatus;
+
+// Fee management
+window.saveFeeStructure = saveFeeStructure;
+window.deleteFeeStructure = deleteFeeStructure;
+
+// Section and data loaders
 window.loadFeeManagementSection = loadFeeManagementSection;
 window.loadPaymentRecordingSection = loadPaymentRecordingSection;
 window.loadPupilsForPayment = loadPupilsForPayment;
-window.loadPupilPaymentStatus = loadPupilPaymentStatus;
-window.loadPaymentHistory = loadPaymentHistory;
 window.loadOutstandingFeesReport = loadOutstandingFeesReport;
 window.loadFinancialReports = loadFinancialReports;
 
+// Initialization logs
+console.log('✓ Financial management functions loaded');
 console.log('✓ Finance section loaders initialized');
 
 // ============================================
@@ -6448,652 +7085,6 @@ window.addEventListener('load', async () => {
 });
 
 console.log('✓ Session validation loaded');
-
-/* ========================================
-   FINANCIAL MANAGEMENT SECTION
-======================================== */
-
-/**
- * Save fee structure configuration
- */
-async function saveFeeStructure() {
-  const classSelect = document.getElementById('fee-config-class');
-  const classId = classSelect?.value;
-  const className = classSelect?.selectedOptions[0]?.dataset.className;
-  
-  if (!classId) {
-    window.showToast?.('Please select a class', 'warning');
-    return;
-  }
-  
-  // Get fee breakdown
-  const tuition = parseFloat(document.getElementById('fee-tuition')?.value) || 0;
-  const examFee = parseFloat(document.getElementById('fee-exam')?.value) || 0;
-  const uniform = parseFloat(document.getElementById('fee-uniform')?.value) || 0;
-  const books = parseFloat(document.getElementById('fee-books')?.value) || 0;
-  const pta = parseFloat(document.getElementById('fee-pta')?.value) || 0;
-  const other = parseFloat(document.getElementById('fee-other')?.value) || 0;
-  
-  const feeBreakdown = {
-    tuition: tuition,
-    exam_fee: examFee,
-    uniform: uniform,
-    books: books,
-    pta: pta,
-    other: other
-  };
-  
-  // Validate at least one fee is entered
-  const total = Object.values(feeBreakdown).reduce((sum, val) => sum + val, 0);
-  
-  if (total <= 0) {
-    window.showToast?.('Please enter at least one fee amount', 'warning');
-    return;
-  }
-  
-  const saveBtn = document.getElementById('save-fee-structure-btn');
-  if (saveBtn) {
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
-  }
-  
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    
-    // Save fee structure directly to Firestore
-    await db.collection('fee_structures').add({
-      classId,
-      className,
-      session,
-      term,
-      fees: feeBreakdown,
-      total: total,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: auth.currentUser.uid
-    });
-    
-    window.showToast?.(
-      `✓ Fee structure saved for ${className}\nTotal: ₦${total.toLocaleString()}`,
-      'success',
-      5000
-    );
-    
-    // Clear form
-    document.getElementById('fee-config-class').value = '';
-    ['fee-tuition', 'fee-exam', 'fee-uniform', 'fee-books', 'fee-pta', 'fee-other'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    
-    // Reload fee structures
-    await loadFeeStructures();
-    
-  } catch (error) {
-    console.error('Error saving fee structure:', error);
-    window.showToast?.('Failed to save fee structure: ' + error.message, 'danger');
-  } finally {
-    if (saveBtn) {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '💾 Save Fee Structure';
-    }
-  }
-}
-
-/**
- * Delete fee structure
- */
-async function deleteFeeStructure(docId, className) {
-  if (!confirm(`Delete fee structure for ${className}?\n\nThis will remove the fee configuration but will NOT delete existing payment records.`)) {
-    return;
-  }
-  
-  try {
-    await db.collection('fee_structures').doc(docId).delete();
-    
-    window.showToast?.(`✓ Fee structure for ${className} deleted`, 'success');
-    
-    await loadFeeStructures();
-    
-  } catch (error) {
-    console.error('Error deleting fee structure:', error);
-    window.handleError(error, 'Failed to delete fee structure');
-  }
-}
-
-/**
- * Load pupils for payment recording
- */
-async function loadPupilsForPayment() {
-  const classId = document.getElementById('payment-class-filter')?.value;
-  const pupilSelect = document.getElementById('payment-pupil-select');
-  
-  if (!pupilSelect) return;
-  
-  pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  
-  if (!classId) {
-    document.getElementById('payment-form-container').style.display = 'none';
-    return;
-  }
-  
-  try {
-    const snapshot = await db.collection('pupils')
-      .where('class.id', '==', classId)
-      .orderBy('name')
-      .get();
-    
-    if (snapshot.empty) {
-      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
-      document.getElementById('payment-form-container').style.display = 'none';
-      return;
-    }
-    
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const opt = document.createElement('option');
-      opt.value = doc.id;
-      opt.textContent = data.name;
-      opt.dataset.pupilName = data.name;
-      opt.dataset.className = data.class?.name || 'Unknown';
-      pupilSelect.appendChild(opt);
-    });
-    
-  } catch (error) {
-    console.error('Error loading pupils:', error);
-    window.showToast?.('Failed to load pupils', 'danger');
-  }
-}
-
-/**
- * Load pupil payment status
- */
-async function loadPupilPaymentStatus() {
-  const pupilSelect = document.getElementById('payment-pupil-select');
-  const pupilId = pupilSelect?.value;
-  
-  if (!pupilId) {
-    document.getElementById('payment-form-container').style.display = 'none';
-    return;
-  }
-  
-  const classId = document.getElementById('payment-class-filter')?.value;
-  const pupilName = pupilSelect.selectedOptions[0]?.dataset.pupilName;
-  const className = pupilSelect.selectedOptions[0]?.dataset.className;  // ← KEEP THIS ONE
-  
-  const formContainer = document.getElementById('payment-form-container');
-  const statusContainer = document.getElementById('payment-status-display');
-  
-  formContainer.style.display = 'block';
-  statusContainer.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
-  
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    
-    // Get fee structure
-    const feeStructure = await window.finance.getFeeStructure(classId, session, term);
-    
-    if (!feeStructure) {
-      statusContainer.innerHTML = `
-        <div class="alert alert-warning">
-          <strong>⚠️ Fee Structure Not Configured</strong>
-          <p>No fee structure has been set for ${className} in ${term}. Please configure it in the Fee Management section first.</p>
-        </div>
-      `;
-      document.getElementById('payment-input-section').style.display = 'none';
-      return;
-    }
-    
-    // Get payment summary
-    const paymentSummary = await window.finance.getPupilPaymentSummary(pupilId, session, term);
-    
-    let amountDue = feeStructure.total;
-    let totalPaid = 0;
-    let balance = amountDue;
-    let status = 'owing';
-    
-    if (paymentSummary) {
-      totalPaid = paymentSummary.totalPaid || 0;
-      balance = paymentSummary.balance || 0;
-      status = paymentSummary.status || 'owing';
-    }
-    
-    const statusBadge = 
-      status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
-      status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
-      '<span class="status-badge" style="background:#f44336;">Owing</span>';
-    
-    statusContainer.innerHTML = `
-      <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
-          <div>
-            <h3 style="margin:0;">${pupilName}</h3>
-            <p style="margin:var(--space-xs) 0 0; color:var(--color-gray-600);">${className} • ${session} • ${term}</p>
-          </div>
-          ${statusBadge}
-        </div>
-        
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
-          <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Amount Due</div>
-            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
-          </div>
-          
-          <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
-            <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
-          </div>
-          
-          <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Balance</div>
-            <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Show payment input section
-    document.getElementById('payment-input-section').style.display = 'block';
-    
-    // Set max amount to balance
-    const amountInput = document.getElementById('payment-amount');
-    if (amountInput) {
-      amountInput.max = balance;
-      amountInput.value = '';
-    }
-    
-    // Load payment history
-    await loadPaymentHistory(pupilId, session, term);
-    
-  } catch (error) {
-    console.error('Error loading payment status:', error);
-    statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
-  }
-}
-
-// Record a new payment
-async function recordPayment() {
-  const pupilSelect = document.getElementById('payment-pupil-select');
-  const pupilId = pupilSelect?.value;
-  const pupilName = pupilSelect?.selectedOptions[0]?.dataset.pupilName;
-  const className = pupilSelect?.selectedOptions[0]?.dataset.className;
-  const classId = document.getElementById('payment-class-filter')?.value;
-
-  const amountInput = document.getElementById('payment-amount');
-  const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
-
-  const paymentMethod = document.getElementById('payment-method')?.value;
-  const notes = document.getElementById('payment-notes')?.value.trim() || '';
-
-  // Validation
-  if (!pupilId || !classId) {
-    window.showToast?.('Please select a pupil and class', 'warning');
-    return;
-  }
-
-  if (isNaN(amountPaid) || amountPaid <= 0) {
-    window.showToast?.('Please enter a valid payment amount', 'warning');
-    return;
-  }
-
-  const recordBtn = document.getElementById('record-payment-btn');
-  if (recordBtn) {
-    recordBtn.disabled = true;
-    recordBtn.innerHTML = '<span class="btn-loading">Recording payment...</span>';
-  }
-
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    
-    // Generate receipt number
-    const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-    
-    // Get or create payment summary document
-    const paymentDocId = `${pupilId}_${session}_${term}`;
-    const paymentRef = db.collection('payments').doc(paymentDocId);
-    const paymentDoc = await paymentRef.get();
-    
-    let currentPaid = 0;
-    let amountDue = 0;
-    
-    if (paymentDoc.exists) {
-      const data = paymentDoc.data();
-      currentPaid = data.totalPaid || 0;
-      amountDue = data.amountDue || 0;
-    } else {
-      // Get fee structure to know amount due
-      const feeSnap = await db.collection('fee_structures')
-        .where('classId', '==', classId)
-        .where('session', '==', session)
-        .where('term', '==', term)
-        .limit(1)
-        .get();
-      
-      if (!feeSnap.empty) {
-        amountDue = feeSnap.docs[0].data().total || 0;
-      }
-    }
-    
-    const newTotalPaid = currentPaid + amountPaid;
-    const newBalance = Math.max(0, amountDue - newTotalPaid);
-    const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
-    
-    // Use batch for atomic updates
-    const batch = db.batch();
-    
-    // Update/create payment summary
-    batch.set(paymentRef, {
-      pupilId,
-      pupilName,
-      classId,
-      className,
-      session,
-      term,
-      amountDue,
-      totalPaid: newTotalPaid,
-      balance: newBalance,
-      status: newStatus,
-      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    
-    // Add transaction record
-    const transactionRef = db.collection('transactions').doc();
-    batch.set(transactionRef, {
-      pupilId,
-      pupilName,
-      classId,
-      className,
-      session,
-      term,
-      amountPaid,
-      paymentMethod: paymentMethod || 'Cash',
-      receiptNo,
-      notes,
-      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-      recordedBy: auth.currentUser.uid,
-      recordedByEmail: auth.currentUser.email
-    });
-    
-    await batch.commit();
-
-    window.showToast?.(
-      `✓ Payment Recorded Successfully!\n\n` +
-      `Receipt #${receiptNo}\n` +
-      `Amount: ₦${amountPaid.toLocaleString()}\n` +
-      `New Balance: ₦${newBalance.toLocaleString()}`,
-      'success',
-      8000
-    );
-
-    // Clear form
-    if (amountInput) amountInput.value = '';
-    const notesInput = document.getElementById('payment-notes');
-    if (notesInput) notesInput.value = '';
-
-    // Refresh data
-    await loadPupilPaymentStatus();
-
-    // Ask to print receipt
-    if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
-      printReceipt(receiptNo);
-    }
-
-  } catch (error) {
-    console.error('Error recording payment:', error);
-    window.showToast?.('Failed to record payment: ' + error.message, 'danger');
-  } finally {
-    if (recordBtn) {
-      recordBtn.disabled = false;
-      recordBtn.innerHTML = '💰 Record Payment';
-    }
-  }
-}
-
-// Load payment history for selected pupil
-async function loadPaymentHistory(pupilId, session, term) {
-    const container = document.getElementById('payment-history-list');
-    if (!container) return;
-
-    container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
-
-    try {
-        const transactions = await window.finance.getPupilPaymentHistory(pupilId, session, term);
-
-        if (!transactions?.length) {
-            container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
-            return;
-        }
-
-        container.innerHTML = transactions.map(txn => {
-            const date = txn.paymentDate 
-                ? new Date(txn.paymentDate).toLocaleDateString('en-GB')
-                : 'N/A';
-
-            return `
-                <div class="payment-item">
-                    <div>
-                        <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
-                        <div class="payment-meta">
-                            ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo}
-                        </div>
-                    </div>
-                    <button class="btn-small btn-secondary" 
-                            onclick="printReceipt('${txn.receiptNo}')">
-                        Print Receipt
-                    </button>
-                </div>
-            `;
-        }).join('');
-
-    } catch (error) {
-        console.error('Error loading payment history:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
-    }
-}
-
-// Open receipt in new window for printing
-function printReceipt(receiptNo) {
-    const receiptWindow = window.open(
-        `receipt.html?receipt=${receiptNo}`,
-        '_blank',
-        'width=800,height=600'
-    );
-
-    if (!receiptWindow) {
-        window.showToast?.('Please allow popups to print receipts', 'warning');
-    }
-}
-
-/**
- * Export financial report to CSV
- */
-async function exportFinancialReport(format) {
-    if (format !== 'csv' && format !== 'pdf') {
-        window.showToast?.('Invalid export format', 'warning');
-        return;
-    }
-    
-    try {
-        const settings = await window.getCurrentSettings();
-        const session = settings.session;
-        const term = settings.term;
-        
-        // Get all payment data
-        const paymentsSnap = await db.collection('payments')
-            .where('session', '==', session)
-            .where('term', '==', term)
-            .get();
-        
-        if (paymentsSnap.empty) {
-            window.showToast?.('No payment data to export', 'warning');
-            return;
-        }
-        
-        if (format === 'csv') {
-            await exportFinancialCSV(paymentsSnap, session, term);
-        } else if (format === 'pdf') {
-            await exportFinancialPDF(paymentsSnap, session, term);
-        }
-        
-    } catch (error) {
-        console.error('Error exporting financial report:', error);
-        window.handleError(error, 'Failed to export report');
-    }
-}
-
-/**
- * Export to CSV format
- */
-async function exportFinancialCSV(paymentsSnap, session, term) {
-    const payments = [];
-    
-    paymentsSnap.forEach(doc => {
-        const data = doc.data();
-        payments.push({
-            pupilName: data.pupilName || '',
-            className: data.className || '',
-            amountDue: data.amountDue || 0,
-            totalPaid: data.totalPaid || 0,
-            balance: data.balance || 0,
-            status: data.status || '',
-            lastPaymentDate: data.lastPaymentDate 
-                ? data.lastPaymentDate.toDate().toLocaleDateString('en-GB')
-                : 'N/A'
-        });
-    });
-    
-    // Create CSV content
-    const headers = ['Pupil Name', 'Class', 'Amount Due', 'Total Paid', 'Balance', 'Status', 'Last Payment Date'];
-    const csvRows = [headers.join(',')];
-    
-    payments.forEach(p => {
-        const row = [
-            `"${p.pupilName}"`,
-            `"${p.className}"`,
-            p.amountDue,
-            p.totalPaid,
-            p.balance,
-            `"${p.status}"`,
-            `"${p.lastPaymentDate}"`
-        ];
-        csvRows.push(row.join(','));
-    });
-    
-    const csvContent = csvRows.join('\n');
-    
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Financial_Report_${session}_${term}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    window.showToast?.('✓ CSV report downloaded', 'success');
-}
-
-/**
- * Export to PDF format
- */
-async function exportFinancialPDF(paymentsSnap, session, term) {
-    // Check if jsPDF is available
-    if (typeof window.jspdf === 'undefined') {
-        window.showToast?.('PDF library not loaded. Please refresh the page.', 'danger');
-        return;
-    }
-    
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(18);
-    doc.text('FAHMID NURSERY & PRIMARY SCHOOL', 105, 15, { align: 'center' });
-    
-    doc.setFontSize(14);
-    doc.text('Financial Report', 105, 25, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.text(`Session: ${session} | Term: ${term}`, 105, 32, { align: 'center' });
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 38, { align: 'center' });
-    
-    // Table data
-    const tableData = [];
-    let totalExpected = 0;
-    let totalCollected = 0;
-    let totalOutstanding = 0;
-    
-    paymentsSnap.forEach(doc => {
-        const data = doc.data();
-        totalExpected += data.amountDue || 0;
-        totalCollected += data.totalPaid || 0;
-        totalOutstanding += data.balance || 0;
-        
-        tableData.push([
-            data.pupilName || '',
-            data.className || '',
-            `₦${(data.amountDue || 0).toLocaleString()}`,
-            `₦${(data.totalPaid || 0).toLocaleString()}`,
-            `₦${(data.balance || 0).toLocaleString()}`,
-            data.status || ''
-        ]);
-    });
-    
-    // Add table
-    doc.autoTable({
-        startY: 45,
-        head: [['Pupil Name', 'Class', 'Amount Due', 'Paid', 'Balance', 'Status']],
-        body: tableData,
-        theme: 'grid',
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 178, 255] }
-    });
-    
-    // Summary section
-    const finalY = doc.lastAutoTable.finalY + 10;
-    
-    doc.setFontSize(12);
-    doc.text('Summary', 14, finalY);
-    
-    doc.setFontSize(10);
-    doc.text(`Total Expected: ₦${totalExpected.toLocaleString()}`, 14, finalY + 8);
-    doc.text(`Total Collected: ₦${totalCollected.toLocaleString()}`, 14, finalY + 14);
-    doc.text(`Total Outstanding: ₦${totalOutstanding.toLocaleString()}`, 14, finalY + 20);
-    
-    const collectionRate = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
-    doc.text(`Collection Rate: ${collectionRate}%`, 14, finalY + 26);
-    
-    // Save PDF
-    doc.save(`Financial_Report_${session}_${term}_${new Date().toISOString().split('T')[0]}.pdf`);
-    
-    window.showToast?.('✓ PDF report downloaded', 'success');
-}
-
-// Make functions globally available
-window.exportFinancialReport = exportFinancialReport;
-
-// Export to global scope
-window.recordPayment = recordPayment;
-window.loadPaymentHistory = loadPaymentHistory;
-window.printReceipt = printReceipt;
-window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-window.loadFinancialReports = loadFinancialReports;
-window.loadFeeManagementSection = loadFeeManagementSection;
-window.saveFeeStructure = saveFeeStructure;
-window.deleteFeeStructure = deleteFeeStructure;
-window.loadPaymentRecordingSection = loadPaymentRecordingSection;
-window.loadPupilsForPayment = loadPupilsForPayment;
-window.loadPupilPaymentStatus = loadPupilPaymentStatus;
-
-console.log('✓ Financial management functions loaded');
 
 /* ========================================
    INITIALIZE LUCIDE ICONS
