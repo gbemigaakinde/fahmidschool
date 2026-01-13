@@ -6838,54 +6838,6 @@ window.addEventListener('load', () => {
   }
 });
 
-/* =====================================================
-   DIAGNOSTIC & DEBUG UTILITIES
-===================================================== */
-
-/**
- * Run diagnostics on admin sidebar
- */
-function runSidebarDiagnostics() {
-  console.log('🔍 ADMIN SIDEBAR DIAGNOSTICS');
-  console.log('═══════════════════════════════════════');
-  
-  const sidebar = document.getElementById('admin-sidebar');
-  console.log('Sidebar element:', sidebar ? '✓ Found' : '❌ Missing');
-  
-  const hamburger = document.getElementById('hamburger');
-  console.log('Hamburger element:', hamburger ? '✓ Found' : '❌ Missing');
-  
-  const links = document.querySelectorAll('.sidebar-link[data-section]');
-  console.log(`Navigation links: ${links.length} found`);
-  
-  if (links.length > 0) {
-    console.log('Link sections:');
-    links.forEach((link, i) => {
-      const section = link.dataset.section;
-      const exists = document.getElementById(section);
-      console.log(`  ${i + 1}. ${section}: ${exists ? '✓' : '❌ section missing'}`);
-    });
-  }
-  
-  const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`Group toggles: ${toggles.length} found`);
-  
-  console.log('Functions available:');
-  console.log('  showSection:', typeof window.showSection);
-  console.log('  setupSidebarNavigation:', typeof setupSidebarNavigation);
-  
-  console.log('Initialization status:');
-  console.log('  adminSidebarInitialized:', window.adminSidebarInitialized || false);
-  
-  console.log('═══════════════════════════════════════');
-}
-
-// Make diagnostic function globally available
-window.runSidebarDiagnostics = runSidebarDiagnostics;
-
-console.log('✓ Admin portal v6.3.0 - SIDEBAR NAVIGATION COMPLETELY FIXED');
-console.log('💡 Run window.runSidebarDiagnostics() in console to check sidebar status');
-
 /* ======================================== 
    SESSION VALIDATION ON LOAD
 ======================================== */
