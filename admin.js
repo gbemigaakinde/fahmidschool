@@ -6791,53 +6791,6 @@ window.loadCurrentSettings = loadCurrentSettings;
 window.loadAlumni = loadAlumni;
 window.loadViewResultsSection = loadViewResultsSection;
 
-/* =====================================================
-   FINAL INITIALIZATION - GUARANTEED EXECUTION
-===================================================== */
-
-/**
- * CRITICAL: Final initialization check
- * This ensures everything is set up correctly
- */
-function finalizeAdminPortal() {
-  console.log('🚀 Finalizing admin portal initialization...');
-  
-  // Ensure sidebar is set up
-  if (!window.adminSidebarInitialized) {
-    console.warn('⚠️ Sidebar not initialized, running setup now...');
-    setupSidebarNavigation();
-  }
-  
-  // Ensure dashboard is visible
-  const dashboard = document.getElementById('dashboard');
-  if (dashboard && dashboard.style.display === 'none') {
-    console.log('📊 Showing dashboard...');
-    showSection('dashboard');
-  }
-  
-  // Log success
-  console.log('✅ Admin portal fully initialized and ready');
-  console.log('═══════════════════════════════════════');
-  console.log('Available sections:', 
-    Array.from(document.querySelectorAll('.sidebar-link[data-section]'))
-      .map(l => l.dataset.section)
-      .join(', ')
-  );
-  console.log('═══════════════════════════════════════');
-}
-
-// Run finalization after a delay to ensure DOM is ready
-setTimeout(finalizeAdminPortal, 500);
-
-// Also run on window load as backup
-window.addEventListener('load', () => {
-  if (!window.adminSidebarInitialized) {
-    console.warn('⚠️ Window load: Sidebar still not initialized');
-    setupSidebarNavigation();
-    showSection('dashboard');
-  }
-});
-
 /* ======================================== 
    SESSION VALIDATION ON LOAD
 ======================================== */
