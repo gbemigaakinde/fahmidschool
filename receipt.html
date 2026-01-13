@@ -249,7 +249,7 @@
   <script src="firebase-init.js"></script>
   <script src="finance.js"></script>
   
- <script>
+<script>
     // Get receipt number from URL
     const urlParams = new URLSearchParams(window.location.search);
     const receiptNo = urlParams.get('receipt');
@@ -262,19 +262,22 @@
     // Load receipt data
     async function loadReceiptData() {
         try {
-            // Get transaction data
-            const transactionsSnap = await db.collection('payment_transactions')
+            console.log('Loading receipt:', receiptNo);
+            
+            // FIXED: Query the correct collection name 'transactions' (not 'payment_transactions')
+            const transactionsSnap = await db.collection('transactions')
                 .where('receiptNo', '==', receiptNo)
                 .limit(1)
                 .get();
             
             if (transactionsSnap.empty) {
-                alert('Receipt not found');
+                alert('Receipt not found: ' + receiptNo);
                 window.close();
                 return;
             }
             
             const receiptData = transactionsSnap.docs[0].data();
+            console.log('Receipt data:', receiptData);
             
             // Populate receipt fields
             document.getElementById('receipt-no').textContent = receiptData.receiptNo;
@@ -303,19 +306,31 @@
                 document.getElementById('notes-row').style.display = 'flex';
             }
             
+            // FIXED: Encode session for document ID lookup
+            const session = receiptData.session || '';
+            const term = receiptData.term || '';
+            const encodedSession = session.replace(/\//g, '-');
+            
             // Get updated balance from payments summary
-            const paymentRecordId = `${receiptData.pupilId}_${receiptData.session}_${receiptData.term}`;
+            const paymentRecordId = `${receiptData.pupilId}_${encodedSession}_${term}`;
+            console.log('Looking up payment record:', paymentRecordId);
+            
             const paymentDoc = await db.collection('payments').doc(paymentRecordId).get();
             
             let balance = 0;
             if (paymentDoc.exists) {
                 balance = parseFloat(paymentDoc.data().balance) || 0;
+                console.log('Balance found:', balance);
+            } else {
+                console.warn('Payment record not found');
             }
             
             document.getElementById('balance-remaining').textContent = `₦${balance.toLocaleString()}`;
             
             // Set generated date
             document.getElementById('generated-date').textContent = new Date().toLocaleString('en-GB');
+            
+            console.log('✓ Receipt loaded successfully');
             
             // Auto-print after short delay
             setTimeout(() => {
@@ -325,7 +340,7 @@
         } catch (error) {
             console.error('Error loading receipt:', error);
             alert('Failed to load receipt data: ' + error.message);
-            window.close();
+            // Don't close - let user see the error in console
         }
     }
     
