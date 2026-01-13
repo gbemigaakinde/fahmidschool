@@ -146,13 +146,11 @@
 </head>
 
 <body>
-  <!-- Print Button -->
   <button class="btn btn-primary print-button no-print" onclick="window.print()">
     🖨️ Print Receipt
   </button>
   
   <div class="receipt-container">
-    <!-- Header -->
     <div class="receipt-header">
       <div class="school-logo">
         <img src="logo.png" alt="School Logo" style="width:100%; height:100%; object-fit:contain;">
@@ -164,10 +162,8 @@
       </p>
     </div>
     
-    <!-- Receipt Title -->
     <h2 class="receipt-title">PAYMENT RECEIPT</h2>
     
-    <!-- Receipt Information -->
     <div class="receipt-info">
       <div class="info-item">
         <div class="info-label">Receipt Number:</div>
@@ -200,7 +196,6 @@
       </div>
     </div>
     
-    <!-- Payment Details -->
     <div class="payment-details">
       <div class="payment-row">
         <span>Amount Paid:</span>
@@ -223,7 +218,6 @@
       </div>
     </div>
     
-    <!-- Signatures -->
     <div class="signature-section">
       <div>
         <div class="signature-line">Received By</div>
@@ -233,7 +227,6 @@
       </div>
     </div>
     
-    <!-- Footer -->
     <div class="receipt-footer">
       <p><strong>Thank you for your payment!</strong></p>
       <p>This is an official receipt. Please keep it for your records.</p>
@@ -243,13 +236,12 @@
     </div>
   </div>
   
-  <!-- Firebase and Receipt Script -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="firebase-init.js"></script>
-  <script src="finance.js"></script>
-  
+<script src="finance.js"></script>
+
 <script>
 const urlParams = new URLSearchParams(window.location.search);
 const receiptNo = urlParams.get('receipt');
@@ -261,7 +253,6 @@ if (!receiptNo) {
 
 async function loadReceiptData() {
     try {
-        // Wait for Firebase initialization AND auth
         await new Promise((resolve, reject) => {
             const maxWait = 10000;
             const startTime = Date.now();
@@ -295,18 +286,16 @@ async function loadReceiptData() {
 
         console.log('✓ Firebase ready, querying receipt...');
 
-        const snap = await db.collection('transactions')
-            .where('receiptNo', '==', receiptNo)
-            .limit(1)
-            .get();
+        // OPTION A FIX: Read receipt document directly
+        const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
-        if (snap.empty) {
+        if (!doc.exists) {
             alert('Receipt not found or you do not have permission to view it');
             console.error('Receipt query returned empty');
             return;
         }
 
-        const data = snap.docs[0].data();
+        const data = doc.data();
         console.log('✓ Receipt data loaded:', data.receiptNo);
 
         document.getElementById('receipt-no').textContent = data.receiptNo;
@@ -324,10 +313,8 @@ async function loadReceiptData() {
             : 'N/A';
 
         document.getElementById('receipt-date').textContent = date;
-
         document.getElementById('amount-paid').textContent =
             `₦${Number(data.amountPaid).toLocaleString()}`;
-
         document.getElementById('payment-method').textContent =
             data.paymentMethod || 'Cash';
 
