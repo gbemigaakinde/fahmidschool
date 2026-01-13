@@ -533,9 +533,16 @@ function loadSectionData(sectionId) {
  * Load Fee Management Section
  */
 async function loadFeeManagementSection() {
-  console.log('Loading fee management section...');
+  console.log('💰 Loading fee management section...');
   
   try {
+    // CRITICAL FIX: Ensure form is visible
+    const feeConfigForm = document.querySelector('#fee-management .admin-card[style*="display:block"]');
+    if (feeConfigForm) {
+      feeConfigForm.style.display = 'block';
+      console.log('✓ Fee configuration form is visible');
+    }
+    
     // Populate class selector
     await populateFeeClassSelector();
     
@@ -548,11 +555,13 @@ async function loadFeeManagementSection() {
     if (sessionDisplay) sessionDisplay.textContent = settings.session;
     if (termDisplay) termDisplay.textContent = settings.term;
     
-    // Load fee structures
+    // Load existing fee structures
     await loadFeeStructures();
     
+    console.log('✓ Fee management section loaded successfully');
+    
   } catch (error) {
-    console.error('Error loading fee management:', error);
+    console.error('❌ Error loading fee management:', error);
     window.showToast?.('Failed to load fee management section', 'danger');
   }
 }
