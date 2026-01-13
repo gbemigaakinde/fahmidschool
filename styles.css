@@ -691,10 +691,8 @@ section .container > p.lead {
     line-height: 1.6;
 }
 
-How will this css style be for the cards:
-
 /* ============================================
-   STAT CARDS - WHITE BACKGROUND, COLORED BORDERS & NUMBERS
+   STAT CARDS - ENHANCED DESIGN
    ============================================ */
 .stats-grid {
     display: grid;
@@ -704,7 +702,7 @@ How will this css style be for the cards:
 }
 
 .stat-card {
-    background: white; /* Keep all cards white */
+    background: white;
     padding: 2rem;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
@@ -721,7 +719,6 @@ How will this css style be for the cards:
     left: 0;
     width: 4px;
     height: 100%;
-    /* Keep original gradient for each card variant */
     background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
 }
 
@@ -745,14 +742,11 @@ How will this css style be for the cards:
     font-weight: 700;
     line-height: 1;
     margin: 0;
-    /* Keep gradient for numbers */
     background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
-
-/* Variants only affect border and numbers now; card background stays white */
 
 .stat-card-primary::before {
     background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
@@ -760,6 +754,9 @@ How will this css style be for the cards:
 
 .stat-card-primary .stat-number {
     background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-secondary::before {
@@ -768,6 +765,9 @@ How will this css style be for the cards:
 
 .stat-card-secondary .stat-number {
     background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-success::before {
@@ -776,6 +776,9 @@ How will this css style be for the cards:
 
 .stat-card-success .stat-number {
     background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-warning::before {
@@ -784,6 +787,9 @@ How will this css style be for the cards:
 
 .stat-card-warning .stat-number {
     background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* ============================================
