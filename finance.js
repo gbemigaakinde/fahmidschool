@@ -79,25 +79,28 @@ const finance = {
    * Record payment and generate receipt
    */
   async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
-    try {
-      // Validate payment data
-      if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
-        throw new Error('Invalid payment amount');
-      }
-      
-      // Get fee structure
-      const feeStructure = await this.getFeeStructure(classId, session, term);
-      
-      if (!feeStructure) {
-        throw new Error('Fee structure not configured for this class and term');
-      }
-      
-      const amountDue = feeStructure.total;
-      const amountPaid = parseFloat(paymentData.amountPaid);
-      
-      // Get existing payment record if any
-      const paymentRecordId = `${pupilId}_${session}_${term}`;
-      const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+  try {
+    // Validate payment data
+    if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+    
+    // FIXED: Encode session for document IDs
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get fee structure (using original session format for query)
+    const feeStructure = await this.getFeeStructure(classId, session, term);
+    
+    if (!feeStructure) {
+      throw new Error('Fee structure not configured for this class and term');
+    }
+    
+    const amountDue = feeStructure.total;
+    const amountPaid = parseFloat(paymentData.amountPaid);
+    
+    // FIXED: Use encoded session for document ID
+    const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+    const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
       
       let totalPaidSoFar = amountPaid;
       let previousBalance = amountDue;
