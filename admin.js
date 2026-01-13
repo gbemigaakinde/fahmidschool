@@ -1567,8 +1567,8 @@ async function populateSessionFilter() {
 
 async function loadFilteredClasses() {
   const sessionSelect = document.getElementById('filter-session');
-  const classSelect = document.getElementById('filter-class');
-  const pupilSelect = document.getElementById('filter-pupil');
+  let classSelect = document.getElementById('filter-class'); // Remove const
+  let pupilSelect = document.getElementById('filter-pupil'); // Remove const
   
   if (!sessionSelect || !classSelect || !pupilSelect) return;
   
@@ -1579,7 +1579,9 @@ async function loadFilteredClasses() {
   classSelect.disabled = true;
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
   pupilSelect.disabled = true;
-  document.getElementById('view-results-btn').disabled = true;
+  
+  const viewBtn = document.getElementById('view-results-btn');
+  if (viewBtn) viewBtn.disabled = true;
   
   if (!selectedSession) return;
   
@@ -1599,15 +1601,6 @@ async function loadFilteredClasses() {
     const resultsSnap = await db.collection('results')
       .where('session', '==', actualSession)
       .get();
-    
-    // Extract unique classes from results
-    const classesWithResults = new Set();
-    resultsSnap.forEach(doc => {
-      const data = doc.data();
-      if (data.pupilId) {
-        classesWithResults.add(data.pupilId);
-      }
-    });
     
     // Get all classes
     const classesSnap = await db.collection('classes')
@@ -1650,13 +1643,21 @@ async function loadFilteredClasses() {
     
     classSelect.disabled = false;
     
-    // CRITICAL FIX: Attach event listener to class select
-    const newClassSelect = classSelect.cloneNode(true);
-    classSelect.parentNode.replaceChild(newClassSelect, classSelect);
+    // CRITICAL FIX: Re-get the element and attach listener safely
+    classSelect = document.getElementById('filter-class'); // Fresh reference
     
-    newClassSelect.addEventListener('change', loadFilteredPupils);
-    
-    console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
+    if (classSelect && classSelect.parentNode) {
+      // Clone to remove any existing listeners
+      const newClassSelect = classSelect.cloneNode(true);
+      classSelect.parentNode.replaceChild(newClassSelect, classSelect);
+      
+      // Attach fresh listener
+      newClassSelect.addEventListener('change', loadFilteredPupils);
+      
+      console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
+    } else {
+      console.warn('⚠️ Class select not found after population');
+    }
     
   } catch (error) {
     console.error('Error loading classes:', error);
@@ -1665,8 +1666,8 @@ async function loadFilteredClasses() {
 }
 
 async function loadFilteredPupils() {
-  const classSelect = document.getElementById('filter-class');
-  const pupilSelect = document.getElementById('filter-pupil');
+  let classSelect = document.getElementById('filter-class'); // Remove const
+  let pupilSelect = document.getElementById('filter-pupil'); // Remove const
   
   if (!classSelect || !pupilSelect) return;
   
@@ -1675,7 +1676,9 @@ async function loadFilteredPupils() {
   // Reset pupil filter
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
   pupilSelect.disabled = true;
-  document.getElementById('view-results-btn').disabled = true;
+  
+  const viewBtn = document.getElementById('view-results-btn');
+  if (viewBtn) viewBtn.disabled = true;
   
   if (!selectedClass || !currentResultsSession) return;
   
@@ -1734,18 +1737,26 @@ async function loadFilteredPupils() {
     
     pupilSelect.disabled = false;
     
-    // CRITICAL FIX: Attach event listener to pupil select
-    const newPupilSelect = pupilSelect.cloneNode(true);
-    pupilSelect.parentNode.replaceChild(newPupilSelect, pupilSelect);
+    // CRITICAL FIX: Re-get the element and attach listener safely
+    pupilSelect = document.getElementById('filter-pupil'); // Fresh reference
     
-    newPupilSelect.addEventListener('change', function() {
-      const viewBtn = document.getElementById('view-results-btn');
-      if (viewBtn) {
-        viewBtn.disabled = !this.value;
-      }
-    });
-    
-    console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
+    if (pupilSelect && pupilSelect.parentNode) {
+      // Clone to remove any existing listeners
+      const newPupilSelect = pupilSelect.cloneNode(true);
+      pupilSelect.parentNode.replaceChild(newPupilSelect, pupilSelect);
+      
+      // Attach fresh listener
+      newPupilSelect.addEventListener('change', function() {
+        const viewBtn = document.getElementById('view-results-btn');
+        if (viewBtn) {
+          viewBtn.disabled = !this.value;
+        }
+      });
+      
+      console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
+    } else {
+      console.warn('⚠️ Pupil select not found after population');
+    }
     
   } catch (error) {
     console.error('Error loading pupils:', error);
