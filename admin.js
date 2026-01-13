@@ -784,7 +784,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * Load pupil payment status
+ * Load pupil payment status - FIXED SESSION ENCODING
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -810,14 +810,13 @@ async function loadPupilPaymentStatus() {
     const session = settings.session;
     const term = settings.term;
     
-    // FIXED: Encode session for document IDs
+    // CRITICAL FIX: Encode session for document ID lookup
     const encodedSession = session.replace(/\//g, '-');
     
-    // Get fee structure directly from Firestore
-    // NOTE: Query uses ORIGINAL session format (stored in field)
+    // Get fee structure (use ORIGINAL session format for query)
     const feeStructureSnap = await db.collection('fee_structures')
       .where('classId', '==', classId)
-      .where('session', '==', session)  // Query with original format
+      .where('session', '==', session)  // Use ORIGINAL format "2025/2026"
       .where('term', '==', term)
       .limit(1)
       .get();
@@ -835,7 +834,7 @@ async function loadPupilPaymentStatus() {
     
     const feeStructure = feeStructureSnap.docs[0].data();
     
-    // FIXED: Use encoded session for document ID
+    // Get payment document (use ENCODED session in document ID)
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
     
@@ -895,7 +894,7 @@ async function loadPupilPaymentStatus() {
       amountInput.value = '';
     }
     
-    // Load payment history
+    // Load payment history (pass ORIGINAL session format)
     await loadPaymentHistory(pupilId, session, term);
     
   } catch (error) {
@@ -905,7 +904,7 @@ async function loadPupilPaymentStatus() {
 }
 
 /**
- * Load payment history for selected pupil
+ * Load payment history for selected pupil - FIXED SESSION HANDLING
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
@@ -914,14 +913,13 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
   
   try {
-    // FIXED: Decode session if it was passed encoded
-    const displaySession = session.includes('-') ? session.replace(/-/g, '/') : session;
+    // Session should already be in ORIGINAL format "2025/2026"
+    // No decoding needed - just use it directly for query
     
-    // Query transactions directly from Firestore
-    // Use decoded session for query (matches stored field value)
+    // Query transactions (use ORIGINAL session format)
     const transactionsSnap = await db.collection('transactions')
       .where('pupilId', '==', pupilId)
-      .where('session', '==', displaySession)  // Use decoded format
+      .where('session', '==', session)  // Use ORIGINAL format "2025/2026"
       .where('term', '==', term)
       .orderBy('paymentDate', 'desc')
       .get();
@@ -1260,7 +1258,9 @@ async function deleteFeeStructure(docId, className) {
   }
 }
 
-// Record a new payment
+/**
+ * Record a new payment - FIXED SESSION ENCODING
+ */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
   const pupilId = pupilSelect?.value;
@@ -1299,8 +1299,11 @@ async function recordPayment() {
     // Generate receipt number
     const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
-    // Get or create payment summary document
-    const paymentDocId = `${pupilId}_${session}_${term}`;
+    // CRITICAL FIX: Encode session to remove "/" character for document ID
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get or create payment summary document (using ENCODED session in ID)
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
     
@@ -1315,7 +1318,7 @@ async function recordPayment() {
       // Get fee structure to know amount due
       const feeSnap = await db.collection('fee_structures')
         .where('classId', '==', classId)
-        .where('session', '==', session)
+        .where('session', '==', session)  // Use ORIGINAL format for query
         .where('term', '==', term)
         .limit(1)
         .get();
@@ -1332,13 +1335,13 @@ async function recordPayment() {
     // Use batch for atomic updates
     const batch = db.batch();
     
-    // Update/create payment summary
+    // Update/create payment summary (store ORIGINAL session format in field)
     batch.set(paymentRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session,
+      session: session,  // Store ORIGINAL format "2025/2026"
       term,
       amountDue,
       totalPaid: newTotalPaid,
@@ -1348,14 +1351,14 @@ async function recordPayment() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // Add transaction record
+    // Add transaction record (store ORIGINAL session format in field)
     const transactionRef = db.collection('transactions').doc();
     batch.set(transactionRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session,
+      session: session,  // Store ORIGINAL format "2025/2026"
       term,
       amountPaid,
       paymentMethod: paymentMethod || 'Cash',
