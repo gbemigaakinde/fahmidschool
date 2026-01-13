@@ -3525,20 +3525,12 @@ async function checkSessionStatus() {
    LOAD CURRENT SETTINGS INTO FORM
 ======================================== */
 
+/**
+ * FIXED: Load current settings without auto-redirecting
+ */
 async function loadCurrentSettings() {
   try {
-    // CRITICAL FIX: Initialize class hierarchy FIRST
-    console.log('Initializing class hierarchy...');
-    const hierarchyStatus = await window.classHierarchy.initializeClassHierarchy();
-    
-    if (hierarchyStatus && hierarchyStatus.isEmpty) {
-      window.showToast?.(
-        '⚠️ Class hierarchy is empty! Please configure your class names in the "Class Progression Order" section below.',
-        'warning',
-        8000
-      );
-    }
-    console.log('✓ Class hierarchy ready');
+    console.log('📋 Loading school settings...');
     
     const settingsDoc = await db.collection('settings').doc('current').get();
     
@@ -3633,7 +3625,7 @@ async function loadCurrentSettings() {
       currentTermSelect.value = data.term || 'First Term';
     }
     
-    // FIXED: Resumption date handling
+    // Resumption date handling
     const displayNextResumption = document.getElementById('display-next-resumption');
     const resumptionDateInput = document.getElementById('resumption-date');
     
@@ -3654,12 +3646,36 @@ async function loadCurrentSettings() {
         if (resumptionDateInput) resumptionDateInput.value = '';
       }
     } else {
-      // No resumption date set
       if (displayNextResumption) displayNextResumption.textContent = 'Not set';
       if (resumptionDateInput) resumptionDateInput.value = '';
     }
     
     console.log('✓ Settings loaded successfully');
+    
+    // CRITICAL FIX: Load class hierarchy AFTER settings display is complete
+    // Use setTimeout to prevent blocking the UI
+    setTimeout(async () => {
+      try {
+        console.log('📊 Initializing class hierarchy...');
+        const hierarchyStatus = await window.classHierarchy.initializeClassHierarchy();
+        
+        if (hierarchyStatus && hierarchyStatus.isEmpty) {
+          console.log('⚠️ Class hierarchy is empty');
+        }
+        
+        // CRITICAL: Only load UI if we're still on settings page
+        const settingsSection = document.getElementById('settings');
+        if (settingsSection && settingsSection.style.display !== 'none') {
+          await loadClassHierarchyUI();
+          console.log('✓ Class hierarchy UI loaded');
+        } else {
+          console.log('ℹ️ User navigated away, skipping hierarchy UI load');
+        }
+      } catch (error) {
+        console.error('⚠️ Class hierarchy load failed:', error);
+        // Don't throw error - settings page should still work
+      }
+    }, 300);
     
   } catch (error) {
     console.error('Error loading settings:', error);
@@ -3876,13 +3892,14 @@ async function loadClassHierarchyUI() {
   
   if (!container) {
     console.error('❌ hierarchy-container element not found in DOM');
+    // REMOVED: Don't redirect - just log error
     return;
   }
   
   console.log('📋 Loading class hierarchy UI...');
   
   try {
-    // FIRST: Get all classes from the "classes" collection
+    // Get all classes from the "classes" collection
     const classesSnapshot = await db.collection('classes').orderBy('name').get();
     
     if (classesSnapshot.empty) {
