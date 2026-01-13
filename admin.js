@@ -567,6 +567,45 @@ async function loadFeeManagementSection() {
 }
 
 /**
+ * Diagnostic: Check Fee Form Visibility
+ * Run this in console: diagnoseFeeForm()
+ */
+window.diagnoseFeeForm = function() {
+  console.log('🔍 FEE FORM DIAGNOSTIC');
+  console.log('═══════════════════════════════════════');
+  
+  const section = document.getElementById('fee-management');
+  console.log('Fee Management Section:', section ? '✓ Found' : '❌ Missing');
+  console.log('  Display:', section?.style.display || 'default');
+  
+  const form = section?.querySelector('.admin-card');
+  console.log('Fee Configuration Form:', form ? '✓ Found' : '❌ Missing');
+  console.log('  Display:', form?.style.display || 'default');
+  
+  const classSelect = document.getElementById('fee-config-class');
+  console.log('Class Selector:', classSelect ? '✓ Found' : '❌ Missing');
+  console.log('  Options:', classSelect?.options.length || 0);
+  
+  const saveBtn = document.getElementById('save-fee-structure-btn');
+  console.log('Save Button:', saveBtn ? '✓ Found' : '❌ Missing');
+  
+  // Check all fee input fields
+  const feeInputs = [
+    'fee-tuition', 'fee-exam', 'fee-uniform', 
+    'fee-books', 'fee-pta', 'fee-other'
+  ];
+  
+  console.log('\nFee Input Fields:');
+  feeInputs.forEach(id => {
+    const input = document.getElementById(id);
+    console.log(`  ${id}:`, input ? '✓' : '❌');
+  });
+  
+  console.log('═══════════════════════════════════════');
+  console.log('💡 If form is hidden, run: document.querySelector("#fee-management .admin-card").style.display = "block"');
+};
+
+/**
  * Populate class selector for fee configuration
  */
 async function populateFeeClassSelector() {
