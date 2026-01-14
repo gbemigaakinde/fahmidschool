@@ -748,12 +748,19 @@ section .container > p.lead {
     background-clip: text;
 }
 
+.stat-card-primary {
+    background: white !important; /* Force white background */
+}
+
 .stat-card-primary::before {
-    background: #4CAF50; /* Solid green for left border */
+    background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
 }
 
 .stat-card-primary .stat-number {
-    color: #4CAF50; /* Solid green text instead of gradient */
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-card-secondary::before {
