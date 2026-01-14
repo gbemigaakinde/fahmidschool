@@ -6943,17 +6943,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * BULK OPERATIONS FUNCTIONS
+ * BULK OPERATIONS FUNCTIONS - FIXED
+ * Replace the entire bulk operations section in admin.js (around line 2800-2900)
  */
 
+/**
+ * Toggle all pupils selection for bulk operations
+ */
 function toggleAllPupils(masterCheckbox) {
+  console.log('🔘 toggleAllPupils called:', masterCheckbox?.checked);
+  
   const checkboxes = document.querySelectorAll('.pupil-checkbox');
+  const isChecked = masterCheckbox.checked;
+  
   checkboxes.forEach(checkbox => {
-    checkbox.checked = masterCheckbox.checked;
+    checkbox.checked = isChecked;
   });
+  
   updateBulkActionButtons();
 }
 
+/**
+ * Update bulk action buttons based on selection
+ */
 function updateBulkActionButtons() {
   const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
   const count = checkboxes.length;
@@ -6980,6 +6992,9 @@ function updateBulkActionButtons() {
   }
 }
 
+/**
+ * Apply bulk action to selected pupils
+ */
 async function applyBulkAction() {
   const action = document.getElementById('bulk-action-select')?.value;
   const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
@@ -6990,6 +7005,8 @@ async function applyBulkAction() {
   }
   
   const selectedPupilIds = Array.from(checkboxes).map(cb => cb.dataset.pupilId);
+  
+  console.log(`Applying ${action} to ${selectedPupilIds.length} pupils`);
   
   switch(action) {
     case 'reassign-class':
@@ -7003,6 +7020,9 @@ async function applyBulkAction() {
   }
 }
 
+/**
+ * Bulk reassign pupils to new class
+ */
 async function bulkReassignClass(pupilIds) {
   // Show class selection modal
   const classes = await db.collection('classes').orderBy('name').get();
@@ -7018,7 +7038,7 @@ async function bulkReassignClass(pupilIds) {
     classOptions += `<option value="${doc.id}">${data.name}</option>`;
   });
   
-  // Create modal with unique ID
+  // Create modal
   const modalId = 'bulk-reassign-modal-' + Date.now();
   const modal = document.createElement('div');
   modal.id = modalId;
@@ -7043,18 +7063,15 @@ async function bulkReassignClass(pupilIds) {
   
   document.body.appendChild(modal);
   
-  // CRITICAL FIX: Cleanup function
+  // Cleanup function
   const cleanup = () => {
     modal.remove();
     document.removeEventListener('keydown', escapeHandler);
-    console.log('✓ Modal cleaned up');
   };
   
   // Escape key handler
   const escapeHandler = (e) => {
-    if (e.key === 'Escape') {
-      cleanup();
-    }
+    if (e.key === 'Escape') cleanup();
   };
   document.addEventListener('keydown', escapeHandler);
   
@@ -7076,9 +7093,7 @@ async function bulkReassignClass(pupilIds) {
     try {
       // Get new class details
       const classDoc = await db.collection('classes').doc(newClassId).get();
-      if (!classDoc.exists) {
-        throw new Error('Class not found');
-      }
+      if (!classDoc.exists) throw new Error('Class not found');
       
       const classData = classDoc.data();
       
@@ -7093,7 +7108,7 @@ async function bulkReassignClass(pupilIds) {
         }
       }
       
-      // Batch update pupils (with proper chunking)
+      // Batch update pupils
       const BATCH_SIZE = 450;
       let batch = db.batch();
       let count = 0;
@@ -7141,88 +7156,9 @@ async function bulkReassignClass(pupilIds) {
   };
 }
 
-async function executeBulkReassign(pupilIds, btn) {
-  const newClassId = document.getElementById('bulk-class-select')?.value;
-  
-  if (!newClassId) {
-    window.showToast?.('Please select a class', 'warning');
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.innerHTML = '<span class="btn-loading">Reassigning...</span>';
-  
-  try {
-    // Get new class details
-    const classDoc = await db.collection('classes').doc(newClassId).get();
-    if (!classDoc.exists) {
-      throw new Error('Class not found');
-    }
-    
-    const classData = classDoc.data();
-    
-    // Get teacher info
-    let teacherId = classData.teacherId || '';
-    let teacherName = classData.teacherName || '';
-    
-    if (teacherId && !teacherName) {
-      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
-      if (teacherDoc.exists) {
-        teacherName = teacherDoc.data().name || '';
-      }
-    }
-    
-    // Batch update pupils
-    const BATCH_SIZE = 450;
-    let batch = db.batch();
-    let count = 0;
-    
-    for (const pupilId of pupilIds) {
-      const pupilRef = db.collection('pupils').doc(pupilId);
-      
-      batch.update(pupilRef, {
-        'class.id': newClassId,
-        'class.name': classData.name,
-        subjects: classData.subjects || [],
-        'assignedTeacher.id': teacherId,
-        'assignedTeacher.name': teacherName,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      count++;
-      
-      if (count >= BATCH_SIZE) {
-        await batch.commit();
-        batch = db.batch();
-        count = 0;
-      }
-    }
-    
-    if (count > 0) {
-      await batch.commit();
-    }
-    
-    window.showToast?.(
-      `✓ Successfully reassigned ${pupilIds.length} pupil(s) to ${classData.name}`,
-      'success',
-      5000
-    );
-    
-    // Close modal
-    btn.closest('[style*="position"]').remove();
-    
-    // Reload pupils list
-    await loadPupils();
-    
-  } catch (error) {
-    console.error('Bulk reassign error:', error);
-    window.handleError(error, 'Failed to reassign pupils');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Reassign All';
-  }
-}
-
+/**
+ * Bulk delete selected pupils
+ */
 async function bulkDeletePupils(pupilIds) {
   const confirmation = confirm(
     `⚠️ DELETE ${pupilIds.length} PUPIL(S)?\n\n` +
@@ -7255,7 +7191,7 @@ async function bulkDeletePupils(pupilIds) {
       // Delete from users collection
       batch.delete(db.collection('users').doc(pupilId));
       
-      count += 2; // Two deletes per pupil
+      count += 2;
       
       if (count >= BATCH_SIZE) {
         await batch.commit();
@@ -7283,11 +7219,14 @@ async function bulkDeletePupils(pupilIds) {
   }
 }
 
-// Make functions globally available
+// ✅ CRITICAL: Make functions globally available IMMEDIATELY
 window.toggleAllPupils = toggleAllPupils;
 window.updateBulkActionButtons = updateBulkActionButtons;
 window.applyBulkAction = applyBulkAction;
-window.executeBulkReassign = executeBulkReassign;
+window.bulkReassignClass = bulkReassignClass;
+window.bulkDeletePupils = bulkDeletePupils;
+
+console.log('✓ Bulk operations functions loaded and exposed globally');
 
 /**
  * Toggle all pupils selection for bulk operations
@@ -7303,39 +7242,6 @@ function toggleAllPupils(masterCheckbox) {
   
   updateBulkActionButtons();
 }
-
-/**
- * Update bulk action buttons based on selection
- */
-function updateBulkActionButtons() {
-  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
-  const count = checkboxes.length;
-  
-  const countDisplay = document.getElementById('selected-count');
-  const actionSelect = document.getElementById('bulk-action-select');
-  const applyBtn = document.getElementById('apply-bulk-action-btn');
-  const selectAllCheckbox = document.getElementById('select-all-pupils');
-  
-  if (countDisplay) {
-    countDisplay.textContent = `${count} selected`;
-    countDisplay.style.fontWeight = count > 0 ? '600' : 'normal';
-    countDisplay.style.color = count > 0 ? 'var(--color-primary)' : 'var(--color-gray-600)';
-  }
-  
-  if (actionSelect) actionSelect.disabled = count === 0;
-  if (applyBtn) applyBtn.disabled = count === 0;
-  
-  // Update "Select All" checkbox state
-  const allCheckboxes = document.querySelectorAll('.pupil-checkbox');
-  if (selectAllCheckbox && allCheckboxes.length > 0) {
-    selectAllCheckbox.checked = count === allCheckboxes.length;
-    selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
-  }
-}
-
-// Make functions globally available
-window.toggleAllPupils = toggleAllPupils;
-window.updateBulkActionButtons = updateBulkActionButtons;
 
 /**
  * AUDIT LOG VIEWER
