@@ -13,7 +13,6 @@
  * - Error boundaries improved
  */
 
-
 /* Firestore v9 modular imports - only Firestore related imports added as requested */
 import {
   collection,
@@ -4140,27 +4139,6 @@ async function loadAlumni() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading alumni</td></tr>';
   }
 }
-
-// Firestore v9 modular imports (only Firestore-related imports added)
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  setDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  writeBatch,
-  runTransaction,
-  serverTimestamp,
-  deleteField,
-  Timestamp
-} from "firebase/firestore";
-
 
 async function deleteAlumni(alumniId) {
   if (!alumniId) {
