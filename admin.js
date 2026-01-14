@@ -4646,8 +4646,13 @@ async function loadPupils() {
   }
 }
 
+/* =====================================================
+   BULK OPERATIONS - COMPLETE IMPLEMENTATION
+   Add this entire section after loadPupils() function
+===================================================== */
+
 /**
- * ✅ NEW: Setup bulk actions event listeners
+ * Setup bulk actions event listeners
  * Called AFTER pupils table is loaded
  */
 function setupBulkActionsEventListeners() {
@@ -4676,14 +4681,16 @@ function setupBulkActionsEventListeners() {
   // 2. Individual pupil checkboxes (EVENT DELEGATION)
   const table = document.getElementById('pupils-table');
   if (table) {
-    // Remove old listener
-    const newTable = table.cloneNode(true);
-    table.parentNode.replaceChild(newTable, table);
-    
     // Use event delegation on tbody
-    const tbody = newTable.querySelector('tbody');
+    const tbody = table.querySelector('tbody');
     if (tbody) {
-      tbody.addEventListener('change', function(e) {
+      // Remove old listeners
+      const newTbody = tbody.cloneNode(true);
+      tbody.parentNode.replaceChild(newTbody, tbody);
+      
+      // Add fresh delegation listener
+      const freshTbody = table.querySelector('tbody');
+      freshTbody.addEventListener('change', function(e) {
         if (e.target.classList.contains('pupil-checkbox')) {
           console.log('✓ Pupil checkbox changed');
           updateBulkActionButtons();
@@ -4699,7 +4706,8 @@ function setupBulkActionsEventListeners() {
     const newApplyBtn = applyBtn.cloneNode(true);
     applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
     
-    newApplyBtn.addEventListener('click', applyBulkAction);
+    const freshApplyBtn = document.getElementById('apply-bulk-action-btn');
+    freshApplyBtn.addEventListener('click', applyBulkAction);
     console.log('✓ Apply button listener attached');
   }
   
@@ -4765,11 +4773,230 @@ async function applyBulkAction() {
   }
 }
 
-// Make functions globally available
+/**
+ * Bulk reassign pupils to a new class
+ */
+async function bulkReassignClass(pupilIds) {
+  console.log(`📝 bulkReassignClass called with ${pupilIds.length} pupils`);
+  
+  try {
+    // Get all classes
+    const classesSnap = await db.collection('classes').orderBy('name').get();
+    
+    if (classesSnap.empty) {
+      window.showToast?.('No classes available', 'warning');
+      return;
+    }
+    
+    // Build class options
+    let classOptions = '<option value="">-- Select New Class --</option>';
+    classesSnap.forEach(doc => {
+      const data = doc.data();
+      classOptions += `<option value="${doc.id}">${data.name}</option>`;
+    });
+    
+    // Create modal with unique ID
+    const modalId = 'bulk-reassign-modal-' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000;';
+    modal.innerHTML = `
+      <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:500px; width:90%;">
+        <h3 style="margin-top:0;">Reassign ${pupilIds.length} Pupil(s) to New Class</h3>
+        <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
+          Select the new class for the selected pupils. Their subjects and teacher will be updated automatically.
+        </p>
+        <select id="bulk-class-select-${modalId}" style="width:100%; padding:var(--space-sm); margin-bottom:var(--space-lg);">
+          ${classOptions}
+        </select>
+        <div style="display:flex; gap:var(--space-md); justify-content:flex-end;">
+          <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+          <button class="btn btn-primary" data-action="confirm">
+            Reassign All
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Cleanup function
+    const cleanup = () => {
+      modal.remove();
+      document.removeEventListener('keydown', escapeHandler);
+      console.log('✓ Modal cleaned up');
+    };
+    
+    // Escape key handler
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') cleanup();
+    };
+    document.addEventListener('keydown', escapeHandler);
+    
+    // Button handlers
+    modal.querySelector('[data-action="cancel"]').onclick = cleanup;
+    
+    modal.querySelector('[data-action="confirm"]').onclick = async function() {
+      const selectId = `bulk-class-select-${modalId}`;
+      const newClassId = document.getElementById(selectId)?.value;
+      
+      if (!newClassId) {
+        window.showToast?.('Please select a class', 'warning');
+        return;
+      }
+      
+      this.disabled = true;
+      this.innerHTML = '<span class="btn-loading">Reassigning...</span>';
+      
+      try {
+        // Get new class details
+        const classDoc = await db.collection('classes').doc(newClassId).get();
+        if (!classDoc.exists) {
+          throw new Error('Class not found');
+        }
+        
+        const classData = classDoc.data();
+        
+        // Get teacher info
+        let teacherId = classData.teacherId || '';
+        let teacherName = classData.teacherName || '';
+        
+        if (teacherId && !teacherName) {
+          const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+          if (teacherDoc.exists) {
+            teacherName = teacherDoc.data().name || '';
+          }
+        }
+        
+        // Batch update pupils (with proper chunking)
+        const BATCH_SIZE = 450;
+        let batch = db.batch();
+        let count = 0;
+        
+        for (const pupilId of pupilIds) {
+          const pupilRef = db.collection('pupils').doc(pupilId);
+          
+          batch.update(pupilRef, {
+            'class.id': newClassId,
+            'class.name': classData.name,
+            subjects: classData.subjects || [],
+            'assignedTeacher.id': teacherId,
+            'assignedTeacher.name': teacherName,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          count++;
+          
+          if (count >= BATCH_SIZE) {
+            await batch.commit();
+            batch = db.batch();
+            count = 0;
+          }
+        }
+        
+        if (count > 0) {
+          await batch.commit();
+        }
+        
+        window.showToast?.(
+          `✓ Successfully reassigned ${pupilIds.length} pupil(s) to ${classData.name}`,
+          'success',
+          5000
+        );
+        
+        cleanup();
+        await loadPupils();
+        
+      } catch (error) {
+        console.error('Bulk reassign error:', error);
+        window.showToast?.(`Failed to reassign pupils: ${error.message}`, 'danger');
+        this.disabled = false;
+        this.innerHTML = 'Reassign All';
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error in bulkReassignClass:', error);
+    window.showToast?.('Failed to load classes', 'danger');
+  }
+}
+
+/**
+ * Bulk delete selected pupils
+ */
+async function bulkDeletePupils(pupilIds) {
+  console.log(`🗑️ bulkDeletePupils called with ${pupilIds.length} pupils`);
+  
+  const confirmation = confirm(
+    `⚠️ DELETE ${pupilIds.length} PUPIL(S)?\n\n` +
+    `This will permanently delete:\n` +
+    `• ${pupilIds.length} pupil records\n` +
+    `• ${pupilIds.length} user accounts\n` +
+    `• All associated results, attendance, and remarks\n\n` +
+    `This action CANNOT be undone!`
+  );
+  
+  if (!confirmation) {
+    console.log('Deletion cancelled by user');
+    return;
+  }
+  
+  const confirmText = prompt('Type DELETE to confirm:');
+  if (confirmText !== 'DELETE') {
+    window.showToast?.('Deletion cancelled - confirmation text did not match', 'info');
+    return;
+  }
+  
+  try {
+    // Delete in batches
+    const BATCH_SIZE = 450;
+    let batch = db.batch();
+    let count = 0;
+    
+    for (const pupilId of pupilIds) {
+      // Delete from pupils collection
+      batch.delete(db.collection('pupils').doc(pupilId));
+      
+      // Delete from users collection
+      batch.delete(db.collection('users').doc(pupilId));
+      
+      count += 2; // Two deletes per pupil
+      
+      if (count >= BATCH_SIZE) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✓ Successfully deleted ${pupilIds.length} pupil(s)`,
+      'success',
+      5000
+    );
+    
+    await loadPupils();
+    await loadDashboardStats();
+    
+  } catch (error) {
+    console.error('Bulk delete error:', error);
+    window.showToast?.(`Failed to delete pupils: ${error.message}`, 'danger');
+  }
+}
+
+// ✅ CRITICAL: Make ALL functions globally available
 window.loadPupils = loadPupils;
 window.setupBulkActionsEventListeners = setupBulkActionsEventListeners;
 window.updateBulkActionButtons = updateBulkActionButtons;
 window.applyBulkAction = applyBulkAction;
+window.bulkReassignClass = bulkReassignClass;
+window.bulkDeletePupils = bulkDeletePupils;
+
+console.log('✅ Bulk operations module loaded and exposed globally');
 
 async function editPupil(uid) {
   try {
