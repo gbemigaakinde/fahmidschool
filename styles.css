@@ -745,25 +745,19 @@ section .container > p.lead {
 }
 
 .stat-card-primary::before {
-    background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+    background: #4CAF50; /* Solid green for left border */
 }
 
 .stat-card-primary .stat-number {
-    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #4CAF50; /* Solid green text instead of gradient */
 }
 
 .stat-card-secondary::before {
-    background: linear-gradient(180deg, #FF9800 0%, #F57C00 100%);
+    background: #FF9800; /* Solid orange for left border */
 }
 
 .stat-card-secondary .stat-number {
-    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #FF9800; /* Solid orange text instead of gradient */
 }
 
 .stat-card-success::before {
