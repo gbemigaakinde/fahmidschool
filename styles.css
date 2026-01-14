@@ -702,10 +702,14 @@ section .container > p.lead {
 }
 
 .stat-card {
-    background: white;
+    background: white; /* Changed from gradient to white */
     padding: 2rem;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .stat-card::before {
