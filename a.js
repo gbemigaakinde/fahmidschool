@@ -7689,7 +7689,12 @@ async function viewAuditDetails(logId) {
 
 async function downloadAuditLog() {
   try {
-    const logsSnap = await getDocs(query(collection(db, 'audit_log'), orderBy('timestamp', 'desc')));
+    const logsSnap = await getDocs(
+      fsQuery(
+        collection(db, 'audit_log'),
+        orderBy('timestamp', 'desc')
+      )
+    );
     
     if (logsSnap.empty) {
       window.showToast?.('No audit logs to download', 'info');
@@ -7699,11 +7704,11 @@ async function downloadAuditLog() {
     // Create CSV
     let csv = 'Timestamp,Action,Collection,Document ID,Performed By,Email,User Agent\n';
     
-    logsSnap.forEach(docSnap => {
-      const log = docSnap.data();
+    logsSnap.forEach(doc => {
+      const log = doc.data();
       const timestamp = log.timestamp ? log.timestamp.toDate().toISOString() : '';
       
-      csv += `"${timestamp}","${log.action}","${log.collection || ''}","${log.documentId || ''}","${log.performedBy || ''}","${log.performedByEmail || ''}","${(log.userAgent || '').replace(/"/g, '""')[...]
+      csv += `"${timestamp}","${log.action}","${log.collection || ''}","${log.documentId || ''}","${log.performedBy || ''}","${log.performedByEmail || ''}","${(log.userAgent || '').replace(/"/g, '""')}"\n`;
     });
     
     // Download
@@ -7730,4 +7735,195 @@ function filterAuditLog() {
   const rows = document.querySelectorAll('#audit-log-table tbody tr');
   
   rows.forEach(row => {
-    const text = row.textContent.toLowerCase
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(searchTerm) ? '' : 'none';
+  });
+}
+
+// Make functions globally available
+window.loadAuditLog = loadAuditLog;
+window.viewAuditDetails = viewAuditDetails;
+window.downloadAuditLog = downloadAuditLog;
+window.filterAuditLog = filterAuditLog;
+
+/**
+ * Export all pupils data to CSV
+ */
+async function exportPupilsData() {
+    try {
+        window.showToast?.('Preparing pupils export...', 'info', 2000);
+
+        const snap = await getDocs(collection(db, 'pupils'));
+
+        if (snap.empty) {
+            window.showToast?.('No pupils found to export', 'warning', 4000);
+            return;
+        }
+
+        const headers = [
+            'Name', 'Admission No', 'Class', 'Gender', 'Date of Birth',
+            'Parent Name', 'Parent Email', 'Contact', 'Address', 'Email'
+        ];
+
+        const rows = snap.docs.map(doc => {
+            const p = doc.data();
+            return [
+                p.name || '',
+                p.admissionNo || '',
+                p.class?.name || p.class || '-',
+                p.gender || '',
+                p.dob || '',
+                p.parentName || '',
+                p.parentEmail || '',
+                p.contact || '',
+                p.address || '',
+                p.email || ''
+            ];
+        });
+
+        const csv = [
+            headers,
+            ...rows
+        ].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+         .join('\n');
+
+        downloadCSV(csv, `pupils_export_${new Date().toISOString().split('T')[0]}.csv`);
+
+        window.showToast?.(`✓ Exported ${snap.size} pupil record(s)`, 'success');
+    } catch (err) {
+        console.error('Pupils export failed:', err);
+        window.showToast?.('Export failed. Please try again.', 'danger');
+    }
+}
+
+/**
+ * Export results (filtered by term/session)
+ */
+async function exportResultsData() {
+    try {
+        const term = prompt('Enter term (First Term / Second Term / Third Term):')?.trim();
+        if (!term) return;
+
+        const session = prompt('Enter session (e.g. 2025/2026) or leave empty for all:')?.trim();
+
+        window.showToast?.('Preparing results export...', 'info', 2000);
+
+        let query = collection(db, 'results');
+        if (term)    query = fsQuery(query, where('term', '==', term));
+        if (session) query = fsQuery(query, where('session', '==', session));
+
+        const snap = await getDocs(query);
+
+        if (snap.empty) {
+            window.showToast?.('No results found for selected filters', 'warning');
+            return;
+        }
+
+        const headers = ['Pupil ID', 'Term', 'Session', 'Subject', 'CA Score', 'Exam Score', 'Total'];
+
+        const rows = snap.docs.map(doc => {
+            const r = doc.data();
+            const total = (Number(r.caScore) || 0) + (Number(r.examScore) || 0);
+            return [
+                r.pupilId || '',
+                r.term || '',
+                r.session || '',
+                r.subject || '',
+                r.caScore ?? 0,
+                r.examScore ?? 0,
+                total
+            ];
+        });
+
+        const csv = [
+            headers,
+            ...rows
+        ].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+         .join('\n');
+
+        const filename = `results_${term.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+        downloadCSV(csv, filename);
+
+        window.showToast?.(`✓ Exported ${snap.size} result record(s)`, 'success');
+    } catch (err) {
+        console.error('Results export failed:', err);
+        window.showToast?.('Export failed. Please try again.', 'danger');
+    }
+}
+
+// ─── Helper ──────────────────────────────────────────────────────────────────
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+}
+
+// Expose globally
+window.exportPupilsData = exportPupilsData;
+window.exportResultsData = exportResultsData;
+
+console.log('✓ Data export functions loaded');
+/* =====================================================
+   DEBUG CONSOLE - SHOWS WHAT'S HAPPENING
+===================================================== */
+
+window.adminDebug = {
+  checkStatus() {
+    console.log('═══════════════════════════════════════');
+    console.log('🔍 ADMIN PORTAL DEBUG STATUS');
+    console.log('═══════════════════════════════════════');
+    
+    console.log('Firebase:', typeof firebase !== 'undefined' ? '✓' : '❌');
+    console.log('  db:', typeof db !== 'undefined' ? '✓' : '❌');
+    console.log('  auth:', typeof auth !== 'undefined' ? '✓' : '❌');
+    console.log('  currentUser:', auth?.currentUser ? `✓ ${auth.currentUser.email}` : '❌');
+    
+    console.log('\nDOM Elements:');
+    console.log('  sidebar:', document.getElementById('admin-sidebar') ? '✓' : '❌');
+    console.log('  hamburger:', document.getElementById('hamburger') ? '✓' : '❌');
+    console.log('  dashboard:', document.getElementById('dashboard') ? '✓' : '❌');
+    
+    const links = document.querySelectorAll('.sidebar-link[data-section]');
+    console.log(`  nav links: ${links.length} found`);
+    
+    const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+    console.log(`  group toggles: ${toggles.length} found`);
+    
+    console.log('\nFunctions:');
+    console.log('  showSection:', typeof window.showSection);
+    console.log('  loadDashboardStats:', typeof loadDashboardStats);
+    console.log('  loadTeachers:', typeof loadTeachers);
+    
+    console.log('\nInitialization:');
+    console.log('  sidebarInitialized:', window.sidebarInitialized || false);
+    
+    console.log('═══════════════════════════════════════');
+  },
+  
+  showSection(sectionId) {
+    console.log(`\n🔧 Manual section load: ${sectionId}`);
+    if (typeof window.showSection === 'function') {
+      window.showSection(sectionId);
+    } else {
+      console.error('❌ showSection function not available!');
+    }
+  },
+  
+  testDashboard() {
+    console.log('\n🧪 Testing dashboard load...');
+    if (typeof loadDashboardStats === 'function') {
+      loadDashboardStats();
+    } else {
+      console.error('❌ loadDashboardStats function not available!');
+    }
+  }
+};
+}
+console.log('✓ Admin portal v6.3.0 loaded successfully');
+console.log('All critical fixes applied • Ready for use');
