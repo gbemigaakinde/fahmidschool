@@ -4570,8 +4570,8 @@ function cancelPupilForm() {
 }
 
 /**
- * FIXED: Load Pupils with Bulk Action Support
- * Adds checkboxes and bulk operation capabilities
+ * FIXED: Load Pupils with Proper Event Delegation
+ * Replace the entire loadPupils() function in admin.js (around line 2280)
  */
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
@@ -4583,7 +4583,6 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
-    // FIXED: Remove orderBy to avoid index requirement
     const snapshot = await db.collection('pupils').get();
     tbody.innerHTML = '';
 
@@ -4610,45 +4609,167 @@ async function loadPupils() {
     if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
 
     paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
-  // FIXED: Safely extract class name from both old and new formats
-  let className = '-';
-  if (pupil.class) {
-    if (typeof pupil.class === 'object' && pupil.class.name) {
-      className = pupil.class.name;
-    } else if (typeof pupil.class === 'string') {
-      className = pupil.class;
-    }
-  }
-  
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td data-label="Select" style="text-align:center;">
-      <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}">
-    </td>
-    <td data-label="Name">${pupil.name}</td>
-    <td data-label="Class">${className}</td>
-    <td data-label="Gender">${pupil.gender || '-'}</td>
-    <td data-label="Parent Name">${pupil.parentName || '-'}</td>
-    <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
-    <td data-label="Actions">
-      <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
-      <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
-    </td>
-  `;
-  tbody.appendChild(tr);
-  
-  // CRITICAL FIX: Attach event listener AFTER adding to DOM
-  const checkbox = tr.querySelector('.pupil-checkbox');
-  if (checkbox) {
-    checkbox.addEventListener('change', window.updateBulkActionButtons);
-  }
-});
+      let className = '-';
+      if (pupil.class) {
+        if (typeof pupil.class === 'object' && pupil.class.name) {
+          className = pupil.class.name;
+        } else if (typeof pupil.class === 'string') {
+          className = pupil.class;
+        }
+      }
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td data-label="Select" style="text-align:center;">
+          <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}">
+        </td>
+        <td data-label="Name">${pupil.name}</td>
+        <td data-label="Class">${className}</td>
+        <td data-label="Gender">${pupil.gender || '-'}</td>
+        <td data-label="Parent Name">${pupil.parentName || '-'}</td>
+        <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
+        <td data-label="Actions">
+          <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
+          <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    // ✅ CRITICAL FIX: Setup event listeners AFTER table is populated
+    setupBulkActionsEventListeners();
+    
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
   }
 }
+
+/**
+ * ✅ NEW: Setup bulk actions event listeners
+ * Called AFTER pupils table is loaded
+ */
+function setupBulkActionsEventListeners() {
+  console.log('🔧 Setting up bulk actions event listeners...');
+  
+  // 1. Select All checkbox
+  const selectAllCheckbox = document.getElementById('select-all-pupils');
+  if (selectAllCheckbox) {
+    // Remove old listener by cloning
+    const newSelectAll = selectAllCheckbox.cloneNode(true);
+    selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+    
+    // Add fresh listener
+    newSelectAll.addEventListener('change', function() {
+      console.log('🔘 Select All clicked:', this.checked);
+      const checkboxes = document.querySelectorAll('.pupil-checkbox');
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+      updateBulkActionButtons();
+    });
+    
+    console.log('✓ Select All listener attached');
+  }
+  
+  // 2. Individual pupil checkboxes (EVENT DELEGATION)
+  const table = document.getElementById('pupils-table');
+  if (table) {
+    // Remove old listener
+    const newTable = table.cloneNode(true);
+    table.parentNode.replaceChild(newTable, table);
+    
+    // Use event delegation on tbody
+    const tbody = newTable.querySelector('tbody');
+    if (tbody) {
+      tbody.addEventListener('change', function(e) {
+        if (e.target.classList.contains('pupil-checkbox')) {
+          console.log('✓ Pupil checkbox changed');
+          updateBulkActionButtons();
+        }
+      });
+      console.log('✓ Pupil checkboxes delegation attached');
+    }
+  }
+  
+  // 3. Apply button
+  const applyBtn = document.getElementById('apply-bulk-action-btn');
+  if (applyBtn) {
+    const newApplyBtn = applyBtn.cloneNode(true);
+    applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+    
+    newApplyBtn.addEventListener('click', applyBulkAction);
+    console.log('✓ Apply button listener attached');
+  }
+  
+  console.log('✅ Bulk actions event listeners setup complete');
+}
+
+/**
+ * Update bulk action buttons based on selection
+ */
+function updateBulkActionButtons() {
+  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
+  const count = checkboxes.length;
+  
+  console.log(`📊 ${count} pupils selected`);
+  
+  const countDisplay = document.getElementById('selected-count');
+  const actionSelect = document.getElementById('bulk-action-select');
+  const applyBtn = document.getElementById('apply-bulk-action-btn');
+  const selectAllCheckbox = document.getElementById('select-all-pupils');
+  
+  if (countDisplay) {
+    countDisplay.textContent = `${count} selected`;
+    countDisplay.style.fontWeight = count > 0 ? '600' : 'normal';
+    countDisplay.style.color = count > 0 ? 'var(--color-primary)' : 'var(--color-gray-600)';
+  }
+  
+  if (actionSelect) actionSelect.disabled = count === 0;
+  if (applyBtn) applyBtn.disabled = count === 0;
+  
+  // Update "Select All" checkbox state
+  const allCheckboxes = document.querySelectorAll('.pupil-checkbox');
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = count === allCheckboxes.length;
+    selectAllCheckbox.indeterminate = count > 0 && count < allCheckboxes.length;
+  }
+}
+
+/**
+ * Apply bulk action to selected pupils
+ */
+async function applyBulkAction() {
+  const action = document.getElementById('bulk-action-select')?.value;
+  const checkboxes = document.querySelectorAll('.pupil-checkbox:checked');
+  
+  if (!action || checkboxes.length === 0) {
+    window.showToast?.('Please select an action and at least one pupil', 'warning');
+    return;
+  }
+  
+  const selectedPupilIds = Array.from(checkboxes).map(cb => cb.dataset.pupilId);
+  
+  console.log(`Applying ${action} to ${selectedPupilIds.length} pupils`);
+  
+  switch(action) {
+    case 'reassign-class':
+      await bulkReassignClass(selectedPupilIds);
+      break;
+    case 'delete':
+      await bulkDeletePupils(selectedPupilIds);
+      break;
+    default:
+      window.showToast?.('Invalid action selected', 'warning');
+  }
+}
+
+// Make functions globally available
+window.loadPupils = loadPupils;
+window.setupBulkActionsEventListeners = setupBulkActionsEventListeners;
+window.updateBulkActionButtons = updateBulkActionButtons;
+window.applyBulkAction = applyBulkAction;
 
 async function editPupil(uid) {
   try {
