@@ -1199,7 +1199,7 @@ etc.
 }
 
 .stat-card-secondary {
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    background: white !important;
 }
 
 /* Form Rows - Adjusted for removed class selectors */
