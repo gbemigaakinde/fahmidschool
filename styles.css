@@ -742,10 +742,10 @@ section .container > p.lead {
     font-weight: 700;
     line-height: 1;
     margin: 0;
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #2196F3 !important;
+    -webkit-text-fill-color: #2196F3 !important;
+    background: none !important;
+    background-clip: unset !important;
 }
 
 .stat-card-primary {
@@ -757,10 +757,10 @@ section .container > p.lead {
 }
 
 .stat-card-primary .stat-number {
-    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #4CAF50 !important;
+    -webkit-text-fill-color: #4CAF50 !important;
+    background: none !important;
+    background-clip: unset !important;
 }
 
 .stat-card-secondary::before {
@@ -768,7 +768,10 @@ section .container > p.lead {
 }
 
 .stat-card-secondary .stat-number {
-    color: #FF9800 !important; /* Solid orange, overrides base blue */
+    color: #FF9800 !important;
+    -webkit-text-fill-color: #FF9800 !important;
+    background: none !important;
+    background-clip: unset !important;
 }
 
 .stat-card-success::before {
@@ -776,10 +779,10 @@ section .container > p.lead {
 }
 
 .stat-card-success .stat-number {
-    background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #9C27B0 !important;
+    -webkit-text-fill-color: #9C27B0 !important;
+    background: none !important;
+    background-clip: unset !important;
 }
 
 .stat-card-warning::before {
@@ -787,10 +790,10 @@ section .container > p.lead {
 }
 
 .stat-card-warning .stat-number {
-    background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #00BCD4 !important;
+    -webkit-text-fill-color: #00BCD4 !important;
+    background: none !important;
+    background-clip: unset !important;
 }
 
 /* ============================================
@@ -1783,7 +1786,7 @@ etc.
 
 /* Portal Header Section */
 .portal-header {
-    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    background: #1976d2; /* Solid blue, removes gradient */
     padding: 2.5rem 0;
     box-shadow: 0 4px 20px rgba(25, 118, 210, 0.2);
     position: relative;
@@ -1792,14 +1795,7 @@ etc.
 }
 
 .portal-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    border-radius: 50%;
+    content: none; /* Removes radial gradient overlay */
 }
 
 .header-content-admin {
@@ -1838,17 +1834,17 @@ etc.
 }
 
 .stat-box {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: white; /* Solid white, removes transparency/gradient visibility */
+    backdrop-filter: none;
+    border: 1px solid #e2e8f0; /* Maintains border but adapts to gray for white bg */
     border-radius: 16px;
     padding: 1.5rem;
-    color: white;
+    color: #1e293b; /* Dark text for visibility on white */
     transition: all 0.3s ease;
 }
 
 .stat-box:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: #f8fafc; /* Light gray hover on white */
     transform: translateY(-4px);
 }
 
@@ -1859,12 +1855,14 @@ etc.
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
+    color: #64748b; /* Medium gray for labels */
 }
 
 .stat-value {
     font-size: 2rem;
     font-weight: 700;
     line-height: 1;
+    color: #0f172a; /* Dark for values */
 }
 
 /* Main Content Area */
