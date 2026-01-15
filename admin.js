@@ -2924,9 +2924,6 @@ async function loadPaymentHistory(pupilId, session, term) {
 }
 
 /**
- * Load outstanding fees report
- */
-/**
  * Load outstanding fees report - FIXED: Based on ALL pupils
  */
 async function loadOutstandingFeesReport() {
@@ -3506,7 +3503,7 @@ function printReceipt(receiptNo) {
     const receiptWindow = window.open(
         `receipt.html?receipt=${receiptNo}`,
         '_blank',
-        'width=800,height=600'
+        'width=1000,height=750,scrollbars=yes,resizable=yes'
     );
 
     if (!receiptWindow) {
@@ -3515,83 +3512,147 @@ function printReceipt(receiptNo) {
 }
 
 /**
- * Export financial report to CSV
+ * Export financial report to CSV or PDF - FIXED: based on ALL pupils
  */
 async function exportFinancialReport(format) {
     if (format !== 'csv' && format !== 'pdf') {
         window.showToast?.('Invalid export format', 'warning');
         return;
     }
-    
+
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         const term = settings.term;
-        
-        // Get all payment data
+
+        // 1. Get ALL currently enrolled pupils
+        const pupilsSnap = await db.collection('pupils').get();
+
+        if (pupilsSnap.empty) {
+            window.showToast?.('No pupils enrolled - nothing to export', 'warning');
+            return;
+        }
+
+        // 2. Get current fee structures
+        const feeStructuresSnap = await db.collection('fee_structures')
+            .where('session', '==', session)
+            .where('term', '==', term)
+            .get();
+
+        const feeStructureMap = {};
+        feeStructuresSnap.forEach(doc => {
+            const data = doc.data();
+            feeStructureMap[data.classId] = data.total || 0;
+        });
+
+        // 3. Get all payment records for this session/term
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
             .where('term', '==', term)
             .get();
-        
-        if (paymentsSnap.empty) {
-            window.showToast?.('No payment data to export', 'warning');
+
+        const paymentMap = {};
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            paymentMap[data.pupilId] = {
+                totalPaid: data.totalPaid || 0,
+                balance: data.balance || 0,
+                status: data.status || 'owing',
+                lastPaymentDate: data.lastPaymentDate
+            };
+        });
+
+        // 4. Build complete dataset
+        const reportData = [];
+        let totalExpected = 0;
+        let totalCollected = 0;
+        let totalOutstanding = 0;
+
+        pupilsSnap.forEach(pupilDoc => {
+            const pupil = pupilDoc.data();
+            const pupilId = pupilDoc.id;
+            const classId = pupil.class?.id;
+
+            if (!classId) return; // skip unassigned
+
+            const amountDue = feeStructureMap[classId] || 0;
+            if (amountDue === 0) return; // skip classes without fee structure
+
+            const payment = paymentMap[pupilId];
+
+            const totalPaid = payment?.totalPaid || 0;
+            const balance = amountDue - totalPaid;
+
+            const calculatedStatus = 
+                balance <= 0 ? 'paid' :
+                totalPaid > 0 ? 'partial' : 'owing';
+
+            reportData.push({
+                pupilName: pupil.name || 'Unknown',
+                className: pupil.class?.name || '-',
+                amountDue,
+                totalPaid,
+                balance,
+                status: calculatedStatus,
+                lastPaymentDate: payment?.lastPaymentDate 
+                    ? payment.lastPaymentDate.toDate().toLocaleDateString('en-GB')
+                    : 'N/A'
+            });
+
+            totalExpected += amountDue;
+            totalCollected += totalPaid;
+            totalOutstanding += balance;
+        });
+
+        if (reportData.length === 0) {
+            window.showToast?.('No pupils with fee structures for this session/term', 'warning');
             return;
         }
-        
+
         if (format === 'csv') {
-            await exportFinancialCSV(paymentsSnap, session, term);
-        } else if (format === 'pdf') {
-            await exportFinancialPDF(paymentsSnap, session, term);
+            await exportFinancialCSV(reportData, session, term, totalExpected, totalCollected, totalOutstanding);
+        } else {
+            await exportFinancialPDF(reportData, session, term, totalExpected, totalCollected, totalOutstanding);
         }
-        
+
     } catch (error) {
         console.error('Error exporting financial report:', error);
-        window.handleError(error, 'Failed to export report');
+        window.handleError?.(error, 'Failed to export report');
     }
 }
 
 /**
- * Export to CSV format
+ * Export CSV - using complete pupil-based data
  */
-async function exportFinancialCSV(paymentsSnap, session, term) {
-    const payments = [];
-    
-    paymentsSnap.forEach(doc => {
-        const data = doc.data();
-        payments.push({
-            pupilName: data.pupilName || '',
-            className: data.className || '',
-            amountDue: data.amountDue || 0,
-            totalPaid: data.totalPaid || 0,
-            balance: data.balance || 0,
-            status: data.status || '',
-            lastPaymentDate: data.lastPaymentDate 
-                ? data.lastPaymentDate.toDate().toLocaleDateString('en-GB')
-                : 'N/A'
-        });
-    });
-    
-    // Create CSV content
+async function exportFinancialCSV(reportData, session, term, totalExpected, totalCollected, totalOutstanding) {
     const headers = ['Pupil Name', 'Class', 'Amount Due', 'Total Paid', 'Balance', 'Status', 'Last Payment Date'];
+    
     const csvRows = [headers.join(',')];
     
-    payments.forEach(p => {
-        const row = [
-            `"${p.pupilName}"`,
-            `"${p.className}"`,
+    reportData.forEach(p => {
+        csvRows.push([
+            `"${(p.pupilName || '').replace(/"/g, '""')}"`,
+            `"${(p.className || '').replace(/"/g, '""')}"`,
             p.amountDue,
             p.totalPaid,
             p.balance,
             `"${p.status}"`,
             `"${p.lastPaymentDate}"`
-        ];
-        csvRows.push(row.join(','));
+        ].join(','));
     });
-    
+
+    // Optional: add summary row
+    csvRows.push([]);
+    csvRows.push(['SUMMARY','','','','','']);
+    csvRows.push(['Total Expected', '', totalExpected, '', '', '']);
+    csvRows.push(['Total Collected', '', totalCollected, '', '', '']);
+    csvRows.push(['Total Outstanding', '', totalOutstanding, '', '', '']);
+    csvRows.push(['Collection Rate', '', 
+        totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) + '%' : '0%', 
+        '', '', '']);
+
     const csvContent = csvRows.join('\n');
-    
-    // Download CSV
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -3601,23 +3662,22 @@ async function exportFinancialCSV(paymentsSnap, session, term) {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     window.showToast?.('✓ CSV report downloaded', 'success');
 }
 
 /**
- * Export to PDF format
+ * Export PDF - using complete pupil-based data
  */
-async function exportFinancialPDF(paymentsSnap, session, term) {
-    // Check if jsPDF is available
+async function exportFinancialPDF(reportData, session, term, totalExpected, totalCollected, totalOutstanding) {
     if (typeof window.jspdf === 'undefined') {
-        window.showToast?.('PDF library not loaded. Please refresh the page.', 'danger');
+        window.showToast?.('PDF library not loaded. Please refresh.', 'danger');
         return;
     }
-    
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
+
     // Header
     doc.setFontSize(18);
     doc.text('FAHMID NURSERY & PRIMARY SCHOOL', 105, 15, { align: 'center' });
@@ -3628,54 +3688,48 @@ async function exportFinancialPDF(paymentsSnap, session, term) {
     doc.setFontSize(10);
     doc.text(`Session: ${session} | Term: ${term}`, 105, 32, { align: 'center' });
     doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 38, { align: 'center' });
-    
+
     // Table data
-    const tableData = [];
-    let totalExpected = 0;
-    let totalCollected = 0;
-    let totalOutstanding = 0;
-    
-    paymentsSnap.forEach(doc => {
-        const data = doc.data();
-        totalExpected += data.amountDue || 0;
-        totalCollected += data.totalPaid || 0;
-        totalOutstanding += data.balance || 0;
-        
-        tableData.push([
-            data.pupilName || '',
-            data.className || '',
-            `₦${(data.amountDue || 0).toLocaleString()}`,
-            `₦${(data.totalPaid || 0).toLocaleString()}`,
-            `₦${(data.balance || 0).toLocaleString()}`,
-            data.status || ''
-        ]);
-    });
-    
-    // Add table
+    const tableData = reportData.map(p => [
+        p.pupilName,
+        p.className,
+        `₦${p.amountDue.toLocaleString()}`,
+        `₦${p.totalPaid.toLocaleString()}`,
+        `₦${p.balance.toLocaleString()}`,
+        p.status.charAt(0).toUpperCase() + p.status.slice(1)
+    ]);
+
     doc.autoTable({
         startY: 45,
         head: [['Pupil Name', 'Class', 'Amount Due', 'Paid', 'Balance', 'Status']],
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [0, 178, 255] }
+        headStyles: { fillColor: [0, 178, 255] },
+        columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 25 }
+        }
     });
-    
-    // Summary section
-    const finalY = doc.lastAutoTable.finalY + 10;
+
+    // Summary
+    const finalY = doc.lastAutoTable.finalY + 12;
     
     doc.setFontSize(12);
     doc.text('Summary', 14, finalY);
     
     doc.setFontSize(10);
-    doc.text(`Total Expected: ₦${totalExpected.toLocaleString()}`, 14, finalY + 8);
-    doc.text(`Total Collected: ₦${totalCollected.toLocaleString()}`, 14, finalY + 14);
-    doc.text(`Total Outstanding: ₦${totalOutstanding.toLocaleString()}`, 14, finalY + 20);
+    doc.text(`Total Expected:     ₦${totalExpected.toLocaleString()}`, 14, finalY + 8);
+    doc.text(`Total Collected:    ₦${totalCollected.toLocaleString()}`, 14, finalY + 14);
+    doc.text(`Total Outstanding:  ₦${totalOutstanding.toLocaleString()}`, 14, finalY + 20);
     
     const collectionRate = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
-    doc.text(`Collection Rate: ${collectionRate}%`, 14, finalY + 26);
-    
-    // Save PDF
+    doc.text(`Collection Rate:    ${collectionRate}%`, 14, finalY + 26);
+
     doc.save(`Financial_Report_${session}_${term}_${new Date().toISOString().split('T')[0]}.pdf`);
     
     window.showToast?.('✓ PDF report downloaded', 'success');
