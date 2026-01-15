@@ -4405,6 +4405,33 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     return;
   }
   
+  // FIXED: Check for duplicate admission number
+  if (admissionNo) {
+    try {
+      const duplicateSnap = await db.collection('pupils')
+        .where('admissionNo', '==', admissionNo)
+        .limit(1)
+        .get();
+      
+      if (!duplicateSnap.empty) {
+        const existingPupilId = duplicateSnap.docs[0].id;
+        
+        // Allow if editing the same pupil
+        if (!pupilId || pupilId !== existingPupilId) {
+          window.showToast?.(
+            `Admission number "${admissionNo}" is already assigned to another pupil`,
+            'danger',
+            5000
+          );
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking admission number:', error);
+      // Continue with save if check fails (better than blocking)
+    }
+  }
+  
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="btn-loading">Saving pupil...</span>';
@@ -4430,25 +4457,25 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     }
     
     const pupilData = {
-  admissionNo,
-  name,
-  dob: document.getElementById('pupil-dob').value || '',
-  gender: document.getElementById('pupil-gender').value || '',
-  parentName: document.getElementById('pupil-parent-name').value.trim() || '',
-  parentEmail: parentEmail || '',
-  contact: document.getElementById('pupil-contact').value.trim() || '',
-  address: document.getElementById('pupil-address').value.trim() || '',
-  class: {
-    id: classId,
-    name: classData.name || 'Unknown Class'
-  },
-  subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
-  assignedTeacher: {
-    id: teacherId,
-    name: teacherName
-  },
-  updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-};
+      admissionNo,
+      name,
+      dob: document.getElementById('pupil-dob').value || '',
+      gender: document.getElementById('pupil-gender').value || '',
+      parentName: document.getElementById('pupil-parent-name').value.trim() || '',
+      parentEmail: parentEmail || '',
+      contact: document.getElementById('pupil-contact').value.trim() || '',
+      address: document.getElementById('pupil-address').value.trim() || '',
+      class: {
+        id: classId,
+        name: classData.name || 'Unknown Class'
+      },
+      subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+      assignedTeacher: {
+        id: teacherId,
+        name: teacherName
+      },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
     
     if (pupilId) {
       await db.collection('pupils').doc(pupilId).update(pupilData);
@@ -4474,8 +4501,8 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
         return;
       }
       
-      const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      const uid = userCredential.user.uid;
+      const userCredential = await window.createSecondaryUser(email, password);
+      const uid = userCredential;
       
       await db.collection('users').doc(uid).set({
         email,
@@ -4487,9 +4514,6 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       
       await db.collection('pupils').doc(uid).set(pupilData);
-      
-      await secondaryAuth.sendPasswordResetEmail(email);
-      await secondaryAuth.signOut();
       
       window.showToast?.(
         `✓ Pupil "${name}" added successfully!\nPassword reset email sent to ${email}`,
