@@ -56,6 +56,84 @@ try {
 }
 
 // ============================================
+// SESSION TIMEOUT CONFIGURATION
+// ============================================
+
+/**
+ * Configure automatic session timeout for security
+ * Default: 8 hours of inactivity
+ */
+const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
+let sessionTimeoutId = null;
+let lastActivityTime = Date.now();
+
+/**
+ * Reset session timeout on user activity
+ */
+function resetSessionTimeout() {
+  lastActivityTime = Date.now();
+  
+  if (sessionTimeoutId) {
+    clearTimeout(sessionTimeoutId);
+  }
+  
+  sessionTimeoutId = setTimeout(() => {
+    const currentUser = window.auth.currentUser;
+    
+    if (currentUser) {
+      console.log('Session timeout reached, logging out...');
+      
+      window.auth.signOut()
+        .then(() => {
+          window.showToast?.(
+            'Your session has expired due to inactivity. Please log in again.',
+            'info',
+            5000
+          );
+          
+          setTimeout(() => {
+            window.location.href = 'login.html';
+          }, 2000);
+        })
+        .catch(error => {
+          console.error('Error during session timeout logout:', error);
+        });
+    }
+  }, SESSION_TIMEOUT_MS);
+}
+
+/**
+ * Track user activity to reset timeout
+ */
+const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+
+activityEvents.forEach(event => {
+  document.addEventListener(event, () => {
+    // Only reset if logged in
+    if (window.auth.currentUser) {
+      resetSessionTimeout();
+    }
+  }, { passive: true });
+});
+
+/**
+ * Start timeout tracking when user logs in
+ */
+window.auth.onAuthStateChanged(user => {
+  if (user) {
+    resetSessionTimeout();
+    console.log('✓ Session timeout tracking started');
+  } else {
+    if (sessionTimeoutId) {
+      clearTimeout(sessionTimeoutId);
+      sessionTimeoutId = null;
+    }
+  }
+});
+
+console.log(`✓ Session timeout configured: ${SESSION_TIMEOUT_MS / 1000 / 60} minutes`);
+
+// ============================================
 // ERROR MESSAGES - DEFINED ONCE
 // ============================================
 
