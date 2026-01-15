@@ -4591,13 +4591,17 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
-    const snapshot = await db.collection('pupils').get();
+    // FIXED: Use query limit instead of fetching all
+    const snapshot = await db.collection('pupils')
+      .orderBy('name')
+      .limit(500) // Fetch max 500 for pagination
+      .get();
+    
     tbody.innerHTML = '';
 
     if (snapshot.empty) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
       
-      // Hide bulk actions if no pupils
       const bulkActionsBar = document.getElementById('bulk-actions-bar');
       if (bulkActionsBar) bulkActionsBar.style.display = 'none';
       
@@ -4609,10 +4613,6 @@ async function loadPupils() {
       pupils.push({ id: doc.id, ...doc.data() });
     });
 
-    // Sort in JavaScript instead of Firestore
-    pupils.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-    // Show bulk actions bar
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
     if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
 
@@ -4644,7 +4644,6 @@ async function loadPupils() {
       tbody.appendChild(tr);
     });
     
-    // ✅ CRITICAL FIX: Setup event listeners AFTER table is populated
     setupBulkActionsEventListeners();
     
   } catch (error) {
