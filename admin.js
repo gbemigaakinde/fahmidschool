@@ -19,18 +19,36 @@
 const db = window.db;
 const auth = window.auth;
 
-// Secondary app for creating users
-let secondaryApp;
-let secondaryAuth;
+// Secondary app for creating users - NOT exposed globally
+(function() {
+  let secondaryApp;
+  let secondaryAuth;
 
-try {
-  secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
-  secondaryAuth = secondaryApp.auth();
-} catch (error) {
-  console.warn('Secondary app already exists:', error);
-  secondaryApp = firebase.app('Secondary');
-  secondaryAuth = secondaryApp.auth();
-}
+  try {
+    secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+    secondaryAuth = secondaryApp.auth();
+  } catch (error) {
+    console.warn('Secondary app already exists:', error);
+    secondaryApp = firebase.app('Secondary');
+    secondaryAuth = secondaryApp.auth();
+  }
+
+  // Expose only safe helper function
+  window.createSecondaryUser = async function(email, password) {
+    if (!auth.currentUser) throw new Error('Not authenticated');
+    
+    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+    if (!userDoc.exists || userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+    
+    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    await secondaryAuth.sendPasswordResetEmail(email);
+    await secondaryAuth.signOut();
+    
+    return userCredential.user.uid;
+  };
+})();
 
 /* =====================================================
    CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
@@ -3219,7 +3237,6 @@ async function recordPayment() {
   const paymentMethod = document.getElementById('payment-method')?.value;
   const notes = document.getElementById('payment-notes')?.value.trim() || '';
 
-  // Validation
   if (!pupilId || !classId) {
     window.showToast?.('Please select a pupil and class', 'warning');
     return;
@@ -3241,14 +3258,10 @@ async function recordPayment() {
     const session = settings.session;
     const term = settings.term;
     
-    // Generate receipt number
     const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
-    // CRITICAL FIX: Encode session to remove "/" character for document ID
-    const encodedSession = session.replace(/\//g, '-');
-    
-    // Get or create payment summary document (using ENCODED session in ID)
-    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    // FIXED: Store session WITHOUT encoding in document
+    const paymentDocId = `${pupilId}_${session.replace(/\//g, '-')}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
     
@@ -3260,10 +3273,9 @@ async function recordPayment() {
       currentPaid = data.totalPaid || 0;
       amountDue = data.amountDue || 0;
     } else {
-      // Get fee structure to know amount due
       const feeSnap = await db.collection('fee_structures')
         .where('classId', '==', classId)
-        .where('session', '==', session)  // Use ORIGINAL format for query
+        .where('session', '==', session)
         .where('term', '==', term)
         .limit(1)
         .get();
@@ -3277,16 +3289,15 @@ async function recordPayment() {
     const newBalance = Math.max(0, amountDue - newTotalPaid);
     const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
     
-    // Use batch for atomic updates
     const batch = db.batch();
     
-    // Update/create payment summary (store ORIGINAL session format in field)
+    // FIXED: Store ORIGINAL session format in payment document
     batch.set(paymentRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session: session,  // Store ORIGINAL format "2025/2026"
+      session: session,
       term,
       amountDue,
       totalPaid: newTotalPaid,
@@ -3296,14 +3307,14 @@ async function recordPayment() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // CRITICAL FIX: Use receiptNo as document ID for payment_transactions (not 'transactions')
-const transactionRef = db.collection('payment_transactions').doc(receiptNo);
-batch.set(transactionRef, {
+    // FIXED: Store ORIGINAL session format in transaction
+    const transactionRef = db.collection('payment_transactions').doc(receiptNo);
+    batch.set(transactionRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session: session,  // Store ORIGINAL format "2025/2026"
+      session: session,
       term,
       amountPaid,
       paymentMethod: paymentMethod || 'Cash',
@@ -3325,15 +3336,12 @@ batch.set(transactionRef, {
       8000
     );
 
-    // Clear form
     if (amountInput) amountInput.value = '';
     const notesInput = document.getElementById('payment-notes');
     if (notesInput) notesInput.value = '';
 
-    // Refresh data
     await loadPupilPaymentStatus();
 
-    // Ask to print receipt
     if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
       printReceipt(receiptNo);
     }
