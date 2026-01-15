@@ -2179,7 +2179,6 @@ window.submitPromotionRequest = submitPromotionRequest;
 window.loadResultsTable = loadResultsTable;
 window.saveAllResults = saveAllResults;
 window.saveAllAttendance = saveAllAttendance;
-window.loadTraitsData = loadTraitsData;
 window.saveTraitsAndSkills = saveTraitsAndSkills;
 window.loadRemarksData = loadRemarksData;
 window.saveRemarks = saveRemarks;
