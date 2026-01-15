@@ -958,7 +958,6 @@ async function saveAllResults() {
         return;
     }
 
-    // ── Input validation ───────────────────────────────────────────────────────
     let hasInvalidScores = false;
 
     inputs.forEach(input => {
@@ -994,15 +993,11 @@ async function saveAllResults() {
         return;
     }
 
-    // ── Save button loading state ─────────────────────────────────────────────
     const saveBtn = document.getElementById('save-results-btn');
     let originalHTML = null;
-    let originalText = null;
 
     if (saveBtn) {
         originalHTML = saveBtn.innerHTML;
-        originalText = saveBtn.textContent?.trim() || '💾 Save All Results';
-
         saveBtn.disabled = true;
         saveBtn.innerHTML = `
             <span style="display:inline-flex; align-items:center; gap:0.5rem;">
@@ -1015,27 +1010,46 @@ async function saveAllResults() {
     }
 
     try {
-        // Get current session information
         const settings = await window.getCurrentSettings();
         const currentSession = settings.session || 'Unknown';
         const sessionStartYear = settings.currentSession?.startYear;
         const sessionEndYear = settings.currentSession?.endYear;
 
+        // FIXED: Use transaction for conflict detection
         const batch = db.batch();
         let hasChanges = false;
+        const conflicts = [];
 
+        // Group inputs by pupil
+        const pupilResults = {};
         inputs.forEach(input => {
             const pupilId = input.dataset.pupil;
             const field = input.dataset.field;
             const value = parseFloat(input.value) || 0;
 
+            if (!pupilResults[pupilId]) {
+                pupilResults[pupilId] = {};
+            }
+            pupilResults[pupilId][field] = value;
+            
             if (value > 0) hasChanges = true;
+        });
 
+        if (!hasChanges) {
+            window.showToast?.('No scores have been entered', 'warning');
+            return;
+        }
+
+        // Process each pupil's results with version checking
+        for (const [pupilId, scores] of Object.entries(pupilResults)) {
             const docId = `${pupilId}_${term}_${subject}`;
             const ref = db.collection('results').doc(docId);
-
+            
+            // Read current document to check for conflicts
+            const currentDoc = await ref.get();
+            
             const sessionTerm = `${currentSession}_${term}`;
-
+            
             const baseData = {
                 pupilId,
                 term,
@@ -1044,33 +1058,70 @@ async function saveAllResults() {
                 sessionStartYear,
                 sessionEndYear,
                 sessionTerm,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                caScore: scores.ca !== undefined ? scores.ca : (currentDoc.exists ? currentDoc.data().caScore : 0),
+                examScore: scores.exam !== undefined ? scores.exam : (currentDoc.exists ? currentDoc.data().examScore : 0),
+                version: currentDoc.exists ? ((currentDoc.data().version || 0) + 1) : 1,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: currentUser.uid
             };
-
-            if (field === 'ca') {
-                batch.set(ref, { ...baseData, caScore: value }, { merge: true });
-            } else {
-                batch.set(ref, { ...baseData, examScore: value }, { merge: true });
+            
+            // Check for concurrent modification
+            if (currentDoc.exists) {
+                const lastUpdated = currentDoc.data().updatedAt;
+                const lastUpdatedBy = currentDoc.data().updatedBy;
+                
+                if (lastUpdated && lastUpdatedBy && lastUpdatedBy !== currentUser.uid) {
+                    const timeDiff = Date.now() - lastUpdated.toDate().getTime();
+                    
+                    // If updated by someone else in last 5 minutes, flag as potential conflict
+                    if (timeDiff < 300000) {
+                        conflicts.push({
+                            pupilId,
+                            lastUpdatedBy,
+                            timeDiff: Math.floor(timeDiff / 1000)
+                        });
+                    }
+                }
             }
-        });
+            
+            batch.set(ref, baseData, { merge: true });
+        }
 
-        if (!hasChanges) {
-            window.showToast?.('No scores have been entered', 'warning');
-            return;
+        // If conflicts detected, warn user
+        if (conflicts.length > 0) {
+            const confirmSave = confirm(
+                `⚠️ POTENTIAL CONFLICT DETECTED\n\n` +
+                `${conflicts.length} result(s) were recently modified by another teacher.\n\n` +
+                `If you continue, your changes will overwrite theirs.\n\n` +
+                `Continue saving?`
+            );
+            
+            if (!confirmSave) {
+                window.showToast?.('Save cancelled due to conflicts', 'info');
+                return;
+            }
         }
 
         await batch.commit();
         window.showToast?.('✓ All results saved successfully', 'success');
+        
     } catch (err) {
         console.error('Error saving results:', err);
-        window.handleError?.(err, 'Failed to save results');
+        
+        if (err.code === 'failed-precondition') {
+            window.showToast?.(
+                'Conflict detected: Another teacher modified these results. Please refresh and try again.',
+                'danger',
+                8000
+            );
+        } else {
+            window.handleError?.(err, 'Failed to save results');
+        }
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
             if (originalHTML) {
                 saveBtn.innerHTML = originalHTML;
-            } else if (originalText) {
-                saveBtn.textContent = originalText;
             }
             saveBtn.style.opacity = '';
             saveBtn.style.cursor = '';
