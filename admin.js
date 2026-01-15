@@ -4331,19 +4331,6 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
-  // Email format validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    window.showToast?.('Please enter a valid email address', 'warning');
-    return;
-  }
-  
-  // Password strength validation
-  if (tempPassword.length < 6) {
-    window.showToast?.('Password must be at least 6 characters', 'warning');
-    return;
-  }
-  
   try {
     const existingUsers = await db.collection('users')
       .where('email', '==', email)
@@ -4362,16 +4349,13 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
   submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
   
   try {
-    // SECURITY FIX: Use secure user creation helper
-    const uid = await window.createSecondaryUser(email, tempPassword);
+    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
+    const uid = userCredential.user.uid;
     
-    // Create user document with role ONLY after verification
     await db.collection('users').doc(uid).set({
       email,
       role: 'teacher',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: auth.currentUser.uid,
-      verified: true
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
     await db.collection('teachers').doc(uid).set({
@@ -4381,6 +4365,10 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
+    // CRITICAL FIX: Send password reset BEFORE signing out
+    await secondaryAuth.sendPasswordResetEmail(email);
+    await secondaryAuth.signOut();
+        
     window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 6000);
     cancelTeacherForm();
     loadTeachers();
