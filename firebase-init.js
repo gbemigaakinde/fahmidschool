@@ -1,48 +1,26 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Shared Authentication
- * SECURED VERSION - Environment-Based Configuration
+ * CORRECTED - All duplicates removed
  * 
- * @version 4.0.0 - CREDENTIALS SECURED
- * @date 2026-01-15
+ * @version 3.1.0 - FIXED
+ * @date 2026-01-10
  */
 'use strict';
 
 // ============================================
-// FIREBASE CONFIGURATION - ENVIRONMENT AWARE
+// FIREBASE CONFIGURATION & INITIALIZATION
 // ============================================
 
-/**
- * Load Firebase configuration from environment
- * In production, serve config.js from server with proper headers
- */
-let firebaseConfig;
-
-// Check if config loaded from external file (preferred method)
-if (typeof window.FIREBASE_CONFIG !== 'undefined') {
-  firebaseConfig = window.FIREBASE_CONFIG;
-  console.log('✓ Firebase config loaded from environment');
-} else {
-  // Fallback for development only
-  console.warn('⚠️ Using fallback Firebase config - DO NOT USE IN PRODUCTION');
-  firebaseConfig = {
-    apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
-    authDomain: "fahmid-school.firebaseapp.com",
-    projectId: "fahmid-school",
-    storageBucket: "fahmid-school.firebasestorage.app",
-    messagingSenderId: "48604608508",
-    appId: "1:48604608508:web:5b387a2de260b9851a6479",
-    measurementId: "G-HEC84JXFY2"
-  };
-}
-
-// Validate required fields
-const requiredFields = ['apiKey', 'authDomain', 'projectId'];
-const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
-
-if (missingFields.length > 0) {
-  throw new Error(`Firebase configuration missing required fields: ${missingFields.join(', ')}`);
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
+  authDomain: "fahmid-school.firebaseapp.com",
+  projectId: "fahmid-school",
+  storageBucket: "fahmid-school.firebasestorage.app",
+  messagingSenderId: "48604608508",
+  appId: "1:48604608508:web:5b387a2de260b9851a6479",
+  measurementId: "G-HEC84JXFY2"
+};
 
 // Initialize Firebase (only once)
 if (!firebase.apps.length) {
