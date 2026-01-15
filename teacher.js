@@ -521,20 +521,24 @@ async function loadResultsTable() {
   
   try {
     const resultsMap = {};
-    const resultsSnapshot = await db.collection('results')
-      .where('term', '==', term)
-      .where('subject', '==', subject)
-      .get();
     
-    resultsSnapshot.docs.forEach(doc => {
-      const data = doc.data();
-      if (data.pupilId) {
-        resultsMap[data.pupilId] = {
+    // FIXED: Query each pupil individually to avoid composite index requirement
+    for (const pupil of allPupils) {
+      const resultsSnapshot = await db.collection('results')
+        .where('pupilId', '==', pupil.id)
+        .where('term', '==', term)
+        .where('subject', '==', subject)
+        .limit(1)
+        .get();
+      
+      if (!resultsSnapshot.empty) {
+        const data = resultsSnapshot.docs[0].data();
+        resultsMap[pupil.id] = {
           ca: data.caScore || 0,
           exam: data.examScore || 0
         };
       }
-    });
+    }
     
     container.innerHTML = `
       <div class="table-container">
@@ -578,15 +582,12 @@ async function loadResultsTable() {
     
     if (saveBtn) saveBtn.hidden = false;
     
-    // FIXED: Add validation and auto-update totals
     container.querySelectorAll('input[type="number"]').forEach(input => {
-      // Validate on input
       input.addEventListener('input', (e) => {
         const field = e.target.dataset.field;
         const max = field === 'ca' ? 40 : 60;
         let value = parseFloat(e.target.value);
         
-        // FIXED: Enforce max limits
         if (value > max) {
           e.target.value = max;
           value = max;
@@ -597,13 +598,11 @@ async function loadResultsTable() {
           );
         }
         
-        // FIXED: Prevent negative values
         if (value < 0) {
           e.target.value = 0;
           value = 0;
         }
         
-        // Update total
         const row = e.target.closest('tr');
         const caInput = row.querySelector('[data-field="ca"]');
         const examInput = row.querySelector('[data-field="exam"]');
@@ -615,16 +614,15 @@ async function loadResultsTable() {
           const total = ca + exam;
           totalCell.textContent = total > 0 ? total.toFixed(1) : '-';
           
-          // FIXED: Visual feedback for score range
           totalCell.style.fontWeight = 'bold';
           if (total >= 75) {
-            totalCell.style.color = '#4CAF50'; // Green for excellent
+            totalCell.style.color = '#4CAF50';
           } else if (total >= 50) {
-            totalCell.style.color = '#2196F3'; // Blue for good
+            totalCell.style.color = '#2196F3';
           } else if (total >= 40) {
-            totalCell.style.color = '#ff9800'; // Orange for pass
+            totalCell.style.color = '#ff9800';
           } else if (total > 0) {
-            totalCell.style.color = '#f44336'; // Red for fail
+            totalCell.style.color = '#f44336';
           } else {
             totalCell.style.color = 'inherit';
             totalCell.style.fontWeight = 'normal';
@@ -632,7 +630,6 @@ async function loadResultsTable() {
         }
       });
       
-      // FIXED: Validate on blur (when user leaves field)
       input.addEventListener('blur', (e) => {
         const field = e.target.dataset.field;
         const max = field === 'ca' ? 40 : 60;
@@ -654,8 +651,8 @@ async function loadResultsTable() {
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
     if (saveBtn) saveBtn.hidden = true;
   }
-  // Check lock status after loading results
-    await checkResultLockStatus();
+  
+  await checkResultLockStatus();
 }
 
 /**
