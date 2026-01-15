@@ -2926,6 +2926,9 @@ async function loadPaymentHistory(pupilId, session, term) {
 /**
  * Load outstanding fees report
  */
+/**
+ * Load outstanding fees report - FIXED: Based on ALL pupils
+ */
 async function loadOutstandingFeesReport() {
   const container = document.getElementById('outstanding-fees-table');
   if (!container) return;
@@ -2940,17 +2943,97 @@ async function loadOutstandingFeesReport() {
     const session = settings.session;
     const term = settings.term;
     
-    // Query payments collection directly (NO finance.js dependency)
-    const paymentsSnap = await db.collection('payments')
-      .where('session', '==', session)
-      .where('term', '==', term)
-      .where('balance', '>', 0)
-      .get();
+    // FIXED: Get ALL pupils currently enrolled
+    const pupilsSnap = await db.collection('pupils').get();
     
-    if (paymentsSnap.empty) {
+    if (pupilsSnap.empty) {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
+            No pupils enrolled in the school.
+          </td>
+        </tr>`;
+      return;
+    }
+    
+    console.log(`📊 Calculating fees for ${pupilsSnap.size} pupils...`);
+    
+    // Get fee structures for all classes
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
+    });
+    
+    // Get all payment records
+    const paymentsSnap = await db.collection('payments')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    const paymentMap = {};
+    paymentsSnap.forEach(doc => {
+      const data = doc.data();
+      paymentMap[data.pupilId] = {
+        totalPaid: data.totalPaid || 0,
+        balance: data.balance || 0,
+        status: data.status || 'owing'
+      };
+    });
+    
+    // Calculate outstanding for EACH pupil
+    const outstandingPupils = [];
+    let totalOutstanding = 0;
+    
+    pupilsSnap.forEach(pupilDoc => {
+      const pupil = pupilDoc.data();
+      const pupilId = pupilDoc.id;
+      const classId = pupil.class?.id || null;
+      
+      if (!classId) {
+        console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
+        return;
+      }
+      
+      const amountDue = feeStructureMap[classId] || 0;
+      
+      if (amountDue === 0) {
+        console.warn(`⚠️ No fee structure for class ${pupil.class?.name}`);
+        return; // Skip pupils in classes without fee structures
+      }
+      
+      const payment = paymentMap[pupilId];
+      const totalPaid = payment ? payment.totalPaid : 0;
+      const balance = amountDue - totalPaid;
+      
+      if (balance > 0) {
+        outstandingPupils.push({
+          name: pupil.name || 'Unknown',
+          className: pupil.class?.name || '-',
+          amountDue: amountDue,
+          totalPaid: totalPaid,
+          balance: balance,
+          status: totalPaid > 0 ? 'partial' : 'owing'
+        });
+        
+        totalOutstanding += balance;
+      }
+    });
+    
+    // Sort by balance (highest first)
+    outstandingPupils.sort((a, b) => b.balance - a.balance);
+    
+    tbody.innerHTML = '';
+    
+    if (outstandingPupils.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">
             ✓ All fees collected! No outstanding payments.
           </td>
         </tr>`;
@@ -2963,40 +3046,37 @@ async function loadOutstandingFeesReport() {
       return;
     }
     
-    let totalOutstanding = 0;
     const fragment = document.createDocumentFragment();
     
-    paymentsSnap.forEach(doc => {
-      const payment = doc.data();
-      totalOutstanding += Number(payment.balance) || 0;
-      
+    outstandingPupils.forEach(pupil => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td data-label="Pupil Name">${payment.pupilName || '-'}</td>
-        <td data-label="Class">${payment.className || '-'}</td>
-        <td data-label="Amount Due">₦${Number(payment.amountDue || 0).toLocaleString()}</td>
-        <td data-label="Paid">₦${Number(payment.totalPaid || 0).toLocaleString()}</td>
+        <td data-label="Pupil Name">${pupil.name}</td>
+        <td data-label="Class">${pupil.className}</td>
+        <td data-label="Amount Due">₦${pupil.amountDue.toLocaleString()}</td>
+        <td data-label="Paid">₦${pupil.totalPaid.toLocaleString()}</td>
         <td data-label="Balance" class="text-bold text-danger">
-          ₦${Number(payment.balance || 0).toLocaleString()}
+          ₦${pupil.balance.toLocaleString()}
         </td>
         <td data-label="Status">
-          <span class="status-badge" style="background:${payment.status === 'partial' ? '#ff9800' : '#f44336'};">
-            ${payment.status === 'partial' ? 'Partial' : 'Owing'}
+          <span class="status-badge" style="background:${pupil.status === 'partial' ? '#ff9800' : '#f44336'};">
+            ${pupil.status === 'partial' ? 'Partial' : 'Owing'}
           </span>
         </td>
       `;
       fragment.appendChild(tr);
     });
     
-    tbody.innerHTML = '';
     tbody.appendChild(fragment);
     
     // Update summary
     const outstandingCountEl = document.getElementById('outstanding-count');
-    if (outstandingCountEl) outstandingCountEl.textContent = paymentsSnap.size;
+    if (outstandingCountEl) outstandingCountEl.textContent = outstandingPupils.length;
     
     const outstandingTotalEl = document.getElementById('outstanding-total');
     if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
+    
+    console.log(`✓ Outstanding fees calculated: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
     
   } catch (error) {
     console.error('Error loading outstanding fees:', error);
@@ -3012,42 +3092,98 @@ async function loadOutstandingFeesReport() {
 /**
  * Load financial reports
  */
+/**
+ * Load financial reports - FIXED: Based on ALL pupils
+ */
 async function loadFinancialReports() {
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     const term = settings.term;
     
-    // Query payments collection directly (NO finance.js dependency)
+    // FIXED: Get ALL pupils currently enrolled
+    const pupilsSnap = await db.collection('pupils').get();
+    
+    if (pupilsSnap.empty) {
+      updateFinancialDisplays(0, 0, 0, 0, 0, 0, pupilsSnap.size, session, term);
+      return;
+    }
+    
+    console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
+    
+    // Get fee structures for all classes
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
+    });
+    
+    // Get all payment records
     const paymentsSnap = await db.collection('payments')
       .where('session', '==', session)
       .where('term', '==', term)
       .get();
     
-    if (paymentsSnap.empty) {
-      updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, term);
-      return;
-    }
+    const paymentMap = {};
+    paymentsSnap.forEach(doc => {
+      const data = doc.data();
+      paymentMap[data.pupilId] = {
+        totalPaid: data.totalPaid || 0,
+        balance: data.balance || 0,
+        status: data.status || 'owing'
+      };
+    });
     
-    // Calculate summary
+    // Calculate totals for EACH pupil
     let totalExpected = 0;
     let totalCollected = 0;
     let totalOutstanding = 0;
     let paidInFull = 0;
     let partialPayments = 0;
     let noPayment = 0;
+    let pupilsWithFees = 0; // Only count pupils in classes with fee structures
     
-    paymentsSnap.forEach(doc => {
-      const data = doc.data();
-      totalExpected += Number(data.amountDue) || 0;
-      totalCollected += Number(data.totalPaid) || 0;
-      totalOutstanding += Number(data.balance) || 0;
+    pupilsSnap.forEach(pupilDoc => {
+      const pupil = pupilDoc.data();
+      const pupilId = pupilDoc.id;
+      const classId = pupil.class?.id || null;
       
-      if (data.status === 'paid') {
-        paidInFull++;
-      } else if (data.status === 'partial') {
-        partialPayments++;
+      if (!classId) {
+        console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
+        return;
+      }
+      
+      const amountDue = feeStructureMap[classId] || 0;
+      
+      if (amountDue === 0) {
+        console.warn(`⚠️ No fee structure for class ${pupil.class?.name}`);
+        return; // Skip pupils in classes without fee structures
+      }
+      
+      pupilsWithFees++;
+      totalExpected += amountDue;
+      
+      const payment = paymentMap[pupilId];
+      
+      if (payment) {
+        totalCollected += payment.totalPaid;
+        totalOutstanding += payment.balance;
+        
+        if (payment.status === 'paid') {
+          paidInFull++;
+        } else if (payment.status === 'partial') {
+          partialPayments++;
+        } else {
+          noPayment++;
+        }
       } else {
+        // No payment record = full balance outstanding
+        totalOutstanding += amountDue;
         noPayment++;
       }
     });
@@ -3067,6 +3203,14 @@ async function loadFinancialReports() {
       session,
       term
     );
+    
+    console.log(`✓ Financial report generated:`);
+    console.log(`  - Total pupils: ${pupilsSnap.size}`);
+    console.log(`  - Pupils with fees: ${pupilsWithFees}`);
+    console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
+    console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
+    console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
+    console.log(`  - Collection rate: ${collectionRate}%`);
     
   } catch (error) {
     console.error('Error loading financial reports:', error);
