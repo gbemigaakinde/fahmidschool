@@ -7950,6 +7950,9 @@ function toggleAllPupils(masterCheckbox) {
 /**
  * AUDIT LOG VIEWER
  */
+/**
+ * AUDIT LOG VIEWER - FIXED
+ */
 async function loadAuditLog() {
   const container = document.getElementById('audit-log-container');
   if (!container) return;
@@ -7988,7 +7991,7 @@ async function loadAuditLog() {
               <th>Details</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody id="audit-log-tbody"></tbody>
         </table>
       </div>
       <button class="btn btn-secondary" onclick="downloadAuditLog()" style="margin-top:var(--space-lg);">
@@ -7996,7 +7999,8 @@ async function loadAuditLog() {
       </button>
     `;
     
-    paginateTable(logs, 'audit-log-table', 25, (log, tbody) => {
+    // FIXED: Use tbody ID, not table ID
+    paginateTable(logs, 'audit-log-tbody', 25, (log, tbody) => {
       const timestamp = log.timestamp ? 
         log.timestamp.toDate().toLocaleString('en-GB') : 
         'Unknown';
@@ -8137,7 +8141,7 @@ async function downloadAuditLog() {
 
 function filterAuditLog() {
   const searchTerm = document.getElementById('audit-search')?.value.toLowerCase() || '';
-  const rows = document.querySelectorAll('#audit-log-table tbody tr');
+  const rows = document.querySelectorAll('#audit-log-tbody tr'); // FIXED: tbody ID
   
   rows.forEach(row => {
     const text = row.textContent.toLowerCase();
