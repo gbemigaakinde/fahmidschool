@@ -21,7 +21,7 @@ const PRECACHE_ASSETS = [
   '/styles.css',
   '/script.js',
   '/firebase-init.js',
-  '/IMG_4629.png', // School logo
+  '/IMG_4628.jpeg', // School logo
   OFFLINE_PAGE
 ];
 
@@ -135,7 +135,7 @@ self.addEventListener('fetch', event => {
   if (
     request.url.endsWith('.css') ||
     request.url.endsWith('.js') ||
-    request.url.endsWith('.png') ||
+    request.url.endsWith('.jpeg') ||
     request.url.endsWith('.jpg') ||
     request.url.endsWith('.svg')
   ) {
@@ -201,8 +201,8 @@ self.addEventListener('push', event => {
   
   const options = {
     body: event.data ? event.data.text() : 'New notification',
-    icon: '/IMG_4629.png',
-    badge: '/IMG_4629.png',
+    icon: '/IMG_4628.jpeg',
+    badge: '/IMG_4628.jpeg',
     vibrate: [200, 100, 200]
   };
   
