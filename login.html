@@ -218,6 +218,42 @@
     opacity: 0.6;
 }
 
+/* Smooth transitions for auth mode switching */
+.auth-header h1,
+.auth-header p {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.auth-form-content {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.auth-form-content.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.auth-form-content.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#registration-locked {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+#registration-locked.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.auth-btn,
+.forgot-password {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
     /* Role selection (for registration) */
     .role-selection {
         margin: var(--space-6) 0;
@@ -446,80 +482,82 @@
 </div>
 
     <!-- Form -->
-    <form id="auth-form" novalidate>
+   <form id="auth-form" novalidate>
+    <div class="auth-form-content" id="auth-form-content">
+        <!-- Email Field -->
+        <div class="form-group">
+            <div class="label-wrapper">
+                <i data-lucide="mail" class="label-icon"></i>
+                <label for="email">
+                    Email Address <span class="required">*</span>
+                </label>
+            </div>
 
-    <!-- Email Field -->
-    <div class="form-group">
-        <div class="label-wrapper">
-            <i data-lucide="mail" class="label-icon"></i>
-            <label for="email">
-                Email Address <span class="required">*</span>
-            </label>
+            <input 
+                type="email" 
+                id="email" 
+                class="auth-input"
+                placeholder="your.email@example.com" 
+                required 
+                aria-required="true" 
+                autocomplete="email">
+
+            <span class="error-message" id="email-error">
+                Please enter a valid email address
+            </span>
         </div>
 
-        <input 
-            type="email" 
-            id="email" 
-            class="auth-input"
-            placeholder="your.email@example.com" 
-            required 
-            aria-required="true" 
-            autocomplete="email">
+        <!-- Password Field -->
+        <div class="form-group">
+            <div class="label-wrapper">
+                <i data-lucide="lock" class="label-icon"></i>
+                <label for="password">
+                    Password <span class="required">*</span>
+                </label>
+            </div>
 
-        <span class="error-message" id="email-error">
-            Please enter a valid email address
-        </span>
-    </div>
+            <input 
+                type="password" 
+                id="password" 
+                class="auth-input"
+                placeholder="Enter your password" 
+                required 
+                aria-required="true" 
+                autocomplete="current-password">
 
-    <!-- Password Field -->
-    <div class="form-group">
-        <div class="label-wrapper">
-            <i data-lucide="lock" class="label-icon"></i>
-            <label for="password">
-                Password <span class="required">*</span>
-            </label>
+            <span class="error-message" id="password-error">
+                Password must be at least 6 characters
+            </span>
         </div>
-
-        <input 
-            type="password" 
-            id="password" 
-            class="auth-input"
-            placeholder="Enter your password" 
-            required 
-            aria-required="true" 
-            autocomplete="current-password">
-
-        <span class="error-message" id="password-error">
-            Password must be at least 6 characters
-        </span>
     </div>
-                    <!-- Role Selection (Register Only) -->
-                    <div id="role-selection" class="role-selection" style="display:none;">
-                        <fieldset>
-                            <legend>Register As:</legend>
-                            <div class="role-options">
-                                <div class="role-option">
-                                    <input type="radio" name="role" value="pupil" id="role-pupil" checked>
-                                    <label for="role-pupil">Pupil/Parent</label>
-                                </div>
-                                <div class="role-option">
-                                    <input type="radio" name="role" value="teacher" id="role-teacher">
-                                    <label for="role-teacher">Teacher</label>
-                                </div>
-                            </div>
-                        </fieldset>
-                    </div>
 
-                    <!-- Submit Button -->
-                    <button type="submit" class="auth-btn" id="auth-btn">
-                        Sign In
-                    </button>
+    <!-- Role Selection (Register Only) -->
+    <div id="role-selection" class="role-selection" style="display:none;">
+        <fieldset>
+            <legend>Register As:</legend>
+            <div class="role-options">
+                <div class="role-option">
+                    <input type="radio" name="role" value="pupil" id="role-pupil" checked>
+                    <label for="role-pupil">Pupil/Parent</label>
+                </div>
+                <div class="role-option">
+                    <input type="radio" name="role" value="teacher" id="role-teacher">
+                    <label for="role-teacher">Teacher</label>
+                </div>
+            </div>
+        </fieldset>
+    </div>
 
-                    <!-- Forgot Password (Login Only) -->
-                    <a href="#" id="forgot-password-link" class="forgot-password">
-                        Forgot password?
-                    </a>
-                </form>
+    <!-- Submit Button -->
+    <button type="submit" class="auth-btn" id="auth-btn">
+        Sign In
+    </button>
+
+    <!-- Forgot Password (Login Only) -->
+    <a href="#" id="forgot-password-link" class="forgot-password">
+        Forgot password?
+    </a>
+</form>
             </div>
 
             <!-- Footer -->
@@ -539,7 +577,7 @@
         /**
          * Switch between login and register modes
          */
-        function switchAuthMode(mode) {
+function switchAuthMode(mode) {
     isLoginMode = (mode === 'login');
     
     // Update tabs
@@ -547,7 +585,7 @@
         tab.classList.toggle('active', tab.dataset.mode === mode);
     });
 
-    // Update header
+    // Get elements
     const title = document.getElementById('auth-title');
     const subtitle = document.getElementById('auth-subtitle');
     const button = document.getElementById('auth-btn');
@@ -556,37 +594,67 @@
     const passwordInput = document.getElementById('password');
     const emailInput = document.getElementById('email');
     const registrationLocked = document.getElementById('registration-locked');
+    const formContent = document.getElementById('auth-form-content');
 
-    if (isLoginMode) {
-        title.textContent = 'Welcome Back';
-        subtitle.textContent = 'Sign in to access your portal';
-        button.textContent = 'Sign In';
-        button.style.display = 'block';
-        roleDiv.style.display = 'none';
-        forgotLink.style.display = 'block';
-        registrationLocked.style.display = 'none';
-        
-        // Enable inputs
-        emailInput.disabled = false;
-        passwordInput.disabled = false;
-        passwordInput.setAttribute('autocomplete', 'current-password');
-    } else {
-        title.textContent = 'Registration Locked';
-        subtitle.textContent = 'Contact administrator to register';
-        button.style.display = 'none';
-        roleDiv.style.display = 'none';
-        forgotLink.style.display = 'none';
-        registrationLocked.style.display = 'block';
-        
-        // Disable inputs
-        emailInput.disabled = true;
-        passwordInput.disabled = true;
-        emailInput.value = '';
-        passwordInput.value = '';
-    }
+    // Fade out current content
+    formContent.classList.add('fade-out');
+    
+    // Wait for fade out, then update content
+    setTimeout(() => {
+        if (isLoginMode) {
+            title.textContent = 'Welcome Back';
+            subtitle.textContent = 'Sign in to access your portal';
+            button.textContent = 'Sign In';
+            button.style.display = 'block';
+            roleDiv.style.display = 'none';
+            forgotLink.style.display = 'block';
+            
+            // Hide registration locked message
+            registrationLocked.classList.remove('show');
+            setTimeout(() => {
+                registrationLocked.style.display = 'none';
+            }, 300);
+            
+            // Enable inputs
+            emailInput.disabled = false;
+            passwordInput.disabled = false;
+            passwordInput.setAttribute('autocomplete', 'current-password');
+            
+            // Show form content
+            formContent.style.display = 'block';
+        } else {
+            title.textContent = 'Registration Locked';
+            subtitle.textContent = 'Contact administrator to register';
+            button.style.display = 'none';
+            roleDiv.style.display = 'none';
+            forgotLink.style.display = 'none';
+            
+            // Show registration locked message with animation
+            registrationLocked.style.display = 'block';
+            setTimeout(() => {
+                registrationLocked.classList.add('show');
+                lucide.createIcons(); // Re-initialize icons in the message
+            }, 10);
+            
+            // Disable inputs
+            emailInput.disabled = true;
+            passwordInput.disabled = true;
+            emailInput.value = '';
+            passwordInput.value = '';
+            
+            // Hide form content
+            formContent.style.display = 'none';
+        }
 
-    // Clear validation states
-    clearValidation();
+        // Clear validation states
+        clearValidation();
+        
+        // Fade in new content
+        setTimeout(() => {
+            formContent.classList.remove('fade-out');
+            formContent.classList.add('fade-in');
+        }, 50);
+    }, 300);
 }
 
         /**
