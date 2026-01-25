@@ -28,25 +28,22 @@
 
     /* REMOVED: Animated background pattern */
 
-   /* Back to home button */
+/* Back to home button */
     .back-home-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
     background: rgba(255, 255, 255, 0.95);
     color: var(--color-primary);
-    border: 2px solid var(--color-gray-200);
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-medium);
     font-size: var(--text-xs);
     text-decoration: none;
     box-shadow: var(--shadow-sm);
     transition: all var(--duration-base) var(--ease-out);
-    margin-bottom: var(--space-4);
-    align-self: flex-start;
-    max-width: 480px;
-    width: 100%;
+    margin-bottom: var(--space-3);
 }
 
     .back-home-btn:hover {
@@ -417,8 +414,10 @@
         }
 
         .back-home-btn {
-            margin-bottom: var(--space-3);
-            font-size: var(--text-xs);
+            margin-bottom: var(--space-2);
+            font-size: 11px;
+            padding: 6px 10px;
+            gap: 4px;
         }
 
         .auth-header {
