@@ -17,6 +17,7 @@
     .login-container {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #ffffff;
@@ -27,25 +28,25 @@
 
     /* REMOVED: Animated background pattern */
 
-    /* Back to home button */
+   /* Back to home button */
     .back-home-btn {
-    position: fixed;
-    top: var(--space-6);
-    left: var(--space-6);
-    z-index: 1000;
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-3) var(--space-6);
+    padding: var(--space-2) var(--space-4);
     background: rgba(255, 255, 255, 0.95);
     color: var(--color-primary);
     border: 2px solid var(--color-gray-200);
     border-radius: var(--radius-full);
     font-weight: var(--weight-semibold);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     text-decoration: none;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
     transition: all var(--duration-base) var(--ease-out);
+    margin-bottom: var(--space-4);
+    align-self: flex-start;
+    max-width: 480px;
+    width: 100%;
 }
 
     .back-home-btn:hover {
@@ -394,23 +395,31 @@
     margin-bottom: var(--space-2);
 }
 
+.label-wrapper label {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
 .label-icon {
     width: 18px;
     height: 18px;
     color: var(--color-gray-500);
+    flex-shrink: 0;
 }
-    /* Mobile responsiveness */
+
+/* Mobile responsiveness */
     @media (max-width: 640px) {
         .login-container {
             padding: var(--space-4);
         }
 
-.back-home-btn {
-    top: var(--space-4);
-    left: var(--space-4);
-    padding: var(--space-2) var(--space-4);
-    font-size: var(--text-xs);
-}
+        .back-home-btn {
+            margin-bottom: var(--space-3);
+            font-size: var(--text-xs);
+        }
 
         .auth-header {
             padding: var(--space-8) var(--space-6);
@@ -436,12 +445,12 @@
 </head>
 <body>
 
-    <a href="index.html" class="back-home-btn">
-        <i data-lucide="arrow-left"></i>
-        Back to Home
-    </a>
-
     <div class="login-container">
+        <a href="index.html" class="back-home-btn">
+            <i data-lucide="arrow-left"></i>
+            Back to Home
+        </a>
+        
         <div class="auth-card">
             <!-- Header -->
             <div class="auth-header">
