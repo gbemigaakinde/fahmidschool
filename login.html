@@ -15,38 +15,39 @@
     <style>
     /* Full-screen container with WHITE background */
     .login-container {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #ffffff; /* CHANGED: Pure white background */
-        padding: var(--space-8);
-        position: relative;
-        overflow: hidden;
-    }
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: var(--space-8);
+    padding-top: calc(var(--space-8) + 80px);
+    position: relative;
+    overflow: hidden;
+}
 
     /* REMOVED: Animated background pattern */
 
     /* Back to home button */
     .back-home-btn {
-        position: fixed;
-        top: var(--space-6);
-        left: var(--space-6);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        padding: var(--space-3) var(--space-6);
-        background: rgba(255, 255, 255, 0.95);
-        color: var(--color-primary);
-        border: 2px solid var(--color-gray-200);
-        border-radius: var(--radius-full);
-        font-weight: var(--weight-semibold);
-        font-size: var(--text-sm);
-        text-decoration: none;
-        box-shadow: var(--shadow-md);
-        transition: all var(--duration-base) var(--ease-out);
-    }
+    position: absolute;
+    top: calc(-60px - var(--space-6));
+    left: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--color-primary);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-full);
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    box-shadow: var(--shadow-md);
+    transition: all var(--duration-base) var(--ease-out);
+}
 
     .back-home-btn:hover {
         background: white;
@@ -211,6 +212,13 @@
         display: block;
     }
 
+.auth-input:disabled {
+    background: var(--color-gray-200);
+    color: var(--color-gray-400);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
     /* Role selection (for registration) */
     .role-selection {
         margin: var(--space-6) 0;
@@ -363,11 +371,11 @@
         }
 
         .back-home-btn {
-            top: var(--space-4);
-            left: var(--space-4);
-            padding: var(--space-2) var(--space-4);
-            font-size: var(--text-xs);
-        }
+    top: calc(-50px - var(--space-4));
+    left: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-xs);
+}
 
         .auth-header {
             padding: var(--space-8) var(--space-6);
@@ -422,13 +430,21 @@
     </div>
 
     <!-- Registration Locked Notice -->
-    <div id="registration-locked" style="display:none; text-align:center; margin-bottom:20px;">
-        <i data-lucide="lock" style="width:32px; height:32px; color:#d32f2f;"></i>
-        <p style="margin-top:10px; font-size:14px; color:#444;">
-            Registration is currently locked.<br>
-            Please contact the school administrator to be registered.
-        </p>
+    <div id="registration-locked" style="display:none; text-align:center; margin-bottom:20px; padding:24px; background:#f5f5f5; border-radius:12px; border:2px solid #e0e0e0;">
+    <i data-lucide="lock" style="width:48px; height:48px; color:#d32f2f; margin-bottom:16px;"></i>
+    <h3 style="margin:0 0 12px 0; font-size:18px; font-weight:600; color:#333;">Registration Currently Locked</h3>
+    <p style="margin:0 0 16px 0; font-size:14px; color:#666; line-height:1.6;">
+        New registrations are handled by the school administrator.<br>
+        Please contact the school office to register.
+    </p>
+    <div style="background:white; padding:16px; border-radius:8px; border:1px solid #e0e0e0;">
+        <p style="margin:0 0 8px 0; font-size:13px; color:#888; font-weight:500;">CONTACT ADMINISTRATOR</p>
+        <a href="tel:+2348065837788" style="display:flex; align-items:center; justify-content:center; gap:8px; color:#2196F3; text-decoration:none; font-weight:600; font-size:16px;">
+            <i data-lucide="phone" style="width:20px; height:20px;"></i>
+            +234 806 583 7788
+        </a>
     </div>
+</div>
 
     <!-- Form -->
     <form id="auth-form" novalidate>
@@ -525,42 +541,54 @@
          * Switch between login and register modes
          */
         function switchAuthMode(mode) {
-            isLoginMode = (mode === 'login');
-            
-            // Update tabs
-            document.querySelectorAll('.auth-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.mode === mode);
-            });
+    isLoginMode = (mode === 'login');
+    
+    // Update tabs
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.mode === mode);
+    });
 
-            // Update header
-            const title = document.getElementById('auth-title');
-            const subtitle = document.getElementById('auth-subtitle');
-            const button = document.getElementById('auth-btn');
-            const roleDiv = document.getElementById('role-selection');
-            const forgotLink = document.getElementById('forgot-password-link');
-            const passwordInput = document.getElementById('password');
+    // Update header
+    const title = document.getElementById('auth-title');
+    const subtitle = document.getElementById('auth-subtitle');
+    const button = document.getElementById('auth-btn');
+    const roleDiv = document.getElementById('role-selection');
+    const forgotLink = document.getElementById('forgot-password-link');
+    const passwordInput = document.getElementById('password');
+    const emailInput = document.getElementById('email');
+    const registrationLocked = document.getElementById('registration-locked');
 
-            if (isLoginMode) {
-                title.textContent = 'Welcome Back';
-                subtitle.textContent = 'Sign in to access your portal';
-                button.textContent = 'Sign In';
-                roleDiv.style.display = 'none';
-                forgotLink.style.display = 'block';
-                passwordInput.setAttribute('autocomplete', 'current-password');
-                document.getElementById('registration-locked').style.display = 'none';
-                button.style.display = 'block';
-            } else {
-               title.textContent = 'Registration Locked';
-               subtitle.textContent = 'Contact the administrator to get access';
-               button.style.display = 'none';
-               roleDiv.style.display = 'none';
-               forgotLink.style.display = 'none';
-               document.getElementById('registration-locked').style.display = 'block';
-            }
+    if (isLoginMode) {
+        title.textContent = 'Welcome Back';
+        subtitle.textContent = 'Sign in to access your portal';
+        button.textContent = 'Sign In';
+        button.style.display = 'block';
+        roleDiv.style.display = 'none';
+        forgotLink.style.display = 'block';
+        registrationLocked.style.display = 'none';
+        
+        // Enable inputs
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
+        passwordInput.setAttribute('autocomplete', 'current-password');
+    } else {
+        title.textContent = 'Registration Locked';
+        subtitle.textContent = 'Contact administrator to register';
+        button.style.display = 'none';
+        roleDiv.style.display = 'none';
+        forgotLink.style.display = 'none';
+        registrationLocked.style.display = 'block';
+        
+        // Disable inputs
+        emailInput.disabled = true;
+        passwordInput.disabled = true;
+        emailInput.value = '';
+        passwordInput.value = '';
+    }
 
-            // Clear validation states
-            clearValidation();
-        }
+    // Clear validation states
+    clearValidation();
+}
 
         /**
          * Clear all validation states
