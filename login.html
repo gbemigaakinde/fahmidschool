@@ -21,7 +21,6 @@
     justify-content: center;
     background: #ffffff;
     padding: var(--space-8);
-    padding-top: calc(var(--space-8) + 80px);
     position: relative;
     overflow: hidden;
 }
@@ -30,9 +29,9 @@
 
     /* Back to home button */
     .back-home-btn {
-    position: absolute;
-    top: calc(-60px - var(--space-6));
-    left: 0;
+    position: fixed;
+    top: var(--space-6);
+    left: var(--space-6);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -370,9 +369,9 @@
             padding: var(--space-4);
         }
 
-        .back-home-btn {
-    top: calc(-50px - var(--space-4));
-    left: 0;
+.back-home-btn {
+    top: var(--space-4);
+    left: var(--space-4);
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-xs);
 }
@@ -424,7 +423,7 @@
         <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
             Login
         </button>
-        <button class="auth-tab" data-mode="register" disabled>
+        <button class="auth-tab" data-mode="register" onclick="switchAuthMode('register')">
             Register
         </button>
     </div>
