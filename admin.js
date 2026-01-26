@@ -172,6 +172,319 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
   }
 };
 
+// NICE CREATE-USER MODAL UI (add to admin.js)
+// Provides: openCreateUserModal(), closeCreateUserModal(), handleCreateUserSubmit()
+// This UI calls window.createSecondaryUser(email, password, role, extraData)
+// which you already installed/replaced earlier.
+
+async function openCreateUserModal() {
+  // Prevent duplicate modal
+  if (document.getElementById('create-user-modal')) return;
+
+  // Build modal markup (inline styles so you don't need CSS edits)
+  const modal = document.createElement('div');
+  modal.id = 'create-user-modal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div role="dialog" aria-modal="true" aria-labelledby="create-user-title"
+         style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:2000;">
+      <div style="width:100%; max-width:720px; margin:1rem; background:#fff; border-radius:8px; box-shadow:0 10px 40px rgba(2,6,23,0.4); overflow:auto; max-height:90vh; padding:1.25rem; font-family:system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:0.5rem;">
+          <h2 id="create-user-title" style="font-size:1.1rem; margin:0;">Create new user</h2>
+          <button id="create-user-close" aria-label="Close" style="background:transparent;border:none;font-size:1.25rem;cursor:pointer;">✕</button>
+        </div>
+
+        <form id="create-user-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+          <label style="grid-column: 1 / 3;">
+            Role
+            <select id="create-user-role" style="width:100%; padding:0.5rem; margin-top:0.25rem;">
+              <option value="teacher" selected>Teacher</option>
+              <option value="pupil">Pupil</option>
+            </select>
+          </label>
+
+          <label style="grid-column: 1 / 3;">
+            Full name
+            <input id="create-user-name" type="text" placeholder="e.g. Jane Doe" style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+          </label>
+
+          <label>
+            Email
+            <input id="create-user-email" type="email" placeholder="user@example.com" required style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+          </label>
+
+          <label>
+            Phone (optional)
+            <input id="create-user-phone" type="tel" placeholder="+234 ..." style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+          </label>
+
+          <label>
+            Password
+            <input id="create-user-password" type="password" placeholder="At least 6 characters" required minlength="6" style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+          </label>
+
+          <label>
+            Confirm password
+            <input id="create-user-password-confirm" type="password" placeholder="Confirm password" required minlength="6" style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+          </label>
+
+          <!-- Pupil-only fields (hidden for teachers) -->
+          <div id="create-user-pupil-fields" style="grid-column:1 / 3; display:none; gap:0.5rem;">
+            <label>
+              Admission Number
+              <input id="create-user-admissionNo" type="text" placeholder="Admission number" style="width:100%; padding:0.5rem; margin-top:0.25rem;" />
+            </label>
+
+            <label>
+              Class
+              <select id="create-user-class" style="width:100%; padding:0.5rem; margin-top:0.25rem;">
+                <option value="">Loading classes...</option>
+              </select>
+            </label>
+          </div>
+
+          <div style="grid-column:1 / 3; display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem;">
+            <button type="button" id="create-user-cancel" style="padding:0.5rem 0.75rem; background:#efefef; border:1px solid #ddd; border-radius:6px; cursor:pointer;">Cancel</button>
+            <button type="submit" id="create-user-submit" style="padding:0.5rem 0.75rem; background:#0ea5e9; color:white; border:none; border-radius:6px; cursor:pointer;">Create account</button>
+          </div>
+
+          <div id="create-user-feedback" style="grid-column:1 / 3; color:#c53030; font-size:0.95rem; display:none;"></div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Focus management
+  const firstInput = modal.querySelector('#create-user-name');
+  if (firstInput) firstInput.focus();
+
+  // Elements
+  const roleSelect = modal.querySelector('#create-user-role');
+  const pupilFields = modal.querySelector('#create-user-pupil-fields');
+  const classSelect = modal.querySelector('#create-user-class');
+  const closeBtn = modal.querySelector('#create-user-close');
+  const cancelBtn = modal.querySelector('#create-user-cancel');
+  const form = modal.querySelector('#create-user-form');
+  const feedback = modal.querySelector('#create-user-feedback');
+
+  // Toggle pupil-specific fields when role changes
+  roleSelect.addEventListener('change', () => {
+    if (roleSelect.value === 'pupil') {
+      pupilFields.style.display = 'grid';
+      // populate classes when pupil selected
+      populateCreateUserClasses(classSelect).catch(err => {
+        console.warn('Could not populate classes:', err);
+        classSelect.innerHTML = '<option value="">(Unable to load classes)</option>';
+      });
+    } else {
+      pupilFields.style.display = 'none';
+    }
+  });
+
+  // Prefetch classes if role already set to pupil
+  if (roleSelect.value === 'pupil') {
+    populateCreateUserClasses(classSelect).catch(err => {
+      console.warn('Could not populate classes:', err);
+      classSelect.innerHTML = '<option value="">(Unable to load classes)</option>';
+    });
+  }
+
+  // Close handlers
+  closeBtn.addEventListener('click', closeCreateUserModal);
+  cancelBtn.addEventListener('click', closeCreateUserModal);
+
+  // ESC to close
+  function escHandler(e) {
+    if (e.key === 'Escape') closeCreateUserModal();
+  }
+  document.addEventListener('keydown', escHandler);
+
+  // Submit handler
+  form.addEventListener('submit', handleCreateUserSubmit);
+
+  // Store references for cleanup
+  modal._cleanup = () => {
+    try {
+      roleSelect.removeEventListener('change', () => {});
+      closeBtn.removeEventListener('click', closeCreateUserModal);
+      cancelBtn.removeEventListener('click', closeCreateUserModal);
+      form.removeEventListener('submit', handleCreateUserSubmit);
+      document.removeEventListener('keydown', escHandler);
+    } catch (e) { /* ignore */ }
+  };
+
+  // Small helper to show feedback
+  function showFeedback(message, color = '#c53030') {
+    feedback.style.display = 'block';
+    feedback.style.color = color;
+    feedback.textContent = message;
+  }
+
+  // expose for inner functions
+  modal._showFeedback = showFeedback;
+}
+
+async function populateCreateUserClasses(selectEl) {
+  if (!selectEl) return;
+  selectEl.innerHTML = '<option value="">Loading classes…</option>';
+
+  try {
+    const snap = await window.db.collection('classes').orderBy('name').get();
+    const classes = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+    if (classes.length === 0) {
+      selectEl.innerHTML = '<option value="">No classes defined</option>';
+      return;
+    }
+    selectEl.innerHTML = '<option value="">-- Select class --</option>';
+    classes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      selectEl.appendChild(opt);
+    });
+  } catch (error) {
+    console.error('Error loading classes for create-user modal:', error);
+    selectEl.innerHTML = '<option value="">Unable to load classes</option>';
+  }
+}
+
+async function handleCreateUserSubmit(e) {
+  e.preventDefault();
+  const modal = document.getElementById('create-user-modal');
+  if (!modal) return;
+
+  const form = modal.querySelector('#create-user-form');
+  const role = form.querySelector('#create-user-role').value;
+  const name = form.querySelector('#create-user-name').value.trim();
+  const email = form.querySelector('#create-user-email').value.trim();
+  const phone = form.querySelector('#create-user-phone').value.trim();
+  const password = form.querySelector('#create-user-password').value;
+  const confirmPassword = form.querySelector('#create-user-password-confirm').value;
+  const admissionNo = form.querySelector('#create-user-admissionNo')?.value?.trim();
+  const classId = form.querySelector('#create-user-class')?.value;
+
+  const submitBtn = modal.querySelector('#create-user-submit');
+  const feedbackEl = modal.querySelector('#create-user-feedback');
+
+  // Basic validation
+  feedbackEl.style.display = 'none';
+  function setFeedback(msg, color = '#c53030') {
+    feedbackEl.style.display = 'block';
+    feedbackEl.style.color = color;
+    feedbackEl.textContent = msg;
+  }
+
+  if (!email) { setFeedback('Please enter an email'); return; }
+  if (!password || password.length < 6) { setFeedback('Password must be at least 6 characters'); return; }
+  if (password !== confirmPassword) { setFeedback('Passwords do not match'); return; }
+  if (!name) { setFeedback('Please enter the full name'); return; }
+  if (role === 'pupil') {
+    if (!admissionNo) { setFeedback('Please enter admission number for the pupil'); return; }
+    if (!classId) { setFeedback('Please select a class for the pupil'); return; }
+  }
+
+  // Disable submit to prevent duplicates
+  submitBtn.disabled = true;
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Creating…';
+  submitBtn.style.opacity = '0.7';
+
+  // Build extraData payload
+  const extraData = {
+    name,
+    phone
+  };
+  if (role === 'pupil') {
+    extraData.admissionNo = admissionNo;
+    // When creating the pupil doc we prefer to store full class reference object if possible
+    extraData.class = { id: classId }; // admin.js createSecondaryUser will merge extraData into pupil doc
+  }
+
+  try {
+    if (typeof window.createSecondaryUser !== 'function') {
+      throw new Error('createSecondaryUser() not found. Please add the helper function to admin.js first.');
+    }
+
+    const result = await window.createSecondaryUser(email, password, role, extraData);
+
+    if (result && result.success) {
+      // Success
+      modal._showFeedback?.('✓ Account created successfully', '#059669');
+      // Small delay so admin sees confirmation then close
+      setTimeout(() => {
+        closeCreateUserModal();
+      }, 900);
+    } else {
+      const err = result && result.error ? result.error : new Error('Unknown error creating user');
+      console.error(err);
+      setFeedback(err.message || 'Failed to create account. Check console for details.');
+    }
+
+  } catch (error) {
+    console.error('Create user submit error:', error);
+    setFeedback(error.message || 'Failed to create account. See console.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+    submitBtn.style.opacity = '';
+  }
+}
+
+function closeCreateUserModal() {
+  const modal = document.getElementById('create-user-modal');
+  if (!modal) return;
+
+  try {
+    // Run any cleanup stored on modal
+    if (typeof modal._cleanup === 'function') modal._cleanup();
+  } catch (e) { /* ignore */ }
+
+  modal.remove();
+}
+
+// Hook up to an existing button or create a floating "Create user" button automatically
+(function attachCreateUserButton() {
+  // If an explicit button with id open-create-user-btn exists, hook to it
+  const existingBtn = document.getElementById('open-create-user-btn');
+  if (existingBtn) {
+    existingBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openCreateUserModal();
+    });
+    return;
+  }
+
+  // Otherwise create a small floating action button on the admin page
+  const fabId = 'create-user-fab';
+  if (document.getElementById(fabId)) return;
+
+  const fab = document.createElement('button');
+  fab.id = fabId;
+  fab.title = 'Create new user';
+  fab.innerHTML = '＋ Create user';
+  fab.style.cssText = `
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1500;
+    background: #06b6d4;
+    color: white;
+    border: none;
+    padding: 0.6rem 0.9rem;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.2);
+    cursor: pointer;
+    font-weight:600;
+  `;
+  fab.addEventListener('click', (e) => {
+    e.preventDefault();
+    openCreateUserModal();
+  });
+  document.body.appendChild(fab);
+})();
+
 /* =====================================================
    CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
 ===================================================== */
