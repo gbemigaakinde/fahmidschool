@@ -1076,3 +1076,5 @@ function scrollToFees() {
 window.scrollToFees = scrollToFees;
 
 console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
+
+console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
