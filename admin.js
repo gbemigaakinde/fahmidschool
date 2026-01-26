@@ -19,21 +19,21 @@ const db = window.db;
 const auth = window.auth;
 
 // ============================================
-// SECONDARY APP FOR CREATING USERS
-// CRITICAL FIX: Properly expose globally
+// SECONDARY APP FOR CREATING USERS - FIXED
 // ============================================
 
 let secondaryApp;
 let secondaryAuth;
 
 try {
-  secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+  // Use consistent name 'secondary' (lowercase)
+  secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary');
   secondaryAuth = secondaryApp.auth();
   console.log('✓ Secondary Firebase app initialized');
 } catch (error) {
   if (error.code === 'app/duplicate-app') {
     console.log('Secondary app already exists, reusing...');
-    secondaryApp = firebase.app('Secondary');
+    secondaryApp = firebase.app('secondary');
     secondaryAuth = secondaryApp.auth();
   } else {
     console.error('❌ Failed to initialize secondary app:', error);
@@ -43,132 +43,111 @@ try {
 
 /**
  * FIXED: Create user without logging out admin
- * This function is now properly exposed globally
  */
 window.createSecondaryUser = async function(email, password, role = 'teacher', extraData = {}) {
-  /**
-   * Create a new Auth user without signing out the currently-signed-in admin.
-   * - Uses a temporary "secondary" Firebase app instance to create the Auth user.
-   * - Uses the primary app (admin still signed in) to create users/{uid} and teachers/{uid} or pupils/{uid}.
-   *
-   * Parameters:
-   *   email (string) - new user's email
-   *   password (string) - new user's password
-   *   role (string) - 'teacher' or 'pupil' (default 'teacher')
-   *   extraData (object) - optional extra profile fields (name, admissionNo, class, subjects, phone, etc)
-   */
   try {
-    // Basic validation
+    // Validation
     if (!email || !password) {
-      window.showToast?.('Please provide both email and password for the new account', 'warning');
-      return;
+      window.showToast?.('Please provide both email and password', 'warning');
+      return { success: false, error: 'Missing email or password' };
     }
 
-    // Ensure firebase is available
-    if (!window.firebase || !window.firebase.apps || !window.auth || !window.db) {
-      window.showToast?.('Firebase is not initialized', 'danger');
-      return;
-    }
-
-    // Ensure the current user is an admin in your app (client-side check)
+    // Ensure current user is admin
     const currentAdmin = window.auth.currentUser;
     if (!currentAdmin) {
-      window.showToast?.('You must be signed in as an admin to create users', 'danger');
-      return;
+      window.showToast?.('You must be signed in as admin', 'danger');
+      return { success: false, error: 'Not authenticated' };
     }
 
     const currentRole = await window.getUserRole(currentAdmin.uid);
     if (currentRole !== 'admin') {
-      window.showToast?.('Only admin accounts can create teachers or pupils', 'danger');
-      return;
+      window.showToast?.('Only admin accounts can create users', 'danger');
+      return { success: false, error: 'Insufficient permissions' };
     }
 
     window.showToast?.('Creating account...', 'info');
 
-    // Get primary app config/options so we can initialize a secondary app with same config
-    const primaryApp = window.firebase.app(); // existing primary app
-    const appOptions = primaryApp.options;
-
-    // Initialize or reuse a secondary app instance
-    let secondaryApp;
-    try {
-      // Try to reuse if already created previously
-      secondaryApp = window.firebase.app('secondary');
-    } catch (e) {
-      // Not initialized yet -> create
-      secondaryApp = window.firebase.initializeApp(appOptions, 'secondary');
+    // Check for existing email
+    const existingUsers = await window.db.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+    
+    if (!existingUsers.empty) {
+      window.showToast?.('This email is already registered', 'warning');
+      return { success: false, error: 'Email already exists' };
     }
 
-    const secondaryAuth = secondaryApp.auth();
-
-    // Create the auth user using the secondary auth instance (this will NOT sign out the primary user)
+    // Create user with secondary auth
     const newUserCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     const newUid = newUserCredential.user.uid;
 
-    // Create the users/{uid} doc using primary db (current admin is still signed in on primary app)
-    const userDoc = {
+    // CRITICAL FIX: Send password reset email BEFORE cleanup
+    try {
+      await secondaryAuth.sendPasswordResetEmail(email);
+      console.log('✓ Password reset email sent');
+    } catch (emailError) {
+      console.warn('⚠️ Failed to send password reset email:', emailError);
+      // Continue anyway - user can reset later
+    }
+
+    // Create users document
+    await window.db.collection('users').doc(newUid).set({
       email,
       role,
-      createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       ...extraData
-    };
+    });
 
-    await window.db.collection('users').doc(newUid).set(userDoc, { merge: true });
-
-    // Create the role-specific document while still signed in as admin (primary auth)
+    // Create role-specific document
     if (role === 'teacher') {
-      const teacherDoc = {
+      await window.db.collection('teachers').doc(newUid).set({
         email,
         name: extraData.name || '',
         phone: extraData.phone || '',
+        subject: extraData.subject || '',
         subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
-        createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
-        ...extraData
-      };
-      await window.db.collection('teachers').doc(newUid).set(teacherDoc, { merge: true });
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     } else if (role === 'pupil') {
-      const pupilDoc = {
+      await window.db.collection('pupils').doc(newUid).set({
         email,
         name: extraData.name || '',
         admissionNo: extraData.admissionNo || '',
-        class: extraData.class || '',
-        createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+        class: extraData.class || null,
+        subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         ...extraData
-      };
-      await window.db.collection('pupils').doc(newUid).set(pupilDoc, { merge: true });
-    } else {
-      // Unknown role: user document already created in users collection
-      console.warn('createSecondaryUser: unknown role; only users/{uid} created.', role);
+      });
+    }
+
+    // CRITICAL FIX: Clean up secondary auth AFTER everything is done
+    try {
+      await secondaryAuth.signOut();
+      console.log('✓ Secondary auth signed out');
+    } catch (cleanupErr) {
+      console.warn('Warning: secondary auth signout failed:', cleanupErr);
     }
 
     window.showToast?.('✓ User account created successfully', 'success', 5000);
-
-    // Clean up the secondary auth: sign out and delete the temporary app
-    try {
-      await secondaryAuth.signOut();
-      await secondaryApp.delete();
-    } catch (cleanupErr) {
-      // Non-fatal cleanup error; log it and proceed
-      console.warn('Warning: error cleaning up secondary app:', cleanupErr);
-    }
 
     return { success: true, uid: newUid };
 
   } catch (error) {
     console.error('Error creating secondary user:', error);
 
-    // Show friendlier messages for common errors
-    if (error && error.code === 'auth/email-already-in-use') {
-      window.showToast?.('This email is already registered.', 'danger');
-    } else if (error && error.code === 'auth/invalid-email') {
-      window.showToast?.('Please enter a valid email address.', 'danger');
-    } else if (error && error.code === 'auth/weak-password') {
-      window.showToast?.('Password should be at least 6 characters long.', 'danger');
+    // Handle specific errors
+    if (error?.code === 'auth/email-already-in-use') {
+      window.showToast?.('This email is already registered', 'danger');
+    } else if (error?.code === 'auth/invalid-email') {
+      window.showToast?.('Please enter a valid email address', 'danger');
+    } else if (error?.code === 'auth/weak-password') {
+      window.showToast?.('Password should be at least 6 characters long', 'danger');
     } else {
       window.handleError?.(error, 'Failed to create user');
     }
 
-    return { success: false, error };
+    return { success: false, error: error.message || 'Unknown error' };
   }
 };
 
@@ -4934,6 +4913,10 @@ function cancelTeacherForm() {
   document.getElementById('add-teacher-form').reset();
 }
 
+// ============================================
+// TEACHER FORM SUBMISSION - FIXED
+// ============================================
+
 document.getElementById('add-teacher-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -4947,48 +4930,26 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
-  try {
-    const existingUsers = await db.collection('users')
-      .where('email', '==', email)
-      .get();
-    
-    if (!existingUsers.empty) {
-      window.showToast?.('This email is already registered', 'warning');
-      return;
-    }
-  } catch (error) {
-    console.error('Error checking email:', error);
-  }
-  
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
   
   try {
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
-    const uid = userCredential.user.uid;
-    
-    await db.collection('users').doc(uid).set({
-      email,
-      role: 'teacher',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    // FIXED: Use createSecondaryUser and check result properly
+    const result = await window.createSecondaryUser(email, tempPassword, 'teacher', {
+      name: name,
+      subject: subject
     });
     
-    await db.collection('teachers').doc(uid).set({
-      name,
-      email,
-      subject: subject || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create teacher');
+    }
     
-    // CRITICAL FIX: Send password reset BEFORE signing out
-    await secondaryAuth.sendPasswordResetEmail(email);
-    await secondaryAuth.signOut();
-        
-    window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 6000);
+    window.showToast?.(`✓ Teacher "${name}" added successfully!`, 'success', 6000);
     cancelTeacherForm();
     loadTeachers();
     loadDashboardStats();
+    
   } catch (error) {
     console.error('Error adding teacher:', error);
     window.handleError(error, 'Failed to add teacher');
@@ -4998,7 +4959,9 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
   }
 });
 
-/* ===== PUPIL FORM HANDLER ADDED HERE ===== */
+// ============================================
+// PUPIL FORM SUBMISSION - FIXED
+// ============================================
 
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -5021,7 +4984,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     return;
   }
   
-  // FIXED: Check for duplicate admission number
+  // Check for duplicate admission number
   if (admissionNo) {
     try {
       const duplicateSnap = await db.collection('pupils')
@@ -5044,7 +5007,6 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       }
     } catch (error) {
       console.error('Error checking admission number:', error);
-      // Continue with save if check fails (better than blocking)
     }
   }
   
@@ -5053,6 +5015,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.innerHTML = '<span class="btn-loading">Saving pupil...</span>';
   
   try {
+    // Get class details
     const classDoc = await db.collection('classes').doc(classId).get();
     
     if (!classDoc.exists) {
@@ -5094,6 +5057,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     };
     
     if (pupilId) {
+      // UPDATE EXISTING PUPIL
       await db.collection('pupils').doc(pupilId).update(pupilData);
       
       if (email) {
@@ -5107,29 +5071,29 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       }
       
       window.showToast?.(`✓ Pupil "${name}" updated successfully`, 'success');
+      
     } else {
-      const existingUsers = await db.collection('users')
-        .where('email', '==', email)
-        .get();
+      // CREATE NEW PUPIL
       
-      if (!existingUsers.empty) {
-        window.showToast?.('This email is already registered', 'warning');
-        return;
-      }
-      
-      const userCredential = await window.createSecondaryUser(email, password);
-      const uid = userCredential;
-      
-      await db.collection('users').doc(uid).set({
-        email,
-        role: 'pupil',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      // CRITICAL FIX: Use createSecondaryUser and get uid correctly
+      const result = await window.createSecondaryUser(email, password, 'pupil', {
+        name: name,
+        admissionNo: admissionNo,
+        class: pupilData.class,
+        subjects: pupilData.subjects,
+        assignedTeacher: pupilData.assignedTeacher,
+        dob: pupilData.dob,
+        gender: pupilData.gender,
+        parentName: pupilData.parentName,
+        parentEmail: pupilData.parentEmail,
+        contact: pupilData.contact,
+        address: pupilData.address
       });
       
-      pupilData.email = email;
-      pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      
-      await db.collection('pupils').doc(uid).set(pupilData);
+      // FIXED: Check result properly
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create pupil');
+      }
       
       window.showToast?.(
         `✓ Pupil "${name}" added successfully!\nPassword reset email sent to ${email}`,
