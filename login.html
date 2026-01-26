@@ -851,7 +851,7 @@ if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
                 }
             });
 
-            // Form submission
+// Form submission
 document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -881,10 +881,11 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
             }
 
             if (!password || password.length < 6) {
-                window.showToast('Please enter your password', 'warning');
+                window.showToast('Please enter your password (at least 6 characters)', 'warning');
                 return;
             }
 
+            // FIXED: Use the corrected function
             await window.loginWithAdmissionNumber(admissionNo, password);
         } else {
             // Email login
@@ -899,7 +900,8 @@ document.getElementById('auth-form').addEventListener('submit', async (e) => {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
 
-            await login(email, password);
+            // FIXED: Use window.login instead of bare login
+            await window.login(email, password);
         }
     } catch (error) {
         console.error('Auth error:', error);
