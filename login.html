@@ -462,6 +462,13 @@
 
             <!-- Body -->
            <div class="auth-body">
+            <!-- Login Method Toggle -->
+<div style="display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-lg); padding: var(--space-md); background: #f8fafc; border-radius: var(--radius-md);" id="login-toggle-container">
+    <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; user-select: none;">
+        <input type="checkbox" id="use-admission-number" style="width: 18px; height: 18px; cursor: pointer;">
+        <span style="font-size: var(--text-sm); font-weight: 600; color: var(--color-gray-700);">Login with Admission Number instead</span>
+    </label>
+</div>
     <!-- Tabs -->
     <div class="auth-tabs">
         <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
@@ -493,27 +500,48 @@
    <form id="auth-form" novalidate>
     <div class="auth-form-content" id="auth-form-content">
         <!-- Email Field -->
-        <div class="form-group">
-            <div class="label-wrapper">
-                <i data-lucide="mail" class="label-icon"></i>
-                <label for="email">
-                    Email Address <span class="required">*</span>
-                </label>
-            </div>
+<div class="form-group" id="email-field-group">
+    <div class="label-wrapper">
+        <i data-lucide="mail" class="label-icon"></i>
+        <label for="email">
+            Email Address <span class="required">*</span>
+        </label>
+    </div>
 
-            <input 
-                type="email" 
-                id="email" 
-                class="auth-input"
-                placeholder="your.email@example.com" 
-                required 
-                aria-required="true" 
-                autocomplete="email">
+    <input 
+        type="email" 
+        id="email" 
+        class="auth-input"
+        placeholder="your.email@example.com" 
+        required 
+        aria-required="true" 
+        autocomplete="email">
 
-            <span class="error-message" id="email-error">
-                Please enter a valid email address
-            </span>
-        </div>
+    <span class="error-message" id="email-error">
+        Please enter a valid email address
+    </span>
+</div>
+
+<!-- Admission Number Field (Hidden by Default) -->
+<div class="form-group" id="admission-field-group" style="display: none;">
+    <div class="label-wrapper">
+        <i data-lucide="hash" class="label-icon"></i>
+        <label for="admission-number">
+            Admission Number <span class="required">*</span>
+        </label>
+    </div>
+
+    <input 
+        type="text" 
+        id="admission-number" 
+        class="auth-input"
+        placeholder="Enter your admission number" 
+        autocomplete="off">
+
+    <span class="error-message" id="admission-error">
+        Please enter your admission number
+    </span>
+</div>
 
         <!-- Password Field -->
         <div class="form-group">
@@ -663,6 +691,8 @@ function switchAuthMode(mode) {
             formContent.classList.add('fade-in');
         }, 50);
     }, 300);
+    // Update toggle visibility
+    updateToggleVisibility();
 }
 
         /**
@@ -743,6 +773,48 @@ function switchAuthMode(mode) {
             // Initialize Lucide icons
             lucide.createIcons();
 
+// Toggle between email and admission number login
+const toggleCheckbox = document.getElementById('use-admission-number');
+const loginToggleContainer = document.getElementById('login-toggle-container');
+const emailFieldGroup = document.getElementById('email-field-group');
+const admissionFieldGroup = document.getElementById('admission-field-group');
+const emailInput = document.getElementById('email');
+const admissionInput = document.getElementById('admission-number');
+
+// Hide toggle in register mode
+function updateToggleVisibility() {
+    if (loginToggleContainer) {
+        loginToggleContainer.style.display = isLoginMode ? 'flex' : 'none';
+    }
+}
+
+if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
+    toggleCheckbox.addEventListener('change', function() {
+        const useAdmission = this.checked;
+        
+        if (useAdmission) {
+            // Show admission field, hide email field
+            emailFieldGroup.style.display = 'none';
+            admissionFieldGroup.style.display = 'block';
+            emailInput.required = false;
+            admissionInput.required = true;
+            admissionInput.focus();
+        } else {
+            // Show email field, hide admission field
+            emailFieldGroup.style.display = 'block';
+            admissionFieldGroup.style.display = 'none';
+            emailInput.required = true;
+            admissionInput.required = false;
+            emailInput.focus();
+        }
+        
+        // Clear validation states
+        clearValidation();
+    });
+    
+    // Initial state
+    updateToggleVisibility();
+}
             // Real-time validation
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
@@ -780,7 +852,7 @@ function switchAuthMode(mode) {
             });
 
             // Form submission
-            document.getElementById('auth-form').addEventListener('submit', async (e) => {
+document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     if (!isLoginMode) {
@@ -791,23 +863,44 @@ function switchAuthMode(mode) {
         return;
     }
 
-    const isEmailValid = validateEmail();
-    const isPasswordValid = validatePassword();
-
-    if (!isEmailValid || !isPasswordValid) {
-        window.showToast('Please fix the errors before submitting', 'warning');
-        return;
-    }
-
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
+    const useAdmission = document.getElementById('use-admission-number')?.checked;
     const btn = document.getElementById('auth-btn');
 
     btn.disabled = true;
     btn.classList.add('loading');
 
     try {
-        await login(email, password);
+        if (useAdmission) {
+            // Admission number login
+            const admissionNo = document.getElementById('admission-number')?.value.trim();
+            const password = document.getElementById('password')?.value;
+
+            if (!admissionNo) {
+                window.showToast('Please enter your admission number', 'warning');
+                return;
+            }
+
+            if (!password || password.length < 6) {
+                window.showToast('Please enter your password', 'warning');
+                return;
+            }
+
+            await window.loginWithAdmissionNumber(admissionNo, password);
+        } else {
+            // Email login
+            const isEmailValid = validateEmail();
+            const isPasswordValid = validatePassword();
+
+            if (!isEmailValid || !isPasswordValid) {
+                window.showToast('Please fix the errors before submitting', 'warning');
+                return;
+            }
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            await login(email, password);
+        }
     } catch (error) {
         console.error('Auth error:', error);
     } finally {
