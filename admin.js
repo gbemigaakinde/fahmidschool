@@ -18,38 +18,73 @@
 const db = window.db;
 const auth = window.auth;
 
-// ============================================
-// SECONDARY APP FOR CREATING USERS - FIXED
-// ============================================
-
-let secondaryApp;
-let secondaryAuth;
-
-try {
-  // Use consistent name 'secondary' (lowercase)
-  secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary');
-  secondaryAuth = secondaryApp.auth();
-  console.log('✓ Secondary Firebase app initialized');
-} catch (error) {
-  if (error.code === 'app/duplicate-app') {
-    console.log('Secondary app already exists, reusing...');
-    secondaryApp = firebase.app('secondary');
-    secondaryAuth = secondaryApp.auth();
-  } else {
-    console.error('❌ Failed to initialize secondary app:', error);
-    throw error;
+// ---------- Replacement: reliable secondary app initializer ----------
+/**
+ * Ensure a secondary Firebase Auth instance is initialized and available as
+ * secondaryApp and secondaryAuth. This safely handles cases where the original
+ * firebase config is not available as a global variable by falling back to
+ * the default app's options (firebase.app().options).
+ */
+async function ensureSecondaryAuth() {
+  // If already initialized, reuse
+  if (typeof secondaryAuth !== 'undefined' && secondaryAuth) {
+    return { secondaryApp, secondaryAuth };
   }
+
+  // Determine config to use: prefer a globally exposed config, otherwise fall back
+  let config = null;
+
+  if (typeof window !== 'undefined' && window.firebaseConfig) {
+    config = window.firebaseConfig;
+  } else {
+    // Fallback: use the options of the default app (must exist because firebase-init.js ran)
+    try {
+      if (firebase && firebase.app) {
+        config = firebase.app().options;
+      }
+    } catch (err) {
+      // Will handle below by throwing a clear error
+      config = null;
+    }
+  }
+
+  if (!config) {
+    const err = new Error('Unable to locate Firebase configuration to initialize secondary app');
+    console.error('❌', err);
+    throw err;
+  }
+
+  try {
+    // If 'secondary' app already exists, reuse it
+    const existing = firebase.apps.find(app => app.name === 'secondary');
+    if (existing) {
+      secondaryApp = firebase.app('secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app already exists — reusing instance');
+    } else {
+      secondaryApp = firebase.initializeApp(config, 'secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app initialized');
+    }
+  } catch (error) {
+    // Duplicate-app can happen in hot-reload dev environments; reuse in that case
+    if (error && error.code === 'app/duplicate-app') {
+      secondaryApp = firebase.app('secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app duplicate detected — reused existing instance');
+    } else {
+      console.error('❌ Failed to initialize secondary app:', error);
+      throw error;
+    }
+  }
+
+  return { secondaryApp, secondaryAuth };
 }
 
-/**
- * FIXED: Create user without logging out admin
- * - Cleanup order corrected
- * - Better error handling
- * - Proper validation
- */
+// ---------- Replacement: createSecondaryUser (uses ensureSecondaryAuth) ----------
 window.createSecondaryUser = async function(email, password, role = 'teacher', extraData = {}) {
   try {
-    // Validation
+    // Basic validation
     if (!email || !password) {
       window.showToast?.('Please provide both email and password', 'warning');
       return { success: false, error: 'Missing email or password' };
@@ -75,27 +110,29 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
       .where('email', '==', email)
       .limit(1)
       .get();
-    
+
     if (!existingUsers.empty) {
       window.showToast?.('This email is already registered', 'warning');
       return { success: false, error: 'Email already exists' };
     }
 
-    // CRITICAL FIX: Create user with secondary auth
+    // Initialize or reuse secondary auth to create the new user without affecting primary admin session
+    await ensureSecondaryAuth();
+
+    // Create user using the secondary auth instance
     const newUserCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     const newUid = newUserCredential.user.uid;
 
-    // CRITICAL FIX: Sign out IMMEDIATELY after user creation
-    // This ensures the secondary auth session doesn't interfere with anything
+    // Sign out secondary auth immediately after creation so secondary instance is clean
     try {
       await secondaryAuth.signOut();
       console.log('✓ Secondary auth signed out immediately after creation');
     } catch (cleanupErr) {
       console.warn('Warning: secondary auth signout failed:', cleanupErr);
-      // Continue anyway - not a critical failure
+      // Not fatal; continue
     }
 
-    // Create users document
+    // Create user document (performed by the admin's primary auth session)
     await window.db.collection('users').doc(newUid).set({
       email,
       role,
@@ -130,48 +167,22 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
       });
     }
 
-    // CRITICAL FIX: Send password reset email AFTER everything is committed
-    // This ensures the email is sent with a clean auth state
+    // Send password reset email AFTER creating Firestore documents (safe to run unauthenticated)
     try {
+      // Use the secondaryAuth instance for the API call (it works whether signed in or not)
       await secondaryAuth.sendPasswordResetEmail(email);
       console.log('✓ Password reset email sent after cleanup');
     } catch (emailError) {
-      console.warn('⚠️ Failed to send password reset email:', emailError);
-      // Don't fail the entire operation - user can reset manually
-      window.showToast?.(
-        '✓ User created, but password reset email failed. User can request a new one from login page.',
-        'warning',
-        6000
-      );
+      console.warn('Warning: sending password reset email failed:', emailError);
+      // This is not fatal; account was created
     }
 
-    window.showToast?.('✓ User account created successfully', 'success', 5000);
-
+    window.showToast?.('Account created successfully', 'success');
     return { success: true, uid: newUid };
-
   } catch (error) {
-    console.error('Error creating secondary user:', error);
-
-    // Handle specific errors with user-friendly messages
-    let errorMessage = 'Failed to create user';
-    
-    if (error?.code === 'auth/email-already-in-use') {
-      errorMessage = 'This email is already registered';
-      window.showToast?.(errorMessage, 'danger');
-    } else if (error?.code === 'auth/invalid-email') {
-      errorMessage = 'Please enter a valid email address';
-      window.showToast?.(errorMessage, 'danger');
-    } else if (error?.code === 'auth/weak-password') {
-      errorMessage = 'Password should be at least 6 characters long';
-      window.showToast?.(errorMessage, 'danger');
-    } else if (error?.code === 'permission-denied') {
-      errorMessage = 'Permission denied. Check Firestore security rules.';
-      window.showToast?.(errorMessage, 'danger');
-    } else {
-      window.handleError?.(error, 'Failed to create user');
-    }
-
-    return { success: false, error: errorMessage };
+    // Use shared error handler
+    window.handleError(error, 'Failed to create user');
+    return { success: false, error };
   }
 };
 
