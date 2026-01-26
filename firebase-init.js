@@ -360,63 +360,6 @@ window.login = async function(email, password) {
 };
 
 /**
- * SECURE: Login with admission number
- * - Uses generic error messages to prevent user enumeration
- * - Rate limited on client side
- * - Queries with limit to prevent full collection scans
- */
-window.loginWithAdmissionNumber = async function(admissionNo, password) {
-  try {
-    // Normalize input
-    admissionNo = String(admissionNo || '').trim();
-    if (!admissionNo) {
-      throw { code: 'auth/invalid-login-credentials' };
-    }
-
-    // Client-side rate limiting (prevent brute force)
-    const lastAttempt = sessionStorage.getItem('lastAdmissionAttempt');
-    const now = Date.now();
-    if (lastAttempt && (now - parseInt(lastAttempt, 10)) < 2000) {
-      throw new Error('Too many attempts. Please wait.');
-    }
-    sessionStorage.setItem('lastAdmissionAttempt', now.toString());
-
-    // Query pupils with LIMIT 1 (matches security rule)
-    const pupilsRef = window.db.collection('pupils');
-    const querySnapshot = await pupilsRef
-      .where('admissionNo', '==', admissionNo)
-      .limit(1) // CRITICAL: Matches security rule
-      .get();
-
-    // SECURITY: Use generic error (no enumeration)
-    if (querySnapshot.empty) {
-      throw { code: 'auth/invalid-login-credentials' };
-    }
-
-    const pupilDoc = querySnapshot.docs[0];
-    const pupilData = pupilDoc.data();
-    const email = pupilData?.email;
-
-    // SECURITY: Generic error if no email
-    if (!email) {
-      throw { code: 'auth/invalid-login-credentials' };
-    }
-
-    // Authenticate with email and password
-    await window.auth.signInWithEmailAndPassword(email, password);
-
-    window.showToast?.('Login successful!', 'success');
-    setTimeout(() => window.location.href = 'portal.html', 800);
-    
-  } catch (error) {
-    // SECURITY: Normalize all errors to generic message
-    const genericError = { code: 'auth/invalid-login-credentials' };
-    window.handleError(genericError, 'Login failed');
-    throw genericError;
-  }
-};
-
-/**
  * Logout user
  */
 window.logout = async function() {
