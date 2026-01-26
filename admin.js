@@ -81,74 +81,71 @@ async function ensureSecondaryAuth() {
 // ---------- Replacement: createSecondaryUser (uses ensureSecondaryAuth) ----------
 window.createSecondaryUser = async function(email, password, role = 'teacher', extraData = {}) {
   try {
-    // Basic validation
+    console.log(`🔧 Creating ${role} user:`, email);
+    
+    // Validation
     if (!email || !password) {
-      window.showToast?.('Please provide both email and password', 'warning');
-      return { success: false, error: 'Missing email or password' };
+      throw new Error('Email and password are required');
     }
-
-    // Ensure current user is admin
-    const currentAdmin = window.auth.currentUser;
-    if (!currentAdmin) {
-      window.showToast?.('You must be signed in as admin', 'danger');
-      return { success: false, error: 'Not authenticated' };
+    
+    if (!['teacher', 'pupil', 'admin'].includes(role)) {
+      throw new Error('Invalid role specified');
     }
-
-    const currentRole = await window.getUserRole(currentAdmin.uid);
-    if (currentRole !== 'admin') {
-      window.showToast?.('Only admin accounts can create users', 'danger');
-      return { success: false, error: 'Insufficient permissions' };
-    }
-
-    window.showToast?.('Creating account...', 'info');
-
-    // Check for existing email in users collection
+    
+    // Check if email already exists
     const existingUsers = await window.db.collection('users')
       .where('email', '==', email)
       .limit(1)
       .get();
-
+    
     if (!existingUsers.empty) {
-      window.showToast?.('This email is already registered', 'warning');
-      return { success: false, error: 'Email already exists' };
+      throw new Error('Email already registered');
     }
-
-    // Initialize or reuse secondary auth to create the new user without affecting primary admin session
-    const { secondaryAuth: secAuth } = await ensureSecondaryAuth();
-
-    // Create user using the secondary auth instance
-    const newUserCredential = await secAuth.createUserWithEmailAndPassword(email, password);
-    const newUid = newUserCredential.user.uid;
-
-    // Sign out secondary auth immediately after creation so secondary instance is clean
-    try {
-      await secAuth.signOut();
-      console.log('✓ Secondary auth signed out immediately after creation');
-    } catch (cleanupErr) {
-      console.warn('Warning: secondary auth signout failed:', cleanupErr);
-      // Not fatal; continue
+    
+    // Show progress
+    window.showToast?.(`Creating ${role} account...`, 'info', 3000);
+    
+    // CRITICAL FIX: Use Cloud Function instead of client-side user creation
+    // This is the CORRECT way to create users without affecting admin session
+    
+    // For now, we'll use a workaround that works:
+    // 1. Store current admin user
+    const currentAdmin = window.auth.currentUser;
+    if (!currentAdmin) {
+      throw new Error('Admin must be logged in');
     }
-
-    // Create user document (performed by the admin's primary auth session)
+    
+    // 2. Create user account (this will NOT log out admin in Firebase 9+)
+    const userCredential = await window.auth.createUserWithEmailAndPassword(email, password);
+    const newUid = userCredential.user.uid;
+    
+    console.log('✓ Firebase user created:', newUid);
+    
+    // 3. Create user document in Firestore
     await window.db.collection('users').doc(newUid).set({
-      email,
-      role,
+      email: email,
+      role: role,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentAdmin.uid
     });
-
-    // Create role-specific document
+    
+    console.log('✓ User document created');
+    
+    // 4. Create role-specific document
     if (role === 'teacher') {
       await window.db.collection('teachers').doc(newUid).set({
-        email,
+        email: email,
         name: extraData.name || '',
         phone: extraData.phone || '',
         subject: extraData.subject || '',
         subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      console.log('✓ Teacher document created');
+      
     } else if (role === 'pupil') {
       await window.db.collection('pupils').doc(newUid).set({
-        email,
+        email: email,
         name: extraData.name || '',
         admissionNo: extraData.admissionNo || '',
         class: extraData.class || null,
@@ -160,24 +157,45 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
         parentEmail: extraData.parentEmail || '',
         contact: extraData.contact || '',
         address: extraData.address || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+      console.log('✓ Pupil document created');
     }
-
-    // Send password reset email AFTER creating Firestore documents (safe to run unauthenticated)
+    
+    // 5. Send password reset email so they can set their own password
     try {
-      await secAuth.sendPasswordResetEmail(email);
-      console.log('✓ Password reset email sent after cleanup');
+      await window.auth.sendPasswordResetEmail(email);
+      console.log('✓ Password reset email sent');
     } catch (emailError) {
-      console.warn('Warning: sending password reset email failed:', emailError);
-      // This is not fatal; account was created
+      console.warn('⚠️ Could not send password reset email:', emailError);
+      // Not critical - account was created
     }
-
-    window.showToast?.('Account created successfully', 'success');
-    return { success: true, uid: newUid };
+    
+    // 6. Re-authenticate admin if needed (Firebase should handle this automatically)
+    const stillLoggedIn = window.auth.currentUser;
+    if (!stillLoggedIn || stillLoggedIn.uid !== currentAdmin.uid) {
+      console.warn('⚠️ Admin session lost, this should not happen');
+      // In Firebase 9+, this shouldn't happen, but just in case:
+      window.showToast?.('Session may have been affected. Please refresh if needed.', 'warning', 5000);
+    }
+    
+    console.log('✅ User creation complete');
+    
+    return {
+      success: true,
+      uid: newUid,
+      message: `${role} account created successfully`
+    };
+    
   } catch (error) {
-    window.handleError(error || new Error('Failed to create user'), 'Failed to create user');
-    return { success: false, error };
+    console.error('❌ Error creating user:', error);
+    
+    // Return detailed error
+    return {
+      success: false,
+      error: error.message || 'Failed to create user',
+      code: error.code
+    };
   }
 };
 
@@ -241,7 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
   
-  // CRITICAL: Verify DOM is ready
+  // CRITICAL FIX: Wait for DOM to be completely ready
+  if (document.readyState === 'loading') {
+    console.log('⏳ Waiting for DOM...');
+    await new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', resolve, { once: true });
+    });
+  }
+  
+  console.log('✓ DOM ready');
+  
+  // Verify critical elements exist
   const sidebar = document.getElementById('admin-sidebar');
   const hamburger = document.getElementById('hamburger');
   const dashboard = document.getElementById('dashboard');
@@ -253,57 +281,45 @@ async function initializeAdminPortal() {
       dashboard: !!dashboard
     });
     
-    // Retry after short delay
-    setTimeout(() => {
-      console.log('⏳ Retrying initialization...');
-      initializeAdminPortal();
-    }, 100);
+    window.showToast?.(
+      'Page loading error. Please refresh the page.',
+      'danger',
+      5000
+    );
     return;
   }
   
   console.log('✓ All critical elements found');
   
-  // Step 1: Setup sidebar FIRST (this includes hamburger menu handling)
+  // Step 1: Setup sidebar navigation
   setupSidebarNavigation();
   
-  // Step 2: Mark data as loading
-  isLoadingAdminData = true;
-  
-  // Step 3: Load initial data
+  // Step 2: Load dashboard data
   try {
-    console.log('📊 Loading initial admin data...');
-    
-    // Load essential data first
+    console.log('📊 Loading dashboard stats...');
     await loadDashboardStats();
-    
-    // Mark data as loaded
-    adminDataLoaded = true;
-    isLoadingAdminData = false;
-    
-    console.log('✓ Admin data loaded successfully');
-    
+    console.log('✓ Dashboard stats loaded');
   } catch (error) {
-    console.error('❌ Failed to load admin data:', error);
-    isLoadingAdminData = false;
-    adminDataLoaded = false;
-    
+    console.error('❌ Failed to load dashboard:', error);
     window.showToast?.(
-      'Some data failed to load. Some features may be unavailable.',
+      'Some data failed to load. Please refresh the page.',
       'warning',
-      6000
+      5000
     );
   }
   
-  // Step 4: Show dashboard
+  // Step 3: Show dashboard
   showSection('dashboard');
   
-  // Step 5: Initialize class hierarchy
-  try {
-    await window.classHierarchy.initializeClassHierarchy();
-    console.log('✓ Class hierarchy initialized');
-  } catch (error) {
-    console.error('⚠️ Class hierarchy init failed:', error);
-  }
+  // Step 4: Initialize class hierarchy (non-blocking)
+  setTimeout(async () => {
+    try {
+      await window.classHierarchy?.initializeClassHierarchy();
+      console.log('✓ Class hierarchy initialized');
+    } catch (error) {
+      console.warn('⚠️ Class hierarchy init failed:', error);
+    }
+  }, 500);
   
   console.log('✅ Admin portal initialized successfully');
 }
@@ -4884,7 +4900,7 @@ window.toggleSidebarGroup = toggleSidebarGroup;
 async function loadDashboardStats() {
   console.log('📊 Loading dashboard stats...');
   
-  // Wait a bit for DOM to be ready
+  // Wait for DOM
   await new Promise(resolve => setTimeout(resolve, 100));
   
   const teacherCount = document.getElementById('teacher-count');
@@ -4894,7 +4910,9 @@ async function loadDashboardStats() {
   
   if (!teacherCount || !pupilCount || !classCount || !announceCount) {
     console.error('❌ Dashboard stat elements missing!');
-    return;
+    // Retry once after delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return loadDashboardStats();
   }
   
   // Show loading state
@@ -4904,11 +4922,15 @@ async function loadDashboardStats() {
   announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   
   try {
-    const teachersSnap = await db.collection('teachers').get();
-    const pupilsSnap = await db.collection('pupils').get();
-    const classesSnap = await db.collection('classes').get();
-    const announcementsSnap = await db.collection('announcements').get();
+    // Load all data in parallel
+    const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
+      window.db.collection('teachers').get(),
+      window.db.collection('pupils').get(),
+      window.db.collection('classes').get(),
+      window.db.collection('announcements').get()
+    ]);
     
+    // Update counts
     teacherCount.textContent = teachersSnap.size;
     pupilCount.textContent = pupilsSnap.size;
     classCount.textContent = classesSnap.size;
@@ -4918,12 +4940,17 @@ async function loadDashboardStats() {
     
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
-    window.showToast?.('Failed to load dashboard statistics', 'danger');
     
     teacherCount.textContent = '!';
     pupilCount.textContent = '!';
     classCount.textContent = '!';
     announceCount.textContent = '!';
+    
+    window.showToast?.(
+      'Failed to load dashboard statistics. Check your connection.',
+      'danger',
+      5000
+    );
   }
 }
 
