@@ -703,1336 +703,410 @@
         </div>
         <div class="lesson-grid" id="lessonGrid"></div>
     </div>
-
-    <script>
-        // State Management
-        const state = {
-            currentCategory: 'nursery1',
-            currentLessonIndex: 0,
-            isPlaying: false,
-            autoPlay: true,
-            lessonSpeed: 'normal',
-            soundEnabled: true,
-            teacherMode: false,
-            playbackTimer: null
-        };
-
-        // Speed settings in milliseconds
-        const speedSettings = {
-            slow: 8000,
-            normal: 5000,
-            fast: 3000
-        };
-
-        // Lesson Data
-        const lessonData = {
-            nursery1: [
-                {
-                    title: "The Nigerian Flag",
-                    text: "Our flag has green and white. Green is for our farms and trees. White is for peace and unity.",
-                    visual: createFlagVisual
-                },
-                {
-                    title: "Our Country Nigeria",
-                    text: "We live in Nigeria. Nigeria is in Africa. We have many people who love our country.",
-                    visual: createMapVisual
-                },
-                {
-                    title: "The President",
-                    text: "The President helps lead Nigeria. The President works in Abuja, our capital city.",
-                    visual: createPresidentVisual
-                },
-                {
-                    title: "Aso Rock",
-                    text: "Aso Rock is a big rock in Abuja. It is where the President's office is located.",
-                    visual: createAsoRockVisual
-                },
-                {
-                    title: "Our National Colors",
-                    text: "Green and white are Nigeria's colors. We see them on our flag and in celebrations.",
-                    visual: createColorsVisual
-                },
-                {
-                    title: "Independence Day",
-                    text: "October 1st is Nigeria's birthday. We celebrate being free and independent.",
-                    visual: createIndependenceVisual
-                },
-                {
-                    title: "Schools in Nigeria",
-                    text: "Children go to school to learn. Schools help us become smart and kind.",
-                    visual: createSchoolVisual
-                },
-                {
-                    title: "Doctors Help Us",
-                    text: "Doctors make us feel better when we are sick. They work in hospitals and clinics.",
-                    visual: createDoctorVisual
-                },
-                {
-                    title: "Teachers Teach Us",
-                    text: "Teachers help us learn new things every day. They are very important helpers.",
-                    visual: createTeacherVisual
-                },
-                {
-                    title: "Police Keep Us Safe",
-                    text: "Police officers protect us and keep our communities safe every day.",
-                    visual: createPoliceVisual
-                },
-                {
-                    title: "The Market",
-                    text: "Markets are places where people buy and sell food and things we need.",
-                    visual: createMarketVisual
-                },
-                {
-                    title: "Our Families",
-                    text: "Families love and care for each other. We live together and help one another.",
-                    visual: createFamilyVisual
-                },
-                {
-                    title: "Being Honest",
-                    text: "We should always tell the truth. Honesty makes people trust and respect us.",
-                    visual: createHonestyVisual
-                },
-                {
-                    title: "Sharing with Friends",
-                    text: "When we share, everyone is happy. Sharing shows we care about others.",
-                    visual: createSharingVisual
-                },
-                {
-                    title: "Nigerian Food",
-                    text: "We eat rice, yam, beans, and many delicious foods. Food gives us energy to play.",
-                    visual: createFoodVisual
-                },
-                {
-                    title: "Our Houses",
-                    text: "We live in houses with our families. Houses keep us safe and comfortable.",
-                    visual: createHouseVisual
-                },
-                {
-                    title: "Going to Church or Mosque",
-                    text: "Many people pray at churches or mosques. We learn to be good and kind there.",
-                    visual: createWorshipVisual
-                },
-                {
-                    title: "Being Kind",
-                    text: "When we are kind to others, we make them smile. Kindness makes the world better.",
-                    visual: createKindnessVisual
-                },
-                {
-                    title: "Helping at Home",
-                    text: "We can help our parents by cleaning up and being good. Helping makes everyone happy.",
-                    visual: createHelpingVisual
-                },
-                {
-                    title: "Nigerian Music",
-                    text: "We love to sing and dance in Nigeria. Music makes us happy and brings us together.",
-                    visual: createMusicVisual
-                },
-                {
-                    title: "Water is Important",
-                    text: "We need clean water to drink and stay healthy. We should not waste water.",
-                    visual: createWaterVisual
-                },
-                {
-                    title: "Trees and Nature",
-                    text: "Trees give us fresh air and shade. We should protect our trees and plants.",
-                    visual: createTreeVisual
-                },
-                {
-                    title: "Being Clean",
-                    text: "We wash our hands and take baths to stay clean and healthy every day.",
-                    visual: createCleanVisual
-                },
-                {
-                    title: "Nigerian Animals",
-                    text: "Nigeria has many animals like goats, chickens, and birds. We take care of animals.",
-                    visual: createAnimalVisual
-                },
-                {
-                    title: "Saying Thank You",
-                    text: "We say thank you when someone helps us. Being grateful is very important.",
-                    visual: createThankYouVisual
-                }
-            ],
-            nursery2: [
-                {
-                    title: "The Coat of Arms",
-                    text: "Our Coat of Arms has an eagle, two horses, and our motto. It represents Nigeria's strength.",
-                    visual: createCoatOfArmsVisual
-                },
-                {
-                    title: "Nigeria Has 36 States",
-                    text: "Nigeria is divided into 36 states and Abuja. Each state has its own governor.",
-                    visual: createStatesVisual
-                },
-                {
-                    title: "The Governor",
-                    text: "Each state has a governor who helps make the state better for everyone.",
-                    visual: createGovernorVisual
-                },
-                {
-                    title: "The National Anthem",
-                    text: "We sing our national anthem with pride. It talks about Nigeria being great and united.",
-                    visual: createAnthemVisual
-                },
-                {
-                    title: "Lagos: Big City",
-                    text: "Lagos is one of Nigeria's biggest cities. Many people live and work there.",
-                    visual: createLagosVisual
-                },
-                {
-                    title: "Rivers in Nigeria",
-                    text: "The River Niger and River Benue are our biggest rivers. They provide water and fish.",
-                    visual: createRiverVisual
-                },
-                {
-                    title: "Farmers Grow Our Food",
-                    text: "Farmers plant crops like rice, yam, and cassava. They work hard to feed everyone.",
-                    visual: createFarmerVisual
-                },
-                {
-                    title: "Soldiers Protect Nigeria",
-                    text: "Soldiers keep our country safe. They are brave and strong defenders of Nigeria.",
-                    visual: createSoldierVisual
-                },
-                {
-                    title: "Fire Fighters Help",
-                    text: "Fire fighters put out fires and rescue people. They are very brave helpers.",
-                    visual: createFireFighterVisual
-                },
-                {
-                    title: "Nigerian Languages",
-                    text: "We speak English, Hausa, Yoruba, Igbo, and many other languages in Nigeria.",
-                    visual: createLanguageVisual
-                },
-                {
-                    title: "Unity in Diversity",
-                    text: "Nigeria has many tribes and cultures. We are stronger when we work together in peace.",
-                    visual: createUnityVisual
-                },
-                {
-                    title: "Traditional Clothing",
-                    text: "We wear beautiful clothes like agbada, buba, and ankara. They show our culture.",
-                    visual: createClothingVisual
-                },
-                {
-                    title: "Festivals and Celebrations",
-                    text: "We celebrate festivals like Eid and Christmas together. Festivals bring joy to everyone.",
-                    visual: createFestivalVisual
-                },
-                {
-                    title: "Nigerian Sports",
-                    text: "We love football and other sports. Nigerian athletes compete around the world.",
-                    visual: createSportsVisual
-                },
-                {
-                    title: "Being Respectful",
-                    text: "We greet our elders and show respect. Respect is an important Nigerian value.",
-                    visual: createRespectVisual
-                },
-                {
-                    title: "Keeping Our Environment Clean",
-                    text: "We put trash in bins and keep our surroundings clean. A clean environment is healthy.",
-                    visual: createEnvironmentVisual
-                },
-                {
-                    title: "Nigerian Currency: Naira",
-                    text: "We use naira and kobo to buy things. Money helps us get what we need.",
-                    visual: createCurrencyVisual
-                },
-                {
-                    title: "Going to the Library",
-                    text: "Libraries have many books to read. Reading helps us learn and imagine new things.",
-                    visual: createLibraryVisual
-                },
-                {
-                    title: "Traffic Lights Keep Us Safe",
-                    text: "Red means stop, yellow means wait, green means go. Traffic lights help everyone stay safe.",
-                    visual: createTrafficVisual
-                },
-                {
-                    title: "Nigerian Art and Craft",
-                    text: "We make beautiful art with clay, beads, and paint. Art shows our creativity.",
-                    visual: createArtVisual
-                },
-                {
-                    title: "Working Together",
-                    text: "When we cooperate and work as a team, we can do great things together.",
-                    visual: createTeamworkVisual
-                },
-                {
-                    title: "Nigerian Leaders",
-                    text: "Leaders help guide our country and communities. Good leaders serve the people.",
-                    visual: createLeaderVisual
-                },
-                {
-                    title: "Staying Healthy",
-                    text: "We eat good food, exercise, and rest. Staying healthy helps us grow strong.",
-                    visual: createHealthVisual
-                },
-                {
-                    title: "The National Pledge",
-                    text: "We pledge to serve Nigeria with love and strength. The pledge reminds us to be good citizens.",
-                    visual: createPledgeVisual
-                },
-                {
-                    title: "Being Responsible",
-                    text: "We take care of our belongings and do our duties. Being responsible builds trust.",
-                    visual: createResponsibilityVisual
-                }
-            ],
-            kindergarten: [
-                {
-                    title: "Nigeria's Geography",
-                    text: "Nigeria is in West Africa by the Atlantic Ocean. We have forests, grasslands, and rivers.",
-                    visual: createGeographyVisual
-                },
-                {
-                    title: "The Three Arms of Government",
-                    text: "Nigeria has Executive, Legislative, and Judiciary. They work together to govern our country.",
-                    visual: createGovernmentVisual
-                },
-                {
-                    title: "The National Assembly",
-                    text: "The National Assembly makes laws for Nigeria. It has the Senate and House of Representatives.",
-                    visual: createAssemblyVisual
-                },
-                {
-                    title: "Democracy in Nigeria",
-                    text: "In democracy, people choose their leaders by voting. Everyone's voice matters in Nigeria.",
-                    visual: createDemocracyVisual
-                },
-                {
-                    title: "Elections",
-                    text: "Elections are when we vote to choose leaders. People vote for who they think will help Nigeria.",
-                    visual: createElectionVisual
-                },
-                {
-                    title: "Nigerian History",
-                    text: "Nigeria became independent on October 1, 1960. Before that, we were under colonial rule.",
-                    visual: createHistoryVisual
-                },
-                {
-                    title: "The Nigerian Eagle",
-                    text: "The eagle on our coat of arms represents strength and dignity. Eagles fly high and strong.",
-                    visual: createEagleVisual
-                },
-                {
-                    title: "Local Government",
-                    text: "Local governments help communities with roads, water, and services. They are close to the people.",
-                    visual: createLocalGovVisual
-                },
-                {
-                    title: "Nigerian Heroes",
-                    text: "Heroes fought for Nigeria's freedom and progress. We remember and honor them.",
-                    visual: createHeroVisual
-                },
-                {
-                    title: "Rights and Responsibilities",
-                    text: "We have rights to education and safety. We have responsibilities to obey laws and help others.",
-                    visual: createRightsVisual
-                },
-                {
-                    title: "Nigerian Economy",
-                    text: "Nigeria has oil, agriculture, and trade. Our economy helps people work and earn money.",
-                    visual: createEconomyVisual
-                },
-                {
-                    title: "Education in Nigeria",
-                    text: "Education helps us learn and grow. Every child has the right to go to school.",
-                    visual: createEducationVisual
-                },
-                {
-                    title: "Nigerian Technology",
-                    text: "Nigeria is growing in technology and innovation. We can become inventors and engineers.",
-                    visual: createTechnologyVisual
-                },
-                {
-                    title: "National Symbols",
-                    text: "Our flag, anthem, and coat of arms are national symbols. They represent who we are as Nigerians.",
-                    visual: createSymbolsVisual
-                },
-                {
-                    title: "Justice and Fairness",
-                    text: "Courts and judges help solve problems fairly. Justice means treating everyone equally.",
-                    visual: createJusticeVisual
-                },
-                {
-                    title: "Nigerian Culture",
-                    text: "Our culture includes music, dance, food, and traditions. Culture makes Nigeria special and unique.",
-                    visual: createCultureVisual
-                },
-                {
-                    title: "Citizenship",
-                    text: "Being a citizen means belonging to Nigeria. Good citizens contribute to making Nigeria better.",
-                    visual: createCitizenshipVisual
-                },
-                {
-                    title: "Protecting Our Resources",
-                    text: "Nigeria has oil, minerals, and natural resources. We must use them wisely for the future.",
-                    visual: createResourcesVisual
-                },
-                {
-                    title: "Nigerian Industries",
-                    text: "We have industries that make products and create jobs. Industries help Nigeria grow economically.",
-                    visual: createIndustryVisual
-                },
-                {
-                    title: "Peace and Conflict Resolution",
-                    text: "We solve disagreements by talking peacefully. Peace keeps our communities safe and happy.",
-                    visual: createPeaceVisual
-                },
-                {
-                    title: "Nigerian Infrastructure",
-                    text: "Roads, bridges, and buildings help us move and live comfortably. Infrastructure connects Nigeria.",
-                    visual: createInfrastructureVisual
-                },
-                {
-                    title: "Community Service",
-                    text: "Helping our community makes it better for everyone. Service means giving back to society.",
-                    visual: createServiceVisual
-                },
-                {
-                    title: "Nigerian Future",
-                    text: "We are the future of Nigeria. By learning and working hard, we make Nigeria greater.",
-                    visual: createFutureVisual
-                },
-                {
-                    title: "National Unity",
-                    text: "Though we are different, we are one Nigeria. Unity makes us stronger together.",
-                    visual: createNationalUnityVisual
-                },
-                {
-                    title: "Being a Good Citizen",
-                    text: "Good citizens obey laws, pay taxes, vote, and help others. We all can make Nigeria proud.",
-                    visual: createGoodCitizenVisual
-                }
-            ]
-        };
-
-        // Visual Creation Functions
-        function createFlagVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="50" y="30" width="80" height="140" fill="#2D7A3E"/>
-                    <rect x="130" y="30" width="80" height="140" fill="#FFFFFF"/>
-                    <rect x="210" y="30" width="80" height="140" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createMapVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M150 50 L180 70 L200 100 L190 140 L160 160 L120 155 L100 130 L110 90 L130 65 Z" 
-                          fill="#5B9BD5" stroke="#2D7A3E" stroke-width="3"/>
-                    <circle cx="150" cy="100" r="8" fill="#E06C75"/>
-                    <text x="150" y="185" text-anchor="middle" font-size="20" fill="#2D7A3E" font-weight="bold">Nigeria</text>
-                </svg>
-            `;
-        }
-
-        function createPresidentVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="30" fill="#F4C542"/>
-                    <rect x="120" y="100" width="60" height="70" fill="#2D7A3E" rx="5"/>
-                    <rect x="110" y="140" width="80" height="30" fill="#5B9BD5"/>
-                    <rect x="80" y="50" width="140" height="8" fill="#E06C75" rx="4"/>
-                </svg>
-            `;
-        }
-
-        function createAsoRockVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M50 150 L100 80 L150 100 L200 60 L250 150 Z" fill="#9B7EBD"/>
-                    <path d="M80 150 L120 100 L160 120 L200 90 L220 150 Z" fill="#7A5FAD" opacity="0.7"/>
-                    <rect x="140" y="120" width="20" height="30" fill="#F4C542"/>
-                    <text x="150" y="185" text-anchor="middle" font-size="18" fill="#2D7A3E">Aso Rock</text>
-                </svg>
-            `;
-        }
-
-        function createColorsVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="100" r="50" fill="#2D7A3E"/>
-                    <circle cx="200" cy="100" r="50" fill="#FFFFFF" stroke="#2D7A3E" stroke-width="3"/>
-                    <text x="150" y="180" text-anchor="middle" font-size="20" fill="#2D7A3E" font-weight="bold">Green & White</text>
-                </svg>
-            `;
-        }
-
-        function createIndependenceVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="90" r="60" fill="#F4C542"/>
-                    <polygon points="150,30 160,60 190,60 165,80 175,110 150,90 125,110 135,80 110,60 140,60" fill="#E06C75"/>
-                    <text x="150" y="170" text-anchor="middle" font-size="22" fill="#2D7A3E" font-weight="bold">Oct 1st</text>
-                </svg>
-            `;
-        }
-
-        function createSchoolVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="75" y="80" width="150" height="90" fill="#5B9BD5"/>
-                    <polygon points="75,80 150,40 225,80" fill="#E06C75"/>
-                    <rect x="130" y="120" width="40" height="50" fill="#F4C542"/>
-                    <rect x="95" y="100" width="25" height="25" fill="#FFFFFF"/>
-                    <rect x="180" y="100" width="25" height="25" fill="#FFFFFF"/>
-                </svg>
-            `;
-        }
-
-        function createDoctorVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="30" fill="#F4C542"/>
-                    <rect x="120" y="100" width="60" height="70" fill="#FFFFFF" stroke="#5B9BD5" stroke-width="3"/>
-                    <rect x="140" y="50" width="20" height="8" fill="#E06C75"/>
-                    <path d="M150 115 L150 135 M140 125 L160 125" stroke="#E06C75" stroke-width="4"/>
-                </svg>
-            `;
-        }
-
-        function createTeacherVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="50" width="140" height="100" fill="#2D7A3E" rx="5"/>
-                    <rect x="100" y="70" width="100" height="60" fill="#FFFFFF"/>
-                    <circle cx="250" cy="120" r="15" fill="#F4C542"/>
-                    <rect x="240" y="135" width="20" height="30" fill="#5B9BD5"/>
-                </svg>
-            `;
-        }
-
-        function createPoliceVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="30" fill="#F4C542"/>
-                    <rect x="120" y="100" width="60" height="70" fill="#2C2C2C"/>
-                    <polygon points="150,45 160,55 140,55" fill="#F4C542"/>
-                    <circle cx="140" cy="65" r="3" fill="#2C2C2C"/>
-                    <circle cx="160" cy="65" r="3" fill="#2C2C2C"/>
-                </svg>
-            `;
-        }
-
-        function createMarketVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="60" y="80" width="70" height="80" fill="#E8955D"/>
-                    <polygon points="60,80 95,50 130,80" fill="#E06C75"/>
-                    <rect x="170" y="80" width="70" height="80" fill="#E8955D"/>
-                    <polygon points="170,80 205,50 240,80" fill="#5B9BD5"/>
-                    <circle cx="95" cy="120" r="12" fill="#F4C542"/>
-                    <circle cx="205" cy="120" r="12" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createFamilyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="70" r="20" fill="#F4C542"/>
-                    <circle cx="150" cy="70" r="20" fill="#E8955D"/>
-                    <circle cx="200" cy="70" r="20" fill="#5B9BD5"/>
-                    <rect x="85" y="90" width="30" height="40" fill="#2D7A3E"/>
-                    <rect x="135" y="90" width="30" height="40" fill="#9B7EBD"/>
-                    <rect x="185" y="90" width="30" height="40" fill="#E06C75"/>
-                    <path d="M75 140 Q150 110 225 140" stroke="#F4C542" stroke-width="3" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createHonestyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="90" r="60" fill="#5B9BD5"/>
-                    <path d="M130 90 L145 105 L175 75" stroke="#FFFFFF" stroke-width="8" fill="none" stroke-linecap="round"/>
-                    <text x="150" y="170" text-anchor="middle" font-size="24" fill="#2D7A3E" font-weight="bold">Truth</text>
-                </svg>
-            `;
-        }
-
-        function createSharingVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="100" r="35" fill="#F4C542"/>
-                    <circle cx="200" cy="100" r="35" fill="#E8955D"/>
-                    <path d="M135 100 L165 100" stroke="#E06C75" stroke-width="6" marker-end="url(#arrowhead)"/>
-                    <path d="M165 100 L135 100" stroke="#5B9BD5" stroke-width="6" marker-end="url(#arrowhead2)"/>
-                    <defs>
-                        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                            <polygon points="0 0, 10 3, 0 6" fill="#E06C75"/>
-                        </marker>
-                        <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                            <polygon points="0 0, 10 3, 0 6" fill="#5B9BD5"/>
-                        </marker>
-                    </defs>
-                </svg>
-            `;
-        }
-
-        function createFoodVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <ellipse cx="150" cy="120" rx="80" ry="50" fill="#FFFFFF" stroke="#2D7A3E" stroke-width="3"/>
-                    <circle cx="120" cy="110" r="20" fill="#F4C542"/>
-                    <circle cx="160" cy="110" r="20" fill="#E06C75"/>
-                    <circle cx="140" cy="130" r="15" fill="#2D7A3E"/>
-                    <circle cx="170" cy="125" r="15" fill="#E8955D"/>
-                </svg>
-            `;
-        }
-
-        function createHouseVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="100" y="90" width="100" height="80" fill="#E8955D"/>
-                    <polygon points="100,90 150,50 200,90" fill="#E06C75"/>
-                    <rect x="135" y="120" width="30" height="50" fill="#5B9BD5"/>
-                    <rect x="110" y="100" width="20" height="20" fill="#F4C542"/>
-                    <rect x="170" y="100" width="20" height="20" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createWorshipVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="90" y="70" width="120" height="100" fill="#9B7EBD"/>
-                    <polygon points="90,70 150,30 210,70" fill="#5B9BD5"/>
-                    <rect x="135" y="120" width="30" height="50" fill="#F4C542"/>
-                    <path d="M150 50 L150 65 M143 58 L157 58" stroke="#FFFFFF" stroke-width="4"/>
-                </svg>
-            `;
-        }
-
-        function createKindnessVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M150 140 C150 140 100 100 100 75 C100 55 115 45 130 45 C140 45 150 50 150 50 C150 50 160 45 170 45 C185 45 200 55 200 75 C200 100 150 140 150 140 Z" 
-                          fill="#E06C75"/>
-                    <circle cx="120" cy="130" r="8" fill="#F4C542"/>
-                    <circle cx="150" cy="120" r="8" fill="#F4C542"/>
-                    <circle cx="180" cy="130" r="8" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createHelpingVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="80" r="25" fill="#F4C542"/>
-                    <rect x="80" y="105" width="40" height="50" fill="#5B9BD5"/>
-                    <circle cx="200" cy="80" r="25" fill="#E8955D"/>
-                    <rect x="180" y="105" width="40" height="50" fill="#2D7A3E"/>
-                    <rect x="130" y="120" width="40" height="40" fill="#E06C75"/>
-                    <path d="M100 125 L130 135" stroke="#2C2C2C" stroke-width="3"/>
-                    <path d="M200 125 L170 135" stroke="#2C2C2C" stroke-width="3"/>
-                </svg>
-            `;
-        }
-
-        function createMusicVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="130" r="20" fill="#5B9BD5"/>
-                    <rect x="98" y="70" width="4" height="60" fill="#2C2C2C"/>
-                    <circle cx="150" cy="120" r="20" fill="#F4C542"/>
-                    <rect x="148" y="60" width="4" height="60" fill="#2C2C2C"/>
-                    <circle cx="200" cy="130" r="20" fill="#E06C75"/>
-                    <rect x="198" y="70" width="4" height="60" fill="#2C2C2C"/>
-                    <path d="M80 50 Q150 40 220 50" stroke="#2D7A3E" stroke-width="3" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createWaterVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M150 50 Q140 80 150 110 Q160 80 150 50" fill="#5B9BD5"/>
-                    <path d="M120 90 Q115 110 120 130 Q125 110 120 90" fill="#5B9BD5" opacity="0.7"/>
-                    <path d="M180 90 Q175 110 180 130 Q185 110 180 90" fill="#5B9BD5" opacity="0.7"/>
-                    <ellipse cx="150" cy="150" rx="70" ry="20" fill="#5B9BD5" opacity="0.3"/>
-                </svg>
-            `;
-        }
-
-        function createTreeVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="140" y="110" width="20" height="60" fill="#E8955D"/>
-                    <circle cx="150" cy="90" r="40" fill="#2D7A3E"/>
-                    <circle cx="130" cy="75" r="30" fill="#2D7A3E"/>
-                    <circle cx="170" cy="75" r="30" fill="#2D7A3E"/>
-                    <ellipse cx="150" cy="170" rx="50" ry="10" fill="#9B7EBD" opacity="0.5"/>
-                </svg>
-            `;
-        }
-
-        function createCleanVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="80" r="30" fill="#F4C542"/>
-                    <rect x="80" y="110" width="40" height="50" fill="#5B9BD5"/>
-                    <circle cx="180" cy="100" r="35" fill="#FFFFFF" stroke="#5B9BD5" stroke-width="3"/>
-                    <path d="M165 100 L175 110 L195 85" stroke="#2D7A3E" stroke-width="5" fill="none"/>
-                    <path d="M140 90 Q150 85 160 90" stroke="#5B9BD5" stroke-width="3" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createAnimalVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <ellipse cx="120" cy="120" rx="35" ry="30" fill="#F4C542"/>
-                    <circle cx="105" cy="110" r="15" fill="#F4C542"/>
-                    <circle cx="100" cy="105" r="3" fill="#2C2C2C"/>
-                    <circle cx="180" cy="130" r="25" fill="#E8955D"/>
-                    <ellipse cx="200" cy="130" rx="30" ry="25" fill="#E8955D"/>
-                    <circle cx="195" cy="125" r="3" fill="#2C2C2C"/>
-                </svg>
-            `;
-        }
-
-        function createThankYouVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="100" r="60" fill="#F4C542"/>
-                    <circle cx="130" cy="90" r="8" fill="#2C2C2C"/>
-                    <circle cx="170" cy="90" r="8" fill="#2C2C2C"/>
-                    <path d="M120 120 Q150 140 180 120" stroke="#2C2C2C" stroke-width="4" fill="none" stroke-linecap="round"/>
-                    <text x="150" y="180" text-anchor="middle" font-size="24" fill="#E06C75" font-weight="bold">Thank You</text>
-                </svg>
-            `;
-        }
-
-        // Nursery 2 Visuals
-        function createCoatOfArmsVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M150 60 L170 80 L160 100 L150 95 L140 100 L130 80 Z" fill="#2C2C2C"/>
-                    <rect x="100" y="100" width="20" height="50" fill="#E8955D"/>
-                    <rect x="180" y="100" width="20" height="50" fill="#E8955D"/>
-                    <path d="M120 110 L130 100 L140 110" fill="#F4C542"/>
-                    <path d="M160 110 L170 100 L180 110" fill="#F4C542"/>
-                    <path d="M110 140 Q150 120 190 140" stroke="#2D7A3E" stroke-width="3" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createStatesVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="60" y="60" width="40" height="35" fill="#5B9BD5" stroke="#FFF" stroke-width="1"/>
-                    <rect x="100" y="60" width="40" height="35" fill="#F4C542" stroke="#FFF" stroke-width="1"/>
-                    <rect x="140" y="60" width="40" height="35" fill="#E06C75" stroke="#FFF" stroke-width="1"/>
-                    <rect x="180" y="60" width="40" height="35" fill="#2D7A3E" stroke="#FFF" stroke-width="1"/>
-                    <rect x="60" y="95" width="40" height="35" fill="#9B7EBD" stroke="#FFF" stroke-width="1"/>
-                    <rect x="100" y="95" width="40" height="35" fill="#E8955D" stroke="#FFF" stroke-width="1"/>
-                    <rect x="140" y="95" width="40" height="35" fill="#5B9BD5" stroke="#FFF" stroke-width="1"/>
-                    <rect x="180" y="95" width="40" height="35" fill="#F4C542" stroke="#FFF" stroke-width="1"/>
-                    <text x="150" y="160" text-anchor="middle" font-size="20" fill="#2D7A3E" font-weight="bold">36 States</text>
-                </svg>
-            `;
-        }
-
-        function createGovernorVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="30" fill="#F4C542"/>
-                    <rect x="120" y="100" width="60" height="70" fill="#9B7EBD" rx="5"/>
-                    <polygon points="140,50 150,35 160,50" fill="#E06C75"/>
-                    <rect x="80" y="140" width="140" height="6" fill="#2D7A3E" rx="3"/>
-                </svg>
-            `;
-        }
-
-        function createAnthemVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="60" width="140" height="100" fill="#FFFFFF" stroke="#2D7A3E" stroke-width="3"/>
-                    <line x1="100" y1="80" x2="180" y2="80" stroke="#2C2C2C" stroke-width="2"/>
-                    <line x1="100" y1="95" x2="180" y2="95" stroke="#2C2C2C" stroke-width="2"/>
-                    <line x1="100" y1="110" x2="180" y2="110" stroke="#2C2C2C" stroke-width="2"/>
-                    <line x1="100" y1="125" x2="180" y2="125" stroke="#2C2C2C" stroke-width="2"/>
-                    <circle cx="95" cy="80" r="5" fill="#E06C75"/>
-                    <circle cx="95" cy="95" r="5" fill="#5B9BD5"/>
-                    <circle cx="95" cy="110" r="5" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createLagosVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="70" y="100" width="30" height="60" fill="#5B9BD5"/>
-                    <rect x="110" y="80" width="30" height="80" fill="#2D7A3E"/>
-                    <rect x="150" y="90" width="30" height="70" fill="#E06C75"/>
-                    <rect x="190" y="70" width="30" height="90" fill="#F4C542"/>
-                    <rect x="50" y="160" width="200" height="10" fill="#9B7EBD"/>
-                    <text x="150" y="45" text-anchor="middle" font-size="22" fill="#2D7A3E" font-weight="bold">Lagos</text>
-                </svg>
-            `;
-        }
-
-        function createRiverVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M50 80 Q100 100 150 90 T250 110" stroke="#5B9BD5" stroke-width="30" fill="none" opacity="0.7"/>
-                    <path d="M60 120 Q110 130 160 125 T240 135" stroke="#5B9BD5" stroke-width="25" fill="none" opacity="0.5"/>
-                    <circle cx="100" cy="85" r="8" fill="#2D7A3E"/>
-                    <circle cx="200" cy="105" r="8" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createFarmerVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="25" fill="#E8955D"/>
-                    <rect x="130" y="95" width="40" height="50" fill="#5B9BD5"/>
-                    <polygon points="145,50 150,40 155,50" fill="#F4C542"/>
-                    <rect x="80" y="145" width="140" height="25" fill="#2D7A3E"/>
-                    <circle cx="100" cy="135" r="8" fill="#F4C542"/>
-                    <circle cx="130" cy="138" r="8" fill="#E06C75"/>
-                    <circle cx="160" cy="135" r="8" fill="#F4C542"/>
-                    <circle cx="190" cy="138" r="8" fill="#E8955D"/>
-                </svg>
-            `;
-        }
-
-        function createSoldierVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="25" fill="#E8955D"/>
-                    <rect x="130" y="95" width="40" height="60" fill="#2D7A3E"/>
-                    <rect x="120" y="55" width="60" height="15" fill="#2D7A3E"/>
-                    <circle cx="135" cy="65" r="3" fill="#2C2C2C"/>
-                    <circle cx="165" cy="65" r="3" fill="#2C2C2C"/>
-                </svg>
-            `;
-        }
-
-        function createFireFighterVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="25" fill="#F4C542"/>
-                    <rect x="130" y="95" width="40" height="60" fill="#E06C75"/>
-                    <rect x="125" y="50" width="50" height="20" fill="#F4C542"/>
-                    <path d="M100 140 Q150 120 200 140" stroke="#5B9BD5" stroke-width="8" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createLanguageVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="80" r="40" fill="#5B9BD5" opacity="0.7"/>
-                    <circle cx="150" cy="100" r="40" fill="#F4C542" opacity="0.7"/>
-                    <circle cx="200" cy="80" r="40" fill="#E06C75" opacity="0.7"/>
-                    <text x="100" y="85" text-anchor="middle" font-size="16" fill="#FFF" font-weight="bold">En</text>
-                    <text x="150" y="105" text-anchor="middle" font-size="16" fill="#FFF" font-weight="bold">Ha</text>
-                    <text x="200" y="85" text-anchor="middle" font-size="16" fill="#FFF" font-weight="bold">Yo</text>
-                </svg>
-            `;
-        }
-
-        function createUnityVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="100" r="70" fill="none" stroke="#2D7A3E" stroke-width="5"/>
-                    <circle cx="120" cy="100" r="15" fill="#5B9BD5"/>
-                    <circle cx="150" cy="70" r="15" fill="#F4C542"/>
-                    <circle cx="180" cy="100" r="15" fill="#E06C75"/>
-                    <circle cx="150" cy="130" r="15" fill="#9B7EBD"/>
-                    <line x1="120" y1="100" x2="150" y2="70" stroke="#2D7A3E" stroke-width="3"/>
-                    <line x1="150" y1="70" x2="180" y2="100" stroke="#2D7A3E" stroke-width="3"/>
-                    <line x1="180" y1="100" x2="150" y2="130" stroke="#2D7A3E" stroke-width="3"/>
-                    <line x1="150" y1="130" x2="120" y2="100" stroke="#2D7A3E" stroke-width="3"/>
-                </svg>
-            `;
-        }
-
-        function createClothingVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M100 60 L100 140 L140 140 L140 60 Z" fill="#5B9BD5"/>
-                    <path d="M100 60 L90 70 L90 100 L100 100 Z" fill="#5B9BD5"/>
-                    <path d="M140 60 L150 70 L150 100 L140 100 Z" fill="#5B9BD5"/>
-                    <path d="M160 60 L160 140 L200 140 L200 60 Z" fill="#F4C542"/>
-                    <circle cx="120" cy="90" r="8" fill="#E06C75"/>
-                    <circle cx="180" cy="90" r="8" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createFestivalVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <polygon points="150,40 160,70 190,70 165,90 175,120 150,100 125,120 135,90 110,70 140,70" fill="#F4C542"/>
-                    <circle cx="80" cy="80" r="15" fill="#E06C75"/>
-                    <circle cx="220" cy="80" r="15" fill="#5B9BD5"/>
-                    <circle cx="80" cy="140" r="15" fill="#2D7A3E"/>
-                    <circle cx="220" cy="140" r="15" fill="#9B7EBD"/>
-                    <path d="M100 60 Q150 50 200 60" stroke="#F4C542" stroke-width="3" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createSportsVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="100" r="50" fill="none" stroke="#2C2C2C" stroke-width="3"/>
-                    <path d="M150 50 L150 150 M100 100 L200 100" stroke="#2C2C2C" stroke-width="2"/>
-                    <path d="M150 100 m -35,-35 q 0,35 35,35 q -35,0 -35,35 q 0,-35 35,-35 q -35,0 -35,-35" fill="none" stroke="#2C2C2C" stroke-width="2"/>
-                    <circle cx="150" cy="100" r="8" fill="#E06C75"/>
-                </svg>
-            `;
-        }
-
-        function createRespectVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="70" r="25" fill="#F4C542"/>
-                    <rect x="80" y="95" width="40" height="50" fill="#5B9BD5"/>
-                    <circle cx="200" cy="80" r="25" fill="#E8955D"/>
-                    <rect x="180" y="105" width="40" height="50" fill="#2D7A3E"/>
-                    <path d="M120 110 Q150 100 180 115" stroke="#E06C75" stroke-width="4" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createEnvironmentVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="90" r="60" fill="#5B9BD5" opacity="0.3"/>
-                    <rect x="135" y="100" width="30" height="50" fill="#E8955D"/>
-                    <circle cx="150" cy="75" r="35" fill="#2D7A3E"/>
-                    <rect x="100" y="140" width="30" height="10" fill="#E06C75" rx="3"/>
-                    <rect x="170" y="140" width="30" height="10" fill="#F4C542" rx="3"/>
-                </svg>
-            `;
-        }
-
-        function createCurrencyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="70" width="140" height="70" fill="#2D7A3E" rx="10"/>
-                    <circle cx="150" cy="105" r="25" fill="#F4C542"/>
-                    <text x="150" y="115" text-anchor="middle" font-size="30" fill="#2D7A3E" font-weight="bold">₦</text>
-                </svg>
-            `;
-        }
-
-        function createLibraryVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="70" y="80" width="20" height="80" fill="#5B9BD5"/>
-                    <rect x="95" y="70" width="20" height="90" fill="#E06C75"/>
-                    <rect x="120" y="85" width="20" height="75" fill="#F4C542"/>
-                    <rect x="145" y="75" width="20" height="85" fill="#2D7A3E"/>
-                    <rect x="170" y="80" width="20" height="80" fill="#9B7EBD"/>
-                    <rect x="195" y="70" width="20" height="90" fill="#E8955D"/>
-                    <rect x="60" y="160" width="170" height="10" fill="#2C2C2C"/>
-                </svg>
-            `;
-        }
-
-        function createTrafficVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="120" y="40" width="60" height="130" fill="#2C2C2C" rx="10"/>
-                    <circle cx="150" cy="70" r="18" fill="#E06C75"/>
-                    <circle cx="150" cy="105" r="18" fill="#F4C542"/>
-                    <circle cx="150" cy="140" r="18" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createArtVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="70" y="60" width="160" height="100" fill="#FFFFFF" stroke="#2C2C2C" stroke-width="3"/>
-                    <circle cx="120" cy="100" r="20" fill="#E06C75"/>
-                    <rect x="155" y="85" width="30" height="30" fill="#5B9BD5"/>
-                    <polygon points="200,90 210,120 190,120" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createTeamworkVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="80" r="20" fill="#5B9BD5"/>
-                    <circle cx="150" cy="80" r="20" fill="#F4C542"/>
-                    <circle cx="200" cy="80" r="20" fill="#E06C75"/>
-                    <rect x="85" y="100" width="30" height="40" fill="#5B9BD5"/>
-                    <rect x="135" y="100" width="30" height="40" fill="#F4C542"/>
-                    <rect x="185" y="100" width="30" height="40" fill="#E06C75"/>
-                    <path d="M80 150 Q150 130 220 150" stroke="#2D7A3E" stroke-width="5" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createLeaderVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="30" fill="#F4C542"/>
-                    <rect x="125" y="100" width="50" height="60" fill="#9B7EBD"/>
-                    <polygon points="150,35 160,50 140,50" fill="#E06C75"/>
-                    <circle cx="100" cy="130" r="15" fill="#5B9BD5"/>
-                    <circle cx="200" cy="130" r="15" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createHealthVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <path d="M150 140 C150 140 100 100 100 75 C100 55 115 45 130 45 C140 45 150 50 150 50 C150 50 160 45 170 45 C185 45 200 55 200 75 C200 100 150 140 150 140 Z" 
-                          fill="#E06C75"/>
-                    <path d="M150 75 L150 105 M135 90 L165 90" stroke="#FFFFFF" stroke-width="6"/>
-                </svg>
-            `;
-        }
-
-        function createPledgeVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="90" y="50" width="120" height="100" fill="#2D7A3E"/>
-                    <rect x="100" y="60" width="100" height="80" fill="#FFFFFF"/>
-                    <path d="M120 80 L140 100 L170 75" stroke="#2D7A3E" stroke-width="5" fill="none" stroke-linecap="round"/>
-                </svg>
-            `;
-        }
-
-        function createResponsibilityVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="90" r="55" fill="#5B9BD5"/>
-                    <path d="M130 90 L145 105 L175 75" stroke="#FFFFFF" stroke-width="7" fill="none" stroke-linecap="round"/>
-                    <rect x="125" y="135" width="50" height="8" fill="#2D7A3E" rx="4"/>
-                </svg>
-            `;
-        }
-
-        // Kindergarten Visuals
-        function createGeographyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <ellipse cx="150" cy="100" rx="80" ry="60" fill="#5B9BD5" opacity="0.3"/>
-                    <path d="M120 80 L140 70 L165 75 L180 90 L175 115 L155 125 L130 120 L115 100 Z" 
-                          fill="#2D7A3E"/>
-                    <circle cx="150" cy="95" r="5" fill="#E06C75"/>
-                    <text x="150" y="170" text-anchor="middle" font-size="18" fill="#2D7A3E" font-weight="bold">West Africa</text>
-                </svg>
-            `;
-        }
-
-        function createGovernmentVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="90" width="50" height="60" fill="#5B9BD5"/>
-                    <rect x="135" y="90" width="50" height="60" fill="#F4C542"/>
-                    <rect x="190" y="90" width="50" height="60" fill="#E06C75"/>
-                    <text x="105" y="125" text-anchor="middle" font-size="12" fill="#FFF" font-weight="bold">Exec</text>
-                    <text x="160" y="125" text-anchor="middle" font-size="12" fill="#2C2C2C" font-weight="bold">Law</text>
-                    <text x="215" y="125" text-anchor="middle" font-size="12" fill="#FFF" font-weight="bold">Court</text>
-                </svg>
-            `;
-        }
-
-        function createAssemblyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="70" y="70" width="160" height="90" fill="#9B7EBD"/>
-                    <polygon points="70,70 150,30 230,70" fill="#2D7A3E"/>
-                    <circle cx="110" cy="100" r="8" fill="#F4C542"/>
-                    <circle cx="130" cy="100" r="8" fill="#F4C542"/>
-                    <circle cx="150" cy="100" r="8" fill="#F4C542"/>
-                    <circle cx="170" cy="100" r="8" fill="#F4C542"/>
-                    <circle cx="190" cy="100" r="8" fill="#F4C542"/>
-                    <circle cx="110" cy="125" r="8" fill="#E06C75"/>
-                    <circle cx="130" cy="125" r="8" fill="#E06C75"/>
-                    <circle cx="150" cy="125" r="8" fill="#E06C75"/>
-                    <circle cx="170" cy="125" r="8" fill="#E06C75"/>
-                    <circle cx="190" cy="125" r="8" fill="#E06C75"/>
-                </svg>
-            `;
-        }
-
-        function createDemocracyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="100" cy="80" r="18" fill="#5B9BD5"/>
-                    <circle cx="150" cy="80" r="18" fill="#F4C542"/>
-                    <circle cx="200" cy="80" r="18" fill="#E06C75"/>
-                    <circle cx="125" cy="120" r="18" fill="#2D7A3E"/>
-                    <circle cx="175" cy="120" r="18" fill="#9B7EBD"/>
-                    <rect x="80" y="140" width="140" height="20" fill="#E8955D" rx="10"/>
-                    <text x="150" y="155" text-anchor="middle" font-size="14" fill="#FFF" font-weight="bold">VOTE</text>
-                </svg>
-            `;
-        }
-
-        function createElectionVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="100" y="60" width="100" height="80" fill="#FFFFFF" stroke="#2D7A3E" stroke-width="3"/>
-                    <rect x="110" y="75" width="35" height="50" fill="#5B9BD5"/>
-                    <rect x="155" y="75" width="35" height="50" fill="#F4C542"/>
-                    <circle cx="127" cy="60" r="8" fill="#E06C75"/>
-                    <circle cx="172" cy="60" r="8" fill="#9B7EBD"/>
-                    <path d="M150 145 L165 160 L185 140" stroke="#2D7A3E" stroke-width="4" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createHistoryVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="100" y="70" width="100" height="80" fill="#2D7A3E"/>
-                    <rect x="110" y="80" width="30" height="60" fill="#FFFFFF"/>
-                    <rect x="160" y="80" width="30" height="60" fill="#FFFFFF"/>
-                    <text x="150" y="45" text-anchor="middle" font-size="24" fill="#2D7A3E" font-weight="bold">1960</text>
-                    <polygon points="130,55 150,45 170,55" fill="#E06C75"/>
-                </svg>
-            `;
-        }
-
-        function createEagleVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="70" r="20" fill="#2C2C2C"/>
-                    <path d="M130 70 L100 50 L110 80" fill="#2C2C2C"/>
-                    <path d="M170 70 L200 50 L190 80" fill="#2C2C2C"/>
-                    <path d="M135 90 L150 140 L165 90" fill="#2C2C2C"/>
-                    <path d="M150 140 L130 150 L120 135" fill="#2C2C2C"/>
-                    <path d="M150 140 L170 150 L180 135" fill="#2C2C2C"/>
-                    <circle cx="145" cy="65" r="3" fill="#F4C542"/>
-                    <circle cx="155" cy="65" r="3" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createLocalGovVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="90" y="80" width="120" height="80" fill="#5B9BD5"/>
-                    <polygon points="90,80 150,45 210,80" fill="#E06C75"/>
-                    <rect x="135" y="115" width="30" height="45" fill="#F4C542"/>
-                    <rect x="100" y="95" width="20" height="20" fill="#FFFFFF"/>
-                    <rect x="130" y="95" width="20" height="20" fill="#FFFFFF"/>
-                    <rect x="160" y="95" width="20" height="20" fill="#FFFFFF"/>
-                    <rect x="190" y="95" width="20" height="20" fill="#FFFFFF"/>
-                </svg>
-            `;
-        }
-
-        function createHeroVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="75" r="35" fill="#F4C542"/>
-                    <rect x="120" y="110" width="60" height="60" fill="#2D7A3E"/>
-                    <polygon points="150,35 165,55 145,55" fill="#E06C75"/>
-                    <polygon points="135,45 150,30 165,45" fill="#F4C542"/>
-                </svg>
-            `;
-        }
-
-        function createRightsVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="60" width="60" height="80" fill="#5B9BD5"/>
-                    <rect x="160" y="60" width="60" height="80" fill="#E06C75"/>
-                    <text x="110" y="105" text-anchor="middle" font-size="16" fill="#FFF" font-weight="bold">Rights</text>
-                    <text x="190" y="105" text-anchor="middle" font-size="14" fill="#FFF" font-weight="bold">Duties</text>
-                    <path d="M140 100 L160 100" stroke="#2D7A3E" stroke-width="4"/>
-                </svg>
-            `;
-        }
-
-        function createEconomyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="90" r="50" fill="#F4C542"/>
-                    <rect x="130" y="70" width="40" height="40" fill="#2D7A3E"/>
-                    <circle cx="150" cy="90" r="20" fill="#E06C75"/>
-                    <path d="M100 120 L150 145 L200 120" stroke="#5B9BD5" stroke-width="5" fill="none"/>
-                </svg>
-            `;
-        }
-
-        function createEducationVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="100" y="90" width="100" height="70" fill="#5B9BD5"/>
-                    <polygon points="100,90 150,55 200,90" fill="#E06C75"/>
-                    <rect x="140" y="120" width="20" height="40" fill="#F4C542"/>
-                    <polygon points="150,30 160,50 140,50" fill="#2D7A3E"/>
-                </svg>
-            `;
-        }
-
-        function createTechnologyVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="90" y="70" width="120" height="80" fill="#2C2C2C" rx="5"/>
-                    <rect x="100" y="80" width="100" height="55" fill="#5B9BD5"/>
-                    <rect x="135" y="135" width="30" height="5" fill="#2C2C2C"/>
-                    <rect x="120" y="140" width="60" height="3" fill="#2C2C2C"/>
-                </svg>
-            `;
-        }
-
-        function createSymbolsVisual() {
-            return `
-                <svg class="visual-svg" viewBox="0 0 300 200">
-                    <rect x="80" y="80" width="30" height="50" fill="#2D7A3E"/>
-                    <rect x="110" y="80" width="30" height="50" fill="#FFFFFF" stroke="#2D7A3E"/>
-                    <rect x="140" y="80" width="30" height="50" fill="#2D7A3E"/>
-                    <path d="M200 9021:11L210 100 L200 110 L195 105 L190 110 L185 100 Z" fill="#2C2C2C"/>
-</svg>
-`;
-}
-    function createJusticeVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <rect x="145" y="60" width="10" height="90" fill="#2C2C2C"/>
-                <path d="M100 80 L120 60 L140 80 L120 100 Z" fill="#F4C542"/>
-                <path d="M160 80 L180 60 L200 80 L180 100 Z" fill="#F4C542"/>
-                <line x1="120" y1="70" x2="180" y2="70" stroke="#2C2C2C" stroke-width="3"/>
-                <circle cx="150" cy="50" r="8" fill="#E06C75"/>
-            </svg>
-        `;
-    }
-
-    function createCultureVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="100" cy="100" r="40" fill="#5B9BD5" opacity="0.6"/>
-                <circle cx="150" cy="100" r="40" fill="#F4C542" opacity="0.6"/>
-                <circle cx="200" cy="100" r="40" fill="#E06C75" opacity="0.6"/>
-                <circle cx="125" cy="130" r="30" fill="#2D7A3E" opacity="0.6"/>
-                <circle cx="175" cy="130" r="30" fill="#9B7EBD" opacity="0.6"/>
-            </svg>
-        `;
-    }
-
-    function createCitizenshipVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="150" cy="100" r="60" fill="#2D7A3E"/>
-                <circle cx="130" cy="90" r="12" fill="#F4C542"/>
-                <circle cx="170" cy="90" r="12" fill="#F4C542"/>
-                <path d="M130 115 Q150 130 170 115" stroke="#F4C542" stroke-width="4" fill="none"/>
-                <text x="150" y="175" text-anchor="middle" font-size="20" fill="#2D7A3E" font-weight="bold">Citizen</text>
-            </svg>
-        `;
-    }
-
-    function createResourcesVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <ellipse cx="150" cy="120" rx="70" ry="50" fill="#2C2C2C"/>
-                <circle cx="120" cy="100" r="15" fill="#F4C542"/>
-                <circle cx="150" cy="95" r="15" fill="#E06C75"/>
-                <circle cx="180" cy="100" r="15" fill="#5B9BD5"/>
-                <path d="M100 80 L110 60 L120 80" fill="#2D7A3E"/>
-                <path d="M180 80 L190 60 L200 80" fill="#2D7A3E"/>
-            </svg>
-        `;
-    }
-
-    function createIndustryVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <rect x="80" y="100" width="50" height="60" fill="#5B9BD5"/>
-                <rect x="140" y="90" width="50" height="70" fill="#2D7A3E"/>
-                <rect x="200" y="105" width="40" height="55" fill="#E06C75"/>
-                <rect x="95" y="80" width="20" height="20" fill="#F4C542"/>
-                <rect x="155" y="70" width="20" height="20" fill="#F4C542"/>
-                <rect x="210" y="85" width="20" height="20" fill="#F4C542"/>
-            </svg>
-        `;
-    }
-
-    function createPeaceVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="150" cy="100" r="60" fill="#5B9BD5"/>
-                <circle cx="130" cy="90" r="10" fill="#2C2C2C"/>
-                <circle cx="170" cy="90" r="10" fill="#2C2C2C"/>
-                <path d="M130 110 Q150 125 170 110" stroke="#2C2C2C" stroke-width="4" fill="none"/>
-                <path d="M150 55 L150 145 M150 100 L110 130 M150 100 L190 130" stroke="#FFFFFF" stroke-width="5"/>
-            </svg>
-        `;
-    }
-
-    function createInfrastructureVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <rect x="50" y="130" width="200" height="10" fill="#2C2C2C"/>
-                <rect x="120" y="90" width="15" height="40" fill="#5B9BD5"/>
-                <rect x="165" y="90" width="15" height="40" fill="#5B9BD5"/>
-                <rect x="100" y="70" width="100" height="20" fill="#2D7A3E"/>
-                <path d="M70 130 Q100 110 130 130" stroke="#E06C75" stroke-width="3" fill="none"/>
-                <path d="M170 130 Q200 110 230 130" stroke="#E06C75" stroke-width="3" fill="none"/>
-            </svg>
-        `;
-    }
-
-    function createServiceVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="150" cy="80" r="30" fill="#F4C542"/>
-                <rect x="125" y="110" width="50" height="60" fill="#5B9BD5"/>
-                <path d="M150 140 L130 160 M150 140 L170 160" stroke="#2D7A3E" stroke-width="5"/>
-                <path d="M120 120 L90 130 M180 120 L210 130" stroke="#E06C75" stroke-width="4"/>
-            </svg>
-        `;
-    }
-
-    function createFutureVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="150" cy="100" r="55" fill="#5B9BD5"/>
-                <polygon points="150,50 160,75 185,75 165,90 175,115 150,100 125,115 135,90 115,75 140,75" fill="#F4C542"/>
-                <circle cx="120" cy="120" r="8" fill="#2D7A3E"/>
-                <circle cx="150" cy="130" r="8" fill="#E06C75"/>
-                <circle cx="180" cy="120" r="8" fill="#9B7EBD"/>
-            </svg>
-        `;
-    }
-
-    function createNationalUnityVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <path d="M150 50 L170 90 L210 90 L180 115 L195 155 L150 130 L105 155 L120 115 L90 90 L130 90 Z" 
-                      fill="#2D7A3E"/>
-                <circle cx="110" cy="100" r="10" fill="#5B9BD5"/>
-                <circle cx="150" cy="95" r="10" fill="#F4C542"/>
-                <circle cx="190" cy="100" r="10" fill="#E06C75"/>
-                <circle cx="130" cy="125" r="10" fill="#9B7EBD"/>
-                <circle cx="170" cy="125" r="10" fill="#E8955D"/>
-            </svg>
-        `;
-    }
-
-    function createGoodCitizenVisual() {
-        return `
-            <svg class="visual-svg" viewBox="0 0 300 200">
-                <circle cx="150" cy="75" r="35" fill="#F4C542"/>
-                <rect x="120" y="110" width="60" height="65" fill="#2D7A3E"/>
-                <path d="M135 75 L145 85 L165 65" stroke="#FFFFFF" stroke-width="5" fill="none"/>
-                <polygon points="150,35 160,50 140,50" fill="#E06C75"/>
-            </svg>
-        `;
-    }
+<script>
+    // State Management
+    const state = {
+        currentCategory: 'nursery1',
+        currentLessonIndex: 0,
+        isPlaying: false,
+        autoPlay: true,
+        lessonSpeed: 'normal',
+        soundEnabled: true,
+        teacherMode: false,
+        playbackTimer: null
+    };
+
+    // Speed settings in milliseconds
+    const speedSettings = {
+        slow: 8000,
+        normal: 5000,
+        fast: 3000
+    };
+
+    // Lesson Data
+    const lessonData = {
+        nursery1: [
+            {
+                title: "The Nigerian Flag",
+                text: "Our flag has green and white. Green is for our farms and trees. White is for peace and unity.",
+                image: "/images/nursery1/nigerian-flag.jpg"
+            },
+            {
+                title: "Our Country Nigeria",
+                text: "We live in Nigeria. Nigeria is in Africa. We have many people who love our country.",
+                image: "/images/nursery1/nigeria-map.jpg"
+            },
+            {
+                title: "The President",
+                text: "The President helps lead Nigeria. The President works in Abuja, our capital city.",
+                image: "/images/nursery1/president.jpg"
+            },
+            {
+                title: "Aso Rock",
+                text: "Aso Rock is a big rock in Abuja. It is where the President's office is located.",
+                image: "/images/nursery1/aso-rock.jpg"
+            },
+            {
+                title: "Our National Colors",
+                text: "Green and white are Nigeria's colors. We see them on our flag and in celebrations.",
+                image: "/images/nursery1/national-colors.jpg"
+            },
+            {
+                title: "Independence Day",
+                text: "October 1st is Nigeria's birthday. We celebrate being free and independent.",
+                image: "/images/nursery1/independence-day.jpg"
+            },
+            {
+                title: "Schools in Nigeria",
+                text: "Children go to school to learn. Schools help us become smart and kind.",
+                image: "/images/nursery1/school.jpg"
+            },
+            {
+                title: "Doctors Help Us",
+                text: "Doctors make us feel better when we are sick. They work in hospitals and clinics.",
+                image: "/images/nursery1/doctor.jpg"
+            },
+            {
+                title: "Teachers Teach Us",
+                text: "Teachers help us learn new things every day. They are very important helpers.",
+                image: "/images/nursery1/teacher.jpg"
+            },
+            {
+                title: "Police Keep Us Safe",
+                text: "Police officers protect us and keep our communities safe every day.",
+                image: "/images/nursery1/police.jpg"
+            },
+            {
+                title: "The Market",
+                text: "Markets are places where people buy and sell food and things we need.",
+                image: "/images/nursery1/market.jpg"
+            },
+            {
+                title: "Our Families",
+                text: "Families love and care for each other. We live together and help one another.",
+                image: "/images/nursery1/family.jpg"
+            },
+            {
+                title: "Being Honest",
+                text: "We should always tell the truth. Honesty makes people trust and respect us.",
+                image: "/images/nursery1/honesty.jpg"
+            },
+            {
+                title: "Sharing with Friends",
+                text: "When we share, everyone is happy. Sharing shows we care about others.",
+                image: "/images/nursery1/sharing.jpg"
+            },
+            {
+                title: "Nigerian Food",
+                text: "We eat rice, yam, beans, and many delicious foods. Food gives us energy to play.",
+                image: "/images/nursery1/food.jpg"
+            },
+            {
+                title: "Our Houses",
+                text: "We live in houses with our families. Houses keep us safe and comfortable.",
+                image: "/images/nursery1/house.jpg"
+            },
+            {
+                title: "Going to Church or Mosque",
+                text: "Many people pray at churches or mosques. We learn to be good and kind there.",
+                image: "/images/nursery1/worship.jpg"
+            },
+            {
+                title: "Being Kind",
+                text: "When we are kind to others, we make them smile. Kindness makes the world better.",
+                image: "/images/nursery1/kindness.jpg"
+            },
+            {
+                title: "Helping at Home",
+                text: "We can help our parents by cleaning up and being good. Helping makes everyone happy.",
+                image: "/images/nursery1/helping.jpg"
+            },
+            {
+                title: "Nigerian Music",
+                text: "We love to sing and dance in Nigeria. Music makes us happy and brings us together.",
+                image: "/images/nursery1/music.jpg"
+            },
+            {
+                title: "Water is Important",
+                text: "We need clean water to drink and stay healthy. We should not waste water.",
+                image: "/images/nursery1/water.jpg"
+            },
+            {
+                title: "Trees and Nature",
+                text: "Trees give us fresh air and shade. We should protect our trees and plants.",
+                image: "/images/nursery1/trees.jpg"
+            },
+            {
+                title: "Being Clean",
+                text: "We wash our hands and take baths to stay clean and healthy every day.",
+                image: "/images/nursery1/clean.jpg"
+            },
+            {
+                title: "Nigerian Animals",
+                text: "Nigeria has many animals like goats, chickens, and birds. We take care of animals.",
+                image: "/images/nursery1/animals.jpg"
+            },
+            {
+                title: "Saying Thank You",
+                text: "We say thank you when someone helps us. Being grateful is very important.",
+                image: "/images/nursery1/thank-you.jpg"
+            }
+        ],
+        nursery2: [
+            {
+                title: "The Coat of Arms",
+                text: "Our Coat of Arms has an eagle, two horses, and our motto. It represents Nigeria's strength.",
+                image: "/images/nursery2/coat-of-arms.jpg"
+            },
+            {
+                title: "Nigeria Has 36 States",
+                text: "Nigeria is divided into 36 states and Abuja. Each state has its own governor.",
+                image: "/images/nursery2/36-states.jpg"
+            },
+            {
+                title: "The Governor",
+                text: "Each state has a governor who helps make the state better for everyone.",
+                image: "/images/nursery2/governor.jpg"
+            },
+            {
+                title: "The National Anthem",
+                text: "We sing our national anthem with pride. It talks about Nigeria being great and united.",
+                image: "/images/nursery2/national-anthem.jpg"
+            },
+            {
+                title: "Lagos: Big City",
+                text: "Lagos is one of Nigeria's biggest cities. Many people live and work there.",
+                image: "/images/nursery2/lagos.jpg"
+            },
+            {
+                title: "Rivers in Nigeria",
+                text: "The River Niger and River Benue are our biggest rivers. They provide water and fish.",
+                image: "/images/nursery2/rivers.jpg"
+            },
+            {
+                title: "Farmers Grow Our Food",
+                text: "Farmers plant crops like rice, yam, and cassava. They work hard to feed everyone.",
+                image: "/images/nursery2/farmer.jpg"
+            },
+            {
+                title: "Soldiers Protect Nigeria",
+                text: "Soldiers keep our country safe. They are brave and strong defenders of Nigeria.",
+                image: "/images/nursery2/soldier.jpg"
+            },
+            {
+                title: "Fire Fighters Help",
+                text: "Fire fighters put out fires and rescue people. They are very brave helpers.",
+                image: "/images/nursery2/firefighter.jpg"
+            },
+            {
+                title: "Nigerian Languages",
+                text: "We speak English, Hausa, Yoruba, Igbo, and many other languages in Nigeria.",
+                image: "/images/nursery2/languages.jpg"
+            },
+            {
+                title: "Unity in Diversity",
+                text: "Nigeria has many tribes and cultures. We are stronger when we work together in peace.",
+                image: "/images/nursery2/unity.jpg"
+            },
+            {
+                title: "Traditional Clothing",
+                text: "We wear beautiful clothes like agbada, buba, and ankara. They show our culture.",
+                image: "/images/nursery2/clothing.jpg"
+            },
+            {
+                title: "Festivals and Celebrations",
+                text: "We celebrate festivals like Eid and Christmas together. Festivals bring joy to everyone.",
+                image: "/images/nursery2/festival.jpg"
+            },
+            {
+                title: "Nigerian Sports",
+                text: "We love football and other sports. Nigerian athletes compete around the world.",
+                image: "/images/nursery2/sports.jpg"
+            },
+            {
+                title: "Being Respectful",
+                text: "We greet our elders and show respect. Respect is an important Nigerian value.",
+                image: "/images/nursery2/respect.jpg"
+            },
+            {
+                title: "Keeping Our Environment Clean",
+                text: "We put trash in bins and keep our surroundings clean. A clean environment is healthy.",
+                image: "/images/nursery2/environment.jpg"
+            },
+            {
+                title: "Nigerian Currency: Naira",
+                text: "We use naira and kobo to buy things. Money helps us get what we need.",
+                image: "/images/nursery2/currency.jpg"
+            },
+            {
+                title: "Going to the Library",
+                text: "Libraries have many books to read. Reading helps us learn and imagine new things.",
+                image: "/images/nursery2/library.jpg"
+            },
+            {
+                title: "Traffic Lights Keep Us Safe",
+                text: "Red means stop, yellow means wait, green means go. Traffic lights help everyone stay safe.",
+                image: "/images/nursery2/traffic-lights.jpg"
+            },
+            {
+                title: "Nigerian Art and Craft",
+                text: "We make beautiful art with clay, beads, and paint. Art shows our creativity.",
+                image: "/images/nursery2/art.jpg"
+            },
+            {
+                title: "Working Together",
+                text: "When we cooperate and work as a team, we can do great things together.",
+                image: "/images/nursery2/teamwork.jpg"
+            },
+            {
+                title: "Nigerian Leaders",
+                text: "Leaders help guide our country and communities. Good leaders serve the people.",
+                image: "/images/nursery2/leaders.jpg"
+            },
+            {
+                title: "Staying Healthy",
+                text: "We eat good food, exercise, and rest. Staying healthy helps us grow strong.",
+                image: "/images/nursery2/health.jpg"
+            },
+            {
+                title: "The National Pledge",
+                text: "We pledge to serve Nigeria with love and strength. The pledge reminds us to be good citizens.",
+                image: "/images/nursery2/pledge.jpg"
+            },
+            {
+                title: "Being Responsible",
+                text: "We take care of our belongings and do our duties. Being responsible builds trust.",
+                image: "/images/nursery2/responsibility.jpg"
+            }
+        ],
+        kindergarten: [
+            {
+                title: "Nigeria's Geography",
+                text: "Nigeria is in West Africa by the Atlantic Ocean. We have forests, grasslands, and rivers.",
+                image: "/images/kindergarten/geography.jpg"
+            },
+            {
+                title: "The Three Arms of Government",
+                text: "Nigeria has Executive, Legislative, and Judiciary. They work together to govern our country.",
+                image: "/images/kindergarten/government.jpg"
+            },
+            {
+                title: "The National Assembly",
+                text: "The National Assembly makes laws for Nigeria. It has the Senate and House of Representatives.",
+                image: "/images/kindergarten/assembly.jpg"
+            },
+            {
+                title: "Democracy in Nigeria",
+                text: "In democracy, people choose their leaders by voting. Everyone's voice matters in Nigeria.",
+                image: "/images/kindergarten/democracy.jpg"
+            },
+            {
+                title: "Elections",
+                text: "Elections are when we vote to choose leaders. People vote for who they think will help Nigeria.",
+                image: "/images/kindergarten/election.jpg"
+            },
+            {
+                title: "Nigerian History",
+                text: "Nigeria became independent on October 1, 1960. Before that, we were under colonial rule.",
+                image: "/images/kindergarten/history.jpg"
+            },
+            {
+                title: "The Nigerian Eagle",
+                text: "The eagle on our coat of arms represents strength and dignity. Eagles fly high and strong.",
+                image: "/images/kindergarten/eagle.jpg"
+            },
+            {
+                title: "Local Government",
+                text: "Local governments help communities with roads, water, and services. They are close to the people.",
+                image: "/images/kindergarten/local-government.jpg"
+            },
+            {
+                title: "Nigerian Heroes",
+                text: "Heroes fought for Nigeria's freedom and progress. We remember and honor them.",
+                image: "/images/kindergarten/heroes.jpg"
+            },
+            {
+                title: "Rights and Responsibilities",
+                text: "We have rights to education and safety. We have responsibilities to obey laws and help others.",
+                image: "/images/kindergarten/rights.jpg"
+            },
+            {
+                title: "Nigerian Economy",
+                text: "Nigeria has oil, agriculture, and trade. Our economy helps people work and earn money.",
+                image: "/images/kindergarten/economy.jpg"
+            },
+            {
+                title: "Education in Nigeria",
+                text: "Education helps us learn and grow. Every child has the right to go to school.",
+                image: "/images/kindergarten/education.jpg"
+            },
+            {
+                title: "Nigerian Technology",
+                text: "Nigeria is growing in technology and innovation. We can become inventors and engineers.",
+                image: "/images/kindergarten/technology.jpg"
+            },
+            {
+                title: "National Symbols",
+                text: "Our flag, anthem, and coat of arms are national symbols. They represent who we are as Nigerians.",
+                image: "/images/kindergarten/symbols.jpg"
+            },
+            {
+                title: "Justice and Fairness",
+                text: "Courts and judges help solve problems fairly. Justice means treating everyone equally.",
+                image: "/images/kindergarten/justice.jpg"
+            },
+            {
+                title: "Nigerian Culture",
+                text: "Our culture includes music, dance, food, and traditions. Culture makes Nigeria special and unique.",
+                image: "/images/kindergarten/culture.jpg"
+            },
+            {
+                title: "Citizenship",
+                text: "Being a citizen means belonging to Nigeria. Good citizens contribute to making Nigeria better.",
+                image: "/images/kindergarten/citizenship.jpg"
+            },
+            {
+                title: "Protecting Our Resources",
+                text: "Nigeria has oil, minerals, and natural resources. We must use them wisely for the future.",
+                image: "/images/kindergarten/resources.jpg"
+            },
+            {
+                title: "Nigerian Industries",
+                text: "We have industries that make products and create jobs. Industries help Nigeria grow economically.",
+                image: "/images/kindergarten/industry.jpg"
+            },
+            {
+                title: "Peace and Conflict Resolution",
+                text: "We solve disagreements by talking peacefully. Peace keeps our communities safe and happy.",
+                image: "/images/kindergarten/peace.jpg"
+            },
+            {
+                title: "Nigerian Infrastructure",
+                text: "Roads, bridges, and buildings help us move and live comfortably. Infrastructure connects Nigeria.",
+                image: "/images/kindergarten/infrastructure.jpg"
+            },
+            {
+                title: "Community Service",
+                text: "Helping our community makes it better for everyone. Service means giving back to society.",
+                image: "/images/kindergarten/service.jpg"
+            },
+            {
+                title: "Nigerian Future",
+                text: "We are the future of Nigeria. By learning and working hard, we make Nigeria greater.",
+                image: "/images/kindergarten/future.jpg"
+            },
+            {
+                title: "National Unity",
+                text: "Though we are different, we are one Nigeria. Unity makes us stronger together.",
+                image: "/images/kindergarten/national-unity.jpg"
+            },
+            {
+                title: "Being a Good Citizen",
+                text: "Good citizens obey laws, pay taxes, vote, and help others. We all can make Nigeria proud.",
+                image: "/images/kindergarten/good-citizen.jpg"
+            }
+        ]
+    };
 
     // Core Functions
     function selectCategory(category) {
@@ -2063,7 +1137,10 @@
         
         document.getElementById('lessonTitle').textContent = lesson.title;
         document.getElementById('lessonText').textContent = lesson.text;
-        document.getElementById('lessonVisual').innerHTML = lesson.visual();
+        
+        // Display image instead of SVG
+        const visualContainer = document.getElementById('lessonVisual');
+        visualContainer.innerHTML = `<img src="${lesson.image}" alt="${lesson.title}" class="visual-svg" style="object-fit: contain;">`;
         
         updateProgress();
         updateTeacherPanel();
