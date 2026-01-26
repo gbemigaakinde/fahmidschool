@@ -18,16 +18,14 @@
 const db = window.db;
 const auth = window.auth;
 
+// --- Add these declarations near the top of admin.js (after 'use strict' and db/auth assignments) ---
+let secondaryApp = null;
+let secondaryAuth = null;
+
 // ---------- Replacement: reliable secondary app initializer ----------
-/**
- * Ensure a secondary Firebase Auth instance is initialized and available as
- * secondaryApp and secondaryAuth. This safely handles cases where the original
- * firebase config is not available as a global variable by falling back to
- * the default app's options (firebase.app().options).
- */
 async function ensureSecondaryAuth() {
   // If already initialized, reuse
-  if (typeof secondaryAuth !== 'undefined' && secondaryAuth) {
+  if (secondaryAuth) {
     return { secondaryApp, secondaryAuth };
   }
 
@@ -43,7 +41,6 @@ async function ensureSecondaryAuth() {
         config = firebase.app().options;
       }
     } catch (err) {
-      // Will handle below by throwing a clear error
       config = null;
     }
   }
@@ -56,7 +53,7 @@ async function ensureSecondaryAuth() {
 
   try {
     // If 'secondary' app already exists, reuse it
-    const existing = firebase.apps.find(app => app.name === 'secondary');
+    const existing = (firebase.apps || []).find(app => app && app.name === 'secondary');
     if (existing) {
       secondaryApp = firebase.app('secondary');
       secondaryAuth = secondaryApp.auth();
@@ -117,15 +114,15 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
     }
 
     // Initialize or reuse secondary auth to create the new user without affecting primary admin session
-    await ensureSecondaryAuth();
+    const { secondaryAuth: secAuth } = await ensureSecondaryAuth();
 
     // Create user using the secondary auth instance
-    const newUserCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    const newUserCredential = await secAuth.createUserWithEmailAndPassword(email, password);
     const newUid = newUserCredential.user.uid;
 
     // Sign out secondary auth immediately after creation so secondary instance is clean
     try {
-      await secondaryAuth.signOut();
+      await secAuth.signOut();
       console.log('✓ Secondary auth signed out immediately after creation');
     } catch (cleanupErr) {
       console.warn('Warning: secondary auth signout failed:', cleanupErr);
@@ -169,8 +166,7 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
 
     // Send password reset email AFTER creating Firestore documents (safe to run unauthenticated)
     try {
-      // Use the secondaryAuth instance for the API call (it works whether signed in or not)
-      await secondaryAuth.sendPasswordResetEmail(email);
+      await secAuth.sendPasswordResetEmail(email);
       console.log('✓ Password reset email sent after cleanup');
     } catch (emailError) {
       console.warn('Warning: sending password reset email failed:', emailError);
@@ -180,8 +176,7 @@ window.createSecondaryUser = async function(email, password, role = 'teacher', e
     window.showToast?.('Account created successfully', 'success');
     return { success: true, uid: newUid };
   } catch (error) {
-    // Use shared error handler
-    window.handleError(error, 'Failed to create user');
+    window.handleError(error || new Error('Failed to create user'), 'Failed to create user');
     return { success: false, error };
   }
 };
