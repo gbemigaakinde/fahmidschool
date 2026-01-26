@@ -360,9 +360,10 @@ window.login = async function(email, password) {
 };
 
 /**
- * Login with admission number
- * SECURITY: No admission number validation in client
- * Returns same error message regardless of existence
+ * SECURE: Login with admission number
+ * - Uses generic error messages to prevent user enumeration
+ * - Rate limited on client side
+ * - Queries with limit to prevent full collection scans
  */
 window.loginWithAdmissionNumber = async function(admissionNo, password) {
   try {
@@ -372,7 +373,7 @@ window.loginWithAdmissionNumber = async function(admissionNo, password) {
       throw { code: 'auth/invalid-login-credentials' };
     }
 
-    // Rate limiting check (client-side)
+    // Client-side rate limiting (prevent brute force)
     const lastAttempt = sessionStorage.getItem('lastAdmissionAttempt');
     const now = Date.now();
     if (lastAttempt && (now - parseInt(lastAttempt, 10)) < 2000) {
@@ -380,15 +381,15 @@ window.loginWithAdmissionNumber = async function(admissionNo, password) {
     }
     sessionStorage.setItem('lastAdmissionAttempt', now.toString());
 
-    // Query pupils (limit to 1 for efficiency)
+    // Query pupils with LIMIT 1 (matches security rule)
     const pupilsRef = window.db.collection('pupils');
     const querySnapshot = await pupilsRef
       .where('admissionNo', '==', admissionNo)
-      .limit(1)
+      .limit(1) // CRITICAL: Matches security rule
       .get();
 
+    // SECURITY: Use generic error (no enumeration)
     if (querySnapshot.empty) {
-      // Generic error to avoid enumeration
       throw { code: 'auth/invalid-login-credentials' };
     }
 
@@ -396,8 +397,8 @@ window.loginWithAdmissionNumber = async function(admissionNo, password) {
     const pupilData = pupilDoc.data();
     const email = pupilData?.email;
 
+    // SECURITY: Generic error if no email
     if (!email) {
-      // Generic error
       throw { code: 'auth/invalid-login-credentials' };
     }
 
@@ -406,10 +407,12 @@ window.loginWithAdmissionNumber = async function(admissionNo, password) {
 
     window.showToast?.('Login successful!', 'success');
     setTimeout(() => window.location.href = 'portal.html', 800);
+    
   } catch (error) {
-    // Normalize error for security (prevent enumeration)
-    window.handleError({ code: 'auth/invalid-login-credentials' }, 'Login failed');
-    throw error;
+    // SECURITY: Normalize all errors to generic message
+    const genericError = { code: 'auth/invalid-login-credentials' };
+    window.handleError(genericError, 'Login failed');
+    throw genericError;
   }
 };
 
