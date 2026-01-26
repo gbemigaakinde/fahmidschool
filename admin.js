@@ -3001,41 +3001,44 @@ async function populatePaymentClassFilter() {
 async function loadPupilsForPayment() {
   const classId = document.getElementById('payment-class-filter')?.value;
   const pupilSelect = document.getElementById('payment-pupil-select');
-  
+  const formContainer = document.getElementById('payment-form-container');
+
   if (!pupilSelect) return;
-  
+
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  
+
   if (!classId) {
-    document.getElementById('payment-form-container').style.display = 'none';
+    if (formContainer) formContainer.style.display = 'none';
     return;
   }
-  
+
   try {
     const snapshot = await db.collection('pupils')
       .where('class.id', '==', classId)
       .orderBy('name')
       .get();
-    
+
     if (snapshot.empty) {
       pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
-      document.getElementById('payment-form-container').style.display = 'none';
+      if (formContainer) formContainer.style.display = 'none';
       return;
     }
-    
+
+    // Populate select
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const data = doc.data() || {};
       const opt = document.createElement('option');
       opt.value = doc.id;
-      opt.textContent = data.name;
-      opt.dataset.pupilName = data.name;
+      opt.textContent = data.name || 'Unnamed pupil';
+      opt.dataset.pupilName = data.name || '';
       opt.dataset.className = data.class?.name || 'Unknown';
       pupilSelect.appendChild(opt);
     });
-    
+
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils', 'danger');
+    if (formContainer) formContainer.style.display = 'none';
   }
 }
 
