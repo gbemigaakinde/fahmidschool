@@ -366,54 +366,49 @@ window.login = async function(email, password) {
  */
 window.loginWithAdmissionNumber = async function(admissionNo, password) {
   try {
+    // Normalize input
+    admissionNo = String(admissionNo || '').trim();
+    if (!admissionNo) {
+      throw { code: 'auth/invalid-login-credentials' };
+    }
+
     // Rate limiting check (client-side)
     const lastAttempt = sessionStorage.getItem('lastAdmissionAttempt');
     const now = Date.now();
-    
-    if (lastAttempt && (now - parseInt(lastAttempt)) < 2000) {
+    if (lastAttempt && (now - parseInt(lastAttempt, 10)) < 2000) {
       throw new Error('Too many attempts. Please wait.');
     }
-    
     sessionStorage.setItem('lastAdmissionAttempt', now.toString());
-    
-    // FIXED: Correct Firestore query syntax
+
+    // Query pupils (limit to 1 for efficiency)
     const pupilsRef = window.db.collection('pupils');
     const querySnapshot = await pupilsRef
       .where('admissionNo', '==', admissionNo)
-      .get(); // Removed .limit(1) - add it back after .where()
-    
+      .limit(1)
+      .get();
+
     if (querySnapshot.empty) {
-      // SECURITY: Generic error - don't reveal if admission number exists
+      // Generic error to avoid enumeration
       throw { code: 'auth/invalid-login-credentials' };
     }
-    
+
     const pupilDoc = querySnapshot.docs[0];
     const pupilData = pupilDoc.data();
-    const email = pupilData.email;
-    
+    const email = pupilData?.email;
+
     if (!email) {
-      // SECURITY: Generic error - don't reveal data issues
+      // Generic error
       throw { code: 'auth/invalid-login-credentials' };
     }
-    
+
     // Authenticate with email and password
     await window.auth.signInWithEmailAndPassword(email, password);
-    
+
     window.showToast?.('Login successful!', 'success');
     setTimeout(() => window.location.href = 'portal.html', 800);
-    
   } catch (error) {
-    // SECURITY: Normalize all errors to prevent enumeration
-    if (error.code === 'permission-denied' || 
-        error.code === 'auth/user-not-found' ||
-        error.message?.includes('admission')) {
-      window.handleError(
-        { code: 'auth/invalid-login-credentials' }, 
-        'Login failed'
-      );
-    } else {
-      window.handleError(error, 'Login failed');
-    }
+    // Normalize error for security (prevent enumeration)
+    window.handleError({ code: 'auth/invalid-login-credentials' }, 'Login failed');
     throw error;
   }
 };
