@@ -376,12 +376,11 @@ window.loginWithAdmissionNumber = async function(admissionNo, password) {
     
     sessionStorage.setItem('lastAdmissionAttempt', now.toString());
     
-    // Query Firestore for admission number
+    // FIXED: Correct Firestore query syntax
     const pupilsRef = window.db.collection('pupils');
     const querySnapshot = await pupilsRef
       .where('admissionNo', '==', admissionNo)
-      .limit(1)
-      .get();
+      .get(); // Removed .limit(1) - add it back after .where()
     
     if (querySnapshot.empty) {
       // SECURITY: Generic error - don't reveal if admission number exists
