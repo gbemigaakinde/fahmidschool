@@ -13,42 +13,78 @@
  * - Error boundaries improved
  */
 
-
 'use strict';
 
 const db = window.db;
 const auth = window.auth;
 
-// Secondary app for creating users - NOT exposed globally
-(function() {
-  let secondaryApp;
-  let secondaryAuth;
+// ============================================
+// SECONDARY APP FOR CREATING USERS
+// CRITICAL FIX: Properly expose globally
+// ============================================
 
-  try {
-    secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
-    secondaryAuth = secondaryApp.auth();
-  } catch (error) {
-    console.warn('Secondary app already exists:', error);
+let secondaryApp;
+let secondaryAuth;
+
+try {
+  secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+  secondaryAuth = secondaryApp.auth();
+  console.log('✓ Secondary Firebase app initialized');
+} catch (error) {
+  if (error.code === 'app/duplicate-app') {
+    console.log('Secondary app already exists, reusing...');
     secondaryApp = firebase.app('Secondary');
     secondaryAuth = secondaryApp.auth();
+  } else {
+    console.error('❌ Failed to initialize secondary app:', error);
+    throw error;
   }
+}
 
-  // Expose only safe helper function
-  window.createSecondaryUser = async function(email, password) {
-    if (!auth.currentUser) throw new Error('Not authenticated');
-    
+/**
+ * FIXED: Create user without logging out admin
+ * This function is now properly exposed globally
+ */
+window.createSecondaryUser = async function(email, password) {
+  console.log('🔧 createSecondaryUser called for:', email);
+  
+  // Validate current user is admin
+  if (!auth.currentUser) {
+    throw new Error('Not authenticated');
+  }
+  
+  try {
     const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+    
     if (!userDoc.exists || userDoc.data().role !== 'admin') {
-      throw new Error('Unauthorized');
+      throw new Error('Unauthorized: Admin access required');
     }
     
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    await secondaryAuth.sendPasswordResetEmail(email);
-    await secondaryAuth.signOut();
+    console.log('✓ Admin verification passed');
     
-    return userCredential.user.uid;
-  };
-})();
+    // Create user with secondary auth instance
+    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    const newUserId = userCredential.user.uid;
+    
+    console.log('✓ User created in Firebase Auth:', newUserId);
+    
+    // Send password reset email
+    await secondaryAuth.sendPasswordResetEmail(email);
+    console.log('✓ Password reset email sent to:', email);
+    
+    // Sign out from secondary auth to prevent session conflict
+    await secondaryAuth.signOut();
+    console.log('✓ Secondary auth signed out');
+    
+    return newUserId;
+    
+  } catch (error) {
+    console.error('❌ Error in createSecondaryUser:', error);
+    throw error;
+  }
+};
+
+console.log('✓ Secondary user creation function loaded');
 
 /* =====================================================
    CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
