@@ -45,42 +45,130 @@ try {
  * FIXED: Create user without logging out admin
  * This function is now properly exposed globally
  */
-window.createSecondaryUser = async function(email, password) {
-  console.log('🔧 createSecondaryUser called for:', email);
-  
-  // Validate current user is admin
-  if (!auth.currentUser) {
-    throw new Error('Not authenticated');
-  }
-  
+window.createSecondaryUser = async function(email, password, role = 'teacher', extraData = {}) {
+  /**
+   * Create a new Auth user without signing out the currently-signed-in admin.
+   * - Uses a temporary "secondary" Firebase app instance to create the Auth user.
+   * - Uses the primary app (admin still signed in) to create users/{uid} and teachers/{uid} or pupils/{uid}.
+   *
+   * Parameters:
+   *   email (string) - new user's email
+   *   password (string) - new user's password
+   *   role (string) - 'teacher' or 'pupil' (default 'teacher')
+   *   extraData (object) - optional extra profile fields (name, admissionNo, class, subjects, phone, etc)
+   */
   try {
-    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
-    
-    if (!userDoc.exists || userDoc.data().role !== 'admin') {
-      throw new Error('Unauthorized: Admin access required');
+    // Basic validation
+    if (!email || !password) {
+      window.showToast?.('Please provide both email and password for the new account', 'warning');
+      return;
     }
-    
-    console.log('✓ Admin verification passed');
-    
-    // Create user with secondary auth instance
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    const newUserId = userCredential.user.uid;
-    
-    console.log('✓ User created in Firebase Auth:', newUserId);
-    
-    // Send password reset email
-    await secondaryAuth.sendPasswordResetEmail(email);
-    console.log('✓ Password reset email sent to:', email);
-    
-    // Sign out from secondary auth to prevent session conflict
-    await secondaryAuth.signOut();
-    console.log('✓ Secondary auth signed out');
-    
-    return newUserId;
-    
+
+    // Ensure firebase is available
+    if (!window.firebase || !window.firebase.apps || !window.auth || !window.db) {
+      window.showToast?.('Firebase is not initialized', 'danger');
+      return;
+    }
+
+    // Ensure the current user is an admin in your app (client-side check)
+    const currentAdmin = window.auth.currentUser;
+    if (!currentAdmin) {
+      window.showToast?.('You must be signed in as an admin to create users', 'danger');
+      return;
+    }
+
+    const currentRole = await window.getUserRole(currentAdmin.uid);
+    if (currentRole !== 'admin') {
+      window.showToast?.('Only admin accounts can create teachers or pupils', 'danger');
+      return;
+    }
+
+    window.showToast?.('Creating account...', 'info');
+
+    // Get primary app config/options so we can initialize a secondary app with same config
+    const primaryApp = window.firebase.app(); // existing primary app
+    const appOptions = primaryApp.options;
+
+    // Initialize or reuse a secondary app instance
+    let secondaryApp;
+    try {
+      // Try to reuse if already created previously
+      secondaryApp = window.firebase.app('secondary');
+    } catch (e) {
+      // Not initialized yet -> create
+      secondaryApp = window.firebase.initializeApp(appOptions, 'secondary');
+    }
+
+    const secondaryAuth = secondaryApp.auth();
+
+    // Create the auth user using the secondary auth instance (this will NOT sign out the primary user)
+    const newUserCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    const newUid = newUserCredential.user.uid;
+
+    // Create the users/{uid} doc using primary db (current admin is still signed in on primary app)
+    const userDoc = {
+      email,
+      role,
+      createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      ...extraData
+    };
+
+    await window.db.collection('users').doc(newUid).set(userDoc, { merge: true });
+
+    // Create the role-specific document while still signed in as admin (primary auth)
+    if (role === 'teacher') {
+      const teacherDoc = {
+        email,
+        name: extraData.name || '',
+        phone: extraData.phone || '',
+        subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
+        createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+        ...extraData
+      };
+      await window.db.collection('teachers').doc(newUid).set(teacherDoc, { merge: true });
+    } else if (role === 'pupil') {
+      const pupilDoc = {
+        email,
+        name: extraData.name || '',
+        admissionNo: extraData.admissionNo || '',
+        class: extraData.class || '',
+        createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+        ...extraData
+      };
+      await window.db.collection('pupils').doc(newUid).set(pupilDoc, { merge: true });
+    } else {
+      // Unknown role: user document already created in users collection
+      console.warn('createSecondaryUser: unknown role; only users/{uid} created.', role);
+    }
+
+    window.showToast?.('✓ User account created successfully', 'success', 5000);
+
+    // Clean up the secondary auth: sign out and delete the temporary app
+    try {
+      await secondaryAuth.signOut();
+      await secondaryApp.delete();
+    } catch (cleanupErr) {
+      // Non-fatal cleanup error; log it and proceed
+      console.warn('Warning: error cleaning up secondary app:', cleanupErr);
+    }
+
+    return { success: true, uid: newUid };
+
   } catch (error) {
-    console.error('❌ Error in createSecondaryUser:', error);
-    throw error;
+    console.error('Error creating secondary user:', error);
+
+    // Show friendlier messages for common errors
+    if (error && error.code === 'auth/email-already-in-use') {
+      window.showToast?.('This email is already registered.', 'danger');
+    } else if (error && error.code === 'auth/invalid-email') {
+      window.showToast?.('Please enter a valid email address.', 'danger');
+    } else if (error && error.code === 'auth/weak-password') {
+      window.showToast?.('Password should be at least 6 characters long.', 'danger');
+    } else {
+      window.handleError?.(error, 'Failed to create user');
+    }
+
+    return { success: false, error };
   }
 };
 
