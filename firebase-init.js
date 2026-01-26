@@ -360,6 +360,66 @@ window.login = async function(email, password) {
 };
 
 /**
+ * Login with admission number
+ * SECURITY: No admission number validation in client
+ * Returns same error message regardless of existence
+ */
+window.loginWithAdmissionNumber = async function(admissionNo, password) {
+  try {
+    // Rate limiting check (client-side)
+    const lastAttempt = sessionStorage.getItem('lastAdmissionAttempt');
+    const now = Date.now();
+    
+    if (lastAttempt && (now - parseInt(lastAttempt)) < 2000) {
+      throw new Error('Too many attempts. Please wait.');
+    }
+    
+    sessionStorage.setItem('lastAdmissionAttempt', now.toString());
+    
+    // Query Firestore for admission number
+    const pupilsRef = window.db.collection('pupils');
+    const querySnapshot = await pupilsRef
+      .where('admissionNo', '==', admissionNo)
+      .limit(1)
+      .get();
+    
+    if (querySnapshot.empty) {
+      // SECURITY: Generic error - don't reveal if admission number exists
+      throw { code: 'auth/invalid-login-credentials' };
+    }
+    
+    const pupilDoc = querySnapshot.docs[0];
+    const pupilData = pupilDoc.data();
+    const email = pupilData.email;
+    
+    if (!email) {
+      // SECURITY: Generic error - don't reveal data issues
+      throw { code: 'auth/invalid-login-credentials' };
+    }
+    
+    // Authenticate with email and password
+    await window.auth.signInWithEmailAndPassword(email, password);
+    
+    window.showToast?.('Login successful!', 'success');
+    setTimeout(() => window.location.href = 'portal.html', 800);
+    
+  } catch (error) {
+    // SECURITY: Normalize all errors to prevent enumeration
+    if (error.code === 'permission-denied' || 
+        error.code === 'auth/user-not-found' ||
+        error.message?.includes('admission')) {
+      window.handleError(
+        { code: 'auth/invalid-login-credentials' }, 
+        'Login failed'
+      );
+    } else {
+      window.handleError(error, 'Login failed');
+    }
+    throw error;
+  }
+};
+
+/**
  * Logout user
  */
 window.logout = async function() {
