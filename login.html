@@ -771,144 +771,146 @@ function switchAuthMode(mode) {
          * Initialize page
          */
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Lucide icons
-            lucide.createIcons();
+  // Initialize icons
+  lucide.createIcons();
 
-            // DOM references (declare once)
-            const toggleCheckbox = document.getElementById('use-admission-number');
-            const loginToggleContainer = document.getElementById('login-toggle-container');
-            const emailFieldGroup = document.getElementById('email-field-group');
-            const admissionFieldGroup = document.getElementById('admission-field-group');
-            const emailInput = document.getElementById('email');
-            const admissionInput = document.getElementById('admission-number');
-            const passwordInput = document.getElementById('password');
+  // DOM references (single declarations)
+  const toggleCheckbox = document.getElementById('use-admission-number');
+  const loginToggleContainer = document.getElementById('login-toggle-container');
+  const emailFieldGroup = document.getElementById('email-field-group');
+  const admissionFieldGroup = document.getElementById('admission-field-group');
+  const emailInput = document.getElementById('email');
+  const admissionInput = document.getElementById('admission-number');
+  const passwordInput = document.getElementById('password');
+  const forgotLink = document.getElementById('forgot-password-link');
+  const form = document.getElementById('auth-form');
 
-            // Expose updateToggleVisibility globally so switchAuthMode can call it
-            window.updateToggleVisibility = function() {
-                if (loginToggleContainer) {
-                    loginToggleContainer.style.display = isLoginMode ? 'flex' : 'none';
-                }
-            };
+  // Expose updateToggleVisibility so other code (switchAuthMode) can call it
+  window.updateToggleVisibility = function() {
+    if (loginToggleContainer) {
+      loginToggleContainer.style.display = isLoginMode ? 'flex' : 'none';
+    }
+  };
 
-            if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
-                toggleCheckbox.addEventListener('change', function() {
-                    const useAdmission = this.checked;
-                    
-                    if (useAdmission) {
-                        // Show admission field, hide email field
-                        emailFieldGroup.style.display = 'none';
-                        admissionFieldGroup.style.display = 'block';
-                        emailInput.required = false;
-                        admissionInput.required = true;
-                        admissionInput.focus();
-                    } else {
-                        // Show email field, hide admission field
-                        emailFieldGroup.style.display = 'block';
-                        admissionFieldGroup.style.display = 'none';
-                        emailInput.required = true;
-                        admissionInput.required = false;
-                        emailInput.focus();
-                    }
-                    
-                    // Clear validation states
-                    clearValidation();
-                });
-                
-                // Initial state
-                window.updateToggleVisibility();
-            }
+  // Toggle between email and admission number login
+  if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
+    toggleCheckbox.addEventListener('change', function() {
+      const useAdmission = this.checked;
 
-            // Real-time validation (use variables declared above, no duplicate const)
-            emailInput.addEventListener('blur', validateEmail);
-            passwordInput.addEventListener('blur', validatePassword);
+      if (useAdmission) {
+        // Show admission field, hide email field
+        if (emailFieldGroup) emailFieldGroup.style.display = 'none';
+        if (admissionFieldGroup) admissionFieldGroup.style.display = 'block';
+        if (emailInput) emailInput.required = false;
+        if (admissionInput) { admissionInput.required = true; admissionInput.focus(); }
+      } else {
+        // Show email field, hide admission field
+        if (emailFieldGroup) emailFieldGroup.style.display = 'block';
+        if (admissionFieldGroup) admissionFieldGroup.style.display = 'none';
+        if (emailInput) { emailInput.required = true; emailInput.focus(); }
+        if (admissionInput) admissionInput.required = false;
+      }
 
-            // Clear errors on input
-            emailInput.addEventListener('input', () => {
-                if (emailInput.classList.contains('error')) {
-                    emailInput.classList.remove('error');
-                    document.getElementById('email-error').classList.remove('visible');
-                }
-            });
+      // Clear validation states
+      clearValidation();
+    });
 
-            passwordInput.addEventListener('input', () => {
-                if (passwordInput.classList.contains('error')) {
-                    passwordInput.classList.remove('error');
-                    document.getElementById('password-error').classList.remove('visible');
-                }
-            });
+    // Initial state
+    window.updateToggleVisibility();
+  }
 
-            // Forgot password handler
-            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                const email = prompt('Enter your email address:');
-                if (email && isValidEmail(email)) {
-                    const btn = document.getElementById('auth-btn');
-                    btn.disabled = true;
-                    resetPassword(email);
-                    setTimeout(() => btn.disabled = false, 3000);
-                } else if (email) {
-                    window.showToast('Please enter a valid email address', 'warning');
-                }
-            });
+  // Real-time validation & clear errors on input (safe checks)
+  if (emailInput) {
+    emailInput.addEventListener('blur', validateEmail);
+    emailInput.addEventListener('input', () => {
+      if (emailInput.classList.contains('error')) {
+        emailInput.classList.remove('error');
+        document.getElementById('email-error')?.classList.remove('visible');
+      }
+    });
+  }
 
-            // Form submission
-            document.getElementById('auth-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
+  if (passwordInput) {
+    passwordInput.addEventListener('blur', validatePassword);
+    passwordInput.addEventListener('input', () => {
+      if (passwordInput.classList.contains('error')) {
+        passwordInput.classList.remove('error');
+        document.getElementById('password-error')?.classList.remove('visible');
+      }
+    });
+  }
 
-                if (!isLoginMode) {
-                    window.showToast(
-                        'Registration is locked. Contact the administrator.',
-                        'warning'
-                    );
-                    return;
-                }
+  // Forgot password handler (safe)
+  if (forgotLink) {
+    forgotLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = prompt('Enter your email address:');
+      if (email && isValidEmail(email)) {
+        const btn = document.getElementById('auth-btn');
+        if (btn) btn.disabled = true;
+        resetPassword(email);
+        setTimeout(() => { if (btn) btn.disabled = false; }, 3000);
+      } else if (email) {
+        window.showToast('Please enter a valid email address', 'warning');
+      }
+    });
+  }
 
-                const useAdmission = document.getElementById('use-admission-number')?.checked;
-                const btn = document.getElementById('auth-btn');
+  // Form submission (safe)
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-                btn.disabled = true;
-                btn.classList.add('loading');
+      if (!isLoginMode) {
+        window.showToast('Registration is locked. Contact the administrator.', 'warning');
+        return;
+      }
 
-                try {
-                    if (useAdmission) {
-                        // Admission number login
-                        const admissionNo = document.getElementById('admission-number')?.value.trim();
-                        const password = document.getElementById('password')?.value;
+      const useAdmission = document.getElementById('use-admission-number')?.checked;
+      const btn = document.getElementById('auth-btn');
 
-                        if (!admissionNo) {
-                            window.showToast('Please enter your admission number', 'warning');
-                            return;
-                        }
+      if (btn) { btn.disabled = true; btn.classList.add('loading'); }
 
-                        if (!password || password.length < 6) {
-                            window.showToast('Please enter your password (at least 6 characters)', 'warning');
-                            return;
-                        }
+      try {
+        if (useAdmission) {
+          // Admission number login
+          const admissionNo = document.getElementById('admission-number')?.value.trim();
+          const password = document.getElementById('password')?.value;
 
-                        await window.loginWithAdmissionNumber(admissionNo, password);
-                    } else {
-                        // Email login
-                        const isEmailValid = validateEmail();
-                        const isPasswordValid = validatePassword();
+          if (!admissionNo) {
+            window.showToast('Please enter your admission number', 'warning');
+            return;
+          }
 
-                        if (!isEmailValid || !isPasswordValid) {
-                            window.showToast('Please fix the errors before submitting', 'warning');
-                            return;
-                        }
+          if (!password || password.length < 6) {
+            window.showToast('Please enter your password (at least 6 characters)', 'warning');
+            return;
+          }
 
-                        const email = document.getElementById('email').value.trim();
-                        const password = document.getElementById('password').value;
+          await window.loginWithAdmissionNumber(admissionNo, password);
+        } else {
+          // Email login
+          const isEmailValid = validateEmail();
+          const isPasswordValid = validatePassword();
 
-                        await window.login(email, password);
-                    }
-                } catch (error) {
-                    console.error('Auth error:', error);
-                } finally {
-                    btn.disabled = false;
-                    btn.classList.remove('loading');
-                }
-            });
-        });
+          if (!isEmailValid || !isPasswordValid) {
+            window.showToast('Please fix the errors before submitting', 'warning');
+            return;
+          }
+
+          const email = document.getElementById('email').value.trim();
+          const password = document.getElementById('password').value;
+
+          await window.login(email, password);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+      } finally {
+        if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+      }
+    });
+  }
+});
     </script>
 </body>
 </html>
