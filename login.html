@@ -462,13 +462,14 @@
 
             <!-- Body -->
            <div class="auth-body">
-            <!-- Login Method Toggle -->
-<div style="display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-lg); padding: var(--space-md); background: #f8fafc; border-radius: var(--radius-md);" id="login-toggle-container">
-    <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; user-select: none;">
+            <!-- Login Method Toggle (fixed: not truncated and has expected id) -->
+<div id="login-toggle-container" style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:16px; padding:12px; background:#f8fafc; border-radius:12px;">
+    <label style="display: flex; align-items: center; gap:8px; cursor: pointer; user-select: none;">
         <input type="checkbox" id="use-admission-number" style="width: 18px; height: 18px; cursor: pointer;">
-        <span style="font-size: var(--text-sm); font-weight: 600; color: var(--color-gray-700);">Login with Admission Number instead</span>
+        <span style="font-size:14px; font-weight:600; color:#374151;">Login with Admission Number instead</span>
     </label>
 </div>
+
     <!-- Tabs -->
     <div class="auth-tabs">
         <button class="auth-tab active" data-mode="login" onclick="switchAuthMode('login')">
@@ -692,7 +693,7 @@ function switchAuthMode(mode) {
         }, 50);
     }, 300);
     // Update toggle visibility
-    updateToggleVisibility();
+    if (window.updateToggleVisibility) window.updateToggleVisibility();
 }
 
         /**
@@ -773,52 +774,51 @@ function switchAuthMode(mode) {
             // Initialize Lucide icons
             lucide.createIcons();
 
-// Toggle between email and admission number login
-const toggleCheckbox = document.getElementById('use-admission-number');
-const loginToggleContainer = document.getElementById('login-toggle-container');
-const emailFieldGroup = document.getElementById('email-field-group');
-const admissionFieldGroup = document.getElementById('admission-field-group');
-const emailInput = document.getElementById('email');
-const admissionInput = document.getElementById('admission-number');
-
-// Hide toggle in register mode
-function updateToggleVisibility() {
-    if (loginToggleContainer) {
-        loginToggleContainer.style.display = isLoginMode ? 'flex' : 'none';
-    }
-}
-
-if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
-    toggleCheckbox.addEventListener('change', function() {
-        const useAdmission = this.checked;
-        
-        if (useAdmission) {
-            // Show admission field, hide email field
-            emailFieldGroup.style.display = 'none';
-            admissionFieldGroup.style.display = 'block';
-            emailInput.required = false;
-            admissionInput.required = true;
-            admissionInput.focus();
-        } else {
-            // Show email field, hide admission field
-            emailFieldGroup.style.display = 'block';
-            admissionFieldGroup.style.display = 'none';
-            emailInput.required = true;
-            admissionInput.required = false;
-            emailInput.focus();
-        }
-        
-        // Clear validation states
-        clearValidation();
-    });
-    
-    // Initial state
-    updateToggleVisibility();
-}
-            // Real-time validation
+            // DOM references (declare once)
+            const toggleCheckbox = document.getElementById('use-admission-number');
+            const loginToggleContainer = document.getElementById('login-toggle-container');
+            const emailFieldGroup = document.getElementById('email-field-group');
+            const admissionFieldGroup = document.getElementById('admission-field-group');
             const emailInput = document.getElementById('email');
+            const admissionInput = document.getElementById('admission-number');
             const passwordInput = document.getElementById('password');
 
+            // Expose updateToggleVisibility globally so switchAuthMode can call it
+            window.updateToggleVisibility = function() {
+                if (loginToggleContainer) {
+                    loginToggleContainer.style.display = isLoginMode ? 'flex' : 'none';
+                }
+            };
+
+            if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
+                toggleCheckbox.addEventListener('change', function() {
+                    const useAdmission = this.checked;
+                    
+                    if (useAdmission) {
+                        // Show admission field, hide email field
+                        emailFieldGroup.style.display = 'none';
+                        admissionFieldGroup.style.display = 'block';
+                        emailInput.required = false;
+                        admissionInput.required = true;
+                        admissionInput.focus();
+                    } else {
+                        // Show email field, hide admission field
+                        emailFieldGroup.style.display = 'block';
+                        admissionFieldGroup.style.display = 'none';
+                        emailInput.required = true;
+                        admissionInput.required = false;
+                        emailInput.focus();
+                    }
+                    
+                    // Clear validation states
+                    clearValidation();
+                });
+                
+                // Initial state
+                window.updateToggleVisibility();
+            }
+
+            // Real-time validation (use variables declared above, no duplicate const)
             emailInput.addEventListener('blur', validateEmail);
             passwordInput.addEventListener('blur', validatePassword);
 
@@ -851,65 +851,63 @@ if (toggleCheckbox && emailFieldGroup && admissionFieldGroup) {
                 }
             });
 
-// Form submission
-document.getElementById('auth-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+            // Form submission
+            document.getElementById('auth-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-    if (!isLoginMode) {
-        window.showToast(
-            'Registration is locked. Contact the administrator.',
-            'warning'
-        );
-        return;
-    }
+                if (!isLoginMode) {
+                    window.showToast(
+                        'Registration is locked. Contact the administrator.',
+                        'warning'
+                    );
+                    return;
+                }
 
-    const useAdmission = document.getElementById('use-admission-number')?.checked;
-    const btn = document.getElementById('auth-btn');
+                const useAdmission = document.getElementById('use-admission-number')?.checked;
+                const btn = document.getElementById('auth-btn');
 
-    btn.disabled = true;
-    btn.classList.add('loading');
+                btn.disabled = true;
+                btn.classList.add('loading');
 
-    try {
-        if (useAdmission) {
-            // Admission number login
-            const admissionNo = document.getElementById('admission-number')?.value.trim();
-            const password = document.getElementById('password')?.value;
+                try {
+                    if (useAdmission) {
+                        // Admission number login
+                        const admissionNo = document.getElementById('admission-number')?.value.trim();
+                        const password = document.getElementById('password')?.value;
 
-            if (!admissionNo) {
-                window.showToast('Please enter your admission number', 'warning');
-                return;
-            }
+                        if (!admissionNo) {
+                            window.showToast('Please enter your admission number', 'warning');
+                            return;
+                        }
 
-            if (!password || password.length < 6) {
-                window.showToast('Please enter your password (at least 6 characters)', 'warning');
-                return;
-            }
+                        if (!password || password.length < 6) {
+                            window.showToast('Please enter your password (at least 6 characters)', 'warning');
+                            return;
+                        }
 
-            // FIXED: Use the corrected function
-            await window.loginWithAdmissionNumber(admissionNo, password);
-        } else {
-            // Email login
-            const isEmailValid = validateEmail();
-            const isPasswordValid = validatePassword();
+                        await window.loginWithAdmissionNumber(admissionNo, password);
+                    } else {
+                        // Email login
+                        const isEmailValid = validateEmail();
+                        const isPasswordValid = validatePassword();
 
-            if (!isEmailValid || !isPasswordValid) {
-                window.showToast('Please fix the errors before submitting', 'warning');
-                return;
-            }
+                        if (!isEmailValid || !isPasswordValid) {
+                            window.showToast('Please fix the errors before submitting', 'warning');
+                            return;
+                        }
 
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
+                        const email = document.getElementById('email').value.trim();
+                        const password = document.getElementById('password').value;
 
-            // FIXED: Use window.login instead of bare login
-            await window.login(email, password);
-        }
-    } catch (error) {
-        console.error('Auth error:', error);
-    } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
-    }
-});
+                        await window.login(email, password);
+                    }
+                } catch (error) {
+                    console.error('Auth error:', error);
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                }
+            });
         });
     </script>
 </body>
