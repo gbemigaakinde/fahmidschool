@@ -84,8 +84,6 @@ window.createSecondaryUser = async function(email, password) {
   }
 };
 
-console.log('✓ Secondary user creation function loaded');
-
 /* =====================================================
    CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
 ===================================================== */
