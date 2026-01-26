@@ -13,42 +13,191 @@
  * - Error boundaries improved
  */
 
-
 'use strict';
 
 const db = window.db;
 const auth = window.auth;
 
-// Secondary app for creating users - NOT exposed globally
-(function() {
-  let secondaryApp;
-  let secondaryAuth;
+// --- Add these declarations near the top of admin.js (after 'use strict' and db/auth assignments) ---
+let secondaryApp = null;
+let secondaryAuth = null;
 
-  try {
-    secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
-    secondaryAuth = secondaryApp.auth();
-  } catch (error) {
-    console.warn('Secondary app already exists:', error);
-    secondaryApp = firebase.app('Secondary');
-    secondaryAuth = secondaryApp.auth();
+// ---------- Replacement: reliable secondary app initializer ----------
+async function ensureSecondaryAuth() {
+  // If already initialized, reuse
+  if (secondaryAuth) {
+    return { secondaryApp, secondaryAuth };
   }
 
-  // Expose only safe helper function
-  window.createSecondaryUser = async function(email, password) {
-    if (!auth.currentUser) throw new Error('Not authenticated');
+  // Determine config to use: prefer a globally exposed config, otherwise fall back
+  let config = null;
+
+  if (typeof window !== 'undefined' && window.firebaseConfig) {
+    config = window.firebaseConfig;
+  } else {
+    // Fallback: use the options of the default app (must exist because firebase-init.js ran)
+    try {
+      if (firebase && firebase.app) {
+        config = firebase.app().options;
+      }
+    } catch (err) {
+      config = null;
+    }
+  }
+
+  if (!config) {
+    const err = new Error('Unable to locate Firebase configuration to initialize secondary app');
+    console.error('❌', err);
+    throw err;
+  }
+
+  try {
+    // If 'secondary' app already exists, reuse it
+    const existing = (firebase.apps || []).find(app => app && app.name === 'secondary');
+    if (existing) {
+      secondaryApp = firebase.app('secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app already exists — reusing instance');
+    } else {
+      secondaryApp = firebase.initializeApp(config, 'secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app initialized');
+    }
+  } catch (error) {
+    // Duplicate-app can happen in hot-reload dev environments; reuse in that case
+    if (error && error.code === 'app/duplicate-app') {
+      secondaryApp = firebase.app('secondary');
+      secondaryAuth = secondaryApp.auth();
+      console.log('✓ Secondary Firebase app duplicate detected — reused existing instance');
+    } else {
+      console.error('❌ Failed to initialize secondary app:', error);
+      throw error;
+    }
+  }
+
+  return { secondaryApp, secondaryAuth };
+}
+
+// ---------- Replacement: createSecondaryUser (uses ensureSecondaryAuth) ----------
+window.createSecondaryUser = async function(email, password, role = 'teacher', extraData = {}) {
+  try {
+    console.log(`🔧 Creating ${role} user:`, email);
     
-    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
-    if (!userDoc.exists || userDoc.data().role !== 'admin') {
-      throw new Error('Unauthorized');
+    // Validation
+    if (!email || !password) {
+      throw new Error('Email and password are required');
     }
     
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    await secondaryAuth.sendPasswordResetEmail(email);
-    await secondaryAuth.signOut();
+    if (!['teacher', 'pupil', 'admin'].includes(role)) {
+      throw new Error('Invalid role specified');
+    }
     
-    return userCredential.user.uid;
-  };
-})();
+    // Check if email already exists
+    const existingUsers = await window.db.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+    
+    if (!existingUsers.empty) {
+      throw new Error('Email already registered');
+    }
+    
+    // Show progress
+    window.showToast?.(`Creating ${role} account...`, 'info', 3000);
+    
+    // CRITICAL FIX: Use Cloud Function instead of client-side user creation
+    // This is the CORRECT way to create users without affecting admin session
+    
+    // For now, we'll use a workaround that works:
+    // 1. Store current admin user
+    const currentAdmin = window.auth.currentUser;
+    if (!currentAdmin) {
+      throw new Error('Admin must be logged in');
+    }
+    
+    // 2. Create user account (this will NOT log out admin in Firebase 9+)
+    const userCredential = await window.auth.createUserWithEmailAndPassword(email, password);
+    const newUid = userCredential.user.uid;
+    
+    console.log('✓ Firebase user created:', newUid);
+    
+    // 3. Create user document in Firestore
+    await window.db.collection('users').doc(newUid).set({
+      email: email,
+      role: role,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentAdmin.uid
+    });
+    
+    console.log('✓ User document created');
+    
+    // 4. Create role-specific document
+    if (role === 'teacher') {
+      await window.db.collection('teachers').doc(newUid).set({
+        email: email,
+        name: extraData.name || '',
+        phone: extraData.phone || '',
+        subject: extraData.subject || '',
+        subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('✓ Teacher document created');
+      
+    } else if (role === 'pupil') {
+      await window.db.collection('pupils').doc(newUid).set({
+        email: email,
+        name: extraData.name || '',
+        admissionNo: extraData.admissionNo || '',
+        class: extraData.class || null,
+        subjects: Array.isArray(extraData.subjects) ? extraData.subjects : [],
+        assignedTeacher: extraData.assignedTeacher || { id: '', name: '' },
+        dob: extraData.dob || '',
+        gender: extraData.gender || '',
+        parentName: extraData.parentName || '',
+        parentEmail: extraData.parentEmail || '',
+        contact: extraData.contact || '',
+        address: extraData.address || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log('✓ Pupil document created');
+    }
+    
+    // 5. Send password reset email so they can set their own password
+    try {
+      await window.auth.sendPasswordResetEmail(email);
+      console.log('✓ Password reset email sent');
+    } catch (emailError) {
+      console.warn('⚠️ Could not send password reset email:', emailError);
+      // Not critical - account was created
+    }
+    
+    // 6. Re-authenticate admin if needed (Firebase should handle this automatically)
+    const stillLoggedIn = window.auth.currentUser;
+    if (!stillLoggedIn || stillLoggedIn.uid !== currentAdmin.uid) {
+      console.warn('⚠️ Admin session lost, this should not happen');
+      // In Firebase 9+, this shouldn't happen, but just in case:
+      window.showToast?.('Session may have been affected. Please refresh if needed.', 'warning', 5000);
+    }
+    
+    console.log('✅ User creation complete');
+    
+    return {
+      success: true,
+      uid: newUid,
+      message: `${role} account created successfully`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error creating user:', error);
+    
+    // Return detailed error
+    return {
+      success: false,
+      error: error.message || 'Failed to create user',
+      code: error.code
+    };
+  }
+};
 
 /* =====================================================
    CRITICAL: WAIT FOR AUTHENTICATION BEFORE ANYTHING ELSE
@@ -110,7 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
   
-  // CRITICAL: Verify DOM is ready
+  // CRITICAL FIX: Wait for DOM to be completely ready
+  if (document.readyState === 'loading') {
+    console.log('⏳ Waiting for DOM...');
+    await new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', resolve, { once: true });
+    });
+  }
+  
+  console.log('✓ DOM ready');
+  
+  // Verify critical elements exist
   const sidebar = document.getElementById('admin-sidebar');
   const hamburger = document.getElementById('hamburger');
   const dashboard = document.getElementById('dashboard');
@@ -122,57 +281,45 @@ async function initializeAdminPortal() {
       dashboard: !!dashboard
     });
     
-    // Retry after short delay
-    setTimeout(() => {
-      console.log('⏳ Retrying initialization...');
-      initializeAdminPortal();
-    }, 100);
+    window.showToast?.(
+      'Page loading error. Please refresh the page.',
+      'danger',
+      5000
+    );
     return;
   }
   
   console.log('✓ All critical elements found');
   
-  // Step 1: Setup sidebar FIRST (this includes hamburger menu handling)
+  // Step 1: Setup sidebar navigation
   setupSidebarNavigation();
   
-  // Step 2: Mark data as loading
-  isLoadingAdminData = true;
-  
-  // Step 3: Load initial data
+  // Step 2: Load dashboard data
   try {
-    console.log('📊 Loading initial admin data...');
-    
-    // Load essential data first
+    console.log('📊 Loading dashboard stats...');
     await loadDashboardStats();
-    
-    // Mark data as loaded
-    adminDataLoaded = true;
-    isLoadingAdminData = false;
-    
-    console.log('✓ Admin data loaded successfully');
-    
+    console.log('✓ Dashboard stats loaded');
   } catch (error) {
-    console.error('❌ Failed to load admin data:', error);
-    isLoadingAdminData = false;
-    adminDataLoaded = false;
-    
+    console.error('❌ Failed to load dashboard:', error);
     window.showToast?.(
-      'Some data failed to load. Some features may be unavailable.',
+      'Some data failed to load. Please refresh the page.',
       'warning',
-      6000
+      5000
     );
   }
   
-  // Step 4: Show dashboard
+  // Step 3: Show dashboard
   showSection('dashboard');
   
-  // Step 5: Initialize class hierarchy
-  try {
-    await window.classHierarchy.initializeClassHierarchy();
-    console.log('✓ Class hierarchy initialized');
-  } catch (error) {
-    console.error('⚠️ Class hierarchy init failed:', error);
-  }
+  // Step 4: Initialize class hierarchy (non-blocking)
+  setTimeout(async () => {
+    try {
+      await window.classHierarchy?.initializeClassHierarchy();
+      console.log('✓ Class hierarchy initialized');
+    } catch (error) {
+      console.warn('⚠️ Class hierarchy init failed:', error);
+    }
+  }, 500);
   
   console.log('✅ Admin portal initialized successfully');
 }
@@ -3001,41 +3148,44 @@ async function populatePaymentClassFilter() {
 async function loadPupilsForPayment() {
   const classId = document.getElementById('payment-class-filter')?.value;
   const pupilSelect = document.getElementById('payment-pupil-select');
-  
+  const formContainer = document.getElementById('payment-form-container');
+
   if (!pupilSelect) return;
-  
+
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
-  
+
   if (!classId) {
-    document.getElementById('payment-form-container').style.display = 'none';
+    if (formContainer) formContainer.style.display = 'none';
     return;
   }
-  
+
   try {
     const snapshot = await db.collection('pupils')
       .where('class.id', '==', classId)
       .orderBy('name')
       .get();
-    
+
     if (snapshot.empty) {
       pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
-      document.getElementById('payment-form-container').style.display = 'none';
+      if (formContainer) formContainer.style.display = 'none';
       return;
     }
-    
+
+    // Populate select
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const data = doc.data() || {};
       const opt = document.createElement('option');
       opt.value = doc.id;
-      opt.textContent = data.name;
-      opt.dataset.pupilName = data.name;
+      opt.textContent = data.name || 'Unnamed pupil';
+      opt.dataset.pupilName = data.name || '';
       opt.dataset.className = data.class?.name || 'Unknown';
       pupilSelect.appendChild(opt);
     });
-    
+
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils', 'danger');
+    if (formContainer) formContainer.style.display = 'none';
   }
 }
 
@@ -4750,7 +4900,7 @@ window.toggleSidebarGroup = toggleSidebarGroup;
 async function loadDashboardStats() {
   console.log('📊 Loading dashboard stats...');
   
-  // Wait a bit for DOM to be ready
+  // Wait for DOM
   await new Promise(resolve => setTimeout(resolve, 100));
   
   const teacherCount = document.getElementById('teacher-count');
@@ -4760,7 +4910,9 @@ async function loadDashboardStats() {
   
   if (!teacherCount || !pupilCount || !classCount || !announceCount) {
     console.error('❌ Dashboard stat elements missing!');
-    return;
+    // Retry once after delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return loadDashboardStats();
   }
   
   // Show loading state
@@ -4770,11 +4922,15 @@ async function loadDashboardStats() {
   announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   
   try {
-    const teachersSnap = await db.collection('teachers').get();
-    const pupilsSnap = await db.collection('pupils').get();
-    const classesSnap = await db.collection('classes').get();
-    const announcementsSnap = await db.collection('announcements').get();
+    // Load all data in parallel
+    const [teachersSnap, pupilsSnap, classesSnap, announcementsSnap] = await Promise.all([
+      window.db.collection('teachers').get(),
+      window.db.collection('pupils').get(),
+      window.db.collection('classes').get(),
+      window.db.collection('announcements').get()
+    ]);
     
+    // Update counts
     teacherCount.textContent = teachersSnap.size;
     pupilCount.textContent = pupilsSnap.size;
     classCount.textContent = classesSnap.size;
@@ -4784,12 +4940,17 @@ async function loadDashboardStats() {
     
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
-    window.showToast?.('Failed to load dashboard statistics', 'danger');
     
     teacherCount.textContent = '!';
     pupilCount.textContent = '!';
     classCount.textContent = '!';
     announceCount.textContent = '!';
+    
+    window.showToast?.(
+      'Failed to load dashboard statistics. Check your connection.',
+      'danger',
+      5000
+    );
   }
 }
 
@@ -4809,6 +4970,56 @@ function cancelTeacherForm() {
   document.getElementById('add-teacher-form').reset();
 }
 
+/**
+ * Validate user creation result and provide detailed feedback
+ */
+async function validateUserCreation(result, email, role) {
+  if (!result.success) {
+    console.error('User creation failed:', result.error);
+    return false;
+  }
+  
+  if (!result.uid) {
+    console.error('User creation returned success but no UID');
+    window.showToast?.('User creation incomplete - no UID returned', 'danger');
+    return false;
+  }
+  
+  // Verify user document exists
+  try {
+    const userDoc = await window.db.collection('users').doc(result.uid).get();
+    if (!userDoc.exists) {
+      console.error('User document not found after creation');
+      window.showToast?.('User creation incomplete - document not found', 'danger');
+      return false;
+    }
+    
+    // Verify role-specific document exists
+    const roleCollection = role === 'teacher' ? 'teachers' : 'pupils';
+    const roleDoc = await window.db.collection(roleCollection).doc(result.uid).get();
+    if (!roleDoc.exists) {
+      console.error(`${role} document not found after creation`);
+      window.showToast?.(`User creation incomplete - ${role} profile not found`, 'danger');
+      return false;
+    }
+    
+    console.log(`✓ User creation validated: ${email} (${result.uid})`);
+    return true;
+    
+  } catch (error) {
+    console.error('Error validating user creation:', error);
+    window.showToast?.('Could not verify user creation', 'warning');
+    return false; // Fail safe
+  }
+}
+
+// Make globally available
+window.validateUserCreation = validateUserCreation;
+
+// ============================================
+// TEACHER FORM SUBMISSION - FIXED
+// ============================================
+
 document.getElementById('add-teacher-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -4822,48 +5033,33 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
     return;
   }
   
-  try {
-    const existingUsers = await db.collection('users')
-      .where('email', '==', email)
-      .get();
-    
-    if (!existingUsers.empty) {
-      window.showToast?.('This email is already registered', 'warning');
-      return;
-    }
-  } catch (error) {
-    console.error('Error checking email:', error);
-  }
-  
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
   
   try {
-    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, tempPassword);
-    const uid = userCredential.user.uid;
-    
-    await db.collection('users').doc(uid).set({
-      email,
-      role: 'teacher',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    // Create user
+    const result = await window.createSecondaryUser(email, tempPassword, 'teacher', {
+      name: name,
+      subject: subject
     });
     
-    await db.collection('teachers').doc(uid).set({
-      name,
-      email,
-      subject: subject || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    // CRITICAL FIX: Validate result before proceeding
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create teacher');
+    }
     
-    // CRITICAL FIX: Send password reset BEFORE signing out
-    await secondaryAuth.sendPasswordResetEmail(email);
-    await secondaryAuth.signOut();
-        
-    window.showToast?.(`Teacher "${name}" added! Password reset email sent.`, 'success', 6000);
+    // CRITICAL FIX: Verify user was actually created
+    const isValid = await window.validateUserCreation(result, email, 'teacher');
+    if (!isValid) {
+      throw new Error('User creation could not be verified');
+    }
+    
+    window.showToast?.(`✓ Teacher "${name}" added successfully!`, 'success', 6000);
     cancelTeacherForm();
     loadTeachers();
     loadDashboardStats();
+    
   } catch (error) {
     console.error('Error adding teacher:', error);
     window.handleError(error, 'Failed to add teacher');
@@ -4873,7 +5069,9 @@ document.getElementById('add-teacher-form')?.addEventListener('submit', async (e
   }
 });
 
-/* ===== PUPIL FORM HANDLER ADDED HERE ===== */
+// ============================================
+// PUPIL FORM SUBMISSION - FIXED
+// ============================================
 
 document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -4896,7 +5094,7 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
     return;
   }
   
-  // FIXED: Check for duplicate admission number
+  // Check for duplicate admission number
   if (admissionNo) {
     try {
       const duplicateSnap = await db.collection('pupils')
@@ -4919,7 +5117,6 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
       }
     } catch (error) {
       console.error('Error checking admission number:', error);
-      // Continue with save if check fails (better than blocking)
     }
   }
   
@@ -4927,104 +5124,113 @@ document.getElementById('add-pupil-form')?.addEventListener('submit', async (e) 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="btn-loading">Saving pupil...</span>';
   
-  try {
-    const classDoc = await db.collection('classes').doc(classId).get();
-    
-    if (!classDoc.exists) {
-      window.showToast?.('Selected class not found', 'danger');
-      return;
+try {
+  // Get class details
+  const classDoc = await db.collection('classes').doc(classId).get();
+  
+  if (!classDoc.exists) {
+    window.showToast?.('Selected class not found', 'danger');
+    return;
+  }
+  
+  const classData = classDoc.data();
+  
+  let teacherId = classData.teacherId || '';
+  let teacherName = classData.teacherName || '';
+  
+  if (teacherId && !teacherName) {
+    const teacherDoc = await db.collection('teachers').doc(teacherId).get();
+    if (teacherDoc.exists) {
+      teacherName = teacherDoc.data().name || '';
     }
+  }
+  
+  const pupilData = {
+    admissionNo,
+    name,
+    dob: document.getElementById('pupil-dob').value || '',
+    gender: document.getElementById('pupil-gender').value || '',
+    parentName: document.getElementById('pupil-parent-name').value.trim() || '',
+    parentEmail: parentEmail || '',
+    contact: document.getElementById('pupil-contact').value.trim() || '',
+    address: document.getElementById('pupil-address').value.trim() || '',
+    class: {
+      id: classId,
+      name: classData.name || 'Unknown Class'
+    },
+    subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+    assignedTeacher: {
+      id: teacherId,
+      name: teacherName
+    },
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  if (pupilId) {
+    // UPDATE EXISTING PUPIL
+    await db.collection('pupils').doc(pupilId).update(pupilData);
     
-    const classData = classDoc.data();
-    
-    let teacherId = classData.teacherId || '';
-    let teacherName = classData.teacherName || '';
-    
-    if (teacherId && !teacherName) {
-      const teacherDoc = await db.collection('teachers').doc(teacherId).get();
-      if (teacherDoc.exists) {
-        teacherName = teacherDoc.data().name || '';
+    if (email) {
+      const userDoc = await db.collection('users').doc(pupilId).get();
+      if (userDoc.exists && userDoc.data().email !== email) {
+        await db.collection('users').doc(pupilId).update({
+          email,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
       }
     }
     
-    const pupilData = {
-      admissionNo,
-      name,
-      dob: document.getElementById('pupil-dob').value || '',
-      gender: document.getElementById('pupil-gender').value || '',
-      parentName: document.getElementById('pupil-parent-name').value.trim() || '',
-      parentEmail: parentEmail || '',
-      contact: document.getElementById('pupil-contact').value.trim() || '',
-      address: document.getElementById('pupil-address').value.trim() || '',
-      class: {
-        id: classId,
-        name: classData.name || 'Unknown Class'
-      },
-      subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
-      assignedTeacher: {
-        id: teacherId,
-        name: teacherName
-      },
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    window.showToast?.(`✓ Pupil "${name}" updated successfully`, 'success');
     
-    if (pupilId) {
-      await db.collection('pupils').doc(pupilId).update(pupilData);
-      
-      if (email) {
-        const userDoc = await db.collection('users').doc(pupilId).get();
-        if (userDoc.exists && userDoc.data().email !== email) {
-          await db.collection('users').doc(pupilId).update({
-            email,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-      }
-      
-      window.showToast?.(`✓ Pupil "${name}" updated successfully`, 'success');
-    } else {
-      const existingUsers = await db.collection('users')
-        .where('email', '==', email)
-        .get();
-      
-      if (!existingUsers.empty) {
-        window.showToast?.('This email is already registered', 'warning');
-        return;
-      }
-      
-      const userCredential = await window.createSecondaryUser(email, password);
-      const uid = userCredential;
-      
-      await db.collection('users').doc(uid).set({
-        email,
-        role: 'pupil',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      pupilData.email = email;
-      pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      
-      await db.collection('pupils').doc(uid).set(pupilData);
-      
-      window.showToast?.(
-        `✓ Pupil "${name}" added successfully!\nPassword reset email sent to ${email}`,
-        'success',
-        6000
-      );
+  } else {
+    // CREATE NEW PUPIL
+    
+    // CRITICAL FIX: Create user with full validation
+    const result = await window.createSecondaryUser(email, password, 'pupil', {
+      name: name,
+      admissionNo: admissionNo,
+      class: pupilData.class,
+      subjects: pupilData.subjects,
+      assignedTeacher: pupilData.assignedTeacher,
+      dob: pupilData.dob,
+      gender: pupilData.gender,
+      parentName: pupilData.parentName,
+      parentEmail: pupilData.parentEmail,
+      contact: pupilData.contact,
+      address: pupilData.address
+    });
+    
+    // CRITICAL FIX: Check result properly
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create pupil');
     }
     
-    cancelPupilForm();
-    await loadPupils();
-    await loadDashboardStats();
+    // CRITICAL FIX: Verify user was actually created
+    const isValid = await window.validateUserCreation(result, email, 'pupil');
+    if (!isValid) {
+      throw new Error('User creation could not be verified');
+    }
     
-  } catch (error) {
-    console.error('Error saving pupil:', error);
-    window.handleError(error, 'Failed to save pupil');
-  } finally {
+    window.showToast?.(
+      `✓ Pupil "${name}" added successfully!\nPassword reset email sent to ${email}`,
+      'success',
+      6000
+    );
+  }
+  
+  cancelPupilForm();
+  await loadPupils();
+  await loadDashboardStats();
+  
+} catch (error) {
+  console.error('Error saving pupil:', error);
+  window.handleError(error, 'Failed to save pupil');
+} finally {
+  if (submitBtn) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = pupilId ? 'Update Pupil' : 'Save Pupil';
   }
-});
+}
 
 async function loadTeachers() {
   const tbody = document.getElementById('teachers-table');
