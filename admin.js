@@ -5333,7 +5333,7 @@ async function loadTeachers() {
         <td data-label="Email">${teacher.email}</td>
         <td data-label="Subject">${teacher.subject || '-'}</td>
         <td data-label="Actions">
-          <button class="btn-small btn-danger" onclick="deleteUser('teachers', '${teacher.id}')">Delete</button>
+          <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -5431,7 +5431,7 @@ async function loadPupils() {
         <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
         <td data-label="Actions">
           <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
-          <button class="btn-small btn-danger" onclick="deleteUser('pupils', '${pupil.id}')">Delete</button>
+          <button class="btn-small btn-danger" onclick="deleteItem('pupils', '${pupil.id}')">Delete</button>
         </td>
       `;
       tbody.appendChild(tr);
