@@ -7113,11 +7113,12 @@ if (listContainer.dataset.delegationActive === 'true') {
     }
   });
   
-  listContainer.dataset.delegationActive = 'true';
+listContainer.dataset.delegationActive = 'true';
   console.log('✓ Event delegation set up for class hierarchy');
 }
 
 console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
+} // ← ADD THIS CLOSING BRACE - closes the renderHierarchyUI function
 
 // Drag and drop handlers - FIXED
 let draggedElement = null;
