@@ -8840,6 +8840,5 @@ window.adminDebug = {
     }
   }
 };
-}
 console.log('✓ Admin portal v6.3.0 loaded successfully');
 console.log('All critical fixes applied • Ready for use');
