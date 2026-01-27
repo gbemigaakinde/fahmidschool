@@ -4630,45 +4630,45 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
   let currentPage = 1;
   const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
 
-function renderPage(page) {
-  tbody.innerHTML = '';
-  
-  // Validate page number
-  if (page < 1) page = 1;
-  if (page > totalPages) page = totalPages;
-  
-  const start = (page - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  
-  // CRITICAL FIX: Check if start is beyond data length
-  if (start >= data.length && data.length > 0) {
-    // Go back to last valid page
-    console.warn(`⚠️ Page ${page} is beyond data, going to page ${totalPages}`);
-    renderPage(totalPages);
-    return;
-  }
-  
-  const pageData = data.slice(start, end);
-  
-  // Handle empty page data
-  if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
-    updatePaginationControls(1, 1); // Show page 1 of 1
-    return;
-  }
-  
-  // Render each row
-  pageData.forEach(item => {
-    try {
-      renderRowCallback(item, tbody);
-    } catch (error) {
-      console.error('❌ Error rendering row:', error);
-      // Don't break the entire table, just skip this row
+  function renderPage(page) {
+    tbody.innerHTML = '';
+    
+    // Validate page number
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    
+    // CRITICAL FIX: Check if start is beyond data length
+    if (start >= data.length && data.length > 0) {
+      // Go back to last valid page
+      console.warn(`⚠️ Page ${page} is beyond data, going to page ${totalPages}`);
+      renderPage(totalPages);
+      return;
     }
-  });
-  
-  updatePaginationControls(page, totalPages);
-}
+    
+    const pageData = data.slice(start, end);
+    
+    // Handle empty page data
+    if (pageData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+      updatePaginationControls(1, 1); // Show page 1 of 1
+      return;
+    }
+    
+    // Render each row
+    pageData.forEach(item => {
+      try {
+        renderRowCallback(item, tbody);
+      } catch (error) {
+        console.error('❌ Error rendering row:', error);
+        // Don't break the entire table, just skip this row
+      }
+    });
+    
+    updatePaginationControls(page, totalPages);
+  } // ← THIS CLOSING BRACE WAS MISSING!
   
   function updatePaginationControls(page, total) {
     const table = tbody.parentElement;
