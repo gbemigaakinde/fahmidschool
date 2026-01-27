@@ -7418,15 +7418,14 @@ async function deleteItem(collection, docId) {
 
   } catch (error) {
     console.error('Error deleting document:', error);
-    window.handleError(error, 'Failed to delete item');
+    window.handleError?.(error, 'Failed to delete item');
   }
 }
 
-// ✅ CRITICAL FIX: Make deleteItem globally available
+// ✅ CRITICAL: Make deleteItem globally available IMMEDIATELY
 window.deleteItem = deleteItem;
 
 console.log('✓ deleteItem function exposed globally');
-
 /**
  * Load result approvals section
  */
