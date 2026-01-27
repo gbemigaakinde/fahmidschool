@@ -2186,81 +2186,130 @@ window.loadAttendanceSection = loadAttendanceSection;
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
 
 /* ======================================== 
-   HAMBURGER MENU FOR MOBILE (CRITICAL FIX)
+   HAMBURGER MENU FOR MOBILE - FIXED VERSION
 ======================================== */
 
+/**
+ * FIXED: Teacher hamburger menu initialization
+ * This replaces the broken initTeacherHamburger() function
+ * 
+ * CRITICAL FIXES:
+ * 1. Removed problematic cloneNode approach
+ * 2. Direct event listener attachment
+ * 3. Proper existence checks
+ * 4. No conflicts with script.js
+ */
 function initTeacherHamburger() {
   const hamburger = document.getElementById('hamburger');
   const sidebar = document.getElementById('teacher-sidebar');
   
+  // Existence check
   if (!hamburger || !sidebar) {
-    console.warn('Hamburger or sidebar not found - will retry');
-    // Retry after a short delay if elements not found
-    setTimeout(initTeacherHamburger, 100);
+    console.warn('Teacher hamburger or sidebar not found - skipping initialization');
     return;
   }
   
-  // Remove any existing listeners to prevent duplicates
-  const newHamburger = hamburger.cloneNode(true);
-  hamburger.parentNode.replaceChild(newHamburger, hamburger);
-  const hamburgerBtn = document.getElementById('hamburger');
+  // Prevent double initialization
+  if (hamburger.dataset.teacherInitialized === 'true') {
+    console.log('Teacher hamburger already initialized');
+    return;
+  }
   
-  // Toggle sidebar on hamburger click
-  hamburgerBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  hamburger.dataset.teacherInitialized = 'true';
+  
+  console.log('Initializing teacher hamburger menu...');
+  
+  // TOGGLE FUNCTION
+  function toggleSidebar(e) {
+    if (e) e.stopPropagation();
+    
     const isActive = sidebar.classList.toggle('active');
-    hamburgerBtn.classList.toggle('active', isActive);
-    hamburgerBtn.setAttribute('aria-expanded', isActive);
+    hamburger.classList.toggle('active', isActive);
+    hamburger.setAttribute('aria-expanded', isActive);
     document.body.style.overflow = isActive ? 'hidden' : '';
-  });
+    
+    console.log('Sidebar toggled:', isActive ? 'OPEN' : 'CLOSED');
+  }
   
-  // Close sidebar when clicking outside
+  // CLOSE FUNCTION
+  function closeSidebar() {
+    sidebar.classList.remove('active');
+    hamburger.classList.remove('active');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+  
+  // 1. HAMBURGER CLICK
+  hamburger.addEventListener('click', toggleSidebar);
+  
+  // 2. CLICK OUTSIDE TO CLOSE
   document.addEventListener('click', (e) => {
     if (sidebar.classList.contains('active') && 
         !sidebar.contains(e.target) && 
-        !hamburgerBtn.contains(e.target)) {
-      sidebar.classList.remove('active');
-      hamburgerBtn.classList.remove('active');
-      hamburgerBtn.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
+        !hamburger.contains(e.target)) {
+      closeSidebar();
     }
   });
   
-  // Close sidebar when clicking navigation links on mobile
+  // 3. CLOSE ON NAVIGATION LINK CLICK (mobile only)
   sidebar.querySelectorAll('a[data-section]').forEach(link => {
     link.addEventListener('click', () => {
       if (window.innerWidth <= 1024) {
-        sidebar.classList.remove('active');
-        hamburgerBtn.classList.remove('active');
-        hamburgerBtn.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
+        closeSidebar();
       }
     });
   });
   
-  // Handle window resize
+  // 4. ESCAPE KEY TO CLOSE
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+      closeSidebar();
+      hamburger.focus();
+    }
+  });
+  
+  // 5. CLOSE ON WINDOW RESIZE (desktop)
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
-        sidebar.classList.remove('active');
-        hamburgerBtn.classList.remove('active');
-        hamburgerBtn.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
+        closeSidebar();
       }
     }, 250);
   });
   
-  console.log('✓ Teacher hamburger menu initialized');
+  console.log('✓ Teacher hamburger menu initialized successfully');
 }
 
-// Initialize hamburger when DOM is fully ready
+// INITIALIZATION STRATEGY: Try multiple times if needed
+function attemptTeacherHamburgerInit(attempts = 0) {
+  const maxAttempts = 5;
+  
+  if (attempts >= maxAttempts) {
+    console.error('❌ Failed to initialize teacher hamburger after', maxAttempts, 'attempts');
+    return;
+  }
+  
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('teacher-sidebar');
+  
+  if (hamburger && sidebar) {
+    // Elements found - initialize
+    initTeacherHamburger();
+  } else {
+    // Not ready yet - try again
+    console.log(`Hamburger/sidebar not ready, retrying... (attempt ${attempts + 1}/${maxAttempts})`);
+    setTimeout(() => attemptTeacherHamburgerInit(attempts + 1), 100);
+  }
+}
+
+// START INITIALIZATION
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initTeacherHamburger);
+  document.addEventListener('DOMContentLoaded', () => attemptTeacherHamburgerInit());
 } else {
   // DOM already loaded
-  initTeacherHamburger();
+  attemptTeacherHamburgerInit();
 }
 
-console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
+console.log('✓ Teacher hamburger initialization queued');
