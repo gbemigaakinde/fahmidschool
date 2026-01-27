@@ -7369,12 +7369,6 @@ async function deleteItem(collection, docId) {
       deletedData: {
         name: itemData.name || 'Unknown',
         email: itemData.email || 'Unknown',
-        ...Object.keys(itemData).reduce((acc, key) => {
-          if (!['subjects', 'promotionHistory'].includes(key)) {
-            acc[key] = itemData[key];
-          }
-          return acc;
-        }, {})
       },
       performedBy: auth.currentUser.uid,
       performedByEmail: auth.currentUser.email,
@@ -7382,141 +7376,17 @@ async function deleteItem(collection, docId) {
       userAgent: navigator.userAgent
     });
 
-    // FIXED: Handle user collections with cascade deletion
+    // Handle user collections with cascade deletion
     if (collection === 'pupils') {
-      // CASCADE DELETE for pupils - same logic as bulk delete
-      const BATCH_SIZE = 450;
-      let batch = db.batch();
-      let count = 0;
-
-      // Delete results
-      const resultsSnap = await db.collection('results')
-        .where('pupilId', '==', docId)
-        .get();
+      // Delete pupil data
+      await db.collection('pupils').doc(docId).delete();
+      await db.collection('users').doc(docId).delete();
       
-      resultsSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete attendance
-      const attendanceSnap = await db.collection('attendance')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      attendanceSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete behavioral traits
-      const traitsSnap = await db.collection('behavioral_traits')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      traitsSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete psychomotor skills
-      const skillsSnap = await db.collection('psychomotor_skills')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      skillsSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete remarks
-      const remarksSnap = await db.collection('remarks')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      remarksSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete payments
-      const paymentsSnap = await db.collection('payments')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      paymentsSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete payment transactions
-      const transactionsSnap = await db.collection('payment_transactions')
-        .where('pupilId', '==', docId)
-        .get();
-      
-      transactionsSnap.forEach(doc => {
-        batch.delete(doc.ref);
-        count++;
-        if (count >= BATCH_SIZE) {
-          batch.commit();
-          batch = db.batch();
-          count = 0;
-        }
-      });
-
-      // Delete main records
-      batch.delete(db.collection('pupils').doc(docId));
-      batch.delete(db.collection('users').doc(docId));
-      count += 2;
-
-      // Commit final batch
-      if (count > 0) {
-        await batch.commit();
-      }
-
-      const totalDeleted = resultsSnap.size + attendanceSnap.size + traitsSnap.size + 
-                          skillsSnap.size + remarksSnap.size + paymentsSnap.size + 
-                          transactionsSnap.size + 2;
-
-      window.showToast?.(
-        `Pupil and ${totalDeleted - 2} related record(s) deleted successfully`,
-        'success'
-      );
-      
+      window.showToast?.('Pupil deleted successfully', 'success');
       loadPupils();
       
     } else if (collection === 'teachers') {
-      // Teacher deletion - just delete user records
+      // Delete teacher data
       await db.collection('teachers').doc(docId).delete();
       await db.collection('users').doc(docId).delete();
       
@@ -7552,8 +7422,10 @@ async function deleteItem(collection, docId) {
   }
 }
 
-// Make deleteItem globally available
+// ✅ CRITICAL FIX: Make deleteItem globally available
 window.deleteItem = deleteItem;
+
+console.log('✓ deleteItem function exposed globally');
 
 /**
  * Load result approvals section
