@@ -8792,3 +8792,19 @@ window.adminDebug = {
 }
 console.log('✓ Admin portal v6.3.0 loaded successfully');
 console.log('All critical fixes applied • Ready for use');
+
+
+/* =====================================================
+   VERIFICATION SCRIPT
+   
+   Run this in browser console to verify the fix worked:
+===================================================== */
+
+console.log('═══════════════════════════════════════');
+console.log('USER CREATION FIX VERIFICATION');
+console.log('═══════════════════════════════════════');
+console.log('1. Secondary Auth Function:', typeof window.createSecondaryUser === 'function' ? '✓ AVAILABLE' : '✗ MISSING');
+console.log('2. Teacher Form:', document.getElementById('add-teacher-form') ? '✓ FOUND' : '✗ MISSING');
+console.log('3. Pupil Form:', document.getElementById('add-pupil-form') ? '✓ FOUND' : '✗ MISSING');
+console.log('═══════════════════════════════════════');
+console.log('If all checks pass, user creation should work!');
