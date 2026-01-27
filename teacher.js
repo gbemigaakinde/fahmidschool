@@ -2194,16 +2194,23 @@ function initTeacherHamburger() {
   const sidebar = document.getElementById('teacher-sidebar');
   
   if (!hamburger || !sidebar) {
-    console.warn('Hamburger or sidebar not found in teacher portal');
+    console.warn('Hamburger or sidebar not found - will retry');
+    // Retry after a short delay if elements not found
+    setTimeout(initTeacherHamburger, 100);
     return;
   }
   
+  // Remove any existing listeners to prevent duplicates
+  const newHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(newHamburger, hamburger);
+  const hamburgerBtn = document.getElementById('hamburger');
+  
   // Toggle sidebar on hamburger click
-  hamburger.addEventListener('click', (e) => {
+  hamburgerBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const isActive = sidebar.classList.toggle('active');
-    hamburger.classList.toggle('active', isActive);
-    hamburger.setAttribute('aria-expanded', isActive);
+    hamburgerBtn.classList.toggle('active', isActive);
+    hamburgerBtn.setAttribute('aria-expanded', isActive);
     document.body.style.overflow = isActive ? 'hidden' : '';
   });
   
@@ -2211,10 +2218,10 @@ function initTeacherHamburger() {
   document.addEventListener('click', (e) => {
     if (sidebar.classList.contains('active') && 
         !sidebar.contains(e.target) && 
-        !hamburger.contains(e.target)) {
+        !hamburgerBtn.contains(e.target)) {
       sidebar.classList.remove('active');
-      hamburger.classList.remove('active');
-      hamburger.setAttribute('aria-expanded', 'false');
+      hamburgerBtn.classList.remove('active');
+      hamburgerBtn.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
     }
   });
@@ -2224,8 +2231,8 @@ function initTeacherHamburger() {
     link.addEventListener('click', () => {
       if (window.innerWidth <= 1024) {
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        hamburgerBtn.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
       }
     });
@@ -2238,8 +2245,8 @@ function initTeacherHamburger() {
     resizeTimer = setTimeout(() => {
       if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        hamburgerBtn.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
         document.body.style.overflow = '';
       }
     }, 250);
@@ -2248,7 +2255,12 @@ function initTeacherHamburger() {
   console.log('✓ Teacher hamburger menu initialized');
 }
 
-// Initialize hamburger menu when DOM is ready
-document.addEventListener('DOMContentLoaded', initTeacherHamburger);
+// Initialize hamburger when DOM is fully ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initTeacherHamburger);
+} else {
+  // DOM already loaded
+  initTeacherHamburger();
+}
 
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
