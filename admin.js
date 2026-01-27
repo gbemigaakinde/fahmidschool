@@ -15,6 +15,67 @@
 
 'use strict';
 
+// EMERGENCY FIX: Expose deleteItem early
+window.deleteItem = async function(collection, docId) {
+  if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const itemDoc = await db.collection(collection).doc(docId).get();
+    const itemData = itemDoc.exists ? itemDoc.data() : {};
+    
+    await db.collection('audit_log').add({
+      action: collection === 'teachers' || collection === 'pupils' ? 'delete_user' : 'delete_item',
+      collection: collection,
+      documentId: docId,
+      deletedData: {
+        name: itemData.name || 'Unknown',
+        email: itemData.email || 'Unknown',
+      },
+      performedBy: auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent: navigator.userAgent
+    });
+
+    if (collection === 'pupils') {
+      await db.collection('pupils').doc(docId).delete();
+      await db.collection('users').doc(docId).delete();
+      window.showToast?.('Pupil deleted successfully', 'success');
+      loadPupils();
+    } else if (collection === 'teachers') {
+      await db.collection('teachers').doc(docId).delete();
+      await db.collection('users').doc(docId).delete();
+      window.showToast?.('Teacher deleted successfully', 'success');
+      loadTeachers();
+      loadTeacherAssignments();
+    } else {
+      await db.collection(collection).doc(docId).delete();
+      window.showToast?.('Item deleted successfully', 'success');
+      
+      switch(collection) {
+        case 'classes':
+          loadClasses();
+          loadTeacherAssignments();
+          break;
+        case 'subjects':
+          loadSubjects();
+          break;
+        case 'announcements':
+          loadAdminAnnouncements();
+          break;
+      }
+    }
+    
+    loadDashboardStats();
+
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    window.handleError?.(error, 'Failed to delete item');
+  }
+};
+
 const db = window.db;
 const auth = window.auth;
 
