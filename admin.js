@@ -7534,50 +7534,203 @@ async function deleteUser(collection, uid) {
 }
 
 /**
- * FIXED: Delete Item with Audit Trail
- * Logs all delete operations for compliance
+ * FIXED: Unified delete function with proper cascade deletion
  */
-async function deleteItem(collectionName, docId) {
+async function deleteItem(collection, docId) {
   if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
     return;
   }
 
   try {
     // Get item data before deletion for audit log
-    const itemDoc = await db.collection(collectionName).doc(docId).get();
+    const itemDoc = await db.collection(collection).doc(docId).get();
     const itemData = itemDoc.exists ? itemDoc.data() : {};
     
     // AUDIT: Log deletion
     await db.collection('audit_log').add({
-      action: 'delete_item',
-      collection: collectionName,
+      action: collection === 'teachers' || collection === 'pupils' ? 'delete_user' : 'delete_item',
+      collection: collection,
       documentId: docId,
-      deletedData: itemData,
+      deletedData: {
+        name: itemData.name || 'Unknown',
+        email: itemData.email || 'Unknown',
+        ...Object.keys(itemData).reduce((acc, key) => {
+          if (!['subjects', 'promotionHistory'].includes(key)) {
+            acc[key] = itemData[key];
+          }
+          return acc;
+        }, {})
+      },
       performedBy: auth.currentUser.uid,
       performedByEmail: auth.currentUser.email,
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       userAgent: navigator.userAgent
     });
 
-    // Delete item
-    await db.collection(collectionName).doc(docId).delete();
-    
-    window.showToast?.('Item deleted successfully', 'success');
+    // FIXED: Handle user collections with cascade deletion
+    if (collection === 'pupils') {
+      // CASCADE DELETE for pupils - same logic as bulk delete
+      const BATCH_SIZE = 450;
+      let batch = db.batch();
+      let count = 0;
 
+      // Delete results
+      const resultsSnap = await db.collection('results')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      resultsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete attendance
+      const attendanceSnap = await db.collection('attendance')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      attendanceSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete behavioral traits
+      const traitsSnap = await db.collection('behavioral_traits')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      traitsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete psychomotor skills
+      const skillsSnap = await db.collection('psychomotor_skills')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      skillsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete remarks
+      const remarksSnap = await db.collection('remarks')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      remarksSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete payments
+      const paymentsSnap = await db.collection('payments')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      paymentsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete payment transactions
+      const transactionsSnap = await db.collection('payment_transactions')
+        .where('pupilId', '==', docId)
+        .get();
+      
+      transactionsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
+      });
+
+      // Delete main records
+      batch.delete(db.collection('pupils').doc(docId));
+      batch.delete(db.collection('users').doc(docId));
+      count += 2;
+
+      // Commit final batch
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      const totalDeleted = resultsSnap.size + attendanceSnap.size + traitsSnap.size + 
+                          skillsSnap.size + remarksSnap.size + paymentsSnap.size + 
+                          transactionsSnap.size + 2;
+
+      window.showToast?.(
+        `Pupil and ${totalDeleted - 2} related record(s) deleted successfully`,
+        'success'
+      );
+      
+      loadPupils();
+      
+    } else if (collection === 'teachers') {
+      // Teacher deletion - just delete user records
+      await db.collection('teachers').doc(docId).delete();
+      await db.collection('users').doc(docId).delete();
+      
+      window.showToast?.('Teacher deleted successfully', 'success');
+      loadTeachers();
+      loadTeacherAssignments();
+      
+    } else {
+      // Regular item deletion
+      await db.collection(collection).doc(docId).delete();
+      window.showToast?.('Item deleted successfully', 'success');
+      
+      // Reload appropriate section
+      switch(collection) {
+        case 'classes':
+          loadClasses();
+          loadTeacherAssignments();
+          break;
+        case 'subjects':
+          loadSubjects();
+          break;
+        case 'announcements':
+          loadAdminAnnouncements();
+          break;
+      }
+    }
+    
     loadDashboardStats();
 
-    switch (collectionName) {
-      case 'classes':
-        loadClasses();
-        loadTeacherAssignments();
-        break;
-      case 'subjects':
-        loadSubjects();
-        break;
-      case 'announcements':
-        loadAdminAnnouncements();
-        break;
-    }
   } catch (error) {
     console.error('Error deleting document:', error);
     window.handleError(error, 'Failed to delete item');
