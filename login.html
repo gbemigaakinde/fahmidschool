@@ -579,9 +579,50 @@
 
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
-    <script>
-        let isLoginMode = true;
+<script>
+    let isLoginMode = true;
 
+    // Add the login function here
+    async function login(email, password) {
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+            
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            
+            if (!userDoc.exists) {
+                throw new Error('User data not found');
+            }
+            
+            const userData = userDoc.data();
+            const role = userData.role;
+            
+            window.showToast('Login successful!', 'success');
+            
+            // Redirect based on role
+            if (role === 'admin') {
+                window.location.href = 'admin.html';
+            } else if (role === 'teacher') {
+                window.location.href = 'teacher.html';
+            } else if (role === 'pupil') {
+                window.location.href = 'pupil.html';
+            }
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            
+            let message = 'Login failed. Please try again.';
+            
+            if (error.code === 'auth/user-not-found') {
+                message = 'No account found with this email';
+            } else if (error.code === 'auth/wrong-password') {
+                message = 'Incorrect password';
+            }
+            
+            window.showToast(message, 'danger');
+            throw error;
+        }
+    }
         /**
          * Switch between login and register modes
          */
