@@ -7737,6 +7737,9 @@ async function deleteItem(collection, docId) {
   }
 }
 
+// Make deleteItem globally available
+window.deleteItem = deleteItem;
+
 /**
  * Load result approvals section
  */
