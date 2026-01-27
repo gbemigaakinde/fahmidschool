@@ -614,49 +614,40 @@ async function getEmailByAdmissionNumber(admissionNo) {
 async function login(emailOrAdmissionNo, password) {
     try {
         let email = emailOrAdmissionNo.trim();
-
-        // Detect admission number (no @ symbol)
+        
+        // Check if input looks like an admission number (no @ symbol)
         const isAdmissionNumber = !email.includes('@');
-
+        
         if (isAdmissionNumber) {
+            // Look up the email using admission number
             console.log('Detected admission number login');
             const foundEmail = await getEmailByAdmissionNumber(email);
-
+            
             if (!foundEmail) {
                 window.showToast('No account found with this admission number', 'danger');
                 throw new Error('Invalid admission number');
             }
-
+            
+            // Use the found email for authentication
             email = foundEmail;
             console.log('Using email for login:', email);
         }
-
-        // Sign in with Firebase Auth
+        
+        // Standard Firebase authentication (unchanged)
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
-
-        // Fetch Firestore user document
+        
         const userDoc = await db.collection('users').doc(user.uid).get();
-
+        
         if (!userDoc.exists) {
-            // If document doesn't exist, sign out immediately
-            await auth.signOut();
-            window.showToast('Access denied: user not registered', 'danger');
             throw new Error('User data not found');
         }
-
+        
         const userData = userDoc.data();
         const role = userData.role;
-
-        // Only allow valid roles
-        if (!['admin', 'teacher', 'pupil'].includes(role)) {
-            await auth.signOut();
-            window.showToast('Access denied: invalid role', 'danger');
-            throw new Error('Invalid role');
-        }
-
+        
         window.showToast('Login successful!', 'success');
-
+        
         // Redirect based on role
         if (role === 'admin') {
             window.location.href = 'admin.html';
@@ -665,22 +656,20 @@ async function login(emailOrAdmissionNo, password) {
         } else if (role === 'pupil') {
             window.location.href = 'pupil.html';
         }
-
+        
     } catch (error) {
         console.error('Login error:', error);
-
+        
         let message = 'Login failed. Please try again.';
-
+        
         if (error.code === 'auth/user-not-found') {
             message = 'No account found';
         } else if (error.code === 'auth/wrong-password') {
             message = 'Incorrect password';
         } else if (error.message === 'Invalid admission number') {
             message = 'No account found with this admission number';
-        } else if (error.message === 'User data not found' || error.message === 'Invalid role') {
-            message = error.message;
         }
-
+        
         window.showToast(message, 'danger');
         throw error;
     }
