@@ -1528,6 +1528,16 @@ button[onclick="exportPupilResults()"]:hover {
       </div>
     </div>
   </div>
+
+<div style="margin-top: var(--space-xl); padding: var(--space-lg); background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius-md);">
+  <h4 style="margin-top: 0; color: #856404;">🔧 One-Time Setup</h4>
+  <p style="margin-bottom: var(--space-md); color: #856404;">
+    If you configured fees before today, click this button to create payment records for all pupils in classes with existing fee structures.
+  </p>
+  <button class="btn btn-primary" onclick="bulkGenerateAllPaymentRecords()" id="bulk-generate-btn">
+    📋 Generate All Missing Payment Records
+  </button>
+</div>
 </section>
 
 <!-- ========================================
