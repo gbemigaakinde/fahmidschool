@@ -492,28 +492,28 @@
     <!-- Form -->
    <form id="auth-form" novalidate>
     <div class="auth-form-content" id="auth-form-content">
-        <!-- Email Field -->
-        <div class="form-group">
-            <div class="label-wrapper">
-                <i data-lucide="mail" class="label-icon"></i>
-                <label for="email">
-                    Email Address <span class="required">*</span>
-                </label>
-            </div>
+        <!-- Email or Admission Number Field -->
+<div class="form-group">
+    <div class="label-wrapper">
+        <i data-lucide="user" class="label-icon"></i>
+        <label for="email">
+            Email or Admission Number <span class="required">*</span>
+        </label>
+    </div>
 
-            <input 
-                type="email" 
-                id="email" 
-                class="auth-input"
-                placeholder="your.email@example.com" 
-                required 
-                aria-required="true" 
-                autocomplete="email">
+    <input 
+        type="text" 
+        id="email" 
+        class="auth-input"
+        placeholder="email@example.com or admission number" 
+        required 
+        aria-required="true" 
+        autocomplete="username">
 
-            <span class="error-message" id="email-error">
-                Please enter a valid email address
-            </span>
-        </div>
+    <span class="error-message" id="email-error">
+        Please enter a valid email or admission number
+    </span>
+</div>
 
         <!-- Password Field -->
         <div class="form-group">
@@ -582,47 +582,99 @@
 <script>
     let isLoginMode = true;
 
-    // Add the login function here
-    async function login(email, password) {
-        try {
-            const userCredential = await auth.signInWithEmailAndPassword(email, password);
-            const user = userCredential.user;
-            
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            
-            if (!userDoc.exists) {
-                throw new Error('User data not found');
-            }
-            
-            const userData = userDoc.data();
-            const role = userData.role;
-            
-            window.showToast('Login successful!', 'success');
-            
-            // Redirect based on role
-            if (role === 'admin') {
-                window.location.href = 'admin.html';
-            } else if (role === 'teacher') {
-                window.location.href = 'teacher.html';
-            } else if (role === 'pupil') {
-                window.location.href = 'pupil.html';
-            }
-            
-        } catch (error) {
-            console.error('Login error:', error);
-            
-            let message = 'Login failed. Please try again.';
-            
-            if (error.code === 'auth/user-not-found') {
-                message = 'No account found with this email';
-            } else if (error.code === 'auth/wrong-password') {
-                message = 'Incorrect password';
-            }
-            
-            window.showToast(message, 'danger');
-            throw error;
+/**
+ * Look up pupil's email by admission number
+ * Returns the email if found, null otherwise
+ */
+async function getEmailByAdmissionNumber(admissionNo) {
+    try {
+        console.log('Looking up admission number:', admissionNo);
+        
+        const snapshot = await db.collection('pupils')
+            .where('admissionNo', '==', admissionNo)
+            .limit(1)
+            .get();
+        
+        if (snapshot.empty) {
+            console.log('No pupil found with admission number:', admissionNo);
+            return null;
         }
+        
+        const pupilData = snapshot.docs[0].data();
+        console.log('Found pupil email:', pupilData.email);
+        return pupilData.email;
+        
+    } catch (error) {
+        console.error('Error looking up admission number:', error);
+        throw error;
     }
+}
+
+    // Add the login function here
+async function login(emailOrAdmissionNo, password) {
+    try {
+        let email = emailOrAdmissionNo.trim();
+        
+        // Check if input looks like an admission number (no @ symbol)
+        const isAdmissionNumber = !email.includes('@');
+        
+        if (isAdmissionNumber) {
+            // Look up the email using admission number
+            console.log('Detected admission number login');
+            const foundEmail = await getEmailByAdmissionNumber(email);
+            
+            if (!foundEmail) {
+                window.showToast('No account found with this admission number', 'danger');
+                throw new Error('Invalid admission number');
+            }
+            
+            // Use the found email for authentication
+            email = foundEmail;
+            console.log('Using email for login:', email);
+        }
+        
+        // Standard Firebase authentication (unchanged)
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        
+        if (!userDoc.exists) {
+            throw new Error('User data not found');
+        }
+        
+        const userData = userDoc.data();
+        const role = userData.role;
+        
+        window.showToast('Login successful!', 'success');
+        
+        // Redirect based on role
+        if (role === 'admin') {
+            window.location.href = 'admin.html';
+        } else if (role === 'teacher') {
+            window.location.href = 'teacher.html';
+        } else if (role === 'pupil') {
+            window.location.href = 'pupil.html';
+        }
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        
+        let message = 'Login failed. Please try again.';
+        
+        if (error.code === 'auth/user-not-found') {
+            message = 'No account found';
+        } else if (error.code === 'auth/wrong-password') {
+            message = 'Incorrect password';
+        } else if (error.message === 'Invalid admission number') {
+            message = 'No account found with this admission number';
+        }
+        
+        window.showToast(message, 'danger');
+        throw error;
+    }
+}
+
         /**
          * Switch between login and register modes
          */
@@ -748,19 +800,30 @@ function switchAuthMode(mode) {
         }
 
         /**
-         * Validate email field
-         */
-        function validateEmail() {
-            const emailInput = document.getElementById('email');
-            const email = emailInput.value.trim();
-            
-            if (!email || !isValidEmail(email)) {
-                showFieldError(emailInput, 'email-error');
-                return false;
-            }
-            showFieldSuccess(emailInput, 'email-error');
-            return true;
-        }
+ * Validate email or admission number field
+ */
+function validateEmail() {
+    const emailInput = document.getElementById('email');
+    const input = emailInput.value.trim();
+    
+    // Accept either email format or any non-empty admission number
+    if (!input) {
+        showFieldError(emailInput, 'email-error');
+        return false;
+    }
+    
+    // Valid if it's an email OR if it's any non-empty string (admission number)
+    const isEmail = isValidEmail(input);
+    const isAdmissionNumber = input.length > 0 && !input.includes('@');
+    
+    if (!isEmail && !isAdmissionNumber) {
+        showFieldError(emailInput, 'email-error');
+        return false;
+    }
+    
+    showFieldSuccess(emailInput, 'email-error');
+    return true;
+}
 
         /**
          * Validate password field
