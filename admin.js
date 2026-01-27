@@ -15,6 +15,8 @@
 
 'use strict';
 
+(function() { 
+
 const db = window.db;
 const auth = window.auth;
 
@@ -8840,5 +8842,7 @@ window.adminDebug = {
     }
   }
 };
+})();
+
 console.log('✓ Admin portal v6.3.0 loaded successfully');
 console.log('All critical fixes applied • Ready for use');
