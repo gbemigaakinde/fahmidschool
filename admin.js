@@ -3728,21 +3728,26 @@ async function saveFeeStructure() {
     
     // Save fee structure directly to Firestore
     await db.collection('fee_structures').add({
-      classId,
-      className,
-      session,
-      term,
-      fees: feeBreakdown,
-      total: total,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: auth.currentUser.uid
-    });
-    
-    window.showToast?.(
-      `✓ Fee structure saved for ${className}\nTotal: ₦${total.toLocaleString()}`,
-      'success',
-      5000
-    );
+  classId,
+  className,
+  session,
+  term,
+  fees: feeBreakdown,
+  total: total,
+  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  createdBy: auth.currentUser.uid
+});
+
+// Auto-generate payment records for all pupils in this class
+const result = await generatePaymentRecordsForClass(classId, className, session, term, total);
+
+window.showToast?.(
+  `✓ Fee structure saved for ${className}\n` +
+  `Total: ₦${total.toLocaleString()}\n` +
+  `${result.count} pupil payment record(s) created`,
+  'success',
+  6000
+);
     
     // Clear form
     document.getElementById('fee-config-class').value = '';
@@ -3764,6 +3769,147 @@ async function saveFeeStructure() {
     }
   }
 }
+
+/**
+ * Generate payment records for all pupils in a class
+ */
+async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
+  try {
+    console.log(`Generating payment records for class ${className}...`);
+    
+    // Get all pupils in this class
+    const pupilsSnap = await db.collection('pupils')
+      .where('class.id', '==', classId)
+      .get();
+    
+    if (pupilsSnap.empty) {
+      console.log('No pupils found in this class');
+      return { success: true, count: 0 };
+    }
+    
+    const batch = db.batch();
+    let count = 0;
+    
+    pupilsSnap.forEach(pupilDoc => {
+      const pupilData = pupilDoc.data();
+      const pupilId = pupilDoc.id;
+      const encodedSession = session.replace(/\//g, '-');
+      
+      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+      const paymentRef = db.collection('payments').doc(paymentDocId);
+      
+      batch.set(paymentRef, {
+        pupilId: pupilId,
+        pupilName: pupilData.name || 'Unknown',
+        classId: classId,
+        className: className,
+        session: session,
+        term: term,
+        amountDue: totalFee,
+        totalPaid: 0,
+        balance: totalFee,
+        status: 'owing',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }); // Use merge to not overwrite existing payments
+      
+      count++;
+    });
+    
+    await batch.commit();
+    
+    console.log(`✓ Generated ${count} payment records`);
+    
+    return { success: true, count: count };
+    
+  } catch (error) {
+    console.error('Error generating payment records:', error);
+    throw error;
+  }
+}
+
+// Make globally available
+window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
+
+/**
+ * Bulk generate payment records for ALL fee structures
+ */
+async function bulkGenerateAllPaymentRecords() {
+  const btn = document.getElementById('bulk-generate-btn');
+  
+  if (!confirm(
+    'Generate payment records for all pupils in classes with fee structures?\n\n' +
+    'This will create records for pupils who don\'t have them yet.\n' +
+    'Existing records will NOT be overwritten.\n\n' +
+    'Continue?'
+  )) {
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Generating records...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    
+    // Get all fee structures for current session/term
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .get();
+    
+    if (feeStructuresSnap.empty) {
+      window.showToast?.('No fee structures found for current session/term', 'info');
+      return;
+    }
+    
+    let totalGenerated = 0;
+    
+    for (const feeDoc of feeStructuresSnap.docs) {
+      const feeData = feeDoc.data();
+      
+      const result = await generatePaymentRecordsForClass(
+        feeData.classId,
+        feeData.className,
+        feeData.session,
+        feeData.term,
+        feeData.total
+      );
+      
+      totalGenerated += result.count;
+    }
+    
+    window.showToast?.(
+      `✓ Bulk generation complete!\n` +
+      `${totalGenerated} payment record(s) created across ${feeStructuresSnap.size} class(es)`,
+      'success',
+      8000
+    );
+    
+    // Reload outstanding fees report if visible
+    const outstandingSection = document.getElementById('outstanding-fees');
+    if (outstandingSection && outstandingSection.style.display !== 'none') {
+      await loadOutstandingFeesReport();
+    }
+    
+  } catch (error) {
+    console.error('Error in bulk generation:', error);
+    window.handleError?.(error, 'Failed to generate payment records');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '📋 Generate All Missing Payment Records';
+    }
+  }
+}
+
+// Make globally available
+window.bulkGenerateAllPaymentRecords = bulkGenerateAllPaymentRecords;
 
 /**
  * Delete fee structure
