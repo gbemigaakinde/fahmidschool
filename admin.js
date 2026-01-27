@@ -8750,6 +8750,85 @@ window.exportPupilsData = exportPupilsData;
 window.exportResultsData = exportResultsData;
 
 console.log('✓ Data export functions loaded');
+
+/* ======================================== 
+   HAMBURGER MENU FOR MOBILE - ADMIN PORTAL
+======================================== */
+
+function initAdminHamburger() {
+  const hamburger = document.getElementById('hamburger');
+  const sidebar = document.getElementById('admin-sidebar');
+  
+  if (!hamburger || !sidebar) {
+    console.warn('Hamburger or sidebar not found - will retry');
+    // Retry after a short delay if elements not found
+    setTimeout(initAdminHamburger, 100);
+    return;
+  }
+  
+  // Remove any existing listeners to prevent duplicates
+  const newHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(newHamburger, hamburger);
+  const hamburgerBtn = document.getElementById('hamburger');
+  
+  // Toggle sidebar on hamburger click
+  hamburgerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isActive = sidebar.classList.toggle('active');
+    hamburgerBtn.classList.toggle('active', isActive);
+    hamburgerBtn.setAttribute('aria-expanded', isActive);
+    document.body.style.overflow = isActive ? 'hidden' : '';
+  });
+  
+  // Close sidebar when clicking outside
+  document.addEventListener('click', (e) => {
+    if (sidebar.classList.contains('active') && 
+        !sidebar.contains(e.target) && 
+        !hamburgerBtn.contains(e.target)) {
+      sidebar.classList.remove('active');
+      hamburgerBtn.classList.remove('active');
+      hamburgerBtn.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+  });
+  
+  // Close sidebar when clicking navigation links on mobile
+  sidebar.querySelectorAll('a[data-section]').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 1024) {
+        sidebar.classList.remove('active');
+        hamburgerBtn.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+    });
+  });
+  
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        hamburgerBtn.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+    }, 250);
+  });
+  
+  console.log('✓ Admin hamburger menu initialized');
+}
+
+// Initialize hamburger when DOM is fully ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdminHamburger);
+} else {
+  // DOM already loaded
+  initAdminHamburger();
+}
+
 /* =====================================================
    DEBUG CONSOLE - SHOWS WHAT'S HAPPENING
 ===================================================== */
