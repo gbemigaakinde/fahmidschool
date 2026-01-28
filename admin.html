@@ -1905,6 +1905,28 @@ button[onclick="exportPupilResults()"]:hover {
                 </tbody>
             </table>
         </div>
+        
+        <!-- Add inside Settings section, after session history -->
+<div class="admin-card" style="margin-top: var(--space-xl);">
+  <h3>Arrears Management</h3>
+  <p>When starting a new academic session, run this migration to carry forward unpaid balances from the previous session.</p>
+  
+  <button 
+    id="migrate-arrears-btn" 
+    class="btn btn-warning" 
+    onclick="migrateArrearsToNewSession()">
+    🔄 Migrate Arrears from Previous Session
+  </button>
+  
+  <div class="alert alert-info" style="margin-top: var(--space-md);">
+    <strong>ℹ️ When to use this:</strong>
+    <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
+      <li>At the start of each new academic session</li>
+      <li>Only run ONCE per session</li>
+      <li>Checks all pupils for unpaid balances from previous session</li>
+    </ul>
+  </div>
+</div>
         <!-- Data Migration Section -->
 <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
     <h3 style="color: #f59e0b;">⚙️ Data Migration Tools</h3>
