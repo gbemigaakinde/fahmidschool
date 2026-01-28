@@ -4433,6 +4433,124 @@ function printReceipt(receiptNo) {
     }
 }
 
+async function migrateArrearsToNewSession() {
+  const btn = document.getElementById('migrate-arrears-btn');
+  
+  if (!confirm(
+    '⚠️ ARREARS MIGRATION\n\n' +
+    'This will:\n' +
+    '• Calculate unpaid balances from previous session\n' +
+    '• Add arrears to current session payment records\n' +
+    '• Update all affected pupil balances\n\n' +
+    'This should only be run ONCE at the start of a new session.\n\n' +
+    'Continue?'
+  )) {
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Migrating arrears...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session;
+    const previousSession = getPreviousSessionName(currentSession);
+    
+    if (!previousSession) {
+      window.showToast?.('Cannot determine previous session', 'danger');
+      return;
+    }
+    
+    // Get all pupils
+    const pupilsSnap = await db.collection('pupils').get();
+    
+    let processedCount = 0;
+    let arrearsFoundCount = 0;
+    let totalArrearsAmount = 0;
+    
+    const batch = db.batch();
+    let batchCount = 0;
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      
+      // Calculate arrears from previous session
+      const arrears = await calculateSessionBalance(pupilId, previousSession);
+      
+      if (arrears > 0) {
+        arrearsFoundCount++;
+        totalArrearsAmount += arrears;
+        
+        // Update all payment records for current session
+        const paymentsSnap = await db.collection('payments')
+          .where('pupilId', '==', pupilId)
+          .where('session', '==', currentSession)
+          .get();
+        
+        paymentsSnap.forEach(paymentDoc => {
+          const data = paymentDoc.data();
+          const amountDue = data.amountDue || 0;
+          const totalPaid = data.totalPaid || 0;
+          
+          batch.update(paymentDoc.ref, {
+            arrears: arrears,
+            totalDue: amountDue + arrears,
+            balance: (amountDue + arrears) - totalPaid,
+            status: 'owing_with_arrears',
+            arrearsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          
+          batchCount++;
+        });
+      }
+      
+      processedCount++;
+      
+      // Commit batch if reaching limit
+      if (batchCount >= 400) {
+        await batch.commit();
+        batchCount = 0;
+        console.log(`Progress: ${processedCount}/${pupilsSnap.size} pupils processed`);
+      }
+    }
+    
+    // Commit remaining
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✓ Arrears Migration Complete!\n\n` +
+      `• Processed: ${processedCount} pupils\n` +
+      `• Found arrears: ${arrearsFoundCount} pupils\n` +
+      `• Total arrears: ₦${totalArrearsAmount.toLocaleString()}`,
+      'success',
+      10000
+    );
+    
+  } catch (error) {
+    console.error('Arrears migration error:', error);
+    window.showToast?.(`Migration failed: ${error.message}`, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔄 Migrate Arrears from Previous Session';
+    }
+  }
+}
+
+// Make functions globally available
+window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
+window.getPreviousSessionName = getPreviousSessionName;
+window.calculateSessionBalance = calculateSessionBalance;
+window.recordPayment = recordPayment;
+window.loadPupilPaymentStatus = loadPupilPaymentStatus;
+window.migrateArrearsToNewSession = migrateArrearsToNewSession;
+
+console.log('✓ Cross-session debt tracking system loaded');
+
 /**
  * Export financial report to CSV or PDF - FIXED: based on ALL pupils
  */
