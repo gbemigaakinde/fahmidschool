@@ -583,6 +583,25 @@ async function loadFeeBalance() {
             statusIcon = 'clock';
         }
         
+        const arrearsHTML = arrears > 0 ? `
+  <!-- Arrears Warning Card -->
+  <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
+    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+      <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+      <div>
+        <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
+        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Session(s)</p>
+      </div>
+    </div>
+    <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+      ₦${arrears.toLocaleString()}
+    </div>
+    <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
+      This amount is being carried forward and must be paid along with current fees.
+    </p>
+  </div>
+` : '';
+
         // Build enhanced fee section with cumulative data
         feeSection.innerHTML = `
             <div class="section-header">
