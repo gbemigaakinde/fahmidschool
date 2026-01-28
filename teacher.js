@@ -340,25 +340,31 @@ function showSection(sectionId) {
    HAMBURGER MENU FOR MOBILE - FIXED VERSION
 ======================================== */
 
+/**
+ * CRITICAL FIX: Initialize hamburger menu
+ * This MUST be called from initTeacherPortal() after DOM is fully ready
+ */
 function initTeacherHamburger() {
   const hamburger = document.getElementById('hamburger');
   const sidebar = document.getElementById('teacher-sidebar');
   
-  // Existence check
+  // Existence check with debugging
   if (!hamburger || !sidebar) {
-    console.warn('Teacher hamburger or sidebar not found - skipping initialization');
+    console.warn('⚠️ Teacher hamburger or sidebar not found');
+    console.log('Hamburger element:', hamburger);
+    console.log('Sidebar element:', sidebar);
     return;
   }
   
   // Prevent double initialization
   if (hamburger.dataset.teacherInitialized === 'true') {
-    console.log('Teacher hamburger already initialized');
+    console.log('✓ Teacher hamburger already initialized');
     return;
   }
   
   hamburger.dataset.teacherInitialized = 'true';
   
-  console.log('Initializing teacher hamburger menu...');
+  console.log('🔧 Initializing teacher hamburger menu...');
   
   // TOGGLE FUNCTION
   function toggleSidebar(e) {
@@ -369,7 +375,7 @@ function initTeacherHamburger() {
     hamburger.setAttribute('aria-expanded', isActive);
     document.body.style.overflow = isActive ? 'hidden' : '';
     
-    console.log('Sidebar toggled:', isActive ? 'OPEN' : 'CLOSED');
+    console.log('📱 Sidebar toggled:', isActive ? 'OPEN' : 'CLOSED');
   }
   
   // CLOSE FUNCTION
@@ -380,8 +386,9 @@ function initTeacherHamburger() {
     document.body.style.overflow = '';
   }
   
-  // 1. HAMBURGER CLICK
+  // 1. HAMBURGER CLICK - THE CRITICAL LISTENER
   hamburger.addEventListener('click', toggleSidebar);
+  console.log('✓ Click listener attached to hamburger');
   
   // 2. CLICK OUTSIDE TO CLOSE
   document.addEventListener('click', (e) => {
@@ -420,40 +427,12 @@ function initTeacherHamburger() {
     }, 250);
   });
   
-  console.log('✓ Teacher hamburger menu initialized successfully');
+  console.log('✅ Teacher hamburger menu initialized successfully');
 }
 
-// INITIALIZATION STRATEGY: Try multiple times if needed
-function attemptTeacherHamburgerInit(attempts = 0) {
-  const maxAttempts = 5;
-  
-  if (attempts >= maxAttempts) {
-    console.error('❌ Failed to initialize teacher hamburger after', maxAttempts, 'attempts');
-    return;
-  }
-  
-  const hamburger = document.getElementById('hamburger');
-  const sidebar = document.getElementById('teacher-sidebar');
-  
-  if (hamburger && sidebar) {
-    // Elements found - initialize
-    initTeacherHamburger();
-  } else {
-    // Not ready yet - try again
-    console.log(`Hamburger/sidebar not ready, retrying... (attempt ${attempts + 1}/${maxAttempts})`);
-    setTimeout(() => attemptTeacherHamburgerInit(attempts + 1), 100);
-  }
-}
-
-// START INITIALIZATION
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => attemptTeacherHamburgerInit());
-} else {
-  // DOM already loaded
-  attemptTeacherHamburgerInit();
-}
-
-console.log('✓ Teacher hamburger initialization queued');
+// DON'T call initTeacherHamburger() here!
+// It will be called from initTeacherPortal() when DOM is ready
+console.log('✓ Teacher hamburger function defined');
 
 /* ======================================== 
    PORTAL INITIALIZATION
@@ -466,6 +445,9 @@ function initTeacherPortal() {
   }
   
   setupAllEventListeners();
+  
+  // CRITICAL FIX: Initialize hamburger HERE after DOM is fully loaded
+  initTeacherHamburger();
   
   window.getCurrentSettings().then(settings => {
     // Set default term in all selects
