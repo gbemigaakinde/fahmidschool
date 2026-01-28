@@ -568,23 +568,29 @@ async function loadFeeBalance() {
         const termOrder = { 'First Term': 1, 'Second Term': 2, 'Third Term': 3 };
         termBreakdown.sort((a, b) => termOrder[a.term] - termOrder[b.term]);
         
-        // Determine overall status
-        let statusColor = '#f44336'; // Red (owing)
+       // Determine overall status
+        let statusColor = '#f44336';
         let statusText = 'Outstanding Balance';
         let statusIcon = 'alert-circle';
         
         if (cumulativeBalance <= 0) {
-            statusColor = '#4CAF50'; // Green (paid)
+            statusColor = '#4CAF50';
             statusText = 'Fully Paid';
             statusIcon = 'check-circle';
         } else if (cumulativePaid > 0) {
-            statusColor = '#ff9800'; // Orange (partial)
+            statusColor = '#ff9800';
             statusText = 'Partial Payment';
             statusIcon = 'clock';
         }
         
-        const arrearsHTML = arrears > 0 ? `
-  <!-- Arrears Warning Card -->
+        // FIXED: Calculate arrears from payment records
+        let totalArrears = 0;
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            totalArrears += (data.arrears || 0);
+        });
+        
+        const arrearsHTML = totalArrears > 0 ? `
   <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
     <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
       <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
@@ -594,14 +600,14 @@ async function loadFeeBalance() {
       </div>
     </div>
     <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
-      ₦${arrears.toLocaleString()}
+      ₦${totalArrears.toLocaleString()}
     </div>
     <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
       This amount is being carried forward and must be paid along with current fees.
     </p>
   </div>
 ` : '';
-
+        
         // Build enhanced fee section with cumulative data
         feeSection.innerHTML = `
             <div class="section-header">
@@ -613,6 +619,8 @@ async function loadFeeBalance() {
                     <p style="color: ${statusColor}; font-weight: 600;">${statusText}</p>
                 </div>
             </div>
+
+            ${arrearsHTML}
 
             <!-- Cumulative Summary Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
