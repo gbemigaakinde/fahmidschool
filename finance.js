@@ -309,56 +309,66 @@ const finance = {
    * Get financial summary
    */
   async getFinancialSummary(session, term = null) {
-  try {
-    let query = db
-      .collection('payments')
-      .where('session', '==', session);
-    
-    // FIXED: Optional term filter for per-term reports
-    if (term) {
-      query = query.where('term', '==', term);
+    try {
+        const feeSnap = await db
+            .collection('fee_structures')
+            .where('session', '==', session)
+            .get();
+
+        let totalExpected = 0;
+        feeSnap.forEach(doc => {
+            const data = doc.data();
+            if (!term || data.term === term) {
+                totalExpected += data.total || 0;
+            }
+        });
+
+        let query = db
+            .collection('payments')
+            .where('session', '==', session);
+
+        if (term) {
+            query = query.where('term', '==', term);
+        }
+
+        const snapshot = await query.get();
+
+        let totalCollected = 0;
+        let totalOutstanding = 0;
+        let paidInFull = 0;
+        let partialPayments = 0;
+        let noPayment = 0;
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            totalCollected += data.totalPaid || 0;
+            totalOutstanding += data.balance || 0;
+
+            if (data.status === 'paid') paidInFull++;
+            else if (data.status === 'partial') partialPayments++;
+            else if (data.status === 'owing') noPayment++;
+        });
+
+        const collectionRate =
+            totalExpected > 0
+                ? ((totalCollected / totalExpected) * 100).toFixed(1)
+                : 0;
+
+        return {
+            totalExpected,
+            totalCollected,
+            totalOutstanding,
+            collectionRate: parseFloat(collectionRate),
+            paidInFull,
+            partialPayments,
+            noPayment,
+            totalPupils: snapshot.size
+        };
+
+    } catch (error) {
+        console.error('Error getting financial summary:', error);
+        return null;
     }
-    
-    const snapshot = await query.get();
-
-    let totalExpected = 0;
-    let totalCollected = 0;
-    let totalOutstanding = 0;
-    let paidInFull = 0;
-    let partialPayments = 0;
-    let noPayment = 0;
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      totalExpected += data.amountDue || 0;
-      totalCollected += data.totalPaid || 0;
-      totalOutstanding += data.balance || 0;
-
-      if (data.status === 'paid') paidInFull++;
-      else if (data.status === 'partial') partialPayments++;
-      else if (data.status === 'owing') noPayment++;
-    });
-
-    const collectionRate =
-      totalExpected > 0
-        ? ((totalCollected / totalExpected) * 100).toFixed(1)
-        : 0;
-
-    return {
-      totalExpected: totalExpected,
-      totalCollected: totalCollected,
-      totalOutstanding: totalOutstanding,
-      collectionRate: parseFloat(collectionRate),
-      paidInFull: paidInFull,
-      partialPayments: partialPayments,
-      noPayment: noPayment,
-      totalPupils: snapshot.size
-    };
-
-  } catch (error) {
-    console.error('Error getting financial summary:', error);
-    return null;
-  }
 }
 
 };
