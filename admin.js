@@ -3639,7 +3639,6 @@ async function loadFinancialReports() {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         
-        // ✅ FIX: Get ALL pupils currently enrolled
         const pupilsSnap = await db.collection('pupils').get();
         
         if (pupilsSnap.empty) {
@@ -3649,10 +3648,9 @@ async function loadFinancialReports() {
         
         console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
         
-        // ✅ FIX: Get fee structures for ALL terms in current session
         const feeStructuresSnap = await db.collection('fee_structures')
             .where('session', '==', session)
-            .get();  // ← REMOVED term filter
+            .get();
         
         const feeStructureMap = {};
         feeStructuresSnap.forEach(doc => {
@@ -3661,10 +3659,9 @@ async function loadFinancialReports() {
             feeStructureMap[key] = data.total || 0;
         });
         
-        // ✅ FIX: Get all payment records for current session (all terms)
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
-            .get();  // ← REMOVED term filter
+            .get();
         
         const paymentMap = {};
         paymentsSnap.forEach(doc => {
@@ -3686,7 +3683,6 @@ async function loadFinancialReports() {
             paymentMap[pupilId].terms.push(data.term);
         });
         
-        // Calculate cumulative totals for ALL pupils across ALL terms
         let totalExpected = 0;
         let totalCollected = 0;
         let totalOutstanding = 0;
@@ -3707,7 +3703,7 @@ async function loadFinancialReports() {
                 return;
             }
             
-            // Calculate total expected across all terms with fee structures
+            // FIXED: Calculate expected fees for THIS pupil
             let pupilExpected = 0;
             termOrder.forEach(term => {
                 const feeKey = `${classId}_${term}`;
@@ -3716,11 +3712,11 @@ async function loadFinancialReports() {
             });
             
             if (pupilExpected === 0) {
-                return; // Skip pupils in classes without fee structures
+                return;
             }
             
             pupilsWithFees++;
-            totalExpected += pupilExpected;
+            totalExpected += pupilExpected; // Add per-pupil expected, not class total
             
             const payment = paymentMap[pupilId];
             
@@ -3728,7 +3724,6 @@ async function loadFinancialReports() {
                 totalCollected += payment.totalPaid;
                 totalOutstanding += payment.totalBalance;
                 
-                // Determine overall status based on cumulative balance
                 if (payment.totalBalance <= 0) {
                     paidInFull++;
                 } else if (payment.totalPaid > 0) {
@@ -3737,7 +3732,6 @@ async function loadFinancialReports() {
                     noPayment++;
                 }
             } else {
-                // No payment record = full balance outstanding
                 totalOutstanding += pupilExpected;
                 noPayment++;
             }
@@ -3756,7 +3750,7 @@ async function loadFinancialReports() {
             partialPayments,
             noPayment,
             session,
-            'All Terms'  // ✅ Changed to show this is cumulative
+            'All Terms'
         );
         
         console.log(`✓ Financial report generated (cumulative):`);
@@ -3767,7 +3761,6 @@ async function loadFinancialReports() {
         console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
         console.log(`  - Collection rate: ${collectionRate}%`);
         
-        // ✅ NEW: Add term breakdown chart
         await generateTermBreakdownChart(session, feeStructureMap, paymentMap);
         
     } catch (error) {
@@ -3916,7 +3909,6 @@ async function saveFeeStructure() {
     return;
   }
   
-  // Get fee breakdown
   const tuition = parseFloat(document.getElementById('fee-tuition')?.value) || 0;
   const examFee = parseFloat(document.getElementById('fee-exam')?.value) || 0;
   const uniform = parseFloat(document.getElementById('fee-uniform')?.value) || 0;
@@ -3933,7 +3925,6 @@ async function saveFeeStructure() {
     other: other
   };
   
-  // Validate at least one fee is entered
   const total = Object.values(feeBreakdown).reduce((sum, val) => sum + val, 0);
   
   if (total <= 0) {
@@ -3952,37 +3943,46 @@ async function saveFeeStructure() {
     const session = settings.session;
     const term = settings.term;
     
-    // Save fee structure directly to Firestore
     await db.collection('fee_structures').add({
-  classId,
-  className,
-  session,
-  term,
-  fees: feeBreakdown,
-  total: total,
-  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-  createdBy: auth.currentUser.uid
-});
+      classId,
+      className,
+      session,
+      term,
+      fees: feeBreakdown,
+      total: total,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: auth.currentUser.uid
+    });
 
-// Auto-generate payment records for all pupils in this class
-const result = await generatePaymentRecordsForClass(classId, className, session, term, total);
+    // FIXED: Show confirmation before auto-generating
+    const autoGenerate = confirm(
+      `Fee structure saved!\n\n` +
+      `Auto-generate payment records for all pupils in ${className}?\n\n` +
+      `Click OK to generate now, or Cancel to generate later.`
+    );
 
-window.showToast?.(
-  `✓ Fee structure saved for ${className}\n` +
-  `Total: ₦${total.toLocaleString()}\n` +
-  `${result.count} pupil payment record(s) created`,
-  'success',
-  6000
-);
+    if (autoGenerate) {
+      const result = await generatePaymentRecordsForClass(classId, className, session, term, total);
+      
+      window.showToast?.(
+        `✓ Fee structure saved!\n${result.count} payment record(s) created`,
+        'success',
+        6000
+      );
+    } else {
+      window.showToast?.(
+        `✓ Fee structure saved!\nUse "Generate Missing Records" button to create pupil records later.`,
+        'success',
+        6000
+      );
+    }
     
-    // Clear form
     document.getElementById('fee-config-class').value = '';
     ['fee-tuition', 'fee-exam', 'fee-uniform', 'fee-books', 'fee-pta', 'fee-other'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
     
-    // Reload fee structures
     await loadFeeStructures();
     
   } catch (error) {
