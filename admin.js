@@ -3407,9 +3407,7 @@ async function loadOutstandingFeesReport() {
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
-    const currentTerm = settings.term;
     
-    // ✅ FIX: Get ALL pupils currently enrolled
     const pupilsSnap = await db.collection('pupils').get();
     
     if (pupilsSnap.empty) {
@@ -3420,24 +3418,11 @@ async function loadOutstandingFeesReport() {
     
     console.log(`📊 Calculating cumulative fees for ${pupilsSnap.size} pupils...`);
     
-    // ✅ FIX: Get fee structures for ALL terms in current session
-    const feeStructuresSnap = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .get();  // ← REMOVED term filter to get ALL terms
-    
-    const feeStructureMap = {};
-    feeStructuresSnap.forEach(doc => {
-      const data = doc.data();
-      const key = `${data.classId}_${data.term}`;
-      feeStructureMap[key] = data.total || 0;
-    });
-    
-    // ✅ FIX: Get ALL payment records for current session (all terms)
+    // ✅ FIX: Get ALL payment records (don't need fee structures)
     const paymentsSnap = await db.collection('payments')
       .where('session', '==', session)
-      .get();  // ← REMOVED term filter to get ALL terms
+      .get();
     
-    // Group payments by pupil
     const paymentsByPupil = {};
     paymentsSnap.forEach(doc => {
       const data = doc.data();
@@ -3450,12 +3435,13 @@ async function loadOutstandingFeesReport() {
       paymentsByPupil[pupilId].push({
         term: data.term,
         amountDue: data.amountDue || 0,
+        arrears: data.arrears || 0,
+        totalDue: data.totalDue || 0,  // ✅ FIX: Use totalDue (includes arrears)
         totalPaid: data.totalPaid || 0,
         balance: data.balance || 0
       });
     });
     
-    // Calculate cumulative balances
     const outstandingPupils = [];
     let totalOutstanding = 0;
     
@@ -3464,52 +3450,37 @@ async function loadOutstandingFeesReport() {
     pupilsSnap.forEach(pupilDoc => {
       const pupil = pupilDoc.data();
       const pupilId = pupilDoc.id;
-      const classId = pupil.class?.id || null;
       
-      if (!classId) {
-        console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
-        return;
+      const payments = paymentsByPupil[pupilId];
+      
+      if (!payments || payments.length === 0) {
+        return; // Skip pupils with no payment records
       }
       
-      // ✅ FIX: Calculate total owed across ALL terms in session
+      // ✅ FIX: Calculate using payment records (which include arrears)
       let cumulativeDue = 0;
       let cumulativePaid = 0;
+      let cumulativeBalance = 0;
       const termBreakdown = [];
       
       termOrder.forEach(term => {
-        const feeKey = `${classId}_${term}`;
-        const termFee = feeStructureMap[feeKey] || 0;
+        const termPayment = payments.find(p => p.term === term);
         
-        if (termFee > 0) {
-          cumulativeDue += termFee;
+        if (termPayment) {
+          // ✅ FIX: Use totalDue which includes arrears
+          cumulativeDue += termPayment.totalDue;
+          cumulativePaid += termPayment.totalPaid;
+          cumulativeBalance += termPayment.balance;
           
-          // Find payment for this term
-          const payments = paymentsByPupil[pupilId] || [];
-          const termPayment = payments.find(p => p.term === term);
-          
-          if (termPayment) {
-            cumulativePaid += termPayment.totalPaid;
-            
-            termBreakdown.push({
-              term: term,
-              due: termFee,
-              paid: termPayment.totalPaid,
-              balance: termFee - termPayment.totalPaid
-            });
-          } else {
-            termBreakdown.push({
-              term: term,
-              due: termFee,
-              paid: 0,
-              balance: termFee
-            });
-          }
+          termBreakdown.push({
+            term: term,
+            due: termPayment.totalDue,
+            paid: termPayment.totalPaid,
+            balance: termPayment.balance
+          });
         }
       });
       
-      const cumulativeBalance = cumulativeDue - cumulativePaid;
-      
-      // Only include if there's outstanding balance
       if (cumulativeBalance > 0) {
         outstandingPupils.push({
           name: pupil.name || 'Unknown',
@@ -3525,7 +3496,6 @@ async function loadOutstandingFeesReport() {
       }
     });
     
-    // Sort by balance (highest first)
     outstandingPupils.sort((a, b) => b.cumulativeBalance - a.cumulativeBalance);
     
     tbody.innerHTML = '';
@@ -3541,7 +3511,6 @@ async function loadOutstandingFeesReport() {
     outstandingPupils.forEach(pupil => {
       const tr = document.createElement('tr');
       
-      // Build term breakdown tooltip
       const breakdownHTML = pupil.termBreakdown
         .filter(t => t.due > 0)
         .map(t => `${t.term}: ₦${t.balance.toLocaleString()} (${t.paid > 0 ? 'Partial' : 'Unpaid'})`)
@@ -3572,8 +3541,6 @@ async function loadOutstandingFeesReport() {
     });
     
     tbody.appendChild(fragment);
-    
-    // Update summary
     updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
     
     console.log(`✓ Outstanding fees: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
@@ -4274,12 +4241,15 @@ async function recordPayment() {
 
   try {
     const settings = await window.getCurrentSettings();
-    const session = settings.session;
+    const session = settings.session;  // ← Original format "2025/2026"
     const term = settings.term;
     
     const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
-    const paymentDocId = `${pupilId}_${session.replace(/\//g, '-')}_${term}`;
+    // ✅ FIX: Use encoded session ONLY for document ID
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
     
@@ -4292,12 +4262,12 @@ async function recordPayment() {
       const data = paymentDoc.data();
       currentPaid = data.totalPaid || 0;
       amountDue = data.amountDue || 0;
-      arrears = data.arrears || 0; // ✅ Get arrears
-      totalDue = data.totalDue || amountDue; // ✅ Total including arrears
+      arrears = data.arrears || 0;
+      totalDue = data.totalDue || amountDue;
     } else {
       const feeSnap = await db.collection('fee_structures')
         .where('classId', '==', classId)
-        .where('session', '==', session)
+        .where('session', '==', session)  // ← Original format
         .where('term', '==', term)
         .limit(1)
         .get();
@@ -4306,7 +4276,6 @@ async function recordPayment() {
         amountDue = feeSnap.docs[0].data().total || 0;
       }
       
-      // Check for arrears from previous session
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
@@ -4317,13 +4286,11 @@ async function recordPayment() {
     
     const newTotalPaid = currentPaid + amountPaid;
     
-    // ✅ NEW: Calculate arrears payment breakdown
     let arrearsPayment = 0;
     let currentTermPayment = 0;
     let remainingArrears = arrears;
     
     if (arrears > 0) {
-      // Prioritize paying off arrears first
       if (amountPaid <= arrears) {
         arrearsPayment = amountPaid;
         remainingArrears = arrears - amountPaid;
@@ -4341,17 +4308,17 @@ async function recordPayment() {
     
     const batch = db.batch();
     
-    // Update payment document
+    // ✅ FIX: Store session in ORIGINAL format
     batch.set(paymentRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session: session,
+      session: session,  // ← ALWAYS original format
       term,
       amountDue,
-      arrears: remainingArrears, // ✅ Updated arrears
-      totalDue: amountDue + remainingArrears, // ✅ Updated total
+      arrears: remainingArrears,
+      totalDue: amountDue + remainingArrears,
       totalPaid: newTotalPaid,
       balance: newBalance,
       status: newStatus,
@@ -4359,18 +4326,17 @@ async function recordPayment() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // Record transaction with arrears breakdown
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
     batch.set(transactionRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session: session,
+      session: session,  // ← ALWAYS original format
       term,
       amountPaid,
-      arrearsPayment, // ✅ NEW: How much went to arrears
-      currentTermPayment, // ✅ NEW: How much went to current term
+      arrearsPayment,
+      currentTermPayment,
       paymentMethod: paymentMethod || 'Cash',
       receiptNo,
       notes,
@@ -4381,7 +4347,6 @@ async function recordPayment() {
     
     await batch.commit();
 
-    // Enhanced success message
     let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
     
     if (arrearsPayment > 0) {
@@ -7578,7 +7543,6 @@ async function startNewSession() {
   }
   
   try {
-    // Get current session
     const settingsDoc = await db.collection('settings').doc('current').get();
     
     if (!settingsDoc.exists) {
@@ -7606,35 +7570,71 @@ async function startNewSession() {
     // Create new session
     const newStartYear = currentSession.endYear;
     const newEndYear = currentSession.endYear + 1;
+    const newSessionName = `${newStartYear}/${newEndYear}`;
     
-    // Calculate new dates (September 1 to July 31)
-    const newStartDate = new Date(newStartYear, 8, 1); // September 1
-    const newEndDate = new Date(newEndYear, 6, 31); // July 31
-    const newResumptionDate = new Date(newStartYear, 8, 1); // September 1
+    const newStartDate = new Date(newStartYear, 8, 1);
+    const newEndDate = new Date(newEndYear, 6, 31);
+    const newResumptionDate = new Date(newStartYear, 8, 1);
     
     await db.collection('settings').doc('current').update({
       currentSession: {
-        name: `${newStartYear}/${newEndYear}`,
+        name: newSessionName,
         startYear: newStartYear,
         endYear: newEndYear,
         startDate: firebase.firestore.Timestamp.fromDate(newStartDate),
         endDate: firebase.firestore.Timestamp.fromDate(newEndDate)
       },
-      session: `${newStartYear}/${newEndYear}`,
+      session: newSessionName,
       term: 'First Term',
       resumptionDate: firebase.firestore.Timestamp.fromDate(newResumptionDate),
-      promotionPeriodActive: true, // Open promotion period
+      promotionPeriodActive: true,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     
+    // ✅ FIX: Trigger arrears migration immediately
+    console.log('🔄 Triggering arrears migration for new session...');
+    
+    const oldSessionName = `${currentSession.startYear}/${currentSession.endYear}`;
+    
+    // Get all pupils
+    const pupilsSnap = await db.collection('pupils').get();
+    
+    let pupilsWithArrears = 0;
+    let totalArrearsAmount = 0;
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      
+      // Calculate arrears from previous session
+      const arrears = await calculateSessionBalance(pupilId, oldSessionName);
+      
+      if (arrears > 0) {
+        pupilsWithArrears++;
+        totalArrearsAmount += arrears;
+        
+        // Log arrears for reporting
+        await db.collection('arrears_log').add({
+          pupilId: pupilId,
+          pupilName: pupilDoc.data().name || 'Unknown',
+          oldSession: oldSessionName,
+          newSession: newSessionName,
+          arrearsAmount: arrears,
+          migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          migratedBy: auth.currentUser.uid
+        });
+      }
+    }
+    
     window.showToast?.(
-      `✓ New session ${newStartYear}/${newEndYear} started successfully!\n` +
+      `✓ New session ${newSessionName} started successfully!\n\n` +
+      `Arrears Migration:\n` +
+      `• ${pupilsWithArrears} pupils with outstanding balances\n` +
+      `• Total arrears: ₦${totalArrearsAmount.toLocaleString()}\n\n` +
       `Promotion period is now ACTIVE for teachers.`,
       'success',
-      8000
+      12000
     );
     
-    // Reload settings display
     await loadCurrentSettings();
     await loadSessionHistory();
     
