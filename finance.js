@@ -67,88 +67,150 @@ const finance = {
     }
   },
 
-  /**
-   * Record a payment transaction
-   */
-  async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
-    try {
-      if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
-        throw new Error('Invalid payment amount');
-      }
-
-      const encodedSession = session.replace(/\//g, '-');
-      const feeStructure = await this.getFeeStructure(classId, session, term);
-
-      if (!feeStructure) {
-        throw new Error('Fee structure not configured for this class and term');
-      }
-
-      const amountDue = feeStructure.total;
-      const amountPaid = parseFloat(paymentData.amountPaid);
-      const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
-      const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
-
-      let totalPaidSoFar = amountPaid;
-
-      if (existingPaymentDoc.exists) {
-        const existingData = existingPaymentDoc.data();
-        totalPaidSoFar = (existingData.totalPaid || 0) + amountPaid;
-      }
-
-      const newBalance = amountDue - totalPaidSoFar;
-      const paymentStatus =
-        newBalance <= 0 ? 'paid' : totalPaidSoFar > 0 ? 'partial' : 'owing';
-
-      const receiptNo = await this.generateReceiptNumber();
-      const transactionId = receiptNo;
-
-      await db.collection('payment_transactions').doc(transactionId).set({
-        pupilId: pupilId,
-        pupilName: pupilName,
-        classId: classId,
-        className: className,
-        session: session,
-        term: term,
-        amountPaid: amountPaid,
-        paymentMethod: paymentData.paymentMethod || 'cash',
-        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        receiptNo: receiptNo,
-        recordedBy: auth.currentUser.uid,
-        notes: paymentData.notes || ''
-      });
-
-      await db.collection('payments').doc(paymentRecordId).set({
-        pupilId: pupilId,
-        pupilName: pupilName,
-        classId: classId,
-        className: className,
-        session: session,
-        term: term,
-        amountDue: amountDue,
-        totalPaid: totalPaidSoFar,
-        balance: newBalance,
-        status: paymentStatus,
-        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        lastPaymentAmount: amountPaid,
-        lastReceiptNo: receiptNo,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      return {
-        success: true,
-        receiptNo: receiptNo,
-        transactionId: transactionId,
-        amountPaid: amountPaid,
-        newBalance: newBalance,
-        totalPaid: totalPaidSoFar,
-        status: paymentStatus
-      };
-
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      throw error;
+/**
+ * Record a payment transaction
+ * FIXED: Prevents overpayment, handles arrears correctly
+ */
+async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
+  try {
+    if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
+      throw new Error('Invalid payment amount');
     }
-  },
+
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get fee structure (session-based, not term-based)
+    const feeDocId = `${classId}_${encodedSession}`;
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+
+    if (!feeDoc.exists) {
+      throw new Error('Fee structure not configured for this class and session');
+    }
+
+    const feeStructure = feeDoc.data();
+    const amountDue = feeStructure.total;
+    const amountPaid = parseFloat(paymentData.amountPaid);
+    
+    // Get existing payment record
+    const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+    const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+
+    let currentTotalPaid = 0;
+    let arrears = 0;
+    
+    if (existingPaymentDoc.exists) {
+      const existingData = existingPaymentDoc.data();
+      currentTotalPaid = existingData.totalPaid || 0;
+      arrears = existingData.arrears || 0;
+    }
+    
+    // CRITICAL FIX: Calculate total due including arrears
+    const totalDue = amountDue + arrears;
+    const newTotalPaid = currentTotalPaid + amountPaid;
+    
+    // CRITICAL FIX: Prevent overpayment
+    if (newTotalPaid > totalDue) {
+      throw new Error(
+        `Payment rejected: Amount exceeds balance.\n\n` +
+        `Total due: ₦${totalDue.toLocaleString()}\n` +
+        `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
+        `Balance: ₦${(totalDue - currentTotalPaid).toLocaleString()}\n` +
+        `Your payment: ₦${amountPaid.toLocaleString()}\n\n` +
+        `Maximum allowed: ₦${(totalDue - currentTotalPaid).toLocaleString()}`
+      );
+    }
+    
+    // Calculate how payment is split between arrears and current term
+    let arrearsPayment = 0;
+    let currentTermPayment = 0;
+    let remainingArrears = arrears;
+    
+    if (arrears > 0) {
+      if (amountPaid <= arrears) {
+        // All payment goes to arrears
+        arrearsPayment = amountPaid;
+        remainingArrears = arrears - amountPaid;
+      } else {
+        // Pay off all arrears, rest goes to current term
+        arrearsPayment = arrears;
+        currentTermPayment = amountPaid - arrears;
+        remainingArrears = 0;
+      }
+    } else {
+      currentTermPayment = amountPaid;
+    }
+    
+    const newBalance = totalDue - newTotalPaid;
+    const paymentStatus = newBalance <= 0 ? 'paid' : 
+                         newTotalPaid > 0 ? 'partial' : 
+                         remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
+
+    const receiptNo = await this.generateReceiptNumber();
+    const transactionId = receiptNo;
+
+    // Create transaction record with ORIGINAL session format
+    await db.collection('payment_transactions').doc(transactionId).set({
+      pupilId: pupilId,
+      pupilName: pupilName,
+      classId: classId,
+      className: className,
+      session: session, // ORIGINAL format "2025/2026"
+      term: term,
+      amountPaid: amountPaid,
+      arrearsPayment: arrearsPayment,
+      currentTermPayment: currentTermPayment,
+      paymentMethod: paymentData.paymentMethod || 'cash',
+      paymentDate: firebase.firestore.FieldValue.serverTimestamp(), // ACTUAL payment time
+      receiptNo: receiptNo,
+      recordedBy: auth.currentUser.uid,
+      notes: paymentData.notes || '',
+      balanceAfterPayment: newBalance,
+      // Lock receipt data - immutable
+      receiptSnapshot: {
+        totalDue: totalDue,
+        totalPaid: newTotalPaid,
+        balance: newBalance,
+        status: paymentStatus
+      }
+    });
+
+    // Update payment summary with ORIGINAL session format
+    await db.collection('payments').doc(paymentRecordId).set({
+      pupilId: pupilId,
+      pupilName: pupilName,
+      classId: classId,
+      className: className,
+      session: session, // ORIGINAL format "2025/2026"
+      term: term,
+      amountDue: amountDue,
+      arrears: remainingArrears,
+      totalDue: amountDue + remainingArrears,
+      totalPaid: newTotalPaid,
+      balance: newBalance,
+      status: paymentStatus,
+      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      lastPaymentAmount: amountPaid,
+      lastReceiptNo: receiptNo,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return {
+      success: true,
+      receiptNo: receiptNo,
+      transactionId: transactionId,
+      amountPaid: amountPaid,
+      arrearsPayment: arrearsPayment,
+      currentTermPayment: currentTermPayment,
+      newBalance: newBalance,
+      totalPaid: newTotalPaid,
+      status: paymentStatus
+    };
+
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    throw error;
+  }
+},
 
   /**
    * Generate unique receipt number
