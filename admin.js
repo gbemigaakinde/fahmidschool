@@ -4057,17 +4057,32 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     const encodedSession = session.replace(/\//g, '-');
     
     for (const pupilDoc of pupilsSnap.docs) {
+      // Inside the for (const pupilDoc of pupilsSnap.docs) loop
       const pupilData = pupilDoc.data();
       const pupilId = pupilDoc.id;
       const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
       
-      // ✅ FIX: Check if payment record already exists
+      // Check if payment record already exists
       const existingPayment = await db.collection('payments').doc(paymentDocId).get();
       
       if (existingPayment.exists) {
         console.log(`⏭️ Skipping ${pupilData.name} - payment record already exists`);
         skipped++;
-        continue; // SKIP - do not overwrite
+        continue;
+      }
+      
+      // Calculate actual fee for this pupil in this term (enrollment-aware)
+      const actualFee = window.finance.calculatePupilTermFee(
+        pupilData,
+        totalFee,
+        term
+      );
+      
+      // Skip if pupil is not enrolled for this term
+      if (actualFee === 0) {
+        console.log(`⏭️ Skipping ${pupilData.name} - not enrolled for ${term}`);
+        skipped++;
+        continue;
       }
       
       // Check for arrears from previous session
@@ -4079,7 +4094,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
       
       const paymentRef = db.collection('payments').doc(paymentDocId);
       
-      // ✅ FIX: Use set() WITHOUT merge - only creates NEW records
+      // Create payment record with actual fee (not class fee)
       batch.set(paymentRef, {
         pupilId: pupilId,
         pupilName: pupilData.name || 'Unknown',
@@ -4087,11 +4102,11 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
         className: className,
         session: session,
         term: term,
-        amountDue: totalFee,
+        amountDue: actualFee, // Uses calculated fee, not base fee
         arrears: arrears,
-        totalDue: totalFee + arrears,
+        totalDue: actualFee + arrears,
         totalPaid: 0,
-        balance: totalFee + arrears,
+        balance: actualFee + arrears,
         status: arrears > 0 ? 'owing_with_arrears' : 'owing',
         lastPaymentDate: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
