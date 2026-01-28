@@ -53,21 +53,24 @@ const finance = {
    * Get fee structure for a class
    */
   async getFeeStructure(classId, session, term) {
-    try {
-      const feeStructureId = `${classId}_${session}_${term}`;
-      const doc = await db.collection('fee_structures').doc(feeStructureId).get();
+  try {
+    // FIXED: Match admin.js storage format (no term in document ID)
+    const encodedSession = session.replace(/\//g, '-');
+    const feeStructureId = `${classId}_${encodedSession}`;
+    const doc = await db.collection('fee_structures').doc(feeStructureId).get();
 
-      if (!doc.exists) {
-        return null;
-      }
-
-      return doc.data();
-
-    } catch (error) {
-      console.error('Error getting fee structure:', error);
+    if (!doc.exists) {
+      console.warn(`Fee structure not found: ${feeStructureId}`);
       return null;
     }
-  },
+
+    return doc.data();
+
+  } catch (error) {
+    console.error('Error getting fee structure:', error);
+    return null;
+  }
+}
 
   /**
    * Record a payment transaction
