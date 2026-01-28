@@ -492,6 +492,10 @@ async function loadResults() {
  * - Prevents hidden debts
  */
 
+/**
+ * FIXED: Load Fee Balance - Current Term Only
+ * Shows only the current term's fee status based on school settings
+ */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
     
@@ -510,16 +514,15 @@ async function loadFeeBalance() {
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
+        const currentTerm = settings.term; // Get current term from settings
         const encodedSession = session.replace(/\//g, '-');
         
-        // ✅ FIX: Get ALL payment records for current session (all terms)
-        const paymentsSnap = await db.collection('payments')
-            .where('pupilId', '==', currentPupilId)
-            .where('session', '==', session)
-            .get();  // ← REMOVED term filter
+        // ✅ FIX: Get payment record for CURRENT TERM ONLY
+        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
+        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
         
-        if (paymentsSnap.empty) {
-            // No fee structure configured
+        if (!paymentDoc.exists) {
+            // No fee structure configured for current term
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -527,7 +530,7 @@ async function loadFeeBalance() {
                     </div>
                     <div class="section-title">
                         <h2>Fee Information</h2>
-                        <p>No fee structure configured for your class yet</p>
+                        <p>No fee structure configured for ${currentTerm} yet</p>
                     </div>
                 </div>
                 <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
@@ -537,175 +540,99 @@ async function loadFeeBalance() {
             return;
         }
         
-        // ✅ FIX: Calculate cumulative totals across ALL terms
-        let cumulativeDue = 0;
-        let cumulativePaid = 0;
-        let cumulativeBalance = 0;
-        const termBreakdown = [];
+        const paymentData = paymentDoc.data();
         
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            const termDue = data.amountDue || 0;
-            const termPaid = data.totalPaid || 0;
-            const termBalance = data.balance || 0;
-            
-            cumulativeDue += termDue;
-            cumulativePaid += termPaid;
-            cumulativeBalance += termBalance;
-            
-            if (termDue > 0) {
-                termBreakdown.push({
-                    term: data.term,
-                    due: termDue,
-                    paid: termPaid,
-                    balance: termBalance,
-                    lastPaymentDate: data.lastPaymentDate
-                });
-            }
-        });
+        // Extract current term data
+        const amountDue = paymentData.amountDue || 0;
+        const totalPaid = paymentData.totalPaid || 0;
+        const balance = paymentData.balance || 0;
+        const arrears = paymentData.arrears || 0;
+        const status = paymentData.status || 'owing';
         
-        // Sort by term order
-        const termOrder = { 'First Term': 1, 'Second Term': 2, 'Third Term': 3 };
-        termBreakdown.sort((a, b) => termOrder[a.term] - termOrder[b.term]);
-        
-       // Determine overall status
+        // Determine status color and badge
         let statusColor = '#f44336';
         let statusText = 'Outstanding Balance';
         let statusIcon = 'alert-circle';
         
-        if (cumulativeBalance <= 0) {
+        if (balance <= 0) {
             statusColor = '#4CAF50';
             statusText = 'Fully Paid';
             statusIcon = 'check-circle';
-        } else if (cumulativePaid > 0) {
+        } else if (totalPaid > 0) {
             statusColor = '#ff9800';
             statusText = 'Partial Payment';
             statusIcon = 'clock';
         }
         
-        // FIXED: Calculate arrears from payment records
-        let totalArrears = 0;
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            totalArrears += (data.arrears || 0);
-        });
-        
-        const arrearsHTML = totalArrears > 0 ? `
-  <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
-    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
-      <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
-      <div>
-        <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
-        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Session(s)</p>
-      </div>
-    </div>
-    <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
-      ₦${totalArrears.toLocaleString()}
-    </div>
-    <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
-      This amount is being carried forward and must be paid along with current fees.
-    </p>
-  </div>
-` : '';
-        
-        // Get enrollment summary
-        const enrollmentSummary = window.finance.getPupilEnrollmentSummary(currentPupilData);
-        
-        // Build enrollment info banner if not full session
-        let enrollmentBannerHTML = '';
-        if (!enrollmentSummary.isFullSession) {
-            enrollmentBannerHTML = `
-                <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);">
-                    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
-                        <i data-lucide="info" style="width: 32px; height: 32px;"></i>
-                        <div>
-                            <h3 style="margin: 0; color: white;">Enrollment Information</h3>
-                            <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">Your fee schedule</p>
-                        </div>
-                    </div>
-                    <div style="display: grid; gap: var(--space-sm); font-size: var(--text-sm);">
-                        <div><strong>Enrolled from:</strong> ${enrollmentSummary.admissionTerm}</div>
-                        <div><strong>Enrolled until:</strong> ${enrollmentSummary.exitTerm}</div>
-                        <div><strong>Active terms:</strong> ${enrollmentSummary.enrolledTerms.join(', ')}</div>
+        // Build arrears alert if exists
+        const arrearsHTML = arrears > 0 ? `
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
+                <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+                    <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+                    <div>
+                        <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
+                        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Session(s)</p>
                     </div>
                 </div>
-            `;
-        }
+                <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+                    ₦${arrears.toLocaleString()}
+                </div>
+                <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
+                    This amount is being carried forward and must be paid along with current term fees.
+                </p>
+            </div>
+        ` : '';
         
-        // Build enhanced fee section with enrollment awareness
+        // Calculate total due (term fee + arrears)
+        const totalDue = amountDue + arrears;
+        
+        // Render fee section
         feeSection.innerHTML = `
             <div class="section-header">
                 <div class="section-icon" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%);">
                     <i data-lucide="${statusIcon}"></i>
                 </div>
                 <div class="section-title">
-                    <h2>Fee Status (${session})</h2>
-                    <p style="color: ${statusColor}; font-weight: 600;">${statusText}</p>
+                    <h2>Fee Status - ${currentTerm}</h2>
+                    <p style="color: ${statusColor}; font-weight: 600;">${session} • ${statusText}</p>
                 </div>
             </div>
 
-            ${enrollmentBannerHTML}
-
             ${arrearsHTML}
 
-            <!-- Cumulative Summary Cards -->
+            <!-- Current Term Fee Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                ${arrears > 0 ? `
+                <div style="text-align: center; padding: var(--space-xl); background: #fef2f2; border: 2px solid #dc3545; border-radius: var(--radius-lg);">
+                    <div style="font-size: var(--text-xs); color: #991b1b; margin-bottom: var(--space-xs); font-weight: 600;">Arrears</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700; color: #dc3545;">₦${arrears.toLocaleString()}</div>
+                </div>
+                ` : ''}
+                
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Due (Enrolled Terms)</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${cumulativeDue.toLocaleString()}</div>
-                    <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">${termBreakdown.length} term(s)</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Current Term Fee</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${amountDue.toLocaleString()}</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">${currentTerm}</div>
                 </div>
                 
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Paid</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${cumulativePaid.toLocaleString()}</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${totalPaid.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
-                        ${cumulativePaid > 0 ? Math.round((cumulativePaid / cumulativeDue) * 100) + '% collected' : 'No payments yet'}
+                        ${totalPaid > 0 ? Math.round((totalPaid / totalDue) * 100) + '% collected' : 'No payments yet'}
                     </div>
                 </div>
                 
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(${statusColor === '#4CAF50' ? '76, 175, 80' : '244, 67, 54'}, 0.3);">
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Outstanding</div>
-                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${cumulativeBalance.toLocaleString()}</div>
+                    <div style="font-size: var(--text-3xl); font-weight: 700;">₦${balance.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
-                        ${cumulativeBalance > 0 ? 'Amount remaining' : 'All paid!'}
+                        ${balance > 0 ? 'Amount remaining' : 'All paid!'}
                     </div>
                 </div>
             </div>
 
-            <!-- ✅ NEW: Term-by-Term Breakdown -->
-            ${termBreakdown.length > 1 ? `
-            <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0; margin-bottom: var(--space-xl);">
-                <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
-                    <i data-lucide="list" style="width: 20px; height: 20px;"></i>
-                    Term-by-Term Breakdown
-                </h3>
-                <div style="display: grid; gap: var(--space-md);">
-                    ${termBreakdown.map(term => {
-                        const termStatus = term.balance <= 0 ? 'Paid' : term.paid > 0 ? 'Partial' : 'Unpaid';
-                        const termColor = term.balance <= 0 ? '#4CAF50' : term.paid > 0 ? '#ff9800' : '#f44336';
-                        
-                        return `
-                            <div style="padding: var(--space-md); background: #f8fafc; border-left: 4px solid ${termColor}; border-radius: var(--radius-sm);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xs);">
-                                    <strong style="color: #0f172a;">${term.term}</strong>
-                                    <span style="background: ${termColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: var(--text-xs); font-weight: 600;">
-                                        ${termStatus}
-                                    </span>
-                                </div>
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); font-size: var(--text-sm); color: var(--color-gray-600);">
-                                    <div>Due: <strong style="color: #0f172a;">₦${term.due.toLocaleString()}</strong></div>
-                                    <div>Paid: <strong style="color: #4CAF50;">₦${term.paid.toLocaleString()}</strong></div>
-                                    <div>Balance: <strong style="color: ${termColor};">₦${term.balance.toLocaleString()}</strong></div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-            ` : ''}
-
-            <!-- Payment History -->
+            <!-- Payment History (ALL transactions across all terms/sessions) -->
             <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
                 <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
                     <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
@@ -720,15 +647,15 @@ async function loadFeeBalance() {
             </div>
 
             <!-- Payment Instructions -->
-            <div style="margin-top: var(--space-xl); padding: var(--space-lg); background: ${cumulativeBalance > 0 ? '#fef2f2' : '#f0fdf4'}; border: 2px solid ${cumulativeBalance > 0 ? '#dc3545' : '#4CAF50'}; border-radius: var(--radius-md);">
-                <h4 style="margin: 0 0 var(--space-sm); color: ${cumulativeBalance > 0 ? '#991b1b' : '#065f46'}; display: flex; align-items: center; gap: var(--space-sm);">
-                    <i data-lucide="${cumulativeBalance > 0 ? 'alert-triangle' : 'check-circle'}" style="width: 18px; height: 18px;"></i>
-                    ${cumulativeBalance > 0 ? 'Payment Required' : 'All Fees Paid'}
+            <div style="margin-top: var(--space-xl); padding: var(--space-lg); background: ${balance > 0 ? '#fef2f2' : '#f0fdf4'}; border: 2px solid ${balance > 0 ? '#dc3545' : '#4CAF50'}; border-radius: var(--radius-md);">
+                <h4 style="margin: 0 0 var(--space-sm); color: ${balance > 0 ? '#991b1b' : '#065f46'}; display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-lucide="${balance > 0 ? 'alert-triangle' : 'check-circle'}" style="width: 18px; height: 18px;"></i>
+                    ${balance > 0 ? 'Payment Required' : 'Term Fees Paid'}
                 </h4>
-                <p style="margin: 0; font-size: var(--text-sm); color: ${cumulativeBalance > 0 ? '#7f1d1d' : '#14532d'}; line-height: 1.6;">
-                    ${cumulativeBalance > 0 
-                        ? `You have an outstanding balance of ₦${cumulativeBalance.toLocaleString()} across ${termBreakdown.filter(t => t.balance > 0).length} term(s). Please visit the school office to make payment.`
-                        : 'All fees for this session have been paid in full. Thank you!'}
+                <p style="margin: 0; font-size: var(--text-sm); color: ${balance > 0 ? '#7f1d1d' : '#14532d'}; line-height: 1.6;">
+                    ${balance > 0 
+                        ? `You have an outstanding balance of ₦${balance.toLocaleString()} for ${currentTerm}. Please visit the school office to make payment.`
+                        : `All fees for ${currentTerm} have been paid in full. Thank you!`}
                 </p>
             </div>
         `;
@@ -738,8 +665,8 @@ async function loadFeeBalance() {
             lucide.createIcons();
         }
         
-        // ✅ FIX: Load payment history for ALL terms (no term filter)
-        await loadPaymentHistoryAllTerms(encodedSession);
+        // ✅ FIX: Load ALL payment history (no term filter)
+        await loadAllPaymentHistory(currentPupilId, session);
         
     } catch (error) {
         console.error('Error loading fee balance:', error);
@@ -753,19 +680,17 @@ async function loadFeeBalance() {
 }
 
 /**
- * ✅ NEW: Load payment history for all terms in session
+ * ✅ NEW: Load ALL payment history for pupil (across all terms/sessions)
+ * Replaces term-filtered payment history
  */
-async function loadPaymentHistoryAllTerms(encodedSession) {
+async function loadAllPaymentHistory(pupilId, currentSession) {
     const container = document.getElementById('payment-history-list');
-    if (!container || !currentPupilId) return;
+    if (!container || !pupilId) return;
     
     try {
-        const decodedSession = encodedSession.replace(/-/g, '/');
-        
-        // Query ALL transactions for this session (all terms)
+        // Query ALL transactions for this pupil (no session/term filter)
         const transactionsSnap = await db.collection('payment_transactions')
-            .where('pupilId', '==', currentPupilId)
-            .where('session', '==', decodedSession)
+            .where('pupilId', '==', pupilId)
             .orderBy('paymentDate', 'desc')
             .get();
         
@@ -773,7 +698,7 @@ async function loadPaymentHistoryAllTerms(encodedSession) {
             container.innerHTML = `
                 <div style="text-align:center; padding:var(--space-xl); color:var(--color-gray-600); background: #f8fafc; border-radius: var(--radius-md);">
                     <i data-lucide="inbox" style="width: 40px; height: 40px; margin: 0 auto var(--space-md); opacity: 0.5;"></i>
-                    <p style="margin: 0;">No payment history yet for this session</p>
+                    <p style="margin: 0;">No payment history yet</p>
                 </div>
             `;
             
@@ -783,75 +708,121 @@ async function loadPaymentHistoryAllTerms(encodedSession) {
         
         container.innerHTML = '';
         
+        // Group transactions by session for better organization
+        const transactionsBySession = {};
+        
         transactionsSnap.forEach(doc => {
             const data = doc.data();
-            const paymentDate = data.paymentDate 
-                ? data.paymentDate.toDate().toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: 'numeric' 
-                  })
-                : 'N/A';
+            const session = data.session || 'Unknown Session';
             
-            const itemDiv = document.createElement('div');
-            itemDiv.style.cssText = `
-                padding: var(--space-md);
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: var(--radius-md);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                transition: all 0.2s ease;
-            `;
+            if (!transactionsBySession[session]) {
+                transactionsBySession[session] = [];
+            }
             
-            itemDiv.innerHTML = `
-                <div style="flex: 1;">
-                    <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
-                        ₦${parseFloat(data.amountPaid).toLocaleString()}
-                    </div>
-                    <div style="font-size: var(--text-sm); color: #64748b; display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-                            ${paymentDate}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
-                            ${data.term || 'N/A'}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="${data.paymentMethod === 'cash' ? 'banknote' : 'credit-card'}" style="width: 14px; height: 14px;"></i>
-                            ${data.paymentMethod || 'Cash'}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
-                            ${data.receiptNo}
-                        </span>
-                    </div>
-                </div>
-                <button class="btn-small btn-secondary" onclick="viewReceipt('${data.receiptNo}')" style="white-space: nowrap;">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                    View Receipt
-                </button>
-            `;
-            
-            itemDiv.onmouseenter = () => {
-                itemDiv.style.background = 'white';
-                itemDiv.style.borderColor = '#cbd5e1';
-                itemDiv.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
-            };
-            itemDiv.onmouseleave = () => {
-                itemDiv.style.background = '#f8fafc';
-                itemDiv.style.borderColor = '#e2e8f0';
-                itemDiv.style.boxShadow = 'none';
-            };
-            
-            container.appendChild(itemDiv);
+            transactionsBySession[session].push({ id: doc.id, ...data });
         });
+        
+        // Render transactions grouped by session
+        Object.keys(transactionsBySession)
+            .sort((a, b) => {
+                // Sort sessions newest first
+                const yearA = parseInt(a.split('/')[0]) || 0;
+                const yearB = parseInt(b.split('/')[0]) || 0;
+                return yearB - yearA;
+            })
+            .forEach(session => {
+                // Session header
+                const sessionHeader = document.createElement('div');
+                sessionHeader.style.cssText = `
+                    font-weight: 700;
+                    font-size: var(--text-lg);
+                    color: #0f172a;
+                    margin-top: var(--space-lg);
+                    margin-bottom: var(--space-md);
+                    padding-bottom: var(--space-sm);
+                    border-bottom: 2px solid #e2e8f0;
+                `;
+                sessionHeader.innerHTML = `
+                    📅 ${session} 
+                    <span style="font-size: var(--text-sm); font-weight: 400; color: var(--color-gray-600);">
+                        (${transactionsBySession[session].length} payment${transactionsBySession[session].length > 1 ? 's' : ''})
+                    </span>
+                `;
+                container.appendChild(sessionHeader);
+                
+                // Render transactions for this session
+                transactionsBySession[session].forEach(txn => {
+                    const paymentDate = txn.paymentDate 
+                        ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })
+                        : 'N/A';
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.style.cssText = `
+                        padding: var(--space-md);
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: var(--radius-md);
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        transition: all 0.2s ease;
+                        margin-bottom: var(--space-sm);
+                    `;
+                    
+                    itemDiv.innerHTML = `
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
+                                ₦${parseFloat(txn.amountPaid).toLocaleString()}
+                            </div>
+                            <div style="font-size: var(--text-sm); color: #64748b; display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
+                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                    <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                                    ${paymentDate}
+                                </span>
+                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                    <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
+                                    ${txn.term || 'N/A'}
+                                </span>
+                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                    <i data-lucide="${txn.paymentMethod === 'cash' ? 'banknote' : 'credit-card'}" style="width: 14px; height: 14px;"></i>
+                                    ${txn.paymentMethod || 'Cash'}
+                                </span>
+                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                    <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+                                    ${txn.receiptNo}
+                                </span>
+                            </div>
+                        </div>
+                        <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')" style="white-space: nowrap;">
+                            <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                            View Receipt
+                        </button>
+                    `;
+                    
+                    itemDiv.onmouseenter = () => {
+                        itemDiv.style.background = 'white';
+                        itemDiv.style.borderColor = '#cbd5e1';
+                        itemDiv.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
+                    };
+                    itemDiv.onmouseleave = () => {
+                        itemDiv.style.background = '#f8fafc';
+                        itemDiv.style.borderColor = '#e2e8f0';
+                        itemDiv.style.boxShadow = 'none';
+                    };
+                    
+                    container.appendChild(itemDiv);
+                });
+            });
         
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
+        
+        console.log(`✓ Loaded ${transactionsSnap.size} total payment records for pupil`);
         
     } catch (error) {
         console.error('Error loading payment history:', error);
@@ -862,119 +833,12 @@ async function loadPaymentHistoryAllTerms(encodedSession) {
         `;
     }
 }
+
+// Make function globally available
+window.loadAllPaymentHistory = loadAllPaymentHistory;
 
 // Make functions globally available
 window.loadFeeBalance = loadFeeBalance;
-window.loadPaymentHistoryAllTerms = loadPaymentHistoryAllTerms;
-
-/**
- * Load payment history with encoded session
- */
-async function loadPaymentHistory(encodedSession, term) {
-    const container = document.getElementById('payment-history-list');
-    if (!container || !currentPupilId) return;
-    
-    try {
-        // Query transactions directly from Firestore
-        const transactionsSnap = await db.collection('payment_transactions')
-            .where('pupilId', '==', currentPupilId)
-            .where('session', '==', encodedSession.replace(/-/g, '/')) // Convert back to original format for query
-            .where('term', '==', term)
-            .orderBy('paymentDate', 'desc')
-            .get();
-        
-        if (transactionsSnap.empty) {
-            container.innerHTML = `
-                <div style="text-align:center; padding:var(--space-xl); color:var(--color-gray-600); background: #f8fafc; border-radius: var(--radius-md);">
-                    <i data-lucide="inbox" style="width: 40px; height: 40px; margin: 0 auto var(--space-md); opacity: 0.5;"></i>
-                    <p style="margin: 0;">No payment history yet for this session</p>
-                </div>
-            `;
-            
-            // Re-init icons
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        transactionsSnap.forEach(doc => {
-            const data = doc.data();
-            const paymentDate = data.paymentDate 
-                ? data.paymentDate.toDate().toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: 'numeric' 
-                  })
-                : 'N/A';
-            
-            const itemDiv = document.createElement('div');
-            itemDiv.style.cssText = `
-                padding: var(--space-md);
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: var(--radius-md);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                transition: all 0.2s ease;
-            `;
-            
-            itemDiv.innerHTML = `
-                <div style="flex: 1;">
-                    <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
-                        ₦${parseFloat(data.amountPaid).toLocaleString()}
-                    </div>
-                    <div style="font-size: var(--text-sm); color: #64748b; display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-                            ${paymentDate}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="${data.paymentMethod === 'cash' ? 'banknote' : 'credit-card'}" style="width: 14px; height: 14px;"></i>
-                            ${data.paymentMethod || 'Cash'}
-                        </span>
-                        <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                            <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
-                            ${data.receiptNo}
-                        </span>
-                    </div>
-                </div>
-                <button class="btn-small btn-secondary" onclick="viewReceipt('${data.receiptNo}')" style="white-space: nowrap;">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                    View Receipt
-                </button>
-            `;
-            
-            // Hover effect
-            itemDiv.onmouseenter = () => {
-                itemDiv.style.background = 'white';
-                itemDiv.style.borderColor = '#cbd5e1';
-                itemDiv.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
-            };
-            itemDiv.onmouseleave = () => {
-                itemDiv.style.background = '#f8fafc';
-                itemDiv.style.borderColor = '#e2e8f0';
-                itemDiv.style.boxShadow = 'none';
-            };
-            
-            container.appendChild(itemDiv);
-        });
-        
-        // Re-initialize Lucide icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-        
-    } catch (error) {
-        console.error('Error loading payment history:', error);
-        container.innerHTML = `
-            <div style="text-align:center; padding:var(--space-lg); color:var(--color-danger); background: #fef2f2; border-radius: var(--radius-md);">
-                <p style="margin: 0;">Error loading payment history</p>
-            </div>
-        `;
-    }
-}
 
 /**
  * Open receipt in new window
