@@ -5882,26 +5882,33 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       // Build pupil data
-      const pupilData = {
-        admissionNo,
-        name,
-        dob: document.getElementById('pupil-dob')?.value || '',
-        gender: document.getElementById('pupil-gender')?.value || '',
-        parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
-        parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
-        contact: document.getElementById('pupil-contact')?.value.trim() || '',
-        address: document.getElementById('pupil-address')?.value.trim() || '',
-        class: {
-          id: classId,
-          name: classData.name || 'Unknown Class'
-        },
-        subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
-        assignedTeacher: {
-          id: teacherId,
-          name: teacherName
-        },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
+const pupilData = {
+    admissionNo,
+    name,
+    dob: document.getElementById('pupil-dob')?.value || '',
+    gender: document.getElementById('pupil-gender')?.value || '',
+    parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
+    parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
+    contact: document.getElementById('pupil-contact')?.value.trim() || '',
+    address: document.getElementById('pupil-address')?.value.trim() || '',
+    class: {
+        id: classId,
+        name: classData.name || 'Unknown Class'
+    },
+    subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+    assignedTeacher: {
+        id: teacherId,
+        name: teacherName
+    },
+
+    // ✅ New Optional Fields
+    admissionTerm: document.getElementById('pupil-admission-term')?.value || 'First Term',
+    exitTerm: document.getElementById('pupil-exit-term')?.value || 'Third Term',
+    feeAdjustmentPercent: parseFloat(document.getElementById('pupil-fee-adjustment-percent')?.value) || 0,
+    feeAdjustmentAmount: parseFloat(document.getElementById('pupil-fee-adjustment-amount')?.value) || 0,
+
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+};
       
       if (pupilId) {
         // UPDATE EXISTING PUPIL
