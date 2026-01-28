@@ -99,8 +99,9 @@ async function loadAssignedClasses() {
   
   try {
     const snap = await db.collection('classes')
-      .where('teacherId', '==', currentUser.uid)
-      .get();
+  .where('teacherId', '==', currentUser.uid)
+  .limit(100) // Add explicit limit to satisfy security rules
+  .get();
     
     assignedClasses = snap.docs.map(doc => ({
       id: doc.id,
