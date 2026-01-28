@@ -70,7 +70,7 @@ const finance = {
     console.error('Error getting fee structure:', error);
     return null;
   }
-}
+},
 
   /**
    * Record a payment transaction
