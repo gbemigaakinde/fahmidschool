@@ -3026,51 +3026,55 @@ async function loadFeeStructures() {
     container.innerHTML = '';
     
     snapshot.forEach(doc => {
-      const data = doc.data();
-      
-      const card = document.createElement('div');
-      card.className = 'fee-structure-card';
-      card.style.cssText = `
-        background: white;
-        border: 1px solid var(--color-gray-300);
-        border-radius: var(--radius-md);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-md);
-      `;
-      
-      const feeItems = Object.entries(data.fees || {})
-        .map(([key, value]) => `
-          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
-            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
-            <strong>₦${parseFloat(value).toLocaleString()}</strong>
-          </div>
-        `).join('');
-      
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
-          <div>
-            <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
-            <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
-              ${data.session} • ${data.term}
-            </p>
-          </div>
-          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
-            Delete
-          </button>
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          ${feeItems}
-        </div>
-        
-        <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
-          <strong style="font-size:var(--text-lg);">Total:</strong>
-          <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
-        </div>
-      `;
-      
-      container.appendChild(card);
-    });
+  const data = doc.data();
+  
+  const card = document.createElement('div');
+  card.className = 'fee-structure-card';
+  card.style.cssText = `
+    background: white;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-md);
+  `;
+  
+  const feeItems = Object.entries(data.fees || {})
+    .map(([key, value]) => `
+      <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
+        <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
+        <strong>₦${parseFloat(value).toLocaleString()}</strong>
+      </div>
+    `).join('');
+  
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
+      <div>
+        <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
+        <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
+          ${data.session} • <strong>All Terms</strong>
+        </p>
+      </div>
+      <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+        Delete
+      </button>
+    </div>
+    
+    <div style="margin-bottom:var(--space-md);">
+      ${feeItems}
+    </div>
+    
+    <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
+      <strong style="font-size:var(--text-lg);">Total per term:</strong>
+      <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
+    </div>
+    
+    <div style="margin-top:var(--space-md); padding:var(--space-sm); background:#e3f2fd; border-left:4px solid #2196F3; border-radius:var(--radius-sm); font-size:var(--text-sm);">
+      ℹ️ This fee applies to <strong>all terms</strong> in ${data.session} until you change it
+    </div>
+  `;
+  
+  container.appendChild(card);
+});
     
   } catch (error) {
     console.error('Error loading fee structures:', error);
@@ -3649,15 +3653,15 @@ async function loadFinancialReports() {
         console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
         
         const feeStructuresSnap = await db.collection('fee_structures')
-            .where('session', '==', session)
-            .get();
+           .where('session', '==', session)
+           .get();
         
         const feeStructureMap = {};
-        feeStructuresSnap.forEach(doc => {
-            const data = doc.data();
-            const key = `${data.classId}_${data.term}`;
-            feeStructureMap[key] = data.total || 0;
-        });
+feeStructuresSnap.forEach(doc => {
+  const data = doc.data();
+  // Map by classId only (no term)
+  feeStructureMap[data.classId] = data.total || 0;
+});
         
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
@@ -3941,42 +3945,33 @@ async function saveFeeStructure() {
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
-    const term = settings.term;
     
-    await db.collection('fee_structures').add({
+    // ✅ FIX: Use class ID + session as document ID (NO term)
+    // This makes fee structure persist across all terms
+    const feeDocId = `${classId}_${session.replace(/\//g, '-')}`;
+    
+    await db.collection('fee_structures').doc(feeDocId).set({
       classId,
       className,
       session,
-      term,
+      // NO term field - applies to all terms in this session
       fees: feeBreakdown,
       total: total,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: auth.currentUser.uid
     });
 
-    // FIXED: Show confirmation before auto-generating
-    const autoGenerate = confirm(
-      `Fee structure saved!\n\n` +
-      `Auto-generate payment records for all pupils in ${className}?\n\n` +
-      `Click OK to generate now, or Cancel to generate later.`
+    window.showToast?.(
+      `✓ Fee structure saved for ${className}!\n\n` +
+      `Per-term fee: ₦${total.toLocaleString()}\n\n` +
+      `This fee applies to ALL terms in ${session} until you change it.\n\n` +
+      `Use "Generate Missing Records" to create payment records for pupils.`,
+      'success',
+      10000
     );
-
-    if (autoGenerate) {
-      const result = await generatePaymentRecordsForClass(classId, className, session, term, total);
-      
-      window.showToast?.(
-        `✓ Fee structure saved!\n${result.count} payment record(s) created`,
-        'success',
-        6000
-      );
-    } else {
-      window.showToast?.(
-        `✓ Fee structure saved!\nUse "Generate Missing Records" button to create pupil records later.`,
-        'success',
-        6000
-      );
-    }
     
+    // Clear form
     document.getElementById('fee-config-class').value = '';
     ['fee-tuition', 'fee-exam', 'fee-uniform', 'fee-books', 'fee-pta', 'fee-other'].forEach(id => {
       const el = document.getElementById(id);
@@ -4001,7 +3996,7 @@ async function saveFeeStructure() {
  */
 async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
   try {
-    console.log(`Generating payment records for class ${className}...`);
+    console.log(`Generating payment records for class ${className}, term ${term}...`);
     
     // Get all pupils in this class
     const pupilsSnap = await db.collection('pupils')
@@ -4010,30 +4005,40 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     
     if (pupilsSnap.empty) {
       console.log('No pupils found in this class');
-      return { success: true, count: 0 };
+      return { success: true, count: 0, skipped: 0, total: 0 };
     }
     
     const batch = db.batch();
-    let count = 0;
+    let created = 0;
+    let skipped = 0;
     
-    // Get previous session name for arrears checking
     const previousSession = getPreviousSessionName(session);
+    const encodedSession = session.replace(/\//g, '-');
     
     for (const pupilDoc of pupilsSnap.docs) {
       const pupilData = pupilDoc.data();
       const pupilId = pupilDoc.id;
-      const encodedSession = session.replace(/\//g, '-');
+      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
       
-      // ✅ NEW: Check for arrears from previous session
+      // ✅ FIX: Check if payment record already exists
+      const existingPayment = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (existingPayment.exists) {
+        console.log(`⏭️ Skipping ${pupilData.name} - payment record already exists`);
+        skipped++;
+        continue; // SKIP - do not overwrite
+      }
+      
+      // Check for arrears from previous session
       let arrears = 0;
       if (previousSession) {
         const previousSessionBalance = await calculateSessionBalance(pupilId, previousSession);
         arrears = previousSessionBalance;
       }
       
-      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
       const paymentRef = db.collection('payments').doc(paymentDocId);
       
+      // ✅ FIX: Use set() WITHOUT merge - only creates NEW records
       batch.set(paymentRef, {
         pupilId: pupilId,
         pupilName: pupilData.name || 'Unknown',
@@ -4042,24 +4047,32 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
         session: session,
         term: term,
         amountDue: totalFee,
-        arrears: arrears, // ✅ NEW: Arrears from previous session
-        totalDue: totalFee + arrears, // ✅ NEW: Total including arrears
+        arrears: arrears,
+        totalDue: totalFee + arrears,
         totalPaid: 0,
-        balance: totalFee + arrears, // ✅ NEW: Balance includes arrears
+        balance: totalFee + arrears,
         status: arrears > 0 ? 'owing_with_arrears' : 'owing',
         lastPaymentDate: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      });
       
-      count++;
+      created++;
     }
     
-    await batch.commit();
+    if (created > 0) {
+      await batch.commit();
+      console.log(`✓ Created ${created} new payment records (${skipped} skipped)`);
+    } else {
+      console.log(`✓ All ${pupilsSnap.size} pupils already have payment records`);
+    }
     
-    console.log(`✓ Generated ${count} payment records (including arrears check)`);
-    
-    return { success: true, count: count };
+    return { 
+      success: true, 
+      count: created,
+      skipped: skipped,
+      total: pupilsSnap.size
+    };
     
   } catch (error) {
     console.error('Error generating payment records:', error);
@@ -4114,9 +4127,9 @@ async function bulkGenerateAllPaymentRecords() {
   const btn = document.getElementById('bulk-generate-btn');
   
   if (!confirm(
-    'Generate payment records for all pupils in classes with fee structures?\n\n' +
-    'This will create records for pupils who don\'t have them yet.\n' +
-    'Existing records will NOT be overwritten.\n\n' +
+    'Generate payment records for all pupils?\n\n' +
+    'This will create records ONLY for pupils who don\'t have them yet.\n' +
+    'Existing payment records will NOT be overwritten.\n\n' +
     'Continue?'
   )) {
     return;
@@ -4132,18 +4145,19 @@ async function bulkGenerateAllPaymentRecords() {
     const session = settings.session;
     const term = settings.term;
     
-    // Get all fee structures for current session/term
+    // Get all fee structures for current session
     const feeStructuresSnap = await db.collection('fee_structures')
       .where('session', '==', session)
-      .where('term', '==', term)
       .get();
     
     if (feeStructuresSnap.empty) {
-      window.showToast?.('No fee structures found for current session/term', 'info');
+      window.showToast?.('No fee structures found for current session', 'info');
       return;
     }
     
-    let totalGenerated = 0;
+    let totalCreated = 0;
+    let totalSkipped = 0;
+    let classesProcessed = 0;
     
     for (const feeDoc of feeStructuresSnap.docs) {
       const feeData = feeDoc.data();
@@ -4151,19 +4165,24 @@ async function bulkGenerateAllPaymentRecords() {
       const result = await generatePaymentRecordsForClass(
         feeData.classId,
         feeData.className,
-        feeData.session,
-        feeData.term,
+        session,
+        term, // Use current term
         feeData.total
       );
       
-      totalGenerated += result.count;
+      totalCreated += result.count;
+      totalSkipped += result.skipped || 0;
+      classesProcessed++;
     }
     
     window.showToast?.(
-      `✓ Bulk generation complete!\n` +
-      `${totalGenerated} payment record(s) created across ${feeStructuresSnap.size} class(es)`,
+      `✓ Bulk generation complete!\n\n` +
+      `Classes processed: ${classesProcessed}\n` +
+      `Records created: ${totalCreated}\n` +
+      `Records skipped: ${totalSkipped} (already exist)\n\n` +
+      `Existing payment data was preserved.`,
       'success',
-      8000
+      10000
     );
     
     // Reload outstanding fees report if visible
@@ -5889,12 +5908,67 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('✓ User document created');
         
         // Create pupil profile
-        pupilData.email = email;
-        pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        
-        await db.collection('pupils').doc(uid).set(pupilData);
-        
-        console.log('✓ Pupil profile created');
+pupilData.email = email;
+pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+await db.collection('pupils').doc(uid).set(pupilData);
+
+console.log('✓ Pupil profile created');
+
+// ✅ FIX: Auto-create payment record if fee structure exists
+try {
+  const settings = await window.getCurrentSettings();
+  const session = settings.session;
+  const term = settings.term;
+  
+  // Check if fee structure exists for this class
+  const feeDocId = `${classId}_${session.replace(/\//g, '-')}`;
+  const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+  
+  if (feeDoc.exists) {
+    const feeData = feeDoc.data();
+    const totalFee = feeData.total || 0;
+    
+    console.log(`✓ Found fee structure for ${classData.name}: ₦${totalFee.toLocaleString()}`);
+    
+    // Check for arrears from previous session
+    const previousSession = getPreviousSessionName(session);
+    let arrears = 0;
+    
+    if (previousSession) {
+      arrears = await calculateSessionBalance(uid, previousSession);
+    }
+    
+    // Create payment record for current term
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentDocId = `${uid}_${encodedSession}_${term}`;
+    
+    await db.collection('payments').doc(paymentDocId).set({
+      pupilId: uid,
+      pupilName: name,
+      classId: classId,
+      className: classData.name,
+      session: session,
+      term: term,
+      amountDue: totalFee,
+      arrears: arrears,
+      totalDue: totalFee + arrears,
+      totalPaid: 0,
+      balance: totalFee + arrears,
+      status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+      lastPaymentDate: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log(`✓ Auto-created payment record: ₦${totalFee.toLocaleString()} (arrears: ₦${arrears.toLocaleString()})`);
+  } else {
+    console.log(`ℹ️ No fee structure configured for ${classData.name} yet`);
+  }
+} catch (error) {
+  console.error('⚠️ Failed to auto-create payment record:', error);
+  // Don't throw - pupil was created successfully
+}
         
         window.showToast?.(
           `✓ Pupil "${name}" added successfully!\n\nPassword reset email sent to ${email}`,
