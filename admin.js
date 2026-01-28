@@ -3390,15 +3390,9 @@ async function loadPaymentHistory(pupilId, session, term) {
 }
 
 /**
- * FIXED: Outstanding Fees Report with Cumulative Debt Tracking
+ * FIXED: Outstanding Fees Report with Enrollment-Aware Fee Calculation
  * Replace loadOutstandingFeesReport() in admin.js (lines 2370-2470)
- * 
- * FIXES:
- * - Tracks debts across ALL terms in current session
- * - Shows carried-forward balances
- * - Prevents debt from "disappearing"
  */
-
 async function loadOutstandingFeesReport() {
   const container = document.getElementById('outstanding-fees-table');
   if (!container) return;
@@ -3433,17 +3427,18 @@ async function loadOutstandingFeesReport() {
       const pupilId = data.pupilId;
       
       if (!paymentsByPupil[pupilId]) {
-        paymentsByPupil[pupilId] = [];
+        paymentsByPupil[pupilId] = {
+          totalDue: 0,
+          totalPaid: 0,
+          totalBalance: 0,
+          terms: []
+        };
       }
       
-      paymentsByPupil[pupilId].push({
-        term: data.term,
-        amountDue: data.amountDue || 0,
-        arrears: data.arrears || 0,
-        totalDue: data.totalDue || 0,
-        totalPaid: data.totalPaid || 0,
-        balance: data.balance || 0
-      });
+      paymentsByPupil[pupilId].totalDue += data.amountDue || 0;
+      paymentsByPupil[pupilId].totalPaid += data.totalPaid || 0;
+      paymentsByPupil[pupilId].totalBalance += data.balance || 0;
+      paymentsByPupil[pupilId].terms.push(data.term);
     });
     
     // Get all fee structures
@@ -3474,7 +3469,7 @@ async function loadOutstandingFeesReport() {
       
       if (baseFeePerTerm === 0) continue;
       
-      // Calculate expected fees using enrollment-aware logic
+      // ✅ FIX: Calculate expected fees using enrollment-aware logic
       let cumulativeDue = 0;
       
       termOrder.forEach(term => {
@@ -3487,35 +3482,36 @@ async function loadOutstandingFeesReport() {
       });
       
       // Get payment data
-      const payments = paymentsByPupil[pupilId] || [];
+      const payment = paymentsByPupil[pupilId];
       
       let cumulativePaid = 0;
       let cumulativeBalance = 0;
       const termBreakdown = [];
       
-      termOrder.forEach(term => {
-        const termPayment = payments.find(p => p.term === term);
-        const termFee = window.finance.calculatePupilTermFee(
-          pupil,
-          baseFeePerTerm,
-          term
-        );
+      if (payment) {
+        cumulativePaid = payment.totalPaid;
+        cumulativeBalance = payment.totalBalance;
         
-        if (termFee > 0 || termPayment) {
-          const paid = termPayment ? termPayment.totalPaid : 0;
-          const balance = termPayment ? termPayment.balance : termFee;
-          
-          cumulativePaid += paid;
-          cumulativeBalance += balance;
-          
-          termBreakdown.push({
-            term: term,
-            due: termFee,
-            paid: paid,
-            balance: balance
-          });
-        }
-      });
+        termOrder.forEach(term => {
+          if (payment.terms.includes(term)) {
+            const termPayment = paymentsSnap.docs.find(
+              doc => doc.data().pupilId === pupilId && doc.data().term === term
+            );
+            
+            if (termPayment) {
+              const data = termPayment.data();
+              termBreakdown.push({
+                term: term,
+                due: data.amountDue || 0,
+                paid: data.totalPaid || 0,
+                balance: data.balance || 0
+              });
+            }
+          }
+        });
+      } else {
+        cumulativeBalance = cumulativeDue;
+      }
       
       if (cumulativeBalance > 0) {
         outstandingPupils.push({
@@ -3670,6 +3666,10 @@ window.showFeeBreakdown = showFeeBreakdown;
  * - Accurate collection rates
  */
 
+/**
+ * FIXED: Financial Reports with Enrollment-Aware Totals
+ * Replace loadFinancialReports() in admin.js (lines 2740-2820)
+ */
 async function loadFinancialReports() {
     try {
         const settings = await window.getCurrentSettings();
@@ -3690,7 +3690,6 @@ async function loadFinancialReports() {
             .where('session', '==', session)
             .get();
         
-        // Build map of class fees (using new document ID format without term)
         const feeStructureMap = {};
         feeStructuresSnap.forEach(doc => {
             const data = doc.data();
@@ -3737,7 +3736,7 @@ async function loadFinancialReports() {
         
         const termOrder = ['First Term', 'Second Term', 'Third Term'];
         
-        // Calculate for each pupil using new enrollment-aware logic
+        // ✅ FIX: Calculate for each pupil using enrollment-aware logic
         for (const pupilDoc of pupilsSnap.docs) {
             const pupil = pupilDoc.data();
             const pupilId = pupilDoc.id;
@@ -3751,12 +3750,12 @@ async function loadFinancialReports() {
             const baseFeePerTerm = feeStructureMap[classId] || 0;
             
             if (baseFeePerTerm === 0) {
-                continue; // No fee structure for this class
+                continue;
             }
             
             pupilsWithFees++;
             
-            // Calculate expected fees using new helper
+            // Calculate expected fees using enrollment-aware helper
             let pupilExpected = 0;
             
             termOrder.forEach(term => {
