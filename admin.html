@@ -998,6 +998,41 @@ button[onclick="exportPupilResults()"]:hover {
                 <input type="password" id="pupil-password" placeholder="Temporary login password" required minlength="6">
             </div>
 
+            <!-- Enrollment Period -->
+            <div class="form-group">
+                <label>Enrollment Period</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                    <select id="pupil-admission-term">
+                        <option value="First Term">First Term (Sept)</option>
+                        <option value="Second Term">Second Term (Jan)</option>
+                        <option value="Third Term">Third Term (Apr)</option>
+                    </select>
+
+                    <select id="pupil-exit-term">
+                        <option value="First Term">First Term</option>
+                        <option value="Second Term">Second Term</option>
+                        <option value="Third Term" selected>Third Term (Full Session)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Fee Adjustment -->
+            <div class="form-group">
+                <label>Fee Adjustment (Optional)</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                    <input type="number" 
+                           id="pupil-fee-adjustment-percent" 
+                           placeholder="Percentage (e.g., -50 for 50% discount)"
+                           step="0.1">
+
+                    <input type="number" 
+                           id="pupil-fee-adjustment-amount" 
+                           placeholder="Fixed amount (₦)"
+                           step="1">
+                </div>
+                <small style="color: #666;">Negative % = discount, positive = surcharge. Fixed amount applies after percentage.</small>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="btn" id="save-pupil-btn">Save Pupil</button>
                 <button type="button" class="btn btn-secondary" onclick="cancelPupilForm()">Cancel</button>
@@ -1005,28 +1040,27 @@ button[onclick="exportPupilResults()"]:hover {
         </form>
     </div>
 
- <!-- BULK ACTIONS BAR -->
-<div id="bulk-actions-bar" style="display:none; background:#f8f9fa; padding:var(--space-md); border-radius:var(--radius-md); margin-bottom:var(--space-lg); align-items:center; gap:var(--space-md);">
-  <input type="checkbox" id="select-all-pupils" style="cursor:pointer;">
-  <label for="select-all-pupils" style="cursor:pointer; margin:0;">Select All</label>
-  
-  <span id="selected-count" style="margin-left:var(--space-md); color:var(--color-gray-600); font-size:var(--text-sm);">
-    0 selected
-  </span>
-  
-  <div style="margin-left:auto; display:flex; gap:var(--space-sm);">
-    <select id="bulk-action-select" disabled style="padding:var(--space-xs) var(--space-sm);">
-      <option value="">-- Select Action --</option>
-      <option value="reassign-class">Reassign to Class</option>
-      <option value="delete">Delete Selected</option>
-    </select>
-    
-    <button id="apply-bulk-action-btn" class="btn-small btn-primary" onclick="applyBulkAction()" disabled>
-      Apply to Selected
-    </button>
-  </div>
-</div>
+    <!-- BULK ACTIONS BAR -->
+    <div id="bulk-actions-bar" style="display:none; background:#f8f9fa; padding:var(--space-md); border-radius:var(--radius-md); margin-bottom:var(--space-lg); align-items:center; gap:var(--space-md);">
+        <input type="checkbox" id="select-all-pupils" style="cursor:pointer;">
+        <label for="select-all-pupils" style="cursor:pointer; margin:0;">Select All</label>
 
+        <span id="selected-count" style="margin-left:var(--space-md); color:var(--color-gray-600); font-size:var(--text-sm);">
+            0 selected
+        </span>
+
+        <div style="margin-left:auto; display:flex; gap:var(--space-sm);">
+            <select id="bulk-action-select" disabled style="padding:var(--space-xs) var(--space-sm);">
+                <option value="">-- Select Action --</option>
+                <option value="reassign-class">Reassign to Class</option>
+                <option value="delete">Delete Selected</option>
+            </select>
+
+            <button id="apply-bulk-action-btn" class="btn-small btn-primary" onclick="applyBulkAction()" disabled>
+                Apply to Selected
+            </button>
+        </div>
+    </div>
 
     <div class="table-container">
         <table class="responsive-table">
