@@ -3197,13 +3197,12 @@ async function loadPupilPaymentStatus() {
     const session = settings.session;
     const term = settings.term;
     
-    // CRITICAL FIX: Encode session for document ID lookup
     const encodedSession = session.replace(/\//g, '-');
     
-    // Get fee structure (use ORIGINAL session format for query)
+    // Get fee structure
     const feeStructureSnap = await db.collection('fee_structures')
       .where('classId', '==', classId)
-      .where('session', '==', session)  // Use ORIGINAL format "2025/2026"
+      .where('session', '==', session)
       .where('term', '==', term)
       .limit(1)
       .get();
@@ -3221,25 +3220,38 @@ async function loadPupilPaymentStatus() {
     
     const feeStructure = feeStructureSnap.docs[0].data();
     
-    // Get payment document (use ENCODED session in document ID)
+    // Get payment document
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
     
     let amountDue = feeStructure.total || 0;
     let totalPaid = 0;
+    let arrears = 0;
+    let totalDue = amountDue;
     let balance = amountDue;
     let status = 'owing';
     
     if (paymentDoc.exists) {
       const paymentData = paymentDoc.data();
       totalPaid = paymentData.totalPaid || 0;
+      arrears = paymentData.arrears || 0;
+      totalDue = paymentData.totalDue || amountDue;
       balance = paymentData.balance || 0;
       status = paymentData.status || 'owing';
+    } else {
+      // Check for arrears from previous session
+      const previousSession = getPreviousSessionName(session);
+      if (previousSession) {
+        arrears = await calculateSessionBalance(pupilId, previousSession);
+        totalDue = amountDue + arrears;
+        balance = totalDue;
+      }
     }
     
     const statusBadge = 
       status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
       status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
+      arrears > 0 ? '<span class="status-badge" style="background:#dc3545;">Owing (with Arrears)</span>' :
       '<span class="status-badge" style="background:#f44336;">Owing</span>';
     
     statusContainer.innerHTML = `
@@ -3252,9 +3264,30 @@ async function loadPupilPaymentStatus() {
           ${statusBadge}
         </div>
         
+        ${arrears > 0 ? `
+        <!-- ✅ NEW: Arrears Alert -->
+        <div style="background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm); padding:var(--space-md); margin-bottom:var(--space-lg);">
+          <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-xs);">
+            <i data-lucide="alert-triangle" style="width:20px; height:20px; color:#dc3545;"></i>
+            <strong style="color:#991b1b;">Outstanding Arrears from Previous Session</strong>
+          </div>
+          <p style="margin:0; font-size:var(--text-sm); color:#7f1d1d);">
+            This pupil has ₦${arrears.toLocaleString()} unpaid from previous session(s). 
+            Payments will prioritize clearing arrears first.
+          </p>
+        </div>
+        ` : ''}
+        
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
+          ${arrears > 0 ? `
+          <div style="text-align:center; padding:var(--space-md); background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:#991b1b; margin-bottom:var(--space-xs); font-weight:600;">Arrears</div>
+            <div style="font-size:var(--text-xl); font-weight:700; color:#dc3545;">₦${arrears.toLocaleString()}</div>
+          </div>
+          ` : ''}
+          
           <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Amount Due</div>
+            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Current Term Fee</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
           </div>
           
@@ -3264,12 +3297,17 @@ async function loadPupilPaymentStatus() {
           </div>
           
           <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Balance</div>
+            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Total Balance</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
           </div>
         </div>
       </div>
     `;
+    
+    // Re-initialize icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     
     // Show payment input section
     document.getElementById('payment-input-section').style.display = 'block';
@@ -3281,7 +3319,7 @@ async function loadPupilPaymentStatus() {
       amountInput.value = '';
     }
     
-    // Load payment history (pass ORIGINAL session format)
+    // Load payment history
     await loadPaymentHistory(pupilId, session, term);
     
   } catch (error) {
@@ -4011,10 +4049,20 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     const batch = db.batch();
     let count = 0;
     
-    pupilsSnap.forEach(pupilDoc => {
+    // Get previous session name for arrears checking
+    const previousSession = getPreviousSessionName(session);
+    
+    for (const pupilDoc of pupilsSnap.docs) {
       const pupilData = pupilDoc.data();
       const pupilId = pupilDoc.id;
       const encodedSession = session.replace(/\//g, '-');
+      
+      // ✅ NEW: Check for arrears from previous session
+      let arrears = 0;
+      if (previousSession) {
+        const previousSessionBalance = await calculateSessionBalance(pupilId, previousSession);
+        arrears = previousSessionBalance;
+      }
       
       const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
       const paymentRef = db.collection('payments').doc(paymentDocId);
@@ -4027,20 +4075,22 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
         session: session,
         term: term,
         amountDue: totalFee,
+        arrears: arrears, // ✅ NEW: Arrears from previous session
+        totalDue: totalFee + arrears, // ✅ NEW: Total including arrears
         totalPaid: 0,
-        balance: totalFee,
-        status: 'owing',
+        balance: totalFee + arrears, // ✅ NEW: Balance includes arrears
+        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
         lastPaymentDate: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true }); // Use merge to not overwrite existing payments
+      }, { merge: true });
       
       count++;
-    });
+    }
     
     await batch.commit();
     
-    console.log(`✓ Generated ${count} payment records`);
+    console.log(`✓ Generated ${count} payment records (including arrears check)`);
     
     return { success: true, count: count };
     
@@ -4050,8 +4100,45 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
   }
 }
 
-// Make globally available
-window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
+/**
+ * Helper: Get previous session name
+ */
+function getPreviousSessionName(currentSession) {
+  // Extract years from "2025/2026"
+  const match = currentSession.match(/(\d{4})\/(\d{4})/);
+  if (!match) return null;
+  
+  const startYear = parseInt(match[1]);
+  const endYear = parseInt(match[2]);
+  
+  // Previous session is one year back
+  return `${startYear - 1}/${endYear - 1}`;
+}
+
+/**
+ * Helper: Calculate total unpaid balance for entire session
+ */
+async function calculateSessionBalance(pupilId, session) {
+  try {
+    const paymentsSnap = await db.collection('payments')
+      .where('pupilId', '==', pupilId)
+      .where('session', '==', session)
+      .get();
+    
+    let totalBalance = 0;
+    
+    paymentsSnap.forEach(doc => {
+      const data = doc.data();
+      totalBalance += (data.balance || 0);
+    });
+    
+    return totalBalance;
+    
+  } catch (error) {
+    console.error('Error calculating session balance:', error);
+    return 0;
+  }
+}
 
 /**
  * Bulk generate payment records for ALL fee structures
@@ -4192,18 +4279,21 @@ async function recordPayment() {
     
     const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
-    // FIXED: Store session WITHOUT encoding in document
     const paymentDocId = `${pupilId}_${session.replace(/\//g, '-')}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
     
     let currentPaid = 0;
     let amountDue = 0;
+    let arrears = 0;
+    let totalDue = 0;
     
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
       currentPaid = data.totalPaid || 0;
       amountDue = data.amountDue || 0;
+      arrears = data.arrears || 0; // ✅ Get arrears
+      totalDue = data.totalDue || amountDue; // ✅ Total including arrears
     } else {
       const feeSnap = await db.collection('fee_structures')
         .where('classId', '==', classId)
@@ -4215,15 +4305,43 @@ async function recordPayment() {
       if (!feeSnap.empty) {
         amountDue = feeSnap.docs[0].data().total || 0;
       }
+      
+      // Check for arrears from previous session
+      const previousSession = getPreviousSessionName(session);
+      if (previousSession) {
+        arrears = await calculateSessionBalance(pupilId, previousSession);
+      }
+      
+      totalDue = amountDue + arrears;
     }
     
     const newTotalPaid = currentPaid + amountPaid;
-    const newBalance = Math.max(0, amountDue - newTotalPaid);
+    
+    // ✅ NEW: Calculate arrears payment breakdown
+    let arrearsPayment = 0;
+    let currentTermPayment = 0;
+    let remainingArrears = arrears;
+    
+    if (arrears > 0) {
+      // Prioritize paying off arrears first
+      if (amountPaid <= arrears) {
+        arrearsPayment = amountPaid;
+        remainingArrears = arrears - amountPaid;
+      } else {
+        arrearsPayment = arrears;
+        currentTermPayment = amountPaid - arrears;
+        remainingArrears = 0;
+      }
+    } else {
+      currentTermPayment = amountPaid;
+    }
+    
+    const newBalance = Math.max(0, totalDue - newTotalPaid);
     const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
     
     const batch = db.batch();
     
-    // FIXED: Store ORIGINAL session format in payment document
+    // Update payment document
     batch.set(paymentRef, {
       pupilId,
       pupilName,
@@ -4232,6 +4350,8 @@ async function recordPayment() {
       session: session,
       term,
       amountDue,
+      arrears: remainingArrears, // ✅ Updated arrears
+      totalDue: amountDue + remainingArrears, // ✅ Updated total
       totalPaid: newTotalPaid,
       balance: newBalance,
       status: newStatus,
@@ -4239,7 +4359,7 @@ async function recordPayment() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // FIXED: Store ORIGINAL session format in transaction
+    // Record transaction with arrears breakdown
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
     batch.set(transactionRef, {
       pupilId,
@@ -4249,6 +4369,8 @@ async function recordPayment() {
       session: session,
       term,
       amountPaid,
+      arrearsPayment, // ✅ NEW: How much went to arrears
+      currentTermPayment, // ✅ NEW: How much went to current term
       paymentMethod: paymentMethod || 'Cash',
       receiptNo,
       notes,
@@ -4259,14 +4381,23 @@ async function recordPayment() {
     
     await batch.commit();
 
-    window.showToast?.(
-      `✓ Payment Recorded Successfully!\n\n` +
-      `Receipt #${receiptNo}\n` +
-      `Amount: ₦${amountPaid.toLocaleString()}\n` +
-      `New Balance: ₦${newBalance.toLocaleString()}`,
-      'success',
-      8000
-    );
+    // Enhanced success message
+    let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
+    
+    if (arrearsPayment > 0) {
+      message += `\n\n💰 Payment Breakdown:\n`;
+      message += `  • Arrears: ₦${arrearsPayment.toLocaleString()}`;
+      if (currentTermPayment > 0) {
+        message += `\n  • Current Term: ₦${currentTermPayment.toLocaleString()}`;
+      }
+    }
+    
+    message += `\n\nNew Balance: ₦${newBalance.toLocaleString()}`;
+    if (remainingArrears > 0) {
+      message += `\n(Includes ₦${remainingArrears.toLocaleString()} arrears)`;
+    }
+
+    window.showToast?.(message, 'success', 10000);
 
     if (amountInput) amountInput.value = '';
     const notesInput = document.getElementById('payment-notes');
