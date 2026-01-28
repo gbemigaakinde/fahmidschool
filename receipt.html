@@ -295,7 +295,7 @@ async function loadReceiptData() {
 
         console.log('✓ Firebase ready, querying receipt...');
 
-        // OPTION A FIX: Read receipt document directly
+        // Read receipt document directly
         const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
         if (!doc.exists) {
@@ -307,21 +307,41 @@ async function loadReceiptData() {
         const data = doc.data();
         console.log('✓ Receipt data loaded:', data.receiptNo);
 
+        // ✅ CRITICAL FIX: Store ORIGINAL payment date
+        const actualPaymentDate = data.paymentDate 
+            ? data.paymentDate.toDate() 
+            : new Date();
+        
+        // Format payment date (ACTUAL payment time)
+        const paymentDateFormatted = actualPaymentDate.toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        // Current date/time (for "Generated on:")
+        const generatedDate = new Date().toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        // Display receipt information
         document.getElementById('receipt-no').textContent = data.receiptNo;
         document.getElementById('student-name').textContent = data.pupilName;
         document.getElementById('student-class').textContent = data.className;
         document.getElementById('receipt-session').textContent = data.session;
         document.getElementById('receipt-term').textContent = data.term;
-
-        const date = data.paymentDate
-            ? data.paymentDate.toDate().toLocaleDateString('en-GB', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })
-            : 'N/A';
-
-        document.getElementById('receipt-date').textContent = date;
+        
+        // ✅ FIX: Use the ORIGINAL payment date
+        document.getElementById('receipt-date').textContent = paymentDateFormatted;
+        
         document.getElementById('amount-paid').textContent =
             `₦${Number(data.amountPaid).toLocaleString()}`;
         document.getElementById('payment-method').textContent =
@@ -341,10 +361,14 @@ async function loadReceiptData() {
         document.getElementById('balance-remaining').textContent =
             `₦${balance.toLocaleString()}`;
 
-        document.getElementById('generated-date').textContent =
-            new Date().toLocaleString('en-GB');
+        // ✅ FIX: Show "Generated on" separately
+        document.getElementById('generated-date').textContent = generatedDate;
 
-        console.log('✓ Receipt loaded successfully, printing...');
+        console.log('✓ Receipt loaded successfully');
+        console.log(`  Payment made: ${paymentDateFormatted}`);
+        console.log(`  Receipt generated: ${generatedDate}`);
+        
+        // Auto-print after short delay
         setTimeout(() => window.print(), 1000);
 
     } catch (error) {
