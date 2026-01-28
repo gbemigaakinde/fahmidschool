@@ -3390,8 +3390,7 @@ async function loadPaymentHistory(pupilId, session, term) {
 }
 
 /**
- * FIXED: Outstanding Fees Report - Current Term Only
- * Shows outstanding fees for current term based on school settings
+ * FIXED: Outstanding Fees Report - Current Term with Arrears
  */
 async function loadOutstandingFeesReport() {
     const container = document.getElementById('outstanding-fees-table');
@@ -3405,9 +3404,9 @@ async function loadOutstandingFeesReport() {
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
-        const currentTerm = settings.term; // Get current term
+        const currentTerm = settings.term;
 
-        // ✅ FIX: Query payments for CURRENT TERM ONLY
+        // Query payments for current term
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
             .where('term', '==', currentTerm)
@@ -3415,7 +3414,7 @@ async function loadOutstandingFeesReport() {
             .get();
 
         if (paymentsSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '! No outstanding payments.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
             updateSummaryDisplay(0, 0);
             return;
         }
@@ -3432,9 +3431,10 @@ async function loadOutstandingFeesReport() {
                     name: data.pupilName || 'Unknown',
                     className: data.className || '-',
                     amountDue: data.amountDue || 0,
+                    arrears: data.arrears || 0, // Include arrears
+                    totalDue: data.totalDue || 0, // Total including arrears
                     totalPaid: data.totalPaid || 0,
                     balance: balance,
-                    arrears: data.arrears || 0,
                     status: data.status || 'owing'
                 });
                 
@@ -3442,16 +3442,16 @@ async function loadOutstandingFeesReport() {
             }
         });
 
-        // Sort by balance (highest first)
-        outstandingPupils.sort((a, b) => b.balance - a.balance);
-
         tbody.innerHTML = '';
 
         if (outstandingPupils.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected!</td></tr>';
             updateSummaryDisplay(0, 0);
             return;
         }
+
+        // Sort by balance (highest first)
+        outstandingPupils.sort((a, b) => b.balance - a.balance);
 
         const fragment = document.createDocumentFragment();
         
@@ -3484,11 +3484,11 @@ async function loadOutstandingFeesReport() {
         tbody.appendChild(fragment);
         updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
 
-        console.log(`✓ Outstanding fees for ${currentTerm}: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
+        console.log(`✓ Outstanding fees: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
 
     } catch (error) {
         console.error('Error loading outstanding fees:', error);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading outstanding fees: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error: ${error.message}</td></tr>`;
     }
 }
 
@@ -3566,16 +3566,15 @@ window.updateSummaryDisplay = updateSummaryDisplay;
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
- * FIXED: Financial Reports - Current Term Only
- * Shows financial summary for current term
+ * FIXED: Financial Reports - Current Term with Arrears Included
  */
 async function loadFinancialReports() {
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
-        const currentTerm = settings.term; // Get current term
+        const currentTerm = settings.term;
 
-        // ✅ FIX: Query payments for CURRENT TERM ONLY
+        // Query payments for CURRENT TERM ONLY
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
             .where('term', '==', currentTerm)
@@ -3595,12 +3594,12 @@ async function loadFinancialReports() {
 
         paymentsSnap.forEach(doc => {
             const data = doc.data();
-            const amountDue = data.amountDue || 0;
+            const totalDue = data.totalDue || 0; // Includes arrears
             const totalPaid = data.totalPaid || 0;
             const balance = data.balance || 0;
             const status = data.status || 'owing';
 
-            totalExpected += amountDue;
+            totalExpected += totalDue; // FIXED: Include arrears in expected
             totalCollected += totalPaid;
             totalOutstanding += balance;
 
@@ -3626,14 +3625,13 @@ async function loadFinancialReports() {
             partialPayments,
             noPayment,
             session,
-            currentTerm // Pass current term to display
+            currentTerm
         );
 
         console.log(`✓ Financial report for ${currentTerm}:`);
-        console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
+        console.log(`  - Expected (inc. arrears): ₦${totalExpected.toLocaleString()}`);
         console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
         console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
-        console.log(`  - Collection rate: ${collectionRate}%`);
 
     } catch (error) {
         console.error('Error loading financial reports:', error);
@@ -3763,6 +3761,7 @@ window.updateFinancialDisplays = updateFinancialDisplays;
 
 /**
  * Save fee structure configuration
+ * FIXED: Session-based only, persists across terms
  */
 async function saveFeeStructure() {
   const classSelect = document.getElementById('fee-config-class');
@@ -3807,15 +3806,14 @@ async function saveFeeStructure() {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     
-    // ✅ FIX: Use class ID + session as document ID (NO term)
-    // This makes fee structure persist across all terms
+    // FIXED: Use session only (no term) - persists across all terms
     const feeDocId = `${classId}_${session.replace(/\//g, '-')}`;
     
     await db.collection('fee_structures').doc(feeDocId).set({
       classId,
       className,
       session,
-      // NO term field - applies to all terms in this session
+      // NO term field - applies to ALL terms in session
       fees: feeBreakdown,
       total: total,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -3851,6 +3849,97 @@ async function saveFeeStructure() {
     }
   }
 }
+
+/**
+ * AUTOMATED: Migrate arrears when term changes
+ * Runs automatically when admin updates term in settings
+ */
+async function autoMigrateArrearsOnTermChange(oldTerm, newTerm, session) {
+  console.log(`🔄 Auto-migrating arrears: ${oldTerm} → ${newTerm}`);
+  
+  try {
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get all payment records from the OLD term
+    const oldTermPaymentsSnap = await db.collection('payments')
+      .where('session', '==', session)
+      .where('term', '==', oldTerm)
+      .get();
+    
+    if (oldTermPaymentsSnap.empty) {
+      console.log('No payments from previous term to migrate');
+      return { success: true, count: 0 };
+    }
+    
+    const batch = db.batch();
+    let migratedCount = 0;
+    let totalArrearsCreated = 0;
+    
+    for (const doc of oldTermPaymentsSnap.docs) {
+      const oldData = doc.data();
+      const balance = oldData.balance || 0;
+      
+      // Skip if fully paid
+      if (balance <= 0) continue;
+      
+      const pupilId = oldData.pupilId;
+      const classId = oldData.classId;
+      
+      // Get fee structure for this class
+      const feeDocId = `${classId}_${encodedSession}`;
+      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+      
+      if (!feeDoc.exists) continue;
+      
+      const feeData = feeDoc.data();
+      const newTermFee = feeData.total || 0;
+      
+      // Create NEW term payment record with arrears
+      const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
+      
+      batch.set(db.collection('payments').doc(newPaymentDocId), {
+        pupilId: pupilId,
+        pupilName: oldData.pupilName,
+        classId: classId,
+        className: oldData.className,
+        session: session,
+        term: newTerm,
+        amountDue: newTermFee,
+        arrears: balance, // OLD term balance becomes arrears
+        totalDue: newTermFee + balance,
+        totalPaid: 0,
+        balance: newTermFee + balance,
+        status: 'owing_with_arrears',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        migratedFrom: oldTerm,
+        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      migratedCount++;
+      totalArrearsCreated += balance;
+    }
+    
+    if (migratedCount > 0) {
+      await batch.commit();
+      console.log(`✓ Migrated ${migratedCount} pupils with ₦${totalArrearsCreated.toLocaleString()} total arrears`);
+    }
+    
+    return {
+      success: true,
+      count: migratedCount,
+      totalArrears: totalArrearsCreated
+    };
+    
+  } catch (error) {
+    console.error('❌ Arrears migration failed:', error);
+    throw error;
+  }
+}
+
+// Make globally available
+window.autoMigrateArrearsOnTermChange = autoMigrateArrearsOnTermChange;
 
 /**
  * Generate payment records for all pupils in a class
@@ -8290,10 +8379,10 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   const endYear = parseInt(document.getElementById('session-end-year').value);
   const startDate = document.getElementById('session-start-date').value;
   const endDate = document.getElementById('session-end-date').value;
-  const currentTerm = document.getElementById('current-term').value;
+  const newTerm = document.getElementById('current-term').value;
   const resumptionDate = document.getElementById('resumption-date').value;
   
-  if (!startYear || !endYear || !startDate || !endDate || !currentTerm || !resumptionDate) {
+  if (!startYear || !endYear || !startDate || !endDate || !newTerm || !resumptionDate) {
     window.showToast?.('Please fill all required fields', 'warning');
     return;
   }
@@ -8308,22 +8397,54 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
+    // Get OLD settings to check if term changed
+    const oldSettings = await window.getCurrentSettings();
+    const oldTerm = oldSettings.term;
+    const session = `${startYear}/${endYear}`;
+    
+    // Save new settings
     await db.collection('settings').doc('current').set({
       currentSession: {
-        name: `${startYear}/${endYear}`,
+        name: session,
         startYear: startYear,
         endYear: endYear,
         startDate: firebase.firestore.Timestamp.fromDate(new Date(startDate)),
         endDate: firebase.firestore.Timestamp.fromDate(new Date(endDate))
       },
-      term: currentTerm,
-      session: `${startYear}/${endYear}`, // For backward compatibility
+      term: newTerm,
+      session: session,
       resumptionDate: firebase.firestore.Timestamp.fromDate(new Date(resumptionDate)),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    window.showToast?.('✓ Settings saved successfully!', 'success');
-    await loadCurrentSettings(); // Refresh display
+    // CRITICAL: If term changed, migrate arrears automatically
+    if (oldTerm && oldTerm !== newTerm) {
+      console.log(`⚠️ Term changed: ${oldTerm} → ${newTerm}`);
+      
+      window.showToast?.(
+        'Migrating outstanding balances to new term...',
+        'info',
+        3000
+      );
+      
+      const result = await window.autoMigrateArrearsOnTermChange(oldTerm, newTerm, session);
+      
+      if (result.success && result.count > 0) {
+        window.showToast?.(
+          `✓ Settings saved & arrears migrated!\n\n` +
+          `${result.count} pupil(s) with outstanding balances moved to ${newTerm}\n` +
+          `Total arrears: ₦${result.totalArrears.toLocaleString()}`,
+          'success',
+          10000
+        );
+      } else {
+        window.showToast?.('✓ Settings saved successfully!', 'success');
+      }
+    } else {
+      window.showToast?.('✓ Settings saved successfully!', 'success');
+    }
+    
+    await loadCurrentSettings();
     
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -8333,7 +8454,6 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     submitBtn.innerHTML = '💾 Save Settings';
   }
 });
-
 // Export hierarchy functions globally
 window.loadClassHierarchyUI = loadClassHierarchyUI;
 window.refreshHierarchyUI = refreshHierarchyUI;
