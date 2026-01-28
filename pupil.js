@@ -608,7 +608,31 @@ async function loadFeeBalance() {
   </div>
 ` : '';
         
-        // Build enhanced fee section with cumulative data
+        // Get enrollment summary
+        const enrollmentSummary = window.finance.getPupilEnrollmentSummary(currentPupilData);
+        
+        // Build enrollment info banner if not full session
+        let enrollmentBannerHTML = '';
+        if (!enrollmentSummary.isFullSession) {
+            enrollmentBannerHTML = `
+                <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);">
+                    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <i data-lucide="info" style="width: 32px; height: 32px;"></i>
+                        <div>
+                            <h3 style="margin: 0; color: white;">Enrollment Information</h3>
+                            <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">Your fee schedule</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: var(--space-sm); font-size: var(--text-sm);">
+                        <div><strong>Enrolled from:</strong> ${enrollmentSummary.admissionTerm}</div>
+                        <div><strong>Enrolled until:</strong> ${enrollmentSummary.exitTerm}</div>
+                        <div><strong>Active terms:</strong> ${enrollmentSummary.enrolledTerms.join(', ')}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Build enhanced fee section with enrollment awareness
         feeSection.innerHTML = `
             <div class="section-header">
                 <div class="section-icon" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%);">
@@ -620,12 +644,14 @@ async function loadFeeBalance() {
                 </div>
             </div>
 
+            ${enrollmentBannerHTML}
+
             ${arrearsHTML}
 
             <!-- Cumulative Summary Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
-                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Due (All Terms)</div>
+                    <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Due (Enrolled Terms)</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${cumulativeDue.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">${termBreakdown.length} term(s)</div>
                 </div>
