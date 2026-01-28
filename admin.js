@@ -3420,9 +3420,9 @@ async function loadOutstandingFeesReport() {
       return;
     }
     
-    console.log(`📊 Calculating cumulative fees for ${pupilsSnap.size} pupils...`);
+    console.log(`📊 Calculating fees for ${pupilsSnap.size} pupils (enrollment-aware)...`);
     
-    // ✅ FIX: Get ALL payment records (don't need fee structures)
+    // Get all payment records for this session
     const paymentsSnap = await db.collection('payments')
       .where('session', '==', session)
       .get();
@@ -3440,10 +3440,22 @@ async function loadOutstandingFeesReport() {
         term: data.term,
         amountDue: data.amountDue || 0,
         arrears: data.arrears || 0,
-        totalDue: data.totalDue || 0,  // ✅ FIX: Use totalDue (includes arrears)
+        totalDue: data.totalDue || 0,
         totalPaid: data.totalPaid || 0,
         balance: data.balance || 0
       });
+    });
+    
+    // Get all fee structures
+    const feeStructuresSnap = await db
+      .collection('fee_structures')
+      .where('session', '==', session)
+      .get();
+    
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
     });
     
     const outstandingPupils = [];
@@ -3451,36 +3463,56 @@ async function loadOutstandingFeesReport() {
     
     const termOrder = ['First Term', 'Second Term', 'Third Term'];
     
-    pupilsSnap.forEach(pupilDoc => {
+    for (const pupilDoc of pupilsSnap.docs) {
       const pupil = pupilDoc.data();
       const pupilId = pupilDoc.id;
+      const classId = pupil.class?.id || null;
       
-      const payments = paymentsByPupil[pupilId];
+      if (!classId) continue;
       
-      if (!payments || payments.length === 0) {
-        return; // Skip pupils with no payment records
-      }
+      const baseFeePerTerm = feeStructureMap[classId] || 0;
       
-      // ✅ FIX: Calculate using payment records (which include arrears)
+      if (baseFeePerTerm === 0) continue;
+      
+      // Calculate expected fees using enrollment-aware logic
       let cumulativeDue = 0;
+      
+      termOrder.forEach(term => {
+        const termFee = window.finance.calculatePupilTermFee(
+          pupil,
+          baseFeePerTerm,
+          term
+        );
+        cumulativeDue += termFee;
+      });
+      
+      // Get payment data
+      const payments = paymentsByPupil[pupilId] || [];
+      
       let cumulativePaid = 0;
       let cumulativeBalance = 0;
       const termBreakdown = [];
       
       termOrder.forEach(term => {
         const termPayment = payments.find(p => p.term === term);
+        const termFee = window.finance.calculatePupilTermFee(
+          pupil,
+          baseFeePerTerm,
+          term
+        );
         
-        if (termPayment) {
-          // ✅ FIX: Use totalDue which includes arrears
-          cumulativeDue += termPayment.totalDue;
-          cumulativePaid += termPayment.totalPaid;
-          cumulativeBalance += termPayment.balance;
+        if (termFee > 0 || termPayment) {
+          const paid = termPayment ? termPayment.totalPaid : 0;
+          const balance = termPayment ? termPayment.balance : termFee;
+          
+          cumulativePaid += paid;
+          cumulativeBalance += balance;
           
           termBreakdown.push({
             term: term,
-            due: termPayment.totalDue,
-            paid: termPayment.totalPaid,
-            balance: termPayment.balance
+            due: termFee,
+            paid: paid,
+            balance: balance
           });
         }
       });
@@ -3498,7 +3530,7 @@ async function loadOutstandingFeesReport() {
         
         totalOutstanding += cumulativeBalance;
       }
-    });
+    }
     
     outstandingPupils.sort((a, b) => b.cumulativeBalance - a.cumulativeBalance);
     
@@ -3547,7 +3579,7 @@ async function loadOutstandingFeesReport() {
     tbody.appendChild(fragment);
     updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
     
-    console.log(`✓ Outstanding fees: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
+    console.log(`✓ Outstanding fees (enrollment-aware): ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
     
   } catch (error) {
     console.error('Error loading outstanding fees:', error);
@@ -3652,36 +3684,29 @@ async function loadFinancialReports() {
         
         console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
         
+        // Get all fee structures for this session
         const feeStructuresSnap = await db
             .collection('fee_structures')
             .where('session', '==', session)
             .get();
         
-        /*
-          ORIGINAL INTENT PRESERVED:
-          feeStructureMap[classId][term] = total
-        */
+        // Build map of class fees (using new document ID format without term)
         const feeStructureMap = {};
         feeStructuresSnap.forEach(doc => {
             const data = doc.data();
-            if (!feeStructureMap[data.classId]) {
-                feeStructureMap[data.classId] = {};
+            const classId = data.classId;
+            
+            if (!feeStructureMap[classId]) {
+                feeStructureMap[classId] = data.total || 0;
             }
-            feeStructureMap[data.classId][data.term] = data.total || 0;
         });
         
+        // Get all payment records for this session
         const paymentsSnap = await db
             .collection('payments')
             .where('session', '==', session)
             .get();
         
-        /*
-          ORIGINAL STRUCTURE PRESERVED:
-          - totalDue
-          - totalPaid
-          - totalBalance
-          - terms[]
-        */
         const paymentMap = {};
         paymentsSnap.forEach(doc => {
             const data = doc.data();
@@ -3712,27 +3737,37 @@ async function loadFinancialReports() {
         
         const termOrder = ['First Term', 'Second Term', 'Third Term'];
         
-        pupilsSnap.forEach(pupilDoc => {
+        // Calculate for each pupil using new enrollment-aware logic
+        for (const pupilDoc of pupilsSnap.docs) {
             const pupil = pupilDoc.data();
             const pupilId = pupilDoc.id;
             const classId = pupil.class?.id || null;
             
             if (!classId) {
                 console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
-                return;
+                continue;
             }
             
-            // FIX: expected fees calculated using correct feeStructureMap shape
-            let pupilExpected = 0;
-            if (feeStructureMap[classId]) {
-                termOrder.forEach(term => {
-                    pupilExpected += feeStructureMap[classId][term] || 0;
-                });
-            }
+            const baseFeePerTerm = feeStructureMap[classId] || 0;
             
-            if (pupilExpected === 0) return;
+            if (baseFeePerTerm === 0) {
+                continue; // No fee structure for this class
+            }
             
             pupilsWithFees++;
+            
+            // Calculate expected fees using new helper
+            let pupilExpected = 0;
+            
+            termOrder.forEach(term => {
+                const termFee = window.finance.calculatePupilTermFee(
+                    pupil,
+                    baseFeePerTerm,
+                    term
+                );
+                pupilExpected += termFee;
+            });
+            
             totalExpected += pupilExpected;
             
             const payment = paymentMap[pupilId];
@@ -3752,7 +3787,7 @@ async function loadFinancialReports() {
                 totalOutstanding += pupilExpected;
                 noPayment++;
             }
-        });
+        }
         
         const collectionRate = totalExpected > 0 
             ? ((totalCollected / totalExpected) * 100).toFixed(1)
@@ -3770,7 +3805,7 @@ async function loadFinancialReports() {
             'All Terms'
         );
         
-        console.log(`✓ Financial report generated (cumulative):`);
+        console.log(`✓ Financial report generated (enrollment-aware):`);
         console.log(`  - Total pupils: ${pupilsSnap.size}`);
         console.log(`  - Pupils with fees: ${pupilsWithFees}`);
         console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
