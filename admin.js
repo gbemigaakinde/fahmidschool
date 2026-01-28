@@ -3898,44 +3898,6 @@ window.loadFinancialReports = loadFinancialReports;
 window.generateTermBreakdownChart = generateTermBreakdownChart;
 window.updateFinancialDisplays = updateFinancialDisplays;
 
-// Helper function
-function updateFinancialDisplays(
-  totalExpected,
-  totalCollected,
-  totalOutstanding,
-  collectionRate,
-  paidInFull,
-  partialPayments,
-  noPayment,
-  session,
-  term
-) {
-  const expectedEl = document.getElementById('report-total-expected');
-  const collectedEl = document.getElementById('report-total-collected');
-  const outstandingEl = document.getElementById('report-total-outstanding');
-  const rateEl = document.getElementById('report-collection-rate');
-  
-  if (expectedEl) expectedEl.textContent = `₦${Number(totalExpected).toLocaleString()}`;
-  if (collectedEl) collectedEl.textContent = `₦${Number(totalCollected).toLocaleString()}`;
-  if (outstandingEl) outstandingEl.textContent = `₦${Number(totalOutstanding).toLocaleString()}`;
-  if (rateEl) rateEl.textContent = `${collectionRate}%`;
-  
-  const paidFullEl = document.getElementById('report-paid-full');
-  if (paidFullEl) paidFullEl.textContent = paidInFull;
-  
-  const partialEl = document.getElementById('report-partial');
-  if (partialEl) partialEl.textContent = partialPayments;
-  
-  const owingEl = document.getElementById('report-owing');
-  if (owingEl) owingEl.textContent = noPayment;
-  
-  const sessionEl = document.getElementById('report-session-display');
-  if (sessionEl) sessionEl.textContent = session || '—';
-  
-  const termEl = document.getElementById('report-term-display');
-  if (termEl) termEl.textContent = term || '—';
-}
-
 /**
  * Save fee structure configuration
  */
