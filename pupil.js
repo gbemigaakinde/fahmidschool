@@ -814,7 +814,6 @@ async function loadPaymentHistoryAllTerms(encodedSession) {
 window.loadFeeBalance = loadFeeBalance;
 window.loadPaymentHistoryAllTerms = loadPaymentHistoryAllTerms;
 
-
 /**
  * Load payment history with encoded session
  */
