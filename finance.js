@@ -369,7 +369,194 @@ const finance = {
         console.error('Error getting financial summary:', error);
         return null;
     }
-}
+},
+
+/**
+   * Calculate actual fee for a pupil in a specific term
+   * Respects enrollment periods and fee adjustments
+   * 
+   * @param {Object} pupilData - Pupil document data
+   * @param {number} baseFee - Fee from class structure
+   * @param {string} term - Term name (First Term, Second Term, Third Term)
+   * @returns {number} - Actual fee amount for this pupil in this term
+   */
+  calculatePupilTermFee(pupilData, baseFee, term) {
+    // If pupil data is invalid, return base fee (safe fallback)
+    if (!pupilData || typeof baseFee !== 'number') {
+      return baseFee || 0;
+    }
+    
+    // Check if pupil is enrolled for this term
+    const isEnrolled = this.isPupilEnrolledForTerm(pupilData, term);
+    
+    // If not enrolled, fee is zero
+    if (!isEnrolled) {
+      return 0;
+    }
+    
+    // Start with base fee from class
+    let finalFee = baseFee;
+    
+    // Apply percentage adjustment (if exists)
+    const adjustmentPercent = pupilData.feeAdjustmentPercent || 0;
+    if (adjustmentPercent !== 0) {
+      finalFee = finalFee * (1 + adjustmentPercent / 100);
+    }
+    
+    // Apply fixed adjustment (if exists)
+    const adjustmentAmount = pupilData.feeAdjustmentAmount || 0;
+    if (adjustmentAmount !== 0) {
+      finalFee = finalFee + adjustmentAmount;
+    }
+    
+    // Fee cannot be negative
+    return Math.max(0, finalFee);
+  },
+
+  /**
+   * Check if pupil is enrolled for a specific term
+   * 
+   * @param {Object} pupilData - Pupil document data
+   * @param {string} term - Term name
+   * @returns {boolean} - True if enrolled
+   */
+  isPupilEnrolledForTerm(pupilData, term) {
+    // If pupil data is invalid, assume enrolled (safe fallback)
+    if (!pupilData) {
+      return true;
+    }
+    
+    // Term order for comparison
+    const termOrder = {
+      'First Term': 1,
+      'Second Term': 2,
+      'Third Term': 3
+    };
+    
+    const currentTermNum = termOrder[term] || 1;
+    
+    // Check admission term (defaults to First Term)
+    const admissionTerm = pupilData.admissionTerm || 'First Term';
+    const admissionTermNum = termOrder[admissionTerm] || 1;
+    
+    // If pupil hasn't started yet, not enrolled
+    if (currentTermNum < admissionTermNum) {
+      return false;
+    }
+    
+    // Check exit term (defaults to Third Term = full session)
+    const exitTerm = pupilData.exitTerm || 'Third Term';
+    const exitTermNum = termOrder[exitTerm] || 3;
+    
+    // If pupil already left, not enrolled
+    if (currentTermNum > exitTermNum) {
+      return false;
+    }
+    
+    // Pupil is enrolled for this term
+    return true;
+  },
+
+  /**
+   * Get enrollment summary for a pupil
+   * 
+   * @param {Object} pupilData - Pupil document data
+   * @returns {Object} - Enrollment details
+   */
+  getPupilEnrollmentSummary(pupilData) {
+    if (!pupilData) {
+      return {
+        admissionTerm: 'First Term',
+        exitTerm: 'Third Term',
+        enrolledTerms: ['First Term', 'Second Term', 'Third Term'],
+        isFullSession: true
+      };
+    }
+    
+    const admissionTerm = pupilData.admissionTerm || 'First Term';
+    const exitTerm = pupilData.exitTerm || 'Third Term';
+    
+    const termOrder = ['First Term', 'Second Term', 'Third Term'];
+    const admissionIndex = termOrder.indexOf(admissionTerm);
+    const exitIndex = termOrder.indexOf(exitTerm);
+    
+    const enrolledTerms = termOrder.slice(
+      admissionIndex >= 0 ? admissionIndex : 0,
+      exitIndex >= 0 ? exitIndex + 1 : 3
+    );
+    
+    const isFullSession = admissionTerm === 'First Term' && exitTerm === 'Third Term';
+    
+    return {
+      admissionTerm,
+      exitTerm,
+      enrolledTerms,
+      isFullSession
+    };
+  },
+
+  /**
+   * Calculate total expected fees for a pupil across all enrolled terms
+   * 
+   * @param {string} pupilId - Pupil ID
+   * @param {string} classId - Class ID
+   * @param {string} session - Session name
+   * @returns {Promise<Object>} - Total fees breakdown
+   */
+  async calculatePupilSessionFees(pupilId, classId, session) {
+    try {
+      // Get pupil data
+      const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+      if (!pupilDoc.exists) {
+        throw new Error('Pupil not found');
+      }
+      
+      const pupilData = pupilDoc.data();
+      
+      // Get class fee structure
+      const encodedSession = session.replace(/\//g, '-');
+      const feeDocId = `${classId}_${encodedSession}`;
+      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+      
+      if (!feeDoc.exists) {
+        return {
+          totalExpected: 0,
+          termBreakdown: [],
+          enrollmentSummary: this.getPupilEnrollmentSummary(pupilData)
+        };
+      }
+      
+      const feeData = feeDoc.data();
+      const baseFeePerTerm = feeData.total || 0;
+      
+      // Calculate for each term
+      const terms = ['First Term', 'Second Term', 'Third Term'];
+      const termBreakdown = [];
+      let totalExpected = 0;
+      
+      terms.forEach(term => {
+        const termFee = this.calculatePupilTermFee(pupilData, baseFeePerTerm, term);
+        
+        termBreakdown.push({
+          term: term,
+          isEnrolled: this.isPupilEnrolledForTerm(pupilData, term),
+          expectedFee: termFee
+        });
+        
+        totalExpected += termFee;
+      });
+      
+      return {
+        totalExpected,
+        termBreakdown,
+        enrollmentSummary: this.getPupilEnrollmentSummary(pupilData)
+      };
+      
+    } catch (error) {
+      console.error('Error calculating pupil session fees:', error);
+      throw error;
+    }
+  }
 
 };
 
