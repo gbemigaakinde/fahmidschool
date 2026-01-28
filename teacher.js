@@ -608,6 +608,16 @@ async function loadResultsSection() {
   await loadResultsTable();
 }
 
+/**
+ * FIXED: Load Results Table with Session Filter
+ * Replace the loadResultsTable() function in teacher.js (lines 530-680)
+ * 
+ * CRITICAL FIX:
+ * - Added session filter to query
+ * - Prevents accidental editing of old session results
+ * - Maintains backward compatibility with legacy data
+ */
+
 async function loadResultsTable() {
   const container = document.getElementById('results-entry-table-container');
   const saveBtn = document.getElementById('save-results-btn');
@@ -621,16 +631,48 @@ async function loadResultsTable() {
   }
   
   try {
+    // ✅ CRITICAL FIX: Get current session
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session;
+    
     const resultsMap = {};
     
-    // FIXED: Query each pupil individually to avoid composite index requirement
+    // ✅ FIXED: Query each pupil with SESSION filter
     for (const pupil of allPupils) {
-      const resultsSnapshot = await db.collection('results')
+      // PRIMARY QUERY: Try with session filter first
+      let resultsSnapshot = await db.collection('results')
         .where('pupilId', '==', pupil.id)
         .where('term', '==', term)
         .where('subject', '==', subject)
+        .where('session', '==', currentSession)  // ✅ ADDED SESSION FILTER
         .limit(1)
         .get();
+      
+      // FALLBACK: If no results with session, check for legacy data
+      if (resultsSnapshot.empty) {
+        const legacySnapshot = await db.collection('results')
+          .where('pupilId', '==', pupil.id)
+          .where('term', '==', term)
+          .where('subject', '==', subject)
+          .limit(1)
+          .get();
+        
+        // Only use legacy data if it has NO session field
+        if (!legacySnapshot.empty) {
+          const legacyData = legacySnapshot.docs[0].data();
+          
+          // If legacy data has a DIFFERENT session, ignore it
+          if (legacyData.session && legacyData.session !== currentSession) {
+            console.log(`Skipping old session data for ${pupil.name}: ${legacyData.session}`);
+            continue;
+          }
+          
+          // If no session field OR matches current, use it
+          if (!legacyData.session || legacyData.session === currentSession) {
+            resultsSnapshot = legacySnapshot;
+          }
+        }
+      }
       
       if (!resultsSnapshot.empty) {
         const data = resultsSnapshot.docs[0].data();
@@ -683,6 +725,7 @@ async function loadResultsTable() {
     
     if (saveBtn) saveBtn.hidden = false;
     
+    // Add input validation (existing code)
     container.querySelectorAll('input[type="number"]').forEach(input => {
       input.addEventListener('input', (e) => {
         const field = e.target.dataset.field;
