@@ -2,12 +2,8 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Finance Management Module - FIXED
  *
- * CRITICAL FIX: Removed syntax error at line 188
- * - Fixed async function declaration inside object literal
- * - Proper async/await syntax throughout
- *
- * @version 1.0.1 - FIXED
- * @date 2026-01-16
+ * @version 1.0.2 - SYNTAX ERROR FIXED
+ * @date 2026-01-28
  */
 
 'use strict';
@@ -53,24 +49,23 @@ const finance = {
    * Get fee structure for a class
    */
   async getFeeStructure(classId, session, term) {
-  try {
-    // FIXED: Match admin.js storage format (no term in document ID)
-    const encodedSession = session.replace(/\//g, '-');
-    const feeStructureId = `${classId}_${encodedSession}`;
-    const doc = await db.collection('fee_structures').doc(feeStructureId).get();
+    try {
+      const encodedSession = session.replace(/\//g, '-');
+      const feeStructureId = `${classId}_${encodedSession}`;
+      const doc = await db.collection('fee_structures').doc(feeStructureId).get();
 
-    if (!doc.exists) {
-      console.warn(`Fee structure not found: ${feeStructureId}`);
+      if (!doc.exists) {
+        console.warn(`Fee structure not found: ${feeStructureId}`);
+        return null;
+      }
+
+      return doc.data();
+
+    } catch (error) {
+      console.error('Error getting fee structure:', error);
       return null;
     }
-
-    return doc.data();
-
-  } catch (error) {
-    console.error('Error getting fee structure:', error);
-    return null;
-  }
-},
+  },
 
   /**
    * Record a payment transaction
@@ -107,7 +102,6 @@ const finance = {
       const receiptNo = await this.generateReceiptNumber();
       const transactionId = receiptNo;
 
-      // Save transaction
       await db.collection('payment_transactions').doc(transactionId).set({
         pupilId: pupilId,
         pupilName: pupilName,
@@ -123,7 +117,6 @@ const finance = {
         notes: paymentData.notes || ''
       });
 
-      // Update payment summary
       await db.collection('payments').doc(paymentRecordId).set({
         pupilId: pupilId,
         pupilName: pupilName,
@@ -159,9 +152,9 @@ const finance = {
 
   /**
    * Generate unique receipt number
-   * FIXED: Proper async function syntax
+   * FIXED: Proper async method syntax for object literals
    */
-  async generateReceiptNumber() {
+  generateReceiptNumber: async function() {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -194,7 +187,6 @@ const finance = {
       counter = Date.now() % 10000;
     }
 
-    // Add random component for security
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
     return `RCT${year}${month}${day}${String(counter).padStart(4, '0')}${random}`;
   },
@@ -271,162 +263,142 @@ const finance = {
    * Get outstanding fees report
    */
   async getOutstandingFeesReport(classId = null, session, term = null) {
-  try {
-    let query = db
-      .collection('payments')
-      .where('session', '==', session)
-      .where('status', 'in', ['owing', 'partial']);
+    try {
+      let query = db
+        .collection('payments')
+        .where('session', '==', session)
+        .where('status', 'in', ['owing', 'partial']);
 
-    if (classId) {
-      query = query.where('classId', '==', classId);
-    }
-    
-    // FIXED: Optional term filter (removed from required params)
-    if (term) {
-      query = query.where('term', '==', term);
-    }
-
-    const snapshot = await query.get();
-    const outstanding = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.balance > 0) {
-        outstanding.push(data);
+      if (classId) {
+        query = query.where('classId', '==', classId);
       }
-    });
+      
+      if (term) {
+        query = query.where('term', '==', term);
+      }
 
-    outstanding.sort((a, b) => b.balance - a.balance);
-    return outstanding;
+      const snapshot = await query.get();
+      const outstanding = [];
 
-  } catch (error) {
-    console.error('Error getting outstanding fees:', error);
-    return [];
-  }
-},
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.balance > 0) {
+          outstanding.push(data);
+        }
+      });
+
+      outstanding.sort((a, b) => b.balance - a.balance);
+      return outstanding;
+
+    } catch (error) {
+      console.error('Error getting outstanding fees:', error);
+      return [];
+    }
+  },
 
   /**
    * Get financial summary
    */
   async getFinancialSummary(session, term = null) {
     try {
-        const feeSnap = await db
-            .collection('fee_structures')
-            .where('session', '==', session)
-            .get();
+      const feeSnap = await db
+        .collection('fee_structures')
+        .where('session', '==', session)
+        .get();
 
-        let totalExpected = 0;
-        feeSnap.forEach(doc => {
-            const data = doc.data();
-            if (!term || data.term === term) {
-                totalExpected += data.total || 0;
-            }
-        });
-
-        let query = db
-            .collection('payments')
-            .where('session', '==', session);
-
-        if (term) {
-            query = query.where('term', '==', term);
+      let totalExpected = 0;
+      feeSnap.forEach(doc => {
+        const data = doc.data();
+        if (!term || data.term === term) {
+          totalExpected += data.total || 0;
         }
+      });
 
-        const snapshot = await query.get();
+      let query = db
+        .collection('payments')
+        .where('session', '==', session);
 
-        let totalCollected = 0;
-        let totalOutstanding = 0;
-        let paidInFull = 0;
-        let partialPayments = 0;
-        let noPayment = 0;
+      if (term) {
+        query = query.where('term', '==', term);
+      }
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            totalCollected += data.totalPaid || 0;
-            totalOutstanding += data.balance || 0;
+      const snapshot = await query.get();
 
-            if (data.status === 'paid') paidInFull++;
-            else if (data.status === 'partial') partialPayments++;
-            else if (data.status === 'owing') noPayment++;
-        });
+      let totalCollected = 0;
+      let totalOutstanding = 0;
+      let paidInFull = 0;
+      let partialPayments = 0;
+      let noPayment = 0;
 
-        const collectionRate =
-            totalExpected > 0
-                ? ((totalCollected / totalExpected) * 100).toFixed(1)
-                : 0;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        totalCollected += data.totalPaid || 0;
+        totalOutstanding += data.balance || 0;
 
-        return {
-            totalExpected,
-            totalCollected,
-            totalOutstanding,
-            collectionRate: parseFloat(collectionRate),
-            paidInFull,
-            partialPayments,
-            noPayment,
-            totalPupils: snapshot.size
-        };
+        if (data.status === 'paid') paidInFull++;
+        else if (data.status === 'partial') partialPayments++;
+        else if (data.status === 'owing') noPayment++;
+      });
+
+      const collectionRate =
+        totalExpected > 0
+          ? ((totalCollected / totalExpected) * 100).toFixed(1)
+          : 0;
+
+      return {
+        totalExpected,
+        totalCollected,
+        totalOutstanding,
+        collectionRate: parseFloat(collectionRate),
+        paidInFull,
+        partialPayments,
+        noPayment,
+        totalPupils: snapshot.size
+      };
 
     } catch (error) {
-        console.error('Error getting financial summary:', error);
-        return null;
+      console.error('Error getting financial summary:', error);
+      return null;
     }
-},
+  },
 
-/**
+  /**
    * Calculate actual fee for a pupil in a specific term
-   * Respects enrollment periods and fee adjustments
-   * 
-   * @param {Object} pupilData - Pupil document data
-   * @param {number} baseFee - Fee from class structure
-   * @param {string} term - Term name (First Term, Second Term, Third Term)
-   * @returns {number} - Actual fee amount for this pupil in this term
    */
-  calculatePupilTermFee(pupilData, baseFee, term) {
-    // If pupil data is invalid, return base fee (safe fallback)
+  calculatePupilTermFee: function(pupilData, baseFee, term) {
     if (!pupilData || typeof baseFee !== 'number') {
       return baseFee || 0;
     }
     
-    // Check if pupil is enrolled for this term
     const isEnrolled = this.isPupilEnrolledForTerm(pupilData, term);
     
-    // If not enrolled, fee is zero
     if (!isEnrolled) {
       return 0;
     }
     
-    // Start with base fee from class
     let finalFee = baseFee;
     
-    // Apply percentage adjustment (if exists)
     const adjustmentPercent = pupilData.feeAdjustmentPercent || 0;
     if (adjustmentPercent !== 0) {
       finalFee = finalFee * (1 + adjustmentPercent / 100);
     }
     
-    // Apply fixed adjustment (if exists)
     const adjustmentAmount = pupilData.feeAdjustmentAmount || 0;
     if (adjustmentAmount !== 0) {
       finalFee = finalFee + adjustmentAmount;
     }
     
-    // Fee cannot be negative
     return Math.max(0, finalFee);
   },
 
   /**
    * Check if pupil is enrolled for a specific term
-   * 
-   * @param {Object} pupilData - Pupil document data
-   * @param {string} term - Term name
-   * @returns {boolean} - True if enrolled
    */
-  isPupilEnrolledForTerm(pupilData, term) {
-    // If pupil data is invalid, assume enrolled (safe fallback)
+  isPupilEnrolledForTerm: function(pupilData, term) {
     if (!pupilData) {
       return true;
     }
     
-    // Term order for comparison
     const termOrder = {
       'First Term': 1,
       'Second Term': 2,
@@ -435,35 +407,27 @@ const finance = {
     
     const currentTermNum = termOrder[term] || 1;
     
-    // Check admission term (defaults to First Term)
     const admissionTerm = pupilData.admissionTerm || 'First Term';
     const admissionTermNum = termOrder[admissionTerm] || 1;
     
-    // If pupil hasn't started yet, not enrolled
     if (currentTermNum < admissionTermNum) {
       return false;
     }
     
-    // Check exit term (defaults to Third Term = full session)
     const exitTerm = pupilData.exitTerm || 'Third Term';
     const exitTermNum = termOrder[exitTerm] || 3;
     
-    // If pupil already left, not enrolled
     if (currentTermNum > exitTermNum) {
       return false;
     }
     
-    // Pupil is enrolled for this term
     return true;
   },
 
   /**
    * Get enrollment summary for a pupil
-   * 
-   * @param {Object} pupilData - Pupil document data
-   * @returns {Object} - Enrollment details
    */
-  getPupilEnrollmentSummary(pupilData) {
+  getPupilEnrollmentSummary: function(pupilData) {
     if (!pupilData) {
       return {
         admissionTerm: 'First Term',
@@ -497,15 +461,9 @@ const finance = {
 
   /**
    * Calculate total expected fees for a pupil across all enrolled terms
-   * 
-   * @param {string} pupilId - Pupil ID
-   * @param {string} classId - Class ID
-   * @param {string} session - Session name
-   * @returns {Promise<Object>} - Total fees breakdown
    */
   async calculatePupilSessionFees(pupilId, classId, session) {
     try {
-      // Get pupil data
       const pupilDoc = await db.collection('pupils').doc(pupilId).get();
       if (!pupilDoc.exists) {
         throw new Error('Pupil not found');
@@ -513,7 +471,6 @@ const finance = {
       
       const pupilData = pupilDoc.data();
       
-      // Get class fee structure
       const encodedSession = session.replace(/\//g, '-');
       const feeDocId = `${classId}_${encodedSession}`;
       const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
@@ -529,7 +486,6 @@ const finance = {
       const feeData = feeDoc.data();
       const baseFeePerTerm = feeData.total || 0;
       
-      // Calculate for each term
       const terms = ['First Term', 'Second Term', 'Third Term'];
       const termBreakdown = [];
       let totalExpected = 0;
@@ -560,6 +516,6 @@ const finance = {
 
 };
 
-// ✅ Expose globally
+// Expose globally
 window.finance = finance;
-console.log('✓ Finance module loaded successfully (v1.0.1 - FIXED)');
+console.log('✓ Finance module loaded successfully (v1.0.2 - SYNTAX ERROR FIXED)');
