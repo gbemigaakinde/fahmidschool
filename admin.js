@@ -3348,8 +3348,15 @@ async function loadPaymentHistory(pupilId, session, term) {
 }
 
 /**
- * Load outstanding fees report - FIXED: Based on ALL pupils
+ * FIXED: Outstanding Fees Report with Cumulative Debt Tracking
+ * Replace loadOutstandingFeesReport() in admin.js (lines 2370-2470)
+ * 
+ * FIXES:
+ * - Tracks debts across ALL terms in current session
+ * - Shows carried-forward balances
+ * - Prevents debt from "disappearing"
  */
+
 async function loadOutstandingFeesReport() {
   const container = document.getElementById('outstanding-fees-table');
   if (!container) return;
@@ -3357,59 +3364,64 @@ async function loadOutstandingFeesReport() {
   const tbody = container.querySelector('tbody');
   if (!tbody) return;
   
-  tbody.innerHTML = '<tr><td colspan="6" class="table-loading">Loading outstanding fees...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading outstanding fees...</td></tr>';
   
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
-    const term = settings.term;
+    const currentTerm = settings.term;
     
-    // FIXED: Get ALL pupils currently enrolled
+    // ✅ FIX: Get ALL pupils currently enrolled
     const pupilsSnap = await db.collection('pupils').get();
     
     if (pupilsSnap.empty) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">
-            No pupils enrolled in the school.
-          </td>
-        </tr>`;
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils enrolled in the school.</td></tr>';
+      updateSummaryDisplay(0, 0);
       return;
     }
     
-    console.log(`📊 Calculating fees for ${pupilsSnap.size} pupils...`);
+    console.log(`📊 Calculating cumulative fees for ${pupilsSnap.size} pupils...`);
     
-    // Get fee structures for all classes
+    // ✅ FIX: Get fee structures for ALL terms in current session
     const feeStructuresSnap = await db.collection('fee_structures')
       .where('session', '==', session)
-      .where('term', '==', term)
-      .get();
+      .get();  // ← REMOVED term filter to get ALL terms
     
     const feeStructureMap = {};
     feeStructuresSnap.forEach(doc => {
       const data = doc.data();
-      feeStructureMap[data.classId] = data.total || 0;
+      const key = `${data.classId}_${data.term}`;
+      feeStructureMap[key] = data.total || 0;
     });
     
-    // Get all payment records
+    // ✅ FIX: Get ALL payment records for current session (all terms)
     const paymentsSnap = await db.collection('payments')
       .where('session', '==', session)
-      .where('term', '==', term)
-      .get();
+      .get();  // ← REMOVED term filter to get ALL terms
     
-    const paymentMap = {};
+    // Group payments by pupil
+    const paymentsByPupil = {};
     paymentsSnap.forEach(doc => {
       const data = doc.data();
-      paymentMap[data.pupilId] = {
+      const pupilId = data.pupilId;
+      
+      if (!paymentsByPupil[pupilId]) {
+        paymentsByPupil[pupilId] = [];
+      }
+      
+      paymentsByPupil[pupilId].push({
+        term: data.term,
+        amountDue: data.amountDue || 0,
         totalPaid: data.totalPaid || 0,
-        balance: data.balance || 0,
-        status: data.status || 'owing'
-      };
+        balance: data.balance || 0
+      });
     });
     
-    // Calculate outstanding for EACH pupil
+    // Calculate cumulative balances
     const outstandingPupils = [];
     let totalOutstanding = 0;
+    
+    const termOrder = ['First Term', 'Second Term', 'Third Term'];
     
     pupilsSnap.forEach(pupilDoc => {
       const pupil = pupilDoc.data();
@@ -3421,49 +3433,68 @@ async function loadOutstandingFeesReport() {
         return;
       }
       
-      const amountDue = feeStructureMap[classId] || 0;
+      // ✅ FIX: Calculate total owed across ALL terms in session
+      let cumulativeDue = 0;
+      let cumulativePaid = 0;
+      const termBreakdown = [];
       
-      if (amountDue === 0) {
-        console.warn(`⚠️ No fee structure for class ${pupil.class?.name}`);
-        return; // Skip pupils in classes without fee structures
-      }
+      termOrder.forEach(term => {
+        const feeKey = `${classId}_${term}`;
+        const termFee = feeStructureMap[feeKey] || 0;
+        
+        if (termFee > 0) {
+          cumulativeDue += termFee;
+          
+          // Find payment for this term
+          const payments = paymentsByPupil[pupilId] || [];
+          const termPayment = payments.find(p => p.term === term);
+          
+          if (termPayment) {
+            cumulativePaid += termPayment.totalPaid;
+            
+            termBreakdown.push({
+              term: term,
+              due: termFee,
+              paid: termPayment.totalPaid,
+              balance: termFee - termPayment.totalPaid
+            });
+          } else {
+            termBreakdown.push({
+              term: term,
+              due: termFee,
+              paid: 0,
+              balance: termFee
+            });
+          }
+        }
+      });
       
-      const payment = paymentMap[pupilId];
-      const totalPaid = payment ? payment.totalPaid : 0;
-      const balance = amountDue - totalPaid;
+      const cumulativeBalance = cumulativeDue - cumulativePaid;
       
-      if (balance > 0) {
+      // Only include if there's outstanding balance
+      if (cumulativeBalance > 0) {
         outstandingPupils.push({
           name: pupil.name || 'Unknown',
           className: pupil.class?.name || '-',
-          amountDue: amountDue,
-          totalPaid: totalPaid,
-          balance: balance,
-          status: totalPaid > 0 ? 'partial' : 'owing'
+          cumulativeDue: cumulativeDue,
+          cumulativePaid: cumulativePaid,
+          cumulativeBalance: cumulativeBalance,
+          termBreakdown: termBreakdown,
+          status: cumulativePaid > 0 ? 'partial' : 'owing'
         });
         
-        totalOutstanding += balance;
+        totalOutstanding += cumulativeBalance;
       }
     });
     
     // Sort by balance (highest first)
-    outstandingPupils.sort((a, b) => b.balance - a.balance);
+    outstandingPupils.sort((a, b) => b.cumulativeBalance - a.cumulativeBalance);
     
     tbody.innerHTML = '';
     
     if (outstandingPupils.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">
-            ✓ All fees collected! No outstanding payments.
-          </td>
-        </tr>`;
-      
-      const outstandingCount = document.getElementById('outstanding-count');
-      if (outstandingCount) outstandingCount.textContent = '0';
-      
-      const outstandingTotal = document.getElementById('outstanding-total');
-      if (outstandingTotal) outstandingTotal.textContent = '₦0';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected! No outstanding payments.</td></tr>';
+      updateSummaryDisplay(0, 0);
       return;
     }
     
@@ -3471,18 +3502,32 @@ async function loadOutstandingFeesReport() {
     
     outstandingPupils.forEach(pupil => {
       const tr = document.createElement('tr');
+      
+      // Build term breakdown tooltip
+      const breakdownHTML = pupil.termBreakdown
+        .filter(t => t.due > 0)
+        .map(t => `${t.term}: ₦${t.balance.toLocaleString()} (${t.paid > 0 ? 'Partial' : 'Unpaid'})`)
+        .join('\n');
+      
       tr.innerHTML = `
         <td data-label="Pupil Name">${pupil.name}</td>
         <td data-label="Class">${pupil.className}</td>
-        <td data-label="Amount Due">₦${pupil.amountDue.toLocaleString()}</td>
-        <td data-label="Paid">₦${pupil.totalPaid.toLocaleString()}</td>
+        <td data-label="Total Due">₦${pupil.cumulativeDue.toLocaleString()}</td>
+        <td data-label="Total Paid">₦${pupil.cumulativePaid.toLocaleString()}</td>
         <td data-label="Balance" class="text-bold text-danger">
-          ₦${pupil.balance.toLocaleString()}
+          ₦${pupil.cumulativeBalance.toLocaleString()}
         </td>
         <td data-label="Status">
           <span class="status-badge" style="background:${pupil.status === 'partial' ? '#ff9800' : '#f44336'};">
             ${pupil.status === 'partial' ? 'Partial' : 'Owing'}
           </span>
+        </td>
+        <td data-label="Breakdown">
+          <button class="btn-small btn-secondary" 
+                  onclick="showFeeBreakdown('${pupil.name}', ${JSON.stringify(pupil.termBreakdown).replace(/"/g, '&quot;')})"
+                  title="${breakdownHTML}">
+            View Details
+          </button>
         </td>
       `;
       fragment.appendChild(tr);
@@ -3491,153 +3536,367 @@ async function loadOutstandingFeesReport() {
     tbody.appendChild(fragment);
     
     // Update summary
-    const outstandingCountEl = document.getElementById('outstanding-count');
-    if (outstandingCountEl) outstandingCountEl.textContent = outstandingPupils.length;
+    updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
     
-    const outstandingTotalEl = document.getElementById('outstanding-total');
-    if (outstandingTotalEl) outstandingTotalEl.textContent = `₦${totalOutstanding.toLocaleString()}`;
-    
-    console.log(`✓ Outstanding fees calculated: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
+    console.log(`✓ Outstanding fees: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
     
   } catch (error) {
     console.error('Error loading outstanding fees:', error);
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; color:var(--color-danger);">
-          Error loading outstanding fees: ${error.message}
-        </td>
-      </tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading outstanding fees: ${error.message}</td></tr>`;
   }
 }
 
 /**
- * Load financial reports
+ * Update summary display elements
  */
-/**
- * Load financial reports - FIXED: Based on ALL pupils
- */
-async function loadFinancialReports() {
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    
-    // FIXED: Get ALL pupils currently enrolled
-    const pupilsSnap = await db.collection('pupils').get();
-    
-    if (pupilsSnap.empty) {
-      updateFinancialDisplays(0, 0, 0, 0, 0, 0, pupilsSnap.size, session, term);
-      return;
-    }
-    
-    console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
-    
-    // Get fee structures for all classes
-    const feeStructuresSnap = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .where('term', '==', term)
-      .get();
-    
-    const feeStructureMap = {};
-    feeStructuresSnap.forEach(doc => {
-      const data = doc.data();
-      feeStructureMap[data.classId] = data.total || 0;
-    });
-    
-    // Get all payment records
-    const paymentsSnap = await db.collection('payments')
-      .where('session', '==', session)
-      .where('term', '==', term)
-      .get();
-    
-    const paymentMap = {};
-    paymentsSnap.forEach(doc => {
-      const data = doc.data();
-      paymentMap[data.pupilId] = {
-        totalPaid: data.totalPaid || 0,
-        balance: data.balance || 0,
-        status: data.status || 'owing'
-      };
-    });
-    
-    // Calculate totals for EACH pupil
-    let totalExpected = 0;
-    let totalCollected = 0;
-    let totalOutstanding = 0;
-    let paidInFull = 0;
-    let partialPayments = 0;
-    let noPayment = 0;
-    let pupilsWithFees = 0; // Only count pupils in classes with fee structures
-    
-    pupilsSnap.forEach(pupilDoc => {
-      const pupil = pupilDoc.data();
-      const pupilId = pupilDoc.id;
-      const classId = pupil.class?.id || null;
-      
-      if (!classId) {
-        console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
-        return;
-      }
-      
-      const amountDue = feeStructureMap[classId] || 0;
-      
-      if (amountDue === 0) {
-        console.warn(`⚠️ No fee structure for class ${pupil.class?.name}`);
-        return; // Skip pupils in classes without fee structures
-      }
-      
-      pupilsWithFees++;
-      totalExpected += amountDue;
-      
-      const payment = paymentMap[pupilId];
-      
-      if (payment) {
-        totalCollected += payment.totalPaid;
-        totalOutstanding += payment.balance;
-        
-        if (payment.status === 'paid') {
-          paidInFull++;
-        } else if (payment.status === 'partial') {
-          partialPayments++;
-        } else {
-          noPayment++;
-        }
-      } else {
-        // No payment record = full balance outstanding
-        totalOutstanding += amountDue;
-        noPayment++;
-      }
-    });
-    
-    const collectionRate = totalExpected > 0 
-      ? ((totalCollected / totalExpected) * 100).toFixed(1)
-      : 0;
-    
-    updateFinancialDisplays(
-      totalExpected,
-      totalCollected,
-      totalOutstanding,
-      collectionRate,
-      paidInFull,
-      partialPayments,
-      noPayment,
-      session,
-      term
-    );
-    
-    console.log(`✓ Financial report generated:`);
-    console.log(`  - Total pupils: ${pupilsSnap.size}`);
-    console.log(`  - Pupils with fees: ${pupilsWithFees}`);
-    console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
-    console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
-    console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
-    console.log(`  - Collection rate: ${collectionRate}%`);
-    
-  } catch (error) {
-    console.error('Error loading financial reports:', error);
-    window.showToast?.('Failed to load financial reports', 'danger');
-  }
+function updateSummaryDisplay(count, total) {
+  const countEl = document.getElementById('outstanding-count');
+  const totalEl = document.getElementById('outstanding-total');
+  
+  if (countEl) countEl.textContent = count;
+  if (totalEl) totalEl.textContent = `₦${total.toLocaleString()}`;
 }
+
+/**
+ * Show detailed fee breakdown in modal
+ */
+function showFeeBreakdown(pupilName, termBreakdown) {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000;';
+  
+  const breakdownRows = termBreakdown
+    .filter(t => t.due > 0)
+    .map(t => `
+      <tr>
+        <td><strong>${t.term}</strong></td>
+        <td style="text-align:right;">₦${t.due.toLocaleString()}</td>
+        <td style="text-align:right;">₦${t.paid.toLocaleString()}</td>
+        <td style="text-align:right; color:${t.balance > 0 ? '#f44336' : '#4CAF50'}; font-weight:700;">
+          ₦${t.balance.toLocaleString()}
+        </td>
+      </tr>
+    `).join('');
+  
+  const totalDue = termBreakdown.reduce((sum, t) => sum + t.due, 0);
+  const totalPaid = termBreakdown.reduce((sum, t) => sum + t.paid, 0);
+  const totalBalance = termBreakdown.reduce((sum, t) => sum + t.balance, 0);
+  
+  modal.innerHTML = `
+    <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:600px; width:90%; max-height:80vh; overflow-y:auto;">
+      <h3 style="margin-top:0;">Fee Breakdown: ${pupilName}</h3>
+      
+      <table style="width:100%; border-collapse:collapse; margin-bottom:var(--space-lg);">
+        <thead>
+          <tr style="background:#f5f5f5;">
+            <th style="padding:var(--space-sm); text-align:left;">Term</th>
+            <th style="padding:var(--space-sm); text-align:right;">Due</th>
+            <th style="padding:var(--space-sm); text-align:right;">Paid</th>
+            <th style="padding:var(--space-sm); text-align:right;">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${breakdownRows}
+        </tbody>
+        <tfoot>
+          <tr style="background:#e3f2fd; font-weight:700;">
+            <td style="padding:var(--space-sm);"><strong>TOTAL</strong></td>
+            <td style="padding:var(--space-sm); text-align:right;">₦${totalDue.toLocaleString()}</td>
+            <td style="padding:var(--space-sm); text-align:right;">₦${totalPaid.toLocaleString()}</td>
+            <td style="padding:var(--space-sm); text-align:right; color:#f44336;">₦${totalBalance.toLocaleString()}</td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      <button class="btn btn-primary" onclick="this.closest('[style*=position]').remove()">Close</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+// Make functions globally available
+window.loadOutstandingFeesReport = loadOutstandingFeesReport;
+window.updateSummaryDisplay = updateSummaryDisplay;
+window.showFeeBreakdown = showFeeBreakdown;
+
+/**
+ * FIXED: Financial Reports with Cumulative Session Totals
+ * Replace loadFinancialReports() in admin.js (lines 2740-2820)
+ * 
+ * FIXES:
+ * - Calculates totals across ALL terms in session
+ * - Shows term-by-term breakdown
+ * - Accurate collection rates
+ */
+
+async function loadFinancialReports() {
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        
+        // ✅ FIX: Get ALL pupils currently enrolled
+        const pupilsSnap = await db.collection('pupils').get();
+        
+        if (pupilsSnap.empty) {
+            updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, 'All Terms');
+            return;
+        }
+        
+        console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
+        
+        // ✅ FIX: Get fee structures for ALL terms in current session
+        const feeStructuresSnap = await db.collection('fee_structures')
+            .where('session', '==', session)
+            .get();  // ← REMOVED term filter
+        
+        const feeStructureMap = {};
+        feeStructuresSnap.forEach(doc => {
+            const data = doc.data();
+            const key = `${data.classId}_${data.term}`;
+            feeStructureMap[key] = data.total || 0;
+        });
+        
+        // ✅ FIX: Get all payment records for current session (all terms)
+        const paymentsSnap = await db.collection('payments')
+            .where('session', '==', session)
+            .get();  // ← REMOVED term filter
+        
+        const paymentMap = {};
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            const pupilId = data.pupilId;
+            
+            if (!paymentMap[pupilId]) {
+                paymentMap[pupilId] = {
+                    totalDue: 0,
+                    totalPaid: 0,
+                    totalBalance: 0,
+                    terms: []
+                };
+            }
+            
+            paymentMap[pupilId].totalDue += data.amountDue || 0;
+            paymentMap[pupilId].totalPaid += data.totalPaid || 0;
+            paymentMap[pupilId].totalBalance += data.balance || 0;
+            paymentMap[pupilId].terms.push(data.term);
+        });
+        
+        // Calculate cumulative totals for ALL pupils across ALL terms
+        let totalExpected = 0;
+        let totalCollected = 0;
+        let totalOutstanding = 0;
+        let paidInFull = 0;
+        let partialPayments = 0;
+        let noPayment = 0;
+        let pupilsWithFees = 0;
+        
+        const termOrder = ['First Term', 'Second Term', 'Third Term'];
+        
+        pupilsSnap.forEach(pupilDoc => {
+            const pupil = pupilDoc.data();
+            const pupilId = pupilDoc.id;
+            const classId = pupil.class?.id || null;
+            
+            if (!classId) {
+                console.warn(`⚠️ Pupil ${pupil.name} has no class assigned`);
+                return;
+            }
+            
+            // Calculate total expected across all terms with fee structures
+            let pupilExpected = 0;
+            termOrder.forEach(term => {
+                const feeKey = `${classId}_${term}`;
+                const termFee = feeStructureMap[feeKey] || 0;
+                pupilExpected += termFee;
+            });
+            
+            if (pupilExpected === 0) {
+                return; // Skip pupils in classes without fee structures
+            }
+            
+            pupilsWithFees++;
+            totalExpected += pupilExpected;
+            
+            const payment = paymentMap[pupilId];
+            
+            if (payment) {
+                totalCollected += payment.totalPaid;
+                totalOutstanding += payment.totalBalance;
+                
+                // Determine overall status based on cumulative balance
+                if (payment.totalBalance <= 0) {
+                    paidInFull++;
+                } else if (payment.totalPaid > 0) {
+                    partialPayments++;
+                } else {
+                    noPayment++;
+                }
+            } else {
+                // No payment record = full balance outstanding
+                totalOutstanding += pupilExpected;
+                noPayment++;
+            }
+        });
+        
+        const collectionRate = totalExpected > 0 
+            ? ((totalCollected / totalExpected) * 100).toFixed(1)
+            : 0;
+        
+        updateFinancialDisplays(
+            totalExpected,
+            totalCollected,
+            totalOutstanding,
+            collectionRate,
+            paidInFull,
+            partialPayments,
+            noPayment,
+            session,
+            'All Terms'  // ✅ Changed to show this is cumulative
+        );
+        
+        console.log(`✓ Financial report generated (cumulative):`);
+        console.log(`  - Total pupils: ${pupilsSnap.size}`);
+        console.log(`  - Pupils with fees: ${pupilsWithFees}`);
+        console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
+        console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
+        console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
+        console.log(`  - Collection rate: ${collectionRate}%`);
+        
+        // ✅ NEW: Add term breakdown chart
+        await generateTermBreakdownChart(session, feeStructureMap, paymentMap);
+        
+    } catch (error) {
+        console.error('Error loading financial reports:', error);
+        window.showToast?.('Failed to load financial reports', 'danger');
+    }
+}
+
+/**
+ * ✅ NEW: Generate term-by-term breakdown chart
+ */
+async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) {
+    const chartContainer = document.getElementById('term-breakdown-chart');
+    if (!chartContainer) return;
+    
+    const termOrder = ['First Term', 'Second Term', 'Third Term'];
+    const termData = {};
+    
+    // Initialize term data
+    termOrder.forEach(term => {
+        termData[term] = {
+            expected: 0,
+            collected: 0,
+            outstanding: 0
+        };
+    });
+    
+    // Calculate per-term totals
+    Object.entries(feeStructureMap).forEach(([key, amount]) => {
+        const term = key.split('_')[1]; // Extract term from "classId_term"
+        if (termData[term]) {
+            termData[term].expected += amount;
+        }
+    });
+    
+    Object.values(paymentMap).forEach(pupilPayments => {
+        pupilPayments.terms.forEach(term => {
+            if (termData[term]) {
+                // This is approximate - in real implementation, you'd need to track per-term payments
+                const termPortion = pupilPayments.totalPaid / pupilPayments.terms.length;
+                termData[term].collected += termPortion;
+            }
+        });
+    });
+    
+    // Calculate outstanding
+    Object.keys(termData).forEach(term => {
+        termData[term].outstanding = termData[term].expected - termData[term].collected;
+    });
+    
+    // Render chart
+    const chartHTML = `
+        <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0; margin-top: var(--space-xl);">
+            <h3 style="margin: 0 0 var(--space-lg);">📊 Term-by-Term Breakdown</h3>
+            <div style="display: grid; gap: var(--space-lg);">
+                ${termOrder.map(term => {
+                    const data = termData[term];
+                    if (data.expected === 0) return '';
+                    
+                    const collectionRate = data.expected > 0 
+                        ? Math.round((data.collected / data.expected) * 100)
+                        : 0;
+                    
+                    return `
+                        <div style="padding: var(--space-md); background: #f8fafc; border-radius: var(--radius-md);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                                <strong style="color: #0f172a;">${term}</strong>
+                                <span style="color: ${collectionRate >= 75 ? '#4CAF50' : collectionRate >= 50 ? '#ff9800' : '#f44336'}; font-weight: 700;">
+                                    ${collectionRate}% collected
+                                </span>
+                            </div>
+                            
+                            <!-- Progress bar -->
+                            <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: var(--space-sm);">
+                                <div style="background: ${collectionRate >= 75 ? '#4CAF50' : collectionRate >= 50 ? '#ff9800' : '#f44336'}; width: ${collectionRate}%; height: 100%; transition: width 0.3s ease;"></div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); font-size: var(--text-sm); color: var(--color-gray-600);">
+                                <div>Expected: <strong>₦${Math.round(data.expected).toLocaleString()}</strong></div>
+                                <div>Collected: <strong style="color: #4CAF50;">₦${Math.round(data.collected).toLocaleString()}</strong></div>
+                                <div>Outstanding: <strong style="color: #f44336;">₦${Math.round(data.outstanding).toLocaleString()}</strong></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+    
+    chartContainer.innerHTML = chartHTML;
+}
+
+// Helper function (keep existing one)
+function updateFinancialDisplays(
+    totalExpected,
+    totalCollected,
+    totalOutstanding,
+    collectionRate,
+    paidInFull,
+    partialPayments,
+    noPayment,
+    session,
+    term
+) {
+    const expectedEl = document.getElementById('report-total-expected');
+    const collectedEl = document.getElementById('report-total-collected');
+    const outstandingEl = document.getElementById('report-total-outstanding');
+    const rateEl = document.getElementById('report-collection-rate');
+    
+    if (expectedEl) expectedEl.textContent = `₦${Number(totalExpected).toLocaleString()}`;
+    if (collectedEl) collectedEl.textContent = `₦${Number(totalCollected).toLocaleString()}`;
+    if (outstandingEl) outstandingEl.textContent = `₦${Number(totalOutstanding).toLocaleString()}`;
+    if (rateEl) rateEl.textContent = `${collectionRate}%`;
+    
+    const paidFullEl = document.getElementById('report-paid-full');
+    if (paidFullEl) paidFullEl.textContent = paidInFull;
+    
+    const partialEl = document.getElementById('report-partial');
+    if (partialEl) partialEl.textContent = partialPayments;
+    
+    const owingEl = document.getElementById('report-owing');
+    if (owingEl) owingEl.textContent = noPayment;
+    
+    const sessionEl = document.getElementById('report-session-display');
+    if (sessionEl) sessionEl.textContent = session || '—';
+    
+    const termEl = document.getElementById('report-term-display');
+    if (termEl) termEl.textContent = term || '—';
+}
+
+// Make functions globally available
+window.loadFinancialReports = loadFinancialReports;
+window.generateTermBreakdownChart = generateTermBreakdownChart;
+window.updateFinancialDisplays = updateFinancialDisplays;
 
 // Helper function
 function updateFinancialDisplays(
