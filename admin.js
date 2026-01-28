@@ -3390,149 +3390,106 @@ async function loadPaymentHistory(pupilId, session, term) {
 }
 
 /**
- * FIXED: Outstanding Fees Report with Enrollment-Aware Fee Calculation
- * Replace loadOutstandingFeesReport() in admin.js (lines 2370-2470)
+ * FIXED: Outstanding Fees Report - Current Term Only
+ * Shows outstanding fees for current term based on school settings
  */
 async function loadOutstandingFeesReport() {
-  const container = document.getElementById('outstanding-fees-table');
-  if (!container) return;
+    const container = document.getElementById('outstanding-fees-table');
+    if (!container) return;
 
-  const tbody = container.querySelector('tbody');
-  if (!tbody) return;
+    const tbody = container.querySelector('tbody');
+    if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading outstanding fees...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading outstanding fees...</td></tr>';
 
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
+    try {
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        const currentTerm = settings.term; // Get current term
 
-    const pupilsSnap = await db.collection('pupils').get();
+        // ✅ FIX: Query payments for CURRENT TERM ONLY
+        const paymentsSnap = await db.collection('payments')
+            .where('session', '==', session)
+            .where('term', '==', currentTerm)
+            .where('status', 'in', ['owing', 'partial', 'owing_with_arrears'])
+            .get();
 
-    if (pupilsSnap.empty) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils enrolled in the school.</td></tr>';
-      updateSummaryDisplay(0, 0);
-      return;
-    }
+        if (paymentsSnap.empty) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '! No outstanding payments.</td></tr>';
+            updateSummaryDisplay(0, 0);
+            return;
+        }
 
-    console.log(`📊 Calculating fees for ${pupilsSnap.size} pupils (enrollment-aware)...`);
+        const outstandingPupils = [];
+        let totalOutstanding = 0;
 
-    const paymentsSnap = await db.collection('payments').where('session', '==', session).get();
-    const paymentsByPupil = {};
-    paymentsSnap.forEach(doc => {
-      const data = doc.data();
-      const pupilId = data.pupilId;
-      if (!paymentsByPupil[pupilId]) paymentsByPupil[pupilId] = [];
-      paymentsByPupil[pupilId].push(data);
-    });
-
-    const feeStructuresSnap = await db.collection('fee_structures').where('session', '==', session).get();
-    const feeStructureMap = {};
-    feeStructuresSnap.forEach(doc => {
-      const data = doc.data();
-      feeStructureMap[data.classId] = data.total || 0;
-    });
-
-    const outstandingPupils = [];
-    let totalOutstanding = 0;
-    const termOrder = ['First Term', 'Second Term', 'Third Term'];
-
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupil = pupilDoc.data();
-      const pupilId = pupilDoc.id;
-      const classId = pupil.class?.id || null;
-      if (!classId) continue;
-
-      const baseFeePerTerm = feeStructureMap[classId] || 0;
-      if (baseFeePerTerm === 0) continue;
-
-      const termBreakdown = [];
-      let cumulativeDue = 0;
-      let cumulativePaid = 0;
-
-      for (const term of termOrder) {
-        // Calculate expected fee only if pupil is enrolled for the term
-        const termFee = window.finance.calculatePupilTermFee(pupil, baseFeePerTerm, term);
-        cumulativeDue += termFee;
-
-        // Find payment for this pupil and term
-        const termPayment = (paymentsByPupil[pupilId] || []).find(p => p.term === term) || { amountDue: 0, totalPaid: 0, balance: termFee };
-
-        termBreakdown.push({
-          term,
-          due: termFee,
-          paid: termPayment.totalPaid || 0,
-          balance: (termFee - (termPayment.totalPaid || 0))
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            const balance = data.balance || 0;
+            
+            if (balance > 0) {
+                outstandingPupils.push({
+                    name: data.pupilName || 'Unknown',
+                    className: data.className || '-',
+                    amountDue: data.amountDue || 0,
+                    totalPaid: data.totalPaid || 0,
+                    balance: balance,
+                    arrears: data.arrears || 0,
+                    status: data.status || 'owing'
+                });
+                
+                totalOutstanding += balance;
+            }
         });
 
-        cumulativePaid += termPayment.totalPaid || 0;
-      }
+        // Sort by balance (highest first)
+        outstandingPupils.sort((a, b) => b.balance - a.balance);
 
-      const cumulativeBalance = cumulativeDue - cumulativePaid;
-      if (cumulativeBalance > 0) {
-        outstandingPupils.push({
-          name: pupil.name || 'Unknown',
-          className: pupil.class?.name || '-',
-          cumulativeDue,
-          cumulativePaid,
-          cumulativeBalance,
-          termBreakdown,
-          status: cumulativePaid > 0 ? 'partial' : 'owing'
+        tbody.innerHTML = '';
+
+        if (outstandingPupils.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
+            updateSummaryDisplay(0, 0);
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        
+        outstandingPupils.forEach(pupil => {
+            const tr = document.createElement('tr');
+            
+            // Show arrears badge if exists
+            const arrearsNote = pupil.arrears > 0 
+                ? `<br><span style="color:#dc3545; font-size:0.85em;">+ ₦${pupil.arrears.toLocaleString()} arrears</span>` 
+                : '';
+            
+            tr.innerHTML = `
+                <td data-label="Pupil Name">${pupil.name}</td>
+                <td data-label="Class">${pupil.className}</td>
+                <td data-label="Amount Due">₦${pupil.amountDue.toLocaleString()}${arrearsNote}</td>
+                <td data-label="Total Paid">₦${pupil.totalPaid.toLocaleString()}</td>
+                <td data-label="Balance" class="text-bold text-danger">
+                    ₦${pupil.balance.toLocaleString()}
+                </td>
+                <td data-label="Status">
+                    <span class="status-badge" style="background:${pupil.status === 'partial' ? '#ff9800' : pupil.arrears > 0 ? '#dc3545' : '#f44336'};">
+                        ${pupil.status === 'partial' ? 'Partial' : pupil.arrears > 0 ? 'With Arrears' : 'Owing'}
+                    </span>
+                </td>
+                <td data-label="Term">${currentTerm}</td>
+            `;
+            fragment.appendChild(tr);
         });
 
-        totalOutstanding += cumulativeBalance;
-      }
+        tbody.appendChild(fragment);
+        updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
+
+        console.log(`✓ Outstanding fees for ${currentTerm}: ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
+
+    } catch (error) {
+        console.error('Error loading outstanding fees:', error);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading outstanding fees: ${error.message}</td></tr>`;
     }
-
-    outstandingPupils.sort((a, b) => b.cumulativeBalance - a.cumulativeBalance);
-
-    tbody.innerHTML = '';
-    if (outstandingPupils.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected! No outstanding payments.</td></tr>';
-      updateSummaryDisplay(0, 0);
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    outstandingPupils.forEach(pupil => {
-      const tr = document.createElement('tr');
-      const breakdownHTML = pupil.termBreakdown
-        .filter(t => t.due > 0)
-        .map(t => `${t.term}: ₦${t.balance.toLocaleString()} (${t.paid > 0 ? 'Partial' : 'Unpaid'})`)
-        .join('\n');
-
-      tr.innerHTML = `
-        <td data-label="Pupil Name">${pupil.name}</td>
-        <td data-label="Class">${pupil.className}</td>
-        <td data-label="Total Due">₦${pupil.cumulativeDue.toLocaleString()}</td>
-        <td data-label="Total Paid">₦${pupil.cumulativePaid.toLocaleString()}</td>
-        <td data-label="Balance" class="text-bold text-danger">
-          ₦${pupil.cumulativeBalance.toLocaleString()}
-        </td>
-        <td data-label="Status">
-          <span class="status-badge" style="background:${pupil.status === 'partial' ? '#ff9800' : '#f44336'};">
-            ${pupil.status === 'partial' ? 'Partial' : 'Owing'}
-          </span>
-        </td>
-        <td data-label="Breakdown">
-          <button class="btn-small btn-secondary" 
-                  onclick="showFeeBreakdown('${pupil.name}', ${JSON.stringify(pupil.termBreakdown).replace(/"/g, '&quot;')})"
-                  title="${breakdownHTML}">
-            View Details
-          </button>
-        </td>
-      `;
-      fragment.appendChild(tr);
-    });
-
-    tbody.appendChild(fragment);
-    updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
-
-    console.log(`✓ Outstanding fees (enrollment-aware): ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
-
-  } catch (error) {
-    console.error('Error loading outstanding fees:', error);
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading outstanding fees: ${error.message}</td></tr>`;
-  }
 }
 
 /**
@@ -3609,47 +3566,25 @@ window.updateSummaryDisplay = updateSummaryDisplay;
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
- * FIXED: Financial Reports with Cumulative Session Totals
- * Replace loadFinancialReports() in admin.js (lines 2740-2820)
- * 
- * FIXES:
- * - Calculates totals across ALL terms in session
- * - Shows term-by-term breakdown
- * - Accurate collection rates
- */
-
-/**
- * FIXED: Financial Reports with Enrollment-Aware Totals
- * Replace loadFinancialReports() in admin.js (lines 2740-2820)
+ * FIXED: Financial Reports - Current Term Only
+ * Shows financial summary for current term
  */
 async function loadFinancialReports() {
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
+        const currentTerm = settings.term; // Get current term
 
-        const pupilsSnap = await db.collection('pupils').get();
-        if (pupilsSnap.empty) {
-            updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, 'All Terms');
+        // ✅ FIX: Query payments for CURRENT TERM ONLY
+        const paymentsSnap = await db.collection('payments')
+            .where('session', '==', session)
+            .where('term', '==', currentTerm)
+            .get();
+
+        if (paymentsSnap.empty) {
+            updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, currentTerm);
             return;
         }
-
-        console.log(`📊 Generating financial report for ${pupilsSnap.size} pupils...`);
-
-        const feeStructuresSnap = await db.collection('fee_structures').where('session', '==', session).get();
-        const feeStructureMap = {};
-        feeStructuresSnap.forEach(doc => {
-            const data = doc.data();
-            feeStructureMap[data.classId] = data.total || 0;
-        });
-
-        const paymentsSnap = await db.collection('payments').where('session', '==', session).get();
-        const paymentsByPupil = {};
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            const pupilId = data.pupilId;
-            if (!paymentsByPupil[pupilId]) paymentsByPupil[pupilId] = [];
-            paymentsByPupil[pupilId].push(data);
-        });
 
         let totalExpected = 0;
         let totalCollected = 0;
@@ -3657,45 +3592,26 @@ async function loadFinancialReports() {
         let paidInFull = 0;
         let partialPayments = 0;
         let noPayment = 0;
-        let pupilsWithFees = 0;
 
-        const termOrder = ['First Term', 'Second Term', 'Third Term'];
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            const amountDue = data.amountDue || 0;
+            const totalPaid = data.totalPaid || 0;
+            const balance = data.balance || 0;
+            const status = data.status || 'owing';
 
-        for (const pupilDoc of pupilsSnap.docs) {
-            const pupil = pupilDoc.data();
-            const pupilId = pupilDoc.id;
-            const classId = pupil.class?.id || null;
-            if (!classId) continue;
+            totalExpected += amountDue;
+            totalCollected += totalPaid;
+            totalOutstanding += balance;
 
-            const baseFeePerTerm = feeStructureMap[classId] || 0;
-            if (baseFeePerTerm === 0) continue;
-            pupilsWithFees++;
-
-            let pupilExpected = 0;
-            let pupilCollected = 0;
-            let pupilOutstanding = 0;
-
-            for (const term of termOrder) {
-                const termFee = window.finance.calculatePupilTermFee(pupil, baseFeePerTerm, term);
-                pupilExpected += termFee;
-
-                const termPayment = (paymentsByPupil[pupilId] || []).find(p => p.term === term) || { totalPaid: 0 };
-                pupilCollected += termPayment.totalPaid || 0;
-                pupilOutstanding += termFee - (termPayment.totalPaid || 0);
-            }
-
-            totalExpected += pupilExpected;
-            totalCollected += pupilCollected;
-            totalOutstanding += pupilOutstanding;
-
-            if (pupilOutstanding <= 0) {
+            if (status === 'paid') {
                 paidInFull++;
-            } else if (pupilCollected > 0) {
+            } else if (status === 'partial') {
                 partialPayments++;
             } else {
                 noPayment++;
             }
-        }
+        });
 
         const collectionRate = totalExpected > 0
             ? ((totalCollected / totalExpected) * 100).toFixed(1)
@@ -3710,18 +3626,14 @@ async function loadFinancialReports() {
             partialPayments,
             noPayment,
             session,
-            'All Terms'
+            currentTerm // Pass current term to display
         );
 
-        console.log(`✓ Financial report generated (enrollment-aware):`);
-        console.log(`  - Total pupils: ${pupilsSnap.size}`);
-        console.log(`  - Pupils with fees: ${pupilsWithFees}`);
+        console.log(`✓ Financial report for ${currentTerm}:`);
         console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
         console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
         console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
         console.log(`  - Collection rate: ${collectionRate}%`);
-
-        await generateTermBreakdownChart(session, feeStructureMap, paymentsByPupil);
 
     } catch (error) {
         console.error('Error loading financial reports:', error);
