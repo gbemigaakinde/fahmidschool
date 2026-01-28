@@ -270,87 +270,96 @@ const finance = {
   /**
    * Get outstanding fees report
    */
-  async getOutstandingFeesReport(classId = null, session, term) {
-    try {
-      let query = db
-        .collection('payments')
-        .where('session', '==', session)
-        .where('term', '==', term)
-        .where('status', 'in', ['owing', 'partial']);
+  async getOutstandingFeesReport(classId = null, session, term = null) {
+  try {
+    let query = db
+      .collection('payments')
+      .where('session', '==', session)
+      .where('status', 'in', ['owing', 'partial']);
 
-      if (classId) {
-        query = query.where('classId', '==', classId);
-      }
-
-      const snapshot = await query.get();
-      const outstanding = [];
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.balance > 0) {
-          outstanding.push(data);
-        }
-      });
-
-      outstanding.sort((a, b) => b.balance - a.balance);
-      return outstanding;
-
-    } catch (error) {
-      console.error('Error getting outstanding fees:', error);
-      return [];
+    if (classId) {
+      query = query.where('classId', '==', classId);
     }
-  },
+    
+    // FIXED: Optional term filter (removed from required params)
+    if (term) {
+      query = query.where('term', '==', term);
+    }
+
+    const snapshot = await query.get();
+    const outstanding = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.balance > 0) {
+        outstanding.push(data);
+      }
+    });
+
+    outstanding.sort((a, b) => b.balance - a.balance);
+    return outstanding;
+
+  } catch (error) {
+    console.error('Error getting outstanding fees:', error);
+    return [];
+  }
+},
 
   /**
    * Get financial summary
    */
-  async getFinancialSummary(session, term) {
-    try {
-      const snapshot = await db
-        .collection('payments')
-        .where('session', '==', session)
-        .where('term', '==', term)
-        .get();
-
-      let totalExpected = 0;
-      let totalCollected = 0;
-      let totalOutstanding = 0;
-      let paidInFull = 0;
-      let partialPayments = 0;
-      let noPayment = 0;
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        totalExpected += data.amountDue || 0;
-        totalCollected += data.totalPaid || 0;
-        totalOutstanding += data.balance || 0;
-
-        if (data.status === 'paid') paidInFull++;
-        else if (data.status === 'partial') partialPayments++;
-        else if (data.status === 'owing') noPayment++;
-      });
-
-      const collectionRate =
-        totalExpected > 0
-          ? ((totalCollected / totalExpected) * 100).toFixed(1)
-          : 0;
-
-      return {
-        totalExpected: totalExpected,
-        totalCollected: totalCollected,
-        totalOutstanding: totalOutstanding,
-        collectionRate: parseFloat(collectionRate),
-        paidInFull: paidInFull,
-        partialPayments: partialPayments,
-        noPayment: noPayment,
-        totalPupils: snapshot.size
-      };
-
-    } catch (error) {
-      console.error('Error getting financial summary:', error);
-      return null;
+  async getFinancialSummary(session, term = null) {
+  try {
+    let query = db
+      .collection('payments')
+      .where('session', '==', session);
+    
+    // FIXED: Optional term filter for per-term reports
+    if (term) {
+      query = query.where('term', '==', term);
     }
+    
+    const snapshot = await query.get();
+
+    let totalExpected = 0;
+    let totalCollected = 0;
+    let totalOutstanding = 0;
+    let paidInFull = 0;
+    let partialPayments = 0;
+    let noPayment = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      totalExpected += data.amountDue || 0;
+      totalCollected += data.totalPaid || 0;
+      totalOutstanding += data.balance || 0;
+
+      if (data.status === 'paid') paidInFull++;
+      else if (data.status === 'partial') partialPayments++;
+      else if (data.status === 'owing') noPayment++;
+    });
+
+    const collectionRate =
+      totalExpected > 0
+        ? ((totalCollected / totalExpected) * 100).toFixed(1)
+        : 0;
+
+    return {
+      totalExpected: totalExpected,
+      totalCollected: totalCollected,
+      totalOutstanding: totalOutstanding,
+      collectionRate: parseFloat(collectionRate),
+      paidInFull: paidInFull,
+      partialPayments: partialPayments,
+      noPayment: noPayment,
+      totalPupils: snapshot.size
+    };
+
+  } catch (error) {
+    console.error('Error getting financial summary:', error);
+    return null;
   }
+}
 
 };
 
