@@ -3013,7 +3013,8 @@ async function populateFeeClassSelector() {
 }
 
 /**
- * REPLACE loadFeeStructures() to add Edit buttons
+ * FIXED: Load Fee Structures (Class-Based Display)
+ * Replace loadFeeStructures() function
  */
 async function loadFeeStructures() {
   const container = document.getElementById('fee-structures-list');
@@ -3022,12 +3023,8 @@ async function loadFeeStructures() {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
   
   try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    
-    const snapshot = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .get();
+    // ✅ FIX: Query all fee structures (no session filter)
+    const snapshot = await db.collection('fee_structures').get();
     
     if (snapshot.empty) {
       container.innerHTML = `
@@ -3062,12 +3059,13 @@ async function loadFeeStructures() {
         margin-bottom: var(--space-md);
       `;
       
+      // ✅ FIX: Show as permanent (not session-specific)
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
           <div>
             <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
             <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
-              ${data.session} • <strong>All Terms</strong>
+              <strong>Applies to ALL Terms & Sessions</strong>
             </p>
           </div>
           <div style="display:flex; gap:var(--space-sm);">
@@ -3090,7 +3088,7 @@ async function loadFeeStructures() {
         </div>
         
         <div style="margin-top:var(--space-md); padding:var(--space-sm); background:#e3f2fd; border-left:4px solid #2196F3; border-radius:var(--radius-sm); font-size:var(--text-sm);">
-          ℹ️ This fee applies to <strong>all terms</strong> in ${data.session} until you change it
+          ℹ️ This fee structure is <strong>permanent</strong> and applies to all terms and sessions until you edit or delete it.
         </div>
       `;
       
@@ -3976,12 +3974,12 @@ async function editFeeStructure(feeDocId) {
 }
 
 /**
- * Generate payment records for all pupils in a class
- * FIXED: Checks for existing records to prevent duplicates
+ * FIXED: Generate Payment Records (Class-Based Fee Lookup)
+ * Replace generatePaymentRecordsForClass() function
  */
 async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
   try {
-    console.log(`Generating payment records for class ${className}, term ${term}...`);
+    console.log(`Generating payment records for ${className}, ${term}...`);
     
     const pupilsSnap = await db.collection('pupils')
       .where('class.id', '==', classId)
@@ -3990,6 +3988,21 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     if (pupilsSnap.empty) {
       console.log('No pupils found in this class');
       return { success: true, count: 0, skipped: 0, total: 0 };
+    }
+    
+    // ✅ FIX: Get persistent fee structure (class-based)
+    const feeDocId = `fee_${classId}`;
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+    
+    if (!feeDoc.exists) {
+      throw new Error(`No fee structure configured for class: ${className}`);
+    }
+    
+    const feeStructure = feeDoc.data();
+    const actualFeePerTerm = feeStructure.total || 0;
+    
+    if (actualFeePerTerm === 0) {
+      throw new Error(`Fee structure exists but amount is ₦0 for ${className}`);
     }
     
     const batch = db.batch();
@@ -4016,7 +4029,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
       // Calculate actual fee for this pupil in this term
       const actualFee = window.finance.calculatePupilTermFee(
         pupilData,
-        totalFee,
+        actualFeePerTerm,
         term
       );
       
