@@ -8335,7 +8335,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // ✅ CRITICAL FIX: Auto-migrate arrears on term change
+    // CRITICAL FIX: Auto-migrate arrears on term change
     if (oldTerm && oldTerm !== newTerm && oldSession === session) {
       console.log(`⚠️ Term changed: ${oldTerm} → ${newTerm}`);
       
@@ -8345,7 +8345,11 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
         3000
       );
       
-      const result = await migrateArrears OnTermChange(oldTerm, newTerm, session);
+      const result = await migrateArrearsOnTermChange(
+        oldTerm,
+        newTerm,
+        session
+      );
       
       if (result.success && result.count > 0) {
         window.showToast?.(
