@@ -3013,7 +3013,7 @@ async function populateFeeClassSelector() {
 }
 
 /**
- * Load existing fee structures - SESSION-BASED
+ * REPLACE loadFeeStructures() to add Edit buttons
  */
 async function loadFeeStructures() {
   const container = document.getElementById('fee-structures-list');
@@ -3044,6 +3044,14 @@ async function loadFeeStructures() {
     snapshot.forEach(doc => {
       const data = doc.data();
       
+      const feeItems = Object.entries(data.fees || {})
+        .map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
+            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
+            <strong>₦${parseFloat(value).toLocaleString()}</strong>
+          </div>
+        `).join('');
+      
       const card = document.createElement('div');
       card.className = 'fee-structure-card';
       card.style.cssText = `
@@ -3054,14 +3062,6 @@ async function loadFeeStructures() {
         margin-bottom: var(--space-md);
       `;
       
-      const feeItems = Object.entries(data.fees || {})
-        .map(([key, value]) => `
-          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
-            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
-            <strong>₦${parseFloat(value).toLocaleString()}</strong>
-          </div>
-        `).join('');
-      
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
           <div>
@@ -3070,9 +3070,14 @@ async function loadFeeStructures() {
               ${data.session} • <strong>All Terms</strong>
             </p>
           </div>
-          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
-            Delete
-          </button>
+          <div style="display:flex; gap:var(--space-sm);">
+            <button class="btn-small btn-primary" onclick="editFeeStructure('${doc.id}')">
+              ✏️ Edit
+            </button>
+            <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+              Delete
+            </button>
+          </div>
         </div>
         
         <div style="margin-bottom:var(--space-md);">
@@ -3836,6 +3841,8 @@ async function saveFeeStructure() {
   }
   
   const saveBtn = document.getElementById('save-fee-structure-btn');
+  const isEditing = saveBtn?.dataset.editingId;
+  
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
@@ -3845,48 +3852,44 @@ async function saveFeeStructure() {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     const encodedSession = session.replace(/\//g, '-');
-    const feeDocId = `${classId}_${encodedSession}`;
+    const feeDocId = isEditing || `${classId}_${encodedSession}`;
     
-    // CRITICAL FIX: Check if fee structure already exists
-    const existingFeeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-    
-    if (existingFeeDoc.exists) {
-      const existingData = existingFeeDoc.data();
-      const existingTotal = existingData.total || 0;
+    // Check if creating new and already exists
+    if (!isEditing) {
+      const existingFeeDoc = await db.collection('fee_structures').doc(feeDocId).get();
       
-      // Warn admin about overwriting existing fee
-      const confirmation = confirm(
-        `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
-        `Class: ${className}\n` +
-        `Session: ${session}\n\n` +
-        `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
-        `New fee: ₦${total.toLocaleString()} per term\n\n` +
-        `This will update the fee structure for ALL future terms in this session.\n` +
-        `Existing payment records will NOT be affected.\n\n` +
-        `Continue?`
-      );
-      
-      if (!confirmation) {
-        window.showToast?.('Fee structure update cancelled', 'info');
-        return;
+      if (existingFeeDoc.exists) {
+        const existingData = existingFeeDoc.data();
+        const existingTotal = existingData.total || 0;
+        
+        const confirmation = confirm(
+          `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
+          `Class: ${className}\n` +
+          `Session: ${session}\n\n` +
+          `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
+          `New fee: ₦${total.toLocaleString()} per term\n\n` +
+          `This will update the existing fee structure.\n\n` +
+          `Continue?`
+        );
+        
+        if (!confirmation) {
+          window.showToast?.('Operation cancelled', 'info');
+          return;
+        }
       }
-      
-      // Archive old fee structure for history
-      await db.collection('fee_structure_history').add({
-        classId: classId,
-        className: className,
-        session: session,
-        oldFees: existingData.fees || {},
-        oldTotal: existingTotal,
-        newFees: feeBreakdown,
-        newTotal: total,
-        changedBy: auth.currentUser.uid,
-        changedByEmail: auth.currentUser.email,
-        changedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        reason: 'Admin fee structure update'
-      });
-      
-      console.log('✓ Old fee structure archived to history');
+    }
+    
+    // Archive old version if editing
+    if (isEditing) {
+      const oldDoc = await db.collection('fee_structures').doc(feeDocId).get();
+      if (oldDoc.exists) {
+        await db.collection('fee_structure_history').add({
+          ...oldDoc.data(),
+          archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          archivedBy: auth.currentUser.uid,
+          reason: 'Fee structure updated by admin'
+        });
+      }
     }
     
     // Save/update fee structure
@@ -3896,19 +3899,17 @@ async function saveFeeStructure() {
       session,
       fees: feeBreakdown,
       total: total,
-      createdAt: existingFeeDoc.exists ? existingFeeDoc.data().createdAt : firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: isEditing ? (await db.collection('fee_structures').doc(feeDocId).get()).data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp() : firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: existingFeeDoc.exists ? existingFeeDoc.data().createdBy : auth.currentUser.uid,
       lastModifiedBy: auth.currentUser.uid
     });
 
     window.showToast?.(
-      `✓ Fee structure ${existingFeeDoc.exists ? 'updated' : 'saved'} for ${className}!\n\n` +
+      `✓ Fee structure ${isEditing ? 'updated' : 'saved'} for ${className}!\n\n` +
       `Per-term fee: ₦${total.toLocaleString()}\n\n` +
-      `This fee applies to ALL terms in ${session}.\n\n` +
-      `${existingFeeDoc.exists ? 'Previous fee structure archived for records.' : 'Use "Generate Missing Records" to create payment records for pupils.'}`,
+      `${!isEditing ? 'Use "Generate Missing Records" to create payment records for pupils.' : 'Existing payment records are not affected.'}`,
       'success',
-      10000
+      8000
     );
     
     // Clear form
@@ -3918,6 +3919,12 @@ async function saveFeeStructure() {
       if (el) el.value = '';
     });
     
+    // Reset button
+    if (saveBtn) {
+      saveBtn.textContent = '💾 Save Fee Structure';
+      delete saveBtn.dataset.editingId;
+    }
+    
     await loadFeeStructures();
     
   } catch (error) {
@@ -3926,12 +3933,53 @@ async function saveFeeStructure() {
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.innerHTML = '💾 Save Fee Structure';
+      saveBtn.innerHTML = isEditing ? '✏️ Update Fee Structure' : '💾 Save Fee Structure';
     }
   }
 }
 
 window.saveFeeStructure = saveFeeStructure;
+
+async function editFeeStructure(feeDocId) {
+  try {
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+    
+    if (!feeDoc.exists) {
+      window.showToast?.('Fee structure not found', 'danger');
+      return;
+    }
+    
+    const data = feeDoc.data();
+    
+    // Populate form with existing data
+    document.getElementById('fee-config-class').value = data.classId;
+    document.getElementById('fee-tuition').value = data.fees?.tuition || 0;
+    document.getElementById('fee-exam').value = data.fees?.exam_fee || 0;
+    document.getElementById('fee-uniform').value = data.fees?.uniform || 0;
+    document.getElementById('fee-books').value = data.fees?.books || 0;
+    document.getElementById('fee-pta').value = data.fees?.pta || 0;
+    document.getElementById('fee-other').value = data.fees?.other || 0;
+    
+    // Change button text and add data attribute
+    const saveBtn = document.getElementById('save-fee-structure-btn');
+    if (saveBtn) {
+      saveBtn.textContent = '✏️ Update Fee Structure';
+      saveBtn.dataset.editingId = feeDocId;
+    }
+    
+    // Scroll to form
+    document.getElementById('fee-config-class').scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'start' 
+    });
+    
+    window.showToast?.(`Editing fee structure for ${data.className}`, 'info', 3000);
+    
+  } catch (error) {
+    console.error('Error loading fee for edit:', error);
+    window.showToast?.('Failed to load fee structure', 'danger');
+  }
+}
 
 /**
  * Generate payment records for all pupils in a class
@@ -8541,85 +8589,123 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
  * ✅ CRITICAL FIX: Automatic arrears migration when term changes
  */
 async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
-  console.log(`🔄 Auto-migrating arrears: ${oldTerm} → ${newTerm}`);
+  console.log(`🔄 Auto-creating payment records: ${oldTerm} → ${newTerm}`);
   
   try {
     const encodedSession = session.replace(/\//g, '-');
     
-    // Get all payment records from the OLD term with outstanding balances
-    const oldTermPaymentsSnap = await db.collection('payments')
-      .where('session', '==', session)
-      .where('term', '==', oldTerm)
-      .get();
+    // Get all pupils
+    const pupilsSnap = await db.collection('pupils').get();
     
-    if (oldTermPaymentsSnap.empty) {
-      console.log('No payments from previous term to migrate');
+    if (pupilsSnap.empty) {
       return { success: true, count: 0, totalArrears: 0 };
     }
     
-    const batch = db.batch();
-    let migratedCount = 0;
-    let totalArrearsCreated = 0;
+    // Get all fee structures for current session
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .get();
     
-    for (const doc of oldTermPaymentsSnap.docs) {
-      const oldData = doc.data();
-      const balance = oldData.balance || 0;
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
+    });
+    
+    let createdCount = 0;
+    let arrearsCount = 0;
+    let totalArrearsAmount = 0;
+    
+    const batch = db.batch();
+    let batchCount = 0;
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      const classId = pupilData.class?.id;
       
-      // Skip if fully paid
-      if (balance <= 0) continue;
+      if (!classId) continue;
       
-      const pupilId = oldData.pupilId;
-      const classId = oldData.classId;
+      const amountDue = feeStructureMap[classId] || 0;
+      if (amountDue === 0) continue; // Skip if no fee structure
       
-      // Get fee structure for this class
-      const feeDocId = `${classId}_${encodedSession}`;
-      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-      
-      if (!feeDoc.exists) continue;
-      
-      const feeData = feeDoc.data();
-      const newTermFee = feeData.total || 0;
-      
-      // Create NEW term payment record with arrears
+      // Check if payment record already exists for new term
       const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
+      const existingPayment = await db.collection('payments').doc(newPaymentDocId).get();
       
-      batch.set(db.collection('payments').doc(newPaymentDocId), {
+      if (existingPayment.exists) {
+        console.log(`⏭️ Skipping ${pupilData.name} - record exists`);
+        continue;
+      }
+      
+      // Get old term payment to calculate arrears
+      const oldPaymentDocId = `${pupilId}_${encodedSession}_${oldTerm}`;
+      const oldPaymentDoc = await db.collection('payments').doc(oldPaymentDocId).get();
+      
+      let arrears = 0;
+      
+      if (oldPaymentDoc.exists) {
+        const oldData = oldPaymentDoc.data();
+        arrears = Number(oldData.balance) || 0;
+        
+        if (arrears > 0) {
+          arrearsCount++;
+          totalArrearsAmount += arrears;
+        }
+      }
+      
+      // Create payment record for new term
+      const newPaymentRef = db.collection('payments').doc(newPaymentDocId);
+      
+      batch.set(newPaymentRef, {
         pupilId: pupilId,
-        pupilName: oldData.pupilName,
+        pupilName: pupilData.name || 'Unknown',
         classId: classId,
-        className: oldData.className,
+        className: pupilData.class?.name || 'Unknown',
         session: session,
         term: newTerm,
-        amountDue: newTermFee,
-        arrears: balance, // OLD term balance becomes arrears
-        totalDue: newTermFee + balance,
+        amountDue: amountDue,
+        arrears: arrears,
+        totalDue: amountDue + arrears,
         totalPaid: 0,
-        balance: newTermFee + balance,
-        status: 'owing_with_arrears',
+        balance: amountDue + arrears,
+        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
         lastPaymentDate: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         migratedFrom: oldTerm,
-        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+        autoCreated: true
       });
       
-      migratedCount++;
-      totalArrearsCreated += balance;
+      createdCount++;
+      batchCount++;
+      
+      // Commit in batches of 400
+      if (batchCount >= 400) {
+        await batch.commit();
+        batchCount = 0;
+        console.log(`Progress: ${createdCount} records created...`);
+      }
     }
     
-    if (migratedCount > 0) {
+    // Commit remaining
+    if (batchCount > 0) {
       await batch.commit();
-      console.log(`✓ Migrated ${migratedCount} pupils with ₦${totalArrearsCreated.toLocaleString()} total arrears`);
     }
+    
+    console.log(`✅ Auto-created ${createdCount} payment records for ${newTerm}`);
+    console.log(`   - ${arrearsCount} pupils have arrears`);
+    console.log(`   - Total arrears: ₦${totalArrearsAmount.toLocaleString()}`);
     
     return {
       success: true,
-      count: migratedCount,
-      totalArrears: totalArrearsCreated
+      count: createdCount,
+      arrearsCount: arrearsCount,
+      totalArrears: totalArrearsAmount
     };
     
   } catch (error) {
-    console.error('❌ Arrears migration failed:', error);
+    console.error('❌ Term change migration failed:', error);
     throw error;
   }
 }
@@ -8633,6 +8719,158 @@ window.refreshHierarchyUI = refreshHierarchyUI;
 window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
 window.renderHierarchyUI = renderHierarchyUI;
 window.showSection = showSection;
+
+async function ensureAllPupilsHavePaymentRecords() {
+  const btn = document.getElementById('bulk-generate-btn');
+  
+  if (!confirm(
+    'Generate/verify payment records for all pupils?\n\n' +
+    'This will:\n' +
+    '• Create records for pupils who don\'t have them\n' +
+    '• Preserve all existing payment data\n' +
+    '• Calculate and apply arrears correctly\n\n' +
+    'Continue?'
+  )) {
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Generating records...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get all pupils
+    const pupilsSnap = await db.collection('pupils').get();
+    
+    if (pupilsSnap.empty) {
+      window.showToast?.('No pupils found', 'info');
+      return;
+    }
+    
+    // Get all fee structures
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .get();
+    
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
+    });
+    
+    let totalCreated = 0;
+    let totalSkipped = 0;
+    let totalArrears = 0;
+    
+    const batch = db.batch();
+    let batchCount = 0;
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      const classId = pupilData.class?.id;
+      
+      if (!classId) continue;
+      
+      const amountDue = feeStructureMap[classId];
+      if (!amountDue) {
+        console.log(`⏭️ No fee structure for class ${pupilData.class?.name}`);
+        continue;
+      }
+      
+      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+      const existingPayment = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (existingPayment.exists) {
+        totalSkipped++;
+        continue;
+      }
+      
+      // Calculate arrears from previous session
+      const previousSession = getPreviousSessionName(session);
+      let arrears = 0;
+      
+      if (previousSession) {
+        arrears = await calculateSessionBalance(pupilId, previousSession);
+      }
+      
+      if (arrears > 0) {
+        totalArrears += arrears;
+      }
+      
+      // Create payment record
+      const paymentRef = db.collection('payments').doc(paymentDocId);
+      
+      batch.set(paymentRef, {
+        pupilId: pupilId,
+        pupilName: pupilData.name || 'Unknown',
+        classId: classId,
+        className: pupilData.class?.name || 'Unknown',
+        session: session,
+        term: term,
+        amountDue: amountDue,
+        arrears: arrears,
+        totalDue: amountDue + arrears,
+        totalPaid: 0,
+        balance: amountDue + arrears,
+        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        autoCreated: true
+      });
+      
+      totalCreated++;
+      batchCount++;
+      
+      if (batchCount >= 400) {
+        await batch.commit();
+        batchCount = 0;
+      }
+    }
+    
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✅ Payment records verified!\n\n` +
+      `Created: ${totalCreated} new records\n` +
+      `Skipped: ${totalSkipped} (already exist)\n` +
+      `Total arrears: ₦${totalArrears.toLocaleString()}`,
+      'success',
+      10000
+    );
+    
+    // Reload reports
+    await loadOutstandingFeesReport();
+    await loadFinancialReports();
+    
+  } catch (error) {
+    console.error('Error generating payment records:', error);
+    window.handleError?.(error, 'Failed to generate payment records');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '📋 Generate All Missing Payment Records';
+    }
+  }
+}
+
+// Make functions globally available
+window.editFeeStructure = editFeeStructure;
+window.saveFeeStructure = saveFeeStructure;
+window.loadFeeStructures = loadFeeStructures;
+window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
+window.ensureAllPupilsHavePaymentRecords = ensureAllPupilsHavePaymentRecords;
+
+console.log('✅ Complete fee management fixes loaded');
 
 /* ========================================
    DATA MIGRATION: BACKFILL SESSION INFO
