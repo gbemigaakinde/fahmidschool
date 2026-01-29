@@ -4109,7 +4109,7 @@ async function deleteFeeStructure(docId, className) {
 }
 
 /**
- * Record a new payment - FIXED SESSION ENCODING
+ * Record a new payment - OVERPAYMENT SAFE
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -4119,7 +4119,7 @@ async function recordPayment() {
   const classId = document.getElementById('payment-class-filter')?.value;
 
   const amountInput = document.getElementById('payment-amount');
-  const amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
+  let amountPaid = amountInput ? parseFloat(amountInput.value) : NaN;
 
   const paymentMethod = document.getElementById('payment-method')?.value;
   const notes = document.getElementById('payment-notes')?.value.trim() || '';
@@ -4142,55 +4142,66 @@ async function recordPayment() {
 
   try {
     const settings = await window.getCurrentSettings();
-    const session = settings.session;  // ← Original format "2025/2026"
+    const session = settings.session;
     const term = settings.term;
-    
-    const receiptNo = `REC-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-    
-    // ✅ FIX: Use encoded session ONLY for document ID
+
+    const receiptNo = `REC-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 5)
+      .toUpperCase()}`;
+
     const encodedSession = session.replace(/\//g, '-');
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-    
+
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
-    
+
     let currentPaid = 0;
     let amountDue = 0;
     let arrears = 0;
-    let totalDue = 0;
-    
+
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
       currentPaid = data.totalPaid || 0;
       amountDue = data.amountDue || 0;
       arrears = data.arrears || 0;
-      totalDue = data.totalDue || amountDue;
     } else {
-      const feeSnap = await db.collection('fee_structures')
+      const feeSnap = await db
+        .collection('fee_structures')
         .where('classId', '==', classId)
-        .where('session', '==', session)  // ← Original format
+        .where('session', '==', session)
         .where('term', '==', term)
         .limit(1)
         .get();
-      
+
       if (!feeSnap.empty) {
         amountDue = feeSnap.docs[0].data().total || 0;
       }
-      
+
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
       }
-      
-      totalDue = amountDue + arrears;
     }
-    
+
+    const totalDue = amountDue + arrears;
+    const remainingPayable = totalDue - currentPaid;
+
+    if (remainingPayable <= 0) {
+      window.showToast?.('This pupil has fully paid all outstanding fees', 'info');
+      return;
+    }
+
+    if (amountPaid > remainingPayable) {
+      amountPaid = remainingPayable;
+    }
+
     const newTotalPaid = currentPaid + amountPaid;
-    
+
     let arrearsPayment = 0;
     let currentTermPayment = 0;
     let remainingArrears = arrears;
-    
+
     if (arrears > 0) {
       if (amountPaid <= arrears) {
         arrearsPayment = amountPaid;
@@ -4203,37 +4214,41 @@ async function recordPayment() {
     } else {
       currentTermPayment = amountPaid;
     }
-    
-    const newBalance = Math.max(0, totalDue - newTotalPaid);
-    const newStatus = newBalance === 0 ? 'paid' : (newTotalPaid > 0 ? 'partial' : 'owing');
-    
+
+    const newBalance = totalDue - newTotalPaid;
+    const newStatus =
+      newBalance === 0 ? 'paid' : newTotalPaid > 0 ? 'partial' : 'owing';
+
     const batch = db.batch();
-    
-    // ✅ FIX: Store session in ORIGINAL format
-    batch.set(paymentRef, {
-      pupilId,
-      pupilName,
-      classId,
-      className,
-      session: session,  // ← ALWAYS original format
-      term,
-      amountDue,
-      arrears: remainingArrears,
-      totalDue: amountDue + remainingArrears,
-      totalPaid: newTotalPaid,
-      balance: newBalance,
-      status: newStatus,
-      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    
+
+    batch.set(
+      paymentRef,
+      {
+        pupilId,
+        pupilName,
+        classId,
+        className,
+        session,
+        term,
+        amountDue,
+        arrears: remainingArrears,
+        totalDue: amountDue + remainingArrears,
+        totalPaid: newTotalPaid,
+        balance: newBalance,
+        status: newStatus,
+        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
     batch.set(transactionRef, {
       pupilId,
       pupilName,
       classId,
       className,
-      session: session,  // ← ALWAYS original format
+      session,
       term,
       amountPaid,
       arrearsPayment,
@@ -4245,19 +4260,19 @@ async function recordPayment() {
       recordedBy: auth.currentUser.uid,
       recordedByEmail: auth.currentUser.email
     });
-    
+
     await batch.commit();
 
     let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
-    
+
     if (arrearsPayment > 0) {
-      message += `\n\n💰 Payment Breakdown:\n`;
+      message += `\n\nPayment Breakdown:\n`;
       message += `  • Arrears: ₦${arrearsPayment.toLocaleString()}`;
       if (currentTermPayment > 0) {
         message += `\n  • Current Term: ₦${currentTermPayment.toLocaleString()}`;
       }
     }
-    
+
     message += `\n\nNew Balance: ₦${newBalance.toLocaleString()}`;
     if (remainingArrears > 0) {
       message += `\n(Includes ₦${remainingArrears.toLocaleString()} arrears)`;
@@ -4271,10 +4286,13 @@ async function recordPayment() {
 
     await loadPupilPaymentStatus();
 
-    if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
+    if (
+      confirm(
+        'Payment recorded successfully!\n\nWould you like to print the receipt now?'
+      )
+    ) {
       printReceipt(receiptNo);
     }
-
   } catch (error) {
     console.error('Error recording payment:', error);
     window.showToast?.('Failed to record payment: ' + error.message, 'danger');
