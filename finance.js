@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Finance Management Module - FIXED
+ * Finance Management Module - OVERPAYMENT FIXED
  *
- * @version 1.0.2 - SYNTAX ERROR FIXED
- * @date 2026-01-28
+ * @version 2.0.0 - ALL CRITICAL FIXES
+ * @date 2026-01-29
  */
 
 'use strict';
@@ -11,11 +11,13 @@
 const finance = {
 
   /**
-   * Configure fee structure for a class
+   * Configure fee structure for a class - SESSION-BASED ONLY
    */
-  async configureFeeStructure(classId, className, session, term, feeBreakdown) {
+  async configureFeeStructure(classId, className, session, feeBreakdown) {
     try {
-      const feeStructureId = `${classId}_${session}_${term}`;
+      // FIXED: Remove term from ID - fees are session-based
+      const encodedSession = session.replace(/\//g, '-');
+      const feeStructureId = `${classId}_${encodedSession}`;
 
       if (!feeBreakdown || typeof feeBreakdown !== 'object') {
         throw new Error('Invalid fee breakdown');
@@ -29,9 +31,9 @@ const finance = {
         classId: classId,
         className: className,
         session: session,
-        term: term,
+        // NO TERM FIELD - applies to all terms
         fees: feeBreakdown,
-        total: total,
+        total: total, // Per-term amount
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         createdBy: auth.currentUser.uid,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -46,9 +48,9 @@ const finance = {
   },
 
   /**
-   * Get fee structure for a class
+   * Get fee structure for a class (session-based)
    */
-  async getFeeStructure(classId, session, term) {
+  async getFeeStructure(classId, session) {
     try {
       const encodedSession = session.replace(/\//g, '-');
       const feeStructureId = `${classId}_${encodedSession}`;
@@ -67,154 +69,155 @@ const finance = {
     }
   },
 
-/**
- * Record a payment transaction
- * FIXED: Prevents overpayment, handles arrears correctly
- */
-async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
-  try {
-    if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
-      throw new Error('Invalid payment amount');
-    }
-
-    const encodedSession = session.replace(/\//g, '-');
-    
-    // Get fee structure (session-based, not term-based)
-    const feeDocId = `${classId}_${encodedSession}`;
-    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-
-    if (!feeDoc.exists) {
-      throw new Error('Fee structure not configured for this class and session');
-    }
-
-    const feeStructure = feeDoc.data();
-    const amountDue = feeStructure.total;
-    const amountPaid = parseFloat(paymentData.amountPaid);
-    
-    // Get existing payment record
-    const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
-    const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
-
-    let currentTotalPaid = 0;
-    let arrears = 0;
-    
-    if (existingPaymentDoc.exists) {
-      const existingData = existingPaymentDoc.data();
-      currentTotalPaid = existingData.totalPaid || 0;
-      arrears = existingData.arrears || 0;
-    }
-    
-    // CRITICAL FIX: Calculate total due including arrears
-    const totalDue = amountDue + arrears;
-    const newTotalPaid = currentTotalPaid + amountPaid;
-    
-    // CRITICAL FIX: Prevent overpayment
-    if (newTotalPaid > totalDue) {
-      throw new Error(
-        `Payment rejected: Amount exceeds balance.\n\n` +
-        `Total due: ₦${totalDue.toLocaleString()}\n` +
-        `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
-        `Balance: ₦${(totalDue - currentTotalPaid).toLocaleString()}\n` +
-        `Your payment: ₦${amountPaid.toLocaleString()}\n\n` +
-        `Maximum allowed: ₦${(totalDue - currentTotalPaid).toLocaleString()}`
-      );
-    }
-    
-    // Calculate how payment is split between arrears and current term
-    let arrearsPayment = 0;
-    let currentTermPayment = 0;
-    let remainingArrears = arrears;
-    
-    if (arrears > 0) {
-      if (amountPaid <= arrears) {
-        // All payment goes to arrears
-        arrearsPayment = amountPaid;
-        remainingArrears = arrears - amountPaid;
-      } else {
-        // Pay off all arrears, rest goes to current term
-        arrearsPayment = arrears;
-        currentTermPayment = amountPaid - arrears;
-        remainingArrears = 0;
+  /**
+   * FIXED: Record payment with overpayment prevention
+   */
+  async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
+    try {
+      if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
+        throw new Error('Invalid payment amount');
       }
-    } else {
-      currentTermPayment = amountPaid;
-    }
-    
-    const newBalance = totalDue - newTotalPaid;
-    const paymentStatus = newBalance <= 0 ? 'paid' : 
-                         newTotalPaid > 0 ? 'partial' : 
-                         remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    const receiptNo = await this.generateReceiptNumber();
-    const transactionId = receiptNo;
+      const encodedSession = session.replace(/\//g, '-');
+      
+      // Get fee structure (session-based)
+      const feeDocId = `${classId}_${encodedSession}`;
+      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
-    // Create transaction record with ORIGINAL session format
-    await db.collection('payment_transactions').doc(transactionId).set({
-      pupilId: pupilId,
-      pupilName: pupilName,
-      classId: classId,
-      className: className,
-      session: session, // ORIGINAL format "2025/2026"
-      term: term,
-      amountPaid: amountPaid,
-      arrearsPayment: arrearsPayment,
-      currentTermPayment: currentTermPayment,
-      paymentMethod: paymentData.paymentMethod || 'cash',
-      paymentDate: firebase.firestore.FieldValue.serverTimestamp(), // ACTUAL payment time
-      receiptNo: receiptNo,
-      recordedBy: auth.currentUser.uid,
-      notes: paymentData.notes || '',
-      balanceAfterPayment: newBalance,
-      // Lock receipt data - immutable
-      receiptSnapshot: {
+      if (!feeDoc.exists) {
+        throw new Error('Fee structure not configured for this class and session');
+      }
+
+      const feeStructure = feeDoc.data();
+      const amountDue = feeStructure.total; // Per-term fee
+      const amountPaid = parseFloat(paymentData.amountPaid);
+      
+      // Get existing payment record
+      const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+      const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+
+      let currentTotalPaid = 0;
+      let arrears = 0;
+      
+      if (existingPaymentDoc.exists) {
+        const existingData = existingPaymentDoc.data();
+        currentTotalPaid = existingData.totalPaid || 0;
+        arrears = existingData.arrears || 0;
+      }
+      
+      // Calculate total due including arrears
+      const totalDue = amountDue + arrears;
+      const newTotalPaid = currentTotalPaid + amountPaid;
+      
+      // ✅ CRITICAL FIX: Prevent overpayment
+      if (newTotalPaid > totalDue) {
+        const maxAllowed = totalDue - currentTotalPaid;
+        throw new Error(
+          `Payment rejected: Amount exceeds balance.\n\n` +
+          `Total due: ₦${totalDue.toLocaleString()}\n` +
+          `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
+          `Balance: ₦${maxAllowed.toLocaleString()}\n` +
+          `Your payment: ₦${amountPaid.toLocaleString()}\n\n` +
+          `Maximum allowed: ₦${maxAllowed.toLocaleString()}`
+        );
+      }
+      
+      // Calculate payment split
+      let arrearsPayment = 0;
+      let currentTermPayment = 0;
+      let remainingArrears = arrears;
+      
+      if (arrears > 0) {
+        if (amountPaid <= arrears) {
+          arrearsPayment = amountPaid;
+          remainingArrears = arrears - amountPaid;
+        } else {
+          arrearsPayment = arrears;
+          currentTermPayment = amountPaid - arrears;
+          remainingArrears = 0;
+        }
+      } else {
+        currentTermPayment = amountPaid;
+      }
+      
+      const newBalance = totalDue - newTotalPaid;
+      const paymentStatus = newBalance <= 0 ? 'paid' : 
+                           newTotalPaid > 0 ? 'partial' : 
+                           remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
+
+      const receiptNo = await this.generateReceiptNumber();
+      const transactionId = receiptNo;
+      
+      // ✅ CRITICAL FIX: Freeze receipt snapshot (immutable)
+      const receiptSnapshot = {
+        pupilId: pupilId,
+        pupilName: pupilName,
+        classId: classId,
+        className: className,
+        session: session,
+        term: term,
+        amountDue: amountDue,
+        arrears: arrears,
         totalDue: totalDue,
+        amountPaid: amountPaid,
+        arrearsPayment: arrearsPayment,
+        currentTermPayment: currentTermPayment,
+        totalPaidBefore: currentTotalPaid,
+        totalPaidAfter: newTotalPaid,
+        balanceBefore: totalDue - currentTotalPaid,
+        balanceAfter: newBalance,
+        status: paymentStatus,
+        paymentMethod: paymentData.paymentMethod || 'cash',
+        notes: paymentData.notes || '',
+        // IMMUTABLE timestamp - never changes
+        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+        receiptNo: receiptNo,
+        recordedBy: auth.currentUser.uid
+      };
+
+      // Create transaction record with FROZEN snapshot
+      await db.collection('payment_transactions').doc(transactionId).set(receiptSnapshot);
+
+      // Update payment summary (mutable - updates with new payments)
+      await db.collection('payments').doc(paymentRecordId).set({
+        pupilId: pupilId,
+        pupilName: pupilName,
+        classId: classId,
+        className: className,
+        session: session,
+        term: term,
+        amountDue: amountDue,
+        arrears: remainingArrears,
+        totalDue: amountDue + remainingArrears,
         totalPaid: newTotalPaid,
         balance: newBalance,
+        status: paymentStatus,
+        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+        lastPaymentAmount: amountPaid,
+        lastReceiptNo: receiptNo,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      return {
+        success: true,
+        receiptNo: receiptNo,
+        transactionId: transactionId,
+        amountPaid: amountPaid,
+        arrearsPayment: arrearsPayment,
+        currentTermPayment: currentTermPayment,
+        newBalance: newBalance,
+        totalPaid: newTotalPaid,
         status: paymentStatus
-      }
-    });
+      };
 
-    // Update payment summary with ORIGINAL session format
-    await db.collection('payments').doc(paymentRecordId).set({
-      pupilId: pupilId,
-      pupilName: pupilName,
-      classId: classId,
-      className: className,
-      session: session, // ORIGINAL format "2025/2026"
-      term: term,
-      amountDue: amountDue,
-      arrears: remainingArrears,
-      totalDue: amountDue + remainingArrears,
-      totalPaid: newTotalPaid,
-      balance: newBalance,
-      status: paymentStatus,
-      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-      lastPaymentAmount: amountPaid,
-      lastReceiptNo: receiptNo,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    return {
-      success: true,
-      receiptNo: receiptNo,
-      transactionId: transactionId,
-      amountPaid: amountPaid,
-      arrearsPayment: arrearsPayment,
-      currentTermPayment: currentTermPayment,
-      newBalance: newBalance,
-      totalPaid: newTotalPaid,
-      status: paymentStatus
-    };
-
-  } catch (error) {
-    console.error('Error recording payment:', error);
-    throw error;
-  }
-},
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      throw error;
+    }
+  },
 
   /**
    * Generate unique receipt number
-   * FIXED: Proper async method syntax for object literals
    */
   generateReceiptNumber: async function() {
     const date = new Date();
@@ -254,14 +257,11 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Get receipt data by receipt number
+   * Get receipt data (frozen snapshot)
    */
   async getReceiptData(receiptNo) {
     try {
-      const doc = await db
-        .collection('payment_transactions')
-        .doc(receiptNo)
-        .get();
+      const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
       if (!doc.exists) {
         throw new Error('Receipt not found');
@@ -276,11 +276,12 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Get pupil payment summary
+   * Get pupil payment summary for specific term
    */
   async getPupilPaymentSummary(pupilId, session, term) {
     try {
-      const paymentRecordId = `${pupilId}_${session}_${term}`;
+      const encodedSession = session.replace(/\//g, '-');
+      const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
       const doc = await db.collection('payments').doc(paymentRecordId).get();
 
       if (!doc.exists) {
@@ -296,17 +297,22 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Get pupil payment history
+   * Get pupil payment history (all transactions)
    */
-  async getPupilPaymentHistory(pupilId, session, term) {
+  async getPupilPaymentHistory(pupilId, session = null, term = null) {
     try {
-      const snapshot = await db
-        .collection('payment_transactions')
-        .where('pupilId', '==', pupilId)
-        .where('session', '==', session)
-        .where('term', '==', term)
-        .orderBy('paymentDate', 'desc')
-        .get();
+      let query = db.collection('payment_transactions')
+        .where('pupilId', '==', pupilId);
+      
+      if (session) {
+        query = query.where('session', '==', session);
+      }
+      
+      if (term) {
+        query = query.where('term', '==', term);
+      }
+      
+      const snapshot = await query.orderBy('paymentDate', 'desc').get();
 
       const transactions = [];
       snapshot.forEach(doc => {
@@ -326,10 +332,9 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
    */
   async getOutstandingFeesReport(classId = null, session, term = null) {
     try {
-      let query = db
-        .collection('payments')
+      let query = db.collection('payments')
         .where('session', '==', session)
-        .where('status', 'in', ['owing', 'partial']);
+        .where('status', 'in', ['owing', 'partial', 'owing_with_arrears']);
 
       if (classId) {
         query = query.where('classId', '==', classId);
@@ -359,25 +364,40 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Get financial summary
+   * Get financial summary for session/term
    */
   async getFinancialSummary(session, term = null) {
     try {
-      const feeSnap = await db
-        .collection('fee_structures')
+      const encodedSession = session.replace(/\//g, '-');
+      
+      // Get all fee structures for this session
+      const feeSnap = await db.collection('fee_structures')
         .where('session', '==', session)
         .get();
 
+      // Get all pupils to calculate expected fees
+      const pupilsSnap = await db.collection('pupils').get();
+      
       let totalExpected = 0;
+      const feeStructureMap = {};
+      
       feeSnap.forEach(doc => {
         const data = doc.data();
-        if (!term || data.term === term) {
-          totalExpected += data.total || 0;
+        feeStructureMap[data.classId] = data.total;
+      });
+      
+      // Calculate expected based on enrolled pupils
+      pupilsSnap.forEach(pupilDoc => {
+        const pupilData = pupilDoc.data();
+        const classId = pupilData.class?.id;
+        
+        if (classId && feeStructureMap[classId]) {
+          totalExpected += feeStructureMap[classId];
         }
       });
 
-      let query = db
-        .collection('payments')
+      // Get payment records
+      let query = db.collection('payments')
         .where('session', '==', session);
 
       if (term) {
@@ -399,7 +419,7 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
 
         if (data.status === 'paid') paidInFull++;
         else if (data.status === 'partial') partialPayments++;
-        else if (data.status === 'owing') noPayment++;
+        else noPayment++;
       });
 
       const collectionRate =
@@ -425,7 +445,7 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Calculate actual fee for a pupil in a specific term
+   * Calculate actual fee for pupil in specific term
    */
   calculatePupilTermFee: function(pupilData, baseFee, term) {
     if (!pupilData || typeof baseFee !== 'number') {
@@ -454,7 +474,7 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
   },
 
   /**
-   * Check if pupil is enrolled for a specific term
+   * Check if pupil is enrolled for specific term
    */
   isPupilEnrolledForTerm: function(pupilData, term) {
     if (!pupilData) {
@@ -484,100 +504,9 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     }
     
     return true;
-  },
-
-  /**
-   * Get enrollment summary for a pupil
-   */
-  getPupilEnrollmentSummary: function(pupilData) {
-    if (!pupilData) {
-      return {
-        admissionTerm: 'First Term',
-        exitTerm: 'Third Term',
-        enrolledTerms: ['First Term', 'Second Term', 'Third Term'],
-        isFullSession: true
-      };
-    }
-    
-    const admissionTerm = pupilData.admissionTerm || 'First Term';
-    const exitTerm = pupilData.exitTerm || 'Third Term';
-    
-    const termOrder = ['First Term', 'Second Term', 'Third Term'];
-    const admissionIndex = termOrder.indexOf(admissionTerm);
-    const exitIndex = termOrder.indexOf(exitTerm);
-    
-    const enrolledTerms = termOrder.slice(
-      admissionIndex >= 0 ? admissionIndex : 0,
-      exitIndex >= 0 ? exitIndex + 1 : 3
-    );
-    
-    const isFullSession = admissionTerm === 'First Term' && exitTerm === 'Third Term';
-    
-    return {
-      admissionTerm,
-      exitTerm,
-      enrolledTerms,
-      isFullSession
-    };
-  },
-
-  /**
-   * Calculate total expected fees for a pupil across all enrolled terms
-   */
-  async calculatePupilSessionFees(pupilId, classId, session) {
-    try {
-      const pupilDoc = await db.collection('pupils').doc(pupilId).get();
-      if (!pupilDoc.exists) {
-        throw new Error('Pupil not found');
-      }
-      
-      const pupilData = pupilDoc.data();
-      
-      const encodedSession = session.replace(/\//g, '-');
-      const feeDocId = `${classId}_${encodedSession}`;
-      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-      
-      if (!feeDoc.exists) {
-        return {
-          totalExpected: 0,
-          termBreakdown: [],
-          enrollmentSummary: this.getPupilEnrollmentSummary(pupilData)
-        };
-      }
-      
-      const feeData = feeDoc.data();
-      const baseFeePerTerm = feeData.total || 0;
-      
-      const terms = ['First Term', 'Second Term', 'Third Term'];
-      const termBreakdown = [];
-      let totalExpected = 0;
-      
-      terms.forEach(term => {
-        const termFee = this.calculatePupilTermFee(pupilData, baseFeePerTerm, term);
-        
-        termBreakdown.push({
-          term: term,
-          isEnrolled: this.isPupilEnrolledForTerm(pupilData, term),
-          expectedFee: termFee
-        });
-        
-        totalExpected += termFee;
-      });
-      
-      return {
-        totalExpected,
-        termBreakdown,
-        enrollmentSummary: this.getPupilEnrollmentSummary(pupilData)
-      };
-      
-    } catch (error) {
-      console.error('Error calculating pupil session fees:', error);
-      throw error;
-    }
   }
 
 };
 
-// Expose globally
 window.finance = finance;
-console.log('✓ Finance module loaded successfully (v1.0.2 - SYNTAX ERROR FIXED)');
+console.log('✓ Finance module loaded (v2.0.0 - OVERPAYMENT + PERSISTENCE FIXED)');
