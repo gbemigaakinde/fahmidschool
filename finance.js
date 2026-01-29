@@ -70,151 +70,176 @@ const finance = {
   },
 
   /**
-   * FIXED: Record payment with overpayment prevention
-   */
-  async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
-    try {
-      if (!paymentData.amountPaid || parseFloat(paymentData.amountPaid) <= 0) {
-        throw new Error('Invalid payment amount');
-      }
-
-      const encodedSession = session.replace(/\//g, '-');
-      
-      // Get fee structure (session-based)
-      const feeDocId = `${classId}_${encodedSession}`;
-      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-
-      if (!feeDoc.exists) {
-        throw new Error('Fee structure not configured for this class and session');
-      }
-
-      const feeStructure = feeDoc.data();
-      const amountDue = feeStructure.total; // Per-term fee
-      const amountPaid = parseFloat(paymentData.amountPaid);
-      
-      // Get existing payment record
-      const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
-      const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
-
-      let currentTotalPaid = 0;
-      let arrears = 0;
-      
-      if (existingPaymentDoc.exists) {
-        const existingData = existingPaymentDoc.data();
-        currentTotalPaid = existingData.totalPaid || 0;
-        arrears = existingData.arrears || 0;
-      }
-      
-      // Calculate total due including arrears
-      const totalDue = amountDue + arrears;
-      const newTotalPaid = currentTotalPaid + amountPaid;
-      
-      // ✅ CRITICAL FIX: Prevent overpayment
-      if (newTotalPaid > totalDue) {
-        const maxAllowed = totalDue - currentTotalPaid;
-        throw new Error(
-          `Payment rejected: Amount exceeds balance.\n\n` +
-          `Total due: ₦${totalDue.toLocaleString()}\n` +
-          `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
-          `Balance: ₦${maxAllowed.toLocaleString()}\n` +
-          `Your payment: ₦${amountPaid.toLocaleString()}\n\n` +
-          `Maximum allowed: ₦${maxAllowed.toLocaleString()}`
-        );
-      }
-      
-      // Calculate payment split
-      let arrearsPayment = 0;
-      let currentTermPayment = 0;
-      let remainingArrears = arrears;
-      
-      if (arrears > 0) {
-        if (amountPaid <= arrears) {
-          arrearsPayment = amountPaid;
-          remainingArrears = arrears - amountPaid;
-        } else {
-          arrearsPayment = arrears;
-          currentTermPayment = amountPaid - arrears;
-          remainingArrears = 0;
-        }
-      } else {
-        currentTermPayment = amountPaid;
-      }
-      
-      const newBalance = totalDue - newTotalPaid;
-      const paymentStatus = newBalance <= 0 ? 'paid' : 
-                           newTotalPaid > 0 ? 'partial' : 
-                           remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
-
-      const receiptNo = await this.generateReceiptNumber();
-      const transactionId = receiptNo;
-      
-      // ✅ CRITICAL FIX: Freeze receipt snapshot (immutable)
-      const receiptSnapshot = {
-        pupilId: pupilId,
-        pupilName: pupilName,
-        classId: classId,
-        className: className,
-        session: session,
-        term: term,
-        amountDue: amountDue,
-        arrears: arrears,
-        totalDue: totalDue,
-        amountPaid: amountPaid,
-        arrearsPayment: arrearsPayment,
-        currentTermPayment: currentTermPayment,
-        totalPaidBefore: currentTotalPaid,
-        totalPaidAfter: newTotalPaid,
-        balanceBefore: totalDue - currentTotalPaid,
-        balanceAfter: newBalance,
-        status: paymentStatus,
-        paymentMethod: paymentData.paymentMethod || 'cash',
-        notes: paymentData.notes || '',
-        // IMMUTABLE timestamp - never changes
-        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        receiptNo: receiptNo,
-        recordedBy: auth.currentUser.uid
-      };
-
-      // Create transaction record with FROZEN snapshot
-      await db.collection('payment_transactions').doc(transactionId).set(receiptSnapshot);
-
-      // Update payment summary (mutable - updates with new payments)
-      await db.collection('payments').doc(paymentRecordId).set({
-        pupilId: pupilId,
-        pupilName: pupilName,
-        classId: classId,
-        className: className,
-        session: session,
-        term: term,
-        amountDue: amountDue,
-        arrears: remainingArrears,
-        totalDue: amountDue + remainingArrears,
-        totalPaid: newTotalPaid,
-        balance: newBalance,
-        status: paymentStatus,
-        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        lastPaymentAmount: amountPaid,
-        lastReceiptNo: receiptNo,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      return {
-        success: true,
-        receiptNo: receiptNo,
-        transactionId: transactionId,
-        amountPaid: amountPaid,
-        arrearsPayment: arrearsPayment,
-        currentTermPayment: currentTermPayment,
-        newBalance: newBalance,
-        totalPaid: newTotalPaid,
-        status: paymentStatus
-      };
-
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      throw error;
+ * FIXED: Record payment with validated arrears and overpayment prevention
+ */
+async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
+  try {
+    const amountPaid = parseFloat(paymentData.amountPaid);
+    if (!amountPaid || amountPaid <= 0) {
+      throw new Error('Invalid payment amount');
     }
-  },
+
+    const encodedSession = session.replace(/\//g, '-');
+
+    /* ---------------------------
+       Get fee structure (session-based)
+    ---------------------------- */
+    const feeDocId = `${classId}_${encodedSession}`;
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+
+    if (!feeDoc.exists) {
+      throw new Error('Fee structure not configured for this class and session');
+    }
+
+    const feeStructure = feeDoc.data();
+    const amountDue = Number(feeStructure.total) || 0;
+
+    /* ---------------------------
+       Load existing payment record
+    ---------------------------- */
+    const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+    const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
+
+    let currentTotalPaid = 0;
+    let storedArrears = 0;
+
+    if (existingPaymentDoc.exists) {
+      const existingData = existingPaymentDoc.data();
+      currentTotalPaid = Number(existingData.totalPaid) || 0;
+      storedArrears = Number(existingData.arrears) || 0;
+    }
+
+    /* ---------------------------
+       VALIDATE arrears mathematically
+       Arrears cannot exceed unpaid amount
+    ---------------------------- */
+    const maxPossibleArrears = Math.max(0, amountDue - currentTotalPaid);
+    const arrears = Math.min(storedArrears, maxPossibleArrears);
+
+    const totalDue = amountDue + arrears;
+    const newTotalPaid = currentTotalPaid + amountPaid;
+
+    /* ---------------------------
+       Prevent overpayment
+    ---------------------------- */
+    if (newTotalPaid > totalDue) {
+      const balance = totalDue - currentTotalPaid;
+      throw new Error(
+        `Payment rejected: Amount exceeds balance.\n\n` +
+        `Total due: ₦${totalDue.toLocaleString()}\n` +
+        `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
+        `Balance: ₦${balance.toLocaleString()}\n` +
+        `Your payment: ₦${amountPaid.toLocaleString()}`
+      );
+    }
+
+    /* ---------------------------
+       Split payment between arrears and current term
+    ---------------------------- */
+    let arrearsPayment = 0;
+    let currentTermPayment = 0;
+    let remainingArrears = arrears;
+
+    if (arrears > 0) {
+      if (amountPaid <= arrears) {
+        arrearsPayment = amountPaid;
+        remainingArrears = arrears - amountPaid;
+      } else {
+        arrearsPayment = arrears;
+        currentTermPayment = amountPaid - arrears;
+        remainingArrears = 0;
+      }
+    } else {
+      currentTermPayment = amountPaid;
+    }
+
+    const newBalance = totalDue - newTotalPaid;
+
+    const paymentStatus =
+      newBalance === 0
+        ? 'paid'
+        : newTotalPaid > 0
+          ? 'partial'
+          : remainingArrears > 0
+            ? 'owing_with_arrears'
+            : 'owing';
+
+    /* ---------------------------
+       Generate receipt
+    ---------------------------- */
+    const receiptNo = await this.generateReceiptNumber();
+
+    /* ---------------------------
+       Immutable receipt snapshot
+    ---------------------------- */
+    const receiptSnapshot = {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountDue,
+      arrears,
+      totalDue,
+      amountPaid,
+      arrearsPayment,
+      currentTermPayment,
+      totalPaidBefore: currentTotalPaid,
+      totalPaidAfter: newTotalPaid,
+      balanceBefore: totalDue - currentTotalPaid,
+      balanceAfter: newBalance,
+      status: paymentStatus,
+      paymentMethod: paymentData.paymentMethod || 'cash',
+      notes: paymentData.notes || '',
+      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      receiptNo,
+      recordedBy: auth.currentUser.uid
+    };
+
+    await db
+      .collection('payment_transactions')
+      .doc(receiptNo)
+      .set(receiptSnapshot);
+
+    /* ---------------------------
+       Update mutable payment summary
+    ---------------------------- */
+    await db.collection('payments').doc(paymentRecordId).set({
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountDue,
+      arrears: remainingArrears,
+      totalDue: amountDue + remainingArrears,
+      totalPaid: newTotalPaid,
+      balance: newBalance,
+      status: paymentStatus,
+      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      lastPaymentAmount: amountPaid,
+      lastReceiptNo: receiptNo,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return {
+      success: true,
+      receiptNo,
+      amountPaid,
+      arrearsPayment,
+      currentTermPayment,
+      newBalance,
+      totalPaid: newTotalPaid,
+      status: paymentStatus
+    };
+
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    throw error;
+  }
+},
 
   /**
    * Generate unique receipt number
@@ -276,25 +301,59 @@ const finance = {
   },
 
   /**
-   * Get pupil payment summary for specific term
-   */
-  async getPupilPaymentSummary(pupilId, session, term) {
-    try {
-      const encodedSession = session.replace(/\//g, '-');
-      const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
-      const doc = await db.collection('payments').doc(paymentRecordId).get();
-
-      if (!doc.exists) {
-        return null;
-      }
-
-      return doc.data();
-
-    } catch (error) {
-      console.error('Error getting payment summary:', error);
-      return null;
+ * FIXED: Get pupil payment summary for a specific term
+ * Returns accurate amounts including arrears and balances
+ */
+async getPupilPaymentSummary(pupilId, session, term) {
+  try {
+    if (!pupilId || !session || !term) {
+      throw new Error('pupilId, session, and term are required');
     }
-  },
+
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+
+    const doc = await db.collection('payments').doc(paymentRecordId).get();
+
+    if (!doc.exists) {
+      return {
+        pupilId: pupilId,
+        session: session,
+        term: term,
+        amountDue: 0,
+        arrears: 0,
+        totalDue: 0,
+        totalPaid: 0,
+        balance: 0,
+        status: 'no_payment'
+      };
+    }
+
+    const data = doc.data();
+
+    return {
+      pupilId: data.pupilId,
+      pupilName: data.pupilName,
+      classId: data.classId,
+      className: data.className,
+      session: data.session,
+      term: data.term,
+      amountDue: Number(data.amountDue) || 0,
+      arrears: Number(data.arrears) || 0,
+      totalDue: Number(data.totalDue) || 0,
+      totalPaid: Number(data.totalPaid) || 0,
+      balance: Number(data.balance) || 0,
+      status: data.status || 'no_payment',
+      lastPaymentDate: data.lastPaymentDate || null,
+      lastPaymentAmount: Number(data.lastPaymentAmount) || 0,
+      lastReceiptNo: data.lastReceiptNo || null
+    };
+
+  } catch (error) {
+    console.error('Error getting pupil payment summary:', error);
+    return null;
+  }
+},
 
   /**
    * Get pupil payment history (all transactions)
@@ -328,121 +387,129 @@ const finance = {
   },
 
   /**
-   * Get outstanding fees report
-   */
-  async getOutstandingFeesReport(classId = null, session, term = null) {
-    try {
-      let query = db.collection('payments')
-        .where('session', '==', session)
-        .where('status', 'in', ['owing', 'partial', 'owing_with_arrears']);
+ * FIXED: Get outstanding fees report
+ * Includes arrears and current term balances accurately
+ */
+async getOutstandingFeesReport(classId = null, session, term = null) {
+  try {
+    let query = db.collection('payments')
+      .where('session', '==', session)
+      .where('balance', '>', 0);
 
-      if (classId) {
-        query = query.where('classId', '==', classId);
-      }
-      
-      if (term) {
-        query = query.where('term', '==', term);
-      }
-
-      const snapshot = await query.get();
-      const outstanding = [];
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.balance > 0) {
-          outstanding.push(data);
-        }
-      });
-
-      outstanding.sort((a, b) => b.balance - a.balance);
-      return outstanding;
-
-    } catch (error) {
-      console.error('Error getting outstanding fees:', error);
-      return [];
+    if (classId) {
+      query = query.where('classId', '==', classId);
     }
-  },
+    
+    if (term) {
+      query = query.where('term', '==', term);
+    }
+
+    const snapshot = await query.get();
+    const outstanding = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const amountDue = Number(data.amountDue) || 0;
+      const arrears = Number(data.arrears) || 0;
+      const totalDue = amountDue + arrears;
+      const balance = Number(data.balance) || 0;
+
+      if (balance > 0) {
+        outstanding.push({
+          pupilId: data.pupilId,
+          pupilName: data.pupilName,
+          classId: data.classId,
+          className: data.className,
+          session: data.session,
+          term: data.term,
+          amountDue: amountDue,
+          arrears: arrears,
+          totalDue: totalDue,
+          totalPaid: Number(data.totalPaid) || 0,
+          balance: balance,
+          status: data.status
+        });
+      }
+    });
+
+    // Sort by balance descending (largest debt first)
+    outstanding.sort((a, b) => b.balance - a.balance);
+
+    return outstanding;
+
+  } catch (error) {
+    console.error('Error getting outstanding fees:', error);
+    return [];
+  }
+},
 
   /**
-   * Get financial summary for session/term
-   */
-  async getFinancialSummary(session, term = null) {
-    try {
-      const encodedSession = session.replace(/\//g, '-');
-      
-      // Get all fee structures for this session
-      const feeSnap = await db.collection('fee_structures')
-        .where('session', '==', session)
-        .get();
+ * FIXED: Get financial summary for session / optional term
+ * Uses payment records as source of truth
+ */
+async getFinancialSummary(session, term = null) {
+  try {
+    let query = db.collection('payments')
+      .where('session', '==', session);
 
-      // Get all pupils to calculate expected fees
-      const pupilsSnap = await db.collection('pupils').get();
-      
-      let totalExpected = 0;
-      const feeStructureMap = {};
-      
-      feeSnap.forEach(doc => {
-        const data = doc.data();
-        feeStructureMap[data.classId] = data.total;
-      });
-      
-      // Calculate expected based on enrolled pupils
-      pupilsSnap.forEach(pupilDoc => {
-        const pupilData = pupilDoc.data();
-        const classId = pupilData.class?.id;
-        
-        if (classId && feeStructureMap[classId]) {
-          totalExpected += feeStructureMap[classId];
-        }
-      });
-
-      // Get payment records
-      let query = db.collection('payments')
-        .where('session', '==', session);
-
-      if (term) {
-        query = query.where('term', '==', term);
-      }
-
-      const snapshot = await query.get();
-
-      let totalCollected = 0;
-      let totalOutstanding = 0;
-      let paidInFull = 0;
-      let partialPayments = 0;
-      let noPayment = 0;
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        totalCollected += data.totalPaid || 0;
-        totalOutstanding += data.balance || 0;
-
-        if (data.status === 'paid') paidInFull++;
-        else if (data.status === 'partial') partialPayments++;
-        else noPayment++;
-      });
-
-      const collectionRate =
-        totalExpected > 0
-          ? ((totalCollected / totalExpected) * 100).toFixed(1)
-          : 0;
-
-      return {
-        totalExpected,
-        totalCollected,
-        totalOutstanding,
-        collectionRate: parseFloat(collectionRate),
-        paidInFull,
-        partialPayments,
-        noPayment,
-        totalPupils: snapshot.size
-      };
-
-    } catch (error) {
-      console.error('Error getting financial summary:', error);
-      return null;
+    if (term) {
+      query = query.where('term', '==', term);
     }
-  },
+
+    const snapshot = await query.get();
+
+    let totalExpected = 0;
+    let totalCollected = 0;
+    let totalOutstanding = 0;
+
+    let paidInFull = 0;
+    let partialPayments = 0;
+    let noPayment = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      const amountDue = Number(data.amountDue) || 0;
+      const arrears = Number(data.arrears) || 0;
+      const totalDue = amountDue + arrears;
+
+      const totalPaid = Number(data.totalPaid) || 0;
+      const balance = Number(data.balance) || 0;
+
+      totalExpected += totalDue;
+      totalCollected += totalPaid;
+      totalOutstanding += balance;
+
+      if (balance === 0 && totalPaid > 0) {
+        paidInFull++;
+      } else if (totalPaid > 0 && balance > 0) {
+        partialPayments++;
+      } else {
+        noPayment++;
+      }
+    });
+
+    const collectionRate =
+      totalExpected > 0
+        ? parseFloat(((totalCollected / totalExpected) * 100).toFixed(1))
+        : 0;
+
+    return {
+      totalExpected,
+      totalCollected,
+      totalOutstanding,
+      collectionRate,
+      paidInFull,
+      partialPayments,
+      noPayment,
+      totalPupils: snapshot.size
+    };
+
+  } catch (error) {
+    console.error('Error getting financial summary:', error);
+    return null;
+  }
+},
 
   /**
    * Calculate actual fee for pupil in specific term
