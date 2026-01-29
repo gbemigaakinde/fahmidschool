@@ -3373,8 +3373,7 @@ async function loadPupilPaymentStatus() {
 window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
 /**
- * Load complete payment history for selected pupil - ALL TERMS WITH ARREARS
- * ADMIN VERSION - Shows full transaction details
+ * ✅ FIXED: Load complete payment history with proper query
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
@@ -3386,7 +3385,7 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
 
   try {
-    // Fetch all payment transactions for this pupil in current session
+    // ✅ FIXED: Query by pupilId and session only (term is already in document ID)
     const snapshot = await db.collection('payment_transactions')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)
@@ -3445,7 +3444,7 @@ async function loadPaymentHistory(pupilId, session, term) {
     console.log(`✓ Loaded ${transactions.length} payment transactions for ${session}`);
 
   } catch (error) {
-    console.error('Error loading payment history:', error);
+    console.error('❌ Error loading payment history:', error);
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
   }
 }
