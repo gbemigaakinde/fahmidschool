@@ -2995,7 +2995,7 @@ async function populateFeeClassSelector() {
 }
 
 /**
- * Load existing fee structures
+ * Load existing fee structures - SESSION-BASED
  */
 async function loadFeeStructures() {
   const container = document.getElementById('fee-structures-list');
@@ -3006,11 +3006,9 @@ async function loadFeeStructures() {
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
-    const term = settings.term;
     
     const snapshot = await db.collection('fee_structures')
       .where('session', '==', session)
-      .where('term', '==', term)
       .get();
     
     if (snapshot.empty) {
@@ -3026,61 +3024,63 @@ async function loadFeeStructures() {
     container.innerHTML = '';
     
     snapshot.forEach(doc => {
-  const data = doc.data();
-  
-  const card = document.createElement('div');
-  card.className = 'fee-structure-card';
-  card.style.cssText = `
-    background: white;
-    border: 1px solid var(--color-gray-300);
-    border-radius: var(--radius-md);
-    padding: var(--space-lg);
-    margin-bottom: var(--space-md);
-  `;
-  
-  const feeItems = Object.entries(data.fees || {})
-    .map(([key, value]) => `
-      <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
-        <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
-        <strong>₦${parseFloat(value).toLocaleString()}</strong>
-      </div>
-    `).join('');
-  
-  card.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
-      <div>
-        <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
-        <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
-          ${data.session} • <strong>All Terms</strong>
-        </p>
-      </div>
-      <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
-        Delete
-      </button>
-    </div>
-    
-    <div style="margin-bottom:var(--space-md);">
-      ${feeItems}
-    </div>
-    
-    <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
-      <strong style="font-size:var(--text-lg);">Total per term:</strong>
-      <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
-    </div>
-    
-    <div style="margin-top:var(--space-md); padding:var(--space-sm); background:#e3f2fd; border-left:4px solid #2196F3; border-radius:var(--radius-sm); font-size:var(--text-sm);">
-      ℹ️ This fee applies to <strong>all terms</strong> in ${data.session} until you change it
-    </div>
-  `;
-  
-  container.appendChild(card);
-});
+      const data = doc.data();
+      
+      const card = document.createElement('div');
+      card.className = 'fee-structure-card';
+      card.style.cssText = `
+        background: white;
+        border: 1px solid var(--color-gray-300);
+        border-radius: var(--radius-md);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-md);
+      `;
+      
+      const feeItems = Object.entries(data.fees || {})
+        .map(([key, value]) => `
+          <div style="display:flex; justify-content:space-between; padding:var(--space-xs) 0;">
+            <span style="text-transform:capitalize;">${key.replace(/_/g, ' ')}:</span>
+            <strong>₦${parseFloat(value).toLocaleString()}</strong>
+          </div>
+        `).join('');
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
+          <div>
+            <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
+            <p style="margin:var(--space-xs) 0 0; font-size:var(--text-sm); color:var(--color-gray-600);">
+              ${data.session} • <strong>All Terms</strong>
+            </p>
+          </div>
+          <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+            Delete
+          </button>
+        </div>
+        
+        <div style="margin-bottom:var(--space-md);">
+          ${feeItems}
+        </div>
+        
+        <div style="padding-top:var(--space-md); border-top:2px solid var(--color-primary); display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:var(--text-lg);">Total per term:</strong>
+          <strong style="font-size:var(--text-xl); color:var(--color-primary);">₦${parseFloat(data.total).toLocaleString()}</strong>
+        </div>
+        
+        <div style="margin-top:var(--space-md); padding:var(--space-sm); background:#e3f2fd; border-left:4px solid #2196F3; border-radius:var(--radius-sm); font-size:var(--text-sm);">
+          ℹ️ This fee applies to <strong>all terms</strong> in ${data.session} until you change it
+        </div>
+      `;
+      
+      container.appendChild(card);
+    });
     
   } catch (error) {
     console.error('Error loading fee structures:', error);
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading fee structures</p>';
   }
 }
+
+window.loadFeeStructures = loadFeeStructures;
 
 /**
  * Load payment recording section
@@ -3207,7 +3207,6 @@ async function loadPupilPaymentStatus() {
     const feeStructureSnap = await db.collection('fee_structures')
       .where('classId', '==', classId)
       .where('session', '==', session)
-      .where('term', '==', term)
       .limit(1)
       .get();
     
@@ -3215,7 +3214,7 @@ async function loadPupilPaymentStatus() {
       statusContainer.innerHTML = `
         <div class="alert alert-warning">
           <strong>⚠️ Fee Structure Not Configured</strong>
-          <p>No fee structure has been set for ${className} in ${term}. Please configure it in the Fee Management section first.</p>
+          <p>No fee structure has been set for ${className} in ${session}. Please configure it in the Fee Management section first.</p>
         </div>
       `;
       document.getElementById('payment-input-section').style.display = 'none';
@@ -3269,7 +3268,6 @@ async function loadPupilPaymentStatus() {
         </div>
         
         ${arrears > 0 ? `
-        <!-- ✅ NEW: Arrears Alert -->
         <div style="background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm); padding:var(--space-md); margin-bottom:var(--space-lg);">
           <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-xs);">
             <i data-lucide="alert-triangle" style="width:20px; height:20px; color:#dc3545;"></i>
@@ -3308,22 +3306,18 @@ async function loadPupilPaymentStatus() {
       </div>
     `;
     
-    // Re-initialize icons
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
     
-    // Show payment input section
     document.getElementById('payment-input-section').style.display = 'block';
     
-    // Set max amount to balance
     const amountInput = document.getElementById('payment-amount');
     if (amountInput) {
       amountInput.max = balance;
       amountInput.value = '';
     }
     
-    // Load payment history
     await loadPaymentHistory(pupilId, session, term);
     
   } catch (error) {
@@ -3331,6 +3325,8 @@ async function loadPupilPaymentStatus() {
     statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
   }
 }
+
+window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
 /**
  * Load payment history for selected pupil - FIXED SESSION HANDLING
@@ -3406,15 +3402,14 @@ async function loadOutstandingFeesReport() {
         const session = settings.session;
         const currentTerm = settings.term;
 
-        // Query payments for current term
+        // Query payments for current term with outstanding balances
         const paymentsSnap = await db.collection('payments')
             .where('session', '==', session)
             .where('term', '==', currentTerm)
-            .where('status', 'in', ['owing', 'partial', 'owing_with_arrears'])
             .get();
 
         if (paymentsSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ No payment records for ' + currentTerm + ' yet.</td></tr>';
             updateSummaryDisplay(0, 0);
             return;
         }
@@ -3426,13 +3421,14 @@ async function loadOutstandingFeesReport() {
             const data = doc.data();
             const balance = data.balance || 0;
             
+            // Only include pupils with outstanding balance
             if (balance > 0) {
                 outstandingPupils.push({
                     name: data.pupilName || 'Unknown',
                     className: data.className || '-',
                     amountDue: data.amountDue || 0,
-                    arrears: data.arrears || 0, // Include arrears
-                    totalDue: data.totalDue || 0, // Total including arrears
+                    arrears: data.arrears || 0,
+                    totalDue: data.totalDue || 0,
                     totalPaid: data.totalPaid || 0,
                     balance: balance,
                     status: data.status || 'owing'
@@ -3445,7 +3441,7 @@ async function loadOutstandingFeesReport() {
         tbody.innerHTML = '';
 
         if (outstandingPupils.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
             updateSummaryDisplay(0, 0);
             return;
         }
@@ -3491,6 +3487,8 @@ async function loadOutstandingFeesReport() {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error: ${error.message}</td></tr>`;
     }
 }
+
+window.loadOutstandingFeesReport = loadOutstandingFeesReport;
 
 /**
  * Update summary display elements
@@ -3599,7 +3597,7 @@ async function loadFinancialReports() {
             const balance = data.balance || 0;
             const status = data.status || 'owing';
 
-            totalExpected += totalDue; // FIXED: Include arrears in expected
+            totalExpected += totalDue; // Include arrears in expected
             totalCollected += totalPaid;
             totalOutstanding += balance;
 
@@ -3638,6 +3636,8 @@ async function loadFinancialReports() {
         window.showToast?.('Failed to load financial reports', 'danger');
     }
 }
+
+window.loadFinancialReports = loadFinancialReports;
 
 /**
  * ✅ NEW: Generate term-by-term breakdown chart
@@ -3763,6 +3763,10 @@ window.updateFinancialDisplays = updateFinancialDisplays;
  * Save fee structure configuration
  * FIXED: Session-based only, persists across terms
  */
+/**
+ * Save fee structure configuration - SESSION-BASED ONLY
+ * FIXED: Fees persist across all terms in session
+ */
 async function saveFeeStructure() {
   const classSelect = document.getElementById('fee-config-class');
   const classId = classSelect?.value;
@@ -3807,7 +3811,8 @@ async function saveFeeStructure() {
     const session = settings.session;
     
     // FIXED: Use session only (no term) - persists across all terms
-    const feeDocId = `${classId}_${session.replace(/\//g, '-')}`;
+    const encodedSession = session.replace(/\//g, '-');
+    const feeDocId = `${classId}_${encodedSession}`;
     
     await db.collection('fee_structures').doc(feeDocId).set({
       classId,
@@ -3850,14 +3855,16 @@ async function saveFeeStructure() {
   }
 }
 
+window.saveFeeStructure = saveFeeStructure;
+
 /**
  * Generate payment records for all pupils in a class
+ * FIXED: Checks for existing records to prevent duplicates
  */
 async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
   try {
     console.log(`Generating payment records for class ${className}, term ${term}...`);
     
-    // Get all pupils in this class
     const pupilsSnap = await db.collection('pupils')
       .where('class.id', '==', classId)
       .get();
@@ -3875,7 +3882,6 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     const encodedSession = session.replace(/\//g, '-');
     
     for (const pupilDoc of pupilsSnap.docs) {
-      // Inside the for (const pupilDoc of pupilsSnap.docs) loop
       const pupilData = pupilDoc.data();
       const pupilId = pupilDoc.id;
       const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
@@ -3889,7 +3895,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
         continue;
       }
       
-      // Calculate actual fee for this pupil in this term (enrollment-aware)
+      // Calculate actual fee for this pupil in this term
       const actualFee = window.finance.calculatePupilTermFee(
         pupilData,
         totalFee,
@@ -3912,7 +3918,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
       
       const paymentRef = db.collection('payments').doc(paymentDocId);
       
-      // Create payment record with actual fee (not class fee)
+      // Create payment record with actual fee
       batch.set(paymentRef, {
         pupilId: pupilId,
         pupilName: pupilData.name || 'Unknown',
@@ -3920,7 +3926,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
         className: className,
         session: session,
         term: term,
-        amountDue: actualFee, // Uses calculated fee, not base fee
+        amountDue: actualFee,
         arrears: arrears,
         totalDue: actualFee + arrears,
         totalPaid: 0,
@@ -3953,6 +3959,8 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
     throw error;
   }
 }
+
+window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
 
 /**
  * Helper: Get previous session name
