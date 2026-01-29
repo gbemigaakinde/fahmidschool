@@ -15,8 +15,26 @@
 
 'use strict';
 
-// EMERGENCY FIX: Expose deleteItem early
+/**
+ * FIXED: Delete Item with Payment Protection
+ * Prevents deletion of any financial records
+ */
 window.deleteItem = async function(collection, docId) {
+  // CRITICAL: Block deletion of financial records
+  if (collection === 'payments' || 
+      collection === 'payment_transactions' || 
+      collection === 'fee_structures' || 
+      collection === 'arrears_log') {
+    window.showToast?.(
+      '🚫 Financial records cannot be deleted.\n\n' +
+      'This is a security measure to maintain accurate financial history.\n\n' +
+      'If you need to correct an error, contact your system administrator.',
+      'danger',
+      8000
+    );
+    return;
+  }
+  
   if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
     return;
   }
@@ -3781,12 +3799,8 @@ window.generateTermBreakdownChart = generateTermBreakdownChart;
 window.updateFinancialDisplays = updateFinancialDisplays;
 
 /**
- * Save fee structure configuration
- * FIXED: Session-based only, persists across terms
- */
-/**
- * Save fee structure configuration - SESSION-BASED ONLY
- * FIXED: Fees persist across all terms in session
+ * Save fee structure configuration - SESSION-BASED with HISTORY
+ * FIXED: Maintains change history and prevents accidental overwrites
  */
 async function saveFeeStructure() {
   const classSelect = document.getElementById('fee-config-class');
@@ -3830,28 +3844,69 @@ async function saveFeeStructure() {
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
-    
-    // FIXED: Use session only (no term) - persists across all terms
     const encodedSession = session.replace(/\//g, '-');
     const feeDocId = `${classId}_${encodedSession}`;
     
+    // CRITICAL FIX: Check if fee structure already exists
+    const existingFeeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+    
+    if (existingFeeDoc.exists) {
+      const existingData = existingFeeDoc.data();
+      const existingTotal = existingData.total || 0;
+      
+      // Warn admin about overwriting existing fee
+      const confirmation = confirm(
+        `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
+        `Class: ${className}\n` +
+        `Session: ${session}\n\n` +
+        `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
+        `New fee: ₦${total.toLocaleString()} per term\n\n` +
+        `This will update the fee structure for ALL future terms in this session.\n` +
+        `Existing payment records will NOT be affected.\n\n` +
+        `Continue?`
+      );
+      
+      if (!confirmation) {
+        window.showToast?.('Fee structure update cancelled', 'info');
+        return;
+      }
+      
+      // Archive old fee structure for history
+      await db.collection('fee_structure_history').add({
+        classId: classId,
+        className: className,
+        session: session,
+        oldFees: existingData.fees || {},
+        oldTotal: existingTotal,
+        newFees: feeBreakdown,
+        newTotal: total,
+        changedBy: auth.currentUser.uid,
+        changedByEmail: auth.currentUser.email,
+        changedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        reason: 'Admin fee structure update'
+      });
+      
+      console.log('✓ Old fee structure archived to history');
+    }
+    
+    // Save/update fee structure
     await db.collection('fee_structures').doc(feeDocId).set({
       classId,
       className,
       session,
-      // NO term field - applies to ALL terms in session
       fees: feeBreakdown,
       total: total,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: existingFeeDoc.exists ? existingFeeDoc.data().createdAt : firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: auth.currentUser.uid
+      createdBy: existingFeeDoc.exists ? existingFeeDoc.data().createdBy : auth.currentUser.uid,
+      lastModifiedBy: auth.currentUser.uid
     });
 
     window.showToast?.(
-      `✓ Fee structure saved for ${className}!\n\n` +
+      `✓ Fee structure ${existingFeeDoc.exists ? 'updated' : 'saved'} for ${className}!\n\n` +
       `Per-term fee: ₦${total.toLocaleString()}\n\n` +
-      `This fee applies to ALL terms in ${session} until you change it.\n\n` +
-      `Use "Generate Missing Records" to create payment records for pupils.`,
+      `This fee applies to ALL terms in ${session}.\n\n` +
+      `${existingFeeDoc.exists ? 'Previous fee structure archived for records.' : 'Use "Generate Missing Records" to create payment records for pupils.'}`,
       'success',
       10000
     );
@@ -4109,17 +4164,80 @@ async function bulkGenerateAllPaymentRecords() {
 window.bulkGenerateAllPaymentRecords = bulkGenerateAllPaymentRecords;
 
 /**
- * Delete fee structure
+ * Delete fee structure - WITH PROTECTION AND HISTORY
+ * FIXED: Archives before deletion and checks for dependent records
  */
 async function deleteFeeStructure(docId, className) {
-  if (!confirm(`Delete fee structure for ${className}?\n\nThis will remove the fee configuration but will NOT delete existing payment records.`)) {
-    return;
-  }
-  
   try {
+    // Get fee structure data
+    const feeDoc = await db.collection('fee_structures').doc(docId).get();
+    
+    if (!feeDoc.exists) {
+      window.showToast?.('Fee structure not found', 'danger');
+      return;
+    }
+    
+    const feeData = feeDoc.data();
+    const session = feeData.session;
+    const classId = feeData.classId;
+    const total = feeData.total || 0;
+    
+    // Check if any payments exist for this fee structure
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentsSnap = await db.collection('payments')
+      .where('classId', '==', classId)
+      .where('session', '==', session)
+      .limit(1)
+      .get();
+    
+    if (!paymentsSnap.empty) {
+      window.showToast?.(
+        `🚫 Cannot delete fee structure for ${className}\n\n` +
+        `Payment records exist for this class in ${session}.\n\n` +
+        `Financial records must be preserved for audit purposes.\n\n` +
+        `To change fees, use "Edit" instead of deleting.`,
+        'danger',
+        10000
+      );
+      return;
+    }
+    
+    const confirmation = confirm(
+      `Delete fee structure for ${className}?\n\n` +
+      `Session: ${session}\n` +
+      `Fee per term: ₦${total.toLocaleString()}\n\n` +
+      `This will remove the fee configuration.\n` +
+      `A backup will be archived for records.\n\n` +
+      `Continue?`
+    );
+    
+    if (!confirmation) return;
+    
+    // Archive before deletion
+    await db.collection('fee_structure_history').add({
+      classId: classId,
+      className: className,
+      session: session,
+      fees: feeData.fees || {},
+      total: total,
+      deletedBy: auth.currentUser.uid,
+      deletedByEmail: auth.currentUser.email,
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      reason: 'Admin deleted fee structure',
+      originalData: feeData
+    });
+    
+    console.log('✓ Fee structure archived before deletion');
+    
+    // Now delete
     await db.collection('fee_structures').doc(docId).delete();
     
-    window.showToast?.(`✓ Fee structure for ${className} deleted`, 'success');
+    window.showToast?.(
+      `✓ Fee structure for ${className} deleted\n\n` +
+      `A backup has been archived for records.`,
+      'success',
+      5000
+    );
     
     await loadFeeStructures();
     
@@ -8327,7 +8445,7 @@ window.initializeSidebarNavigation = initializeSidebarNavigation;
    CLASS HIERARCHY MANAGEMENT
 ======================================== */
 
-// Settings form submit handler
+// Settings form submit handler - ARREARS AUTO-MIGRATION FIXED
 document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -8353,7 +8471,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    // Get OLD settings to detect changes
+    // CRITICAL FIX: Get OLD settings to detect changes
     const oldSettings = await window.getCurrentSettings();
     const oldTerm = oldSettings.term;
     const oldSession = oldSettings.session;
@@ -8374,9 +8492,10 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // CRITICAL FIX: Auto-migrate arrears on term change
+    // CRITICAL FIX: AUTOMATIC arrears migration on term change
     if (oldTerm && oldTerm !== newTerm && oldSession === session) {
       console.log(`⚠️ Term changed: ${oldTerm} → ${newTerm}`);
+      console.log('🔄 Automatically migrating arrears...');
       
       window.showToast?.(
         'Migrating outstanding balances to new term...',
@@ -8398,6 +8517,8 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
           'success',
           10000
         );
+      } else if (result.success && result.count === 0) {
+        window.showToast?.('✓ Settings saved! No outstanding arrears to migrate.', 'success');
       } else {
         window.showToast?.('✓ Settings saved successfully!', 'success');
       }
