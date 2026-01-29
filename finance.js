@@ -48,12 +48,12 @@ const finance = {
   },
 
   /**
- * FIXED: Get fee structure (class-based, no session dependency)
- * Replace getFeeStructure() in finance.js
+ * FIXED: Get fee structure (class-based, session-agnostic)
+ * Replace this method in the finance object
  */
 async getFeeStructure(classId) {
   try {
-    // ✅ FIX: Class-based lookup only
+    // ✅ FIX: Class-based lookup only (no session)
     const feeDocId = `fee_${classId}`;
     const doc = await db.collection('fee_structures').doc(feeDocId).get();
 
