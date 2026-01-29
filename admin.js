@@ -2946,6 +2946,33 @@ console.log('✓ Missing section loaders restored');
 ======================================== */
 
 /**
+ * FIXED: Safely extract class ID with fallback for old format
+ */
+function getClassIdSafely(pupilData) {
+  if (!pupilData || !pupilData.class) {
+    console.error('❌ No class data found for pupil');
+    return null;
+  }
+  
+  // New format: {id: "xyz", name: "Primary 3"}
+  if (typeof pupilData.class === 'object' && pupilData.class.id) {
+    return pupilData.class.id;
+  }
+  
+  // Old format: just "Primary 3" as string
+  // We need to look it up in the classes collection
+  if (typeof pupilData.class === 'string') {
+    console.warn('⚠️ Old class format detected, returning null (admin should update pupil record)');
+    return null;
+  }
+  
+  return null;
+}
+
+// Make globally available
+window.getClassIdSafely = getClassIdSafely;
+
+/**
  * Load Fee Management Section
  */
 async function loadFeeManagementSection() {
