@@ -3196,7 +3196,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * Load pupil payment status - FULLY UPDATED WITH ARREARS AND SESSION HANDLING
+ * FIXED: Load Pupil Payment Status (Class-Based Fee Lookup)
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -3223,30 +3223,26 @@ async function loadPupilPaymentStatus() {
     const term = settings.term;
     const encodedSession = session.replace(/\//g, '-');
 
-    // Load fee structure for current class/session
-    const feeStructureSnap = await db.collection('fee_structures')
-      .where('classId', '==', classId)
-      .where('session', '==', session)
-      .limit(1)
-      .get();
+    // ✅ FIX: Get persistent fee structure (class-based)
+    const feeDocId = `fee_${classId}`;
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
-    if (feeStructureSnap.empty) {
+    if (!feeDoc.exists) {
       statusContainer.innerHTML = `
         <div class="alert alert-warning">
           <strong>⚠️ Fee Structure Not Configured</strong>
-          <p>No fee structure has been set for ${className} in ${session}. Configure it in the Fee Management section first.</p>
+          <p>No fee structure has been set for ${className}. Configure it in the Fee Management section first.</p>
         </div>
       `;
       document.getElementById('payment-input-section').style.display = 'none';
       return;
     }
 
-    const feeStructure = feeStructureSnap.docs[0].data();
+    const feeStructure = feeDoc.data();
     let amountDue = feeStructure.total || 0;
-    let totalPaid = 0;
     let arrears = 0;
-    let totalDue = amountDue;
-    let balance = amountDue;
+    let totalPaid = 0;
+    let balance = 0;
     let status = 'owing';
 
     // Load current term payment document
@@ -3257,7 +3253,7 @@ async function loadPupilPaymentStatus() {
       const paymentData = paymentDoc.data();
       totalPaid = paymentData.totalPaid || 0;
       arrears = paymentData.arrears || 0;
-      totalDue = paymentData.totalDue || amountDue;
+      amountDue = paymentData.amountDue || amountDue;
       balance = paymentData.balance || 0;
       status = paymentData.status || 'owing';
     } else {
@@ -3265,10 +3261,13 @@ async function loadPupilPaymentStatus() {
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
-        totalDue = amountDue + arrears;
-        balance = totalDue;
+        balance = amountDue + arrears;
+      } else {
+        balance = amountDue;
       }
     }
+
+    const totalDue = amountDue + arrears;
 
     const statusBadge =
       status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
@@ -3335,7 +3334,7 @@ async function loadPupilPaymentStatus() {
       amountInput.value = '';
     }
 
-    // CRITICAL FIX: Await the payment history load
+    // Load payment history
     await loadPaymentHistory(pupilId, session, term);
 
   } catch (error) {
