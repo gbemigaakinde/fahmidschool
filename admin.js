@@ -3804,8 +3804,8 @@ window.generateTermBreakdownChart = generateTermBreakdownChart;
 window.updateFinancialDisplays = updateFinancialDisplays;
 
 /**
- * Save fee structure configuration - SESSION-BASED with HISTORY
- * FIXED: Maintains change history and prevents accidental overwrites
+ * FIXED: Fee Structure ID - Class-Based (No Session)
+ * Replace saveFeeStructure() function
  */
 async function saveFeeStructure() {
   const classSelect = document.getElementById('fee-config-class');
@@ -3825,12 +3825,7 @@ async function saveFeeStructure() {
   const other = parseFloat(document.getElementById('fee-other')?.value) || 0;
   
   const feeBreakdown = {
-    tuition: tuition,
-    exam_fee: examFee,
-    uniform: uniform,
-    books: books,
-    pta: pta,
-    other: other
+    tuition, exam_fee: examFee, uniform, books, pta, other
   };
   
   const total = Object.values(feeBreakdown).reduce((sum, val) => sum + val, 0);
@@ -3849,10 +3844,8 @@ async function saveFeeStructure() {
   }
   
   try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const encodedSession = session.replace(/\//g, '-');
-    const feeDocId = isEditing || `${classId}_${encodedSession}`;
+    // ✅ FIX: Class-based ID only (no session)
+    const feeDocId = `fee_${classId}`;
     
     // Check if creating new and already exists
     if (!isEditing) {
@@ -3864,11 +3857,10 @@ async function saveFeeStructure() {
         
         const confirmation = confirm(
           `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
-          `Class: ${className}\n` +
-          `Session: ${session}\n\n` +
+          `Class: ${className}\n\n` +
           `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
           `New fee: ₦${total.toLocaleString()} per term\n\n` +
-          `This will update the existing fee structure.\n\n` +
+          `This will UPDATE the existing fee structure.\n\n` +
           `Continue?`
         );
         
@@ -3892,14 +3884,16 @@ async function saveFeeStructure() {
       }
     }
     
-    // Save/update fee structure
+    // ✅ FIX: Save WITHOUT session field (persistent)
     await db.collection('fee_structures').doc(feeDocId).set({
       classId,
       className,
-      session,
       fees: feeBreakdown,
       total: total,
-      createdAt: isEditing ? (await db.collection('fee_structures').doc(feeDocId).get()).data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp() : firebase.firestore.FieldValue.serverTimestamp(),
+      // NO SESSION FIELD - applies to all sessions
+      createdAt: isEditing 
+        ? (await db.collection('fee_structures').doc(feeDocId).get()).data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp() 
+        : firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: auth.currentUser.uid
     });
@@ -3907,7 +3901,7 @@ async function saveFeeStructure() {
     window.showToast?.(
       `✓ Fee structure ${isEditing ? 'updated' : 'saved'} for ${className}!\n\n` +
       `Per-term fee: ₦${total.toLocaleString()}\n\n` +
-      `${!isEditing ? 'Use "Generate Missing Records" to create payment records for pupils.' : 'Existing payment records are not affected.'}`,
+      `This fee will apply to ALL terms and sessions until you change it.`,
       'success',
       8000
     );
