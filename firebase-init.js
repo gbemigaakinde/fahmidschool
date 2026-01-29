@@ -32,26 +32,22 @@ window.db = firebase.firestore();
 window.auth = firebase.auth();
 window.firebase = firebase;
 
-// ENABLE OFFLINE PERSISTENCE
+// ENABLE OFFLINE PERSISTENCE – modern way (no deprecation warning)
 try {
-  // Use the new persistentCacheIndexManager() API
-  window.db.enablePersistence({ 
-    synchronizeTabs: true 
-  })
-    .then(() => {
-      console.log('✓ Offline persistence enabled');
+  window.db.settings({
+    localCache: firebase.firestore.persistentLocalCache({
+      tabManager: firebase.firestore.persistentMultipleTabManager()
     })
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('⚠️ Persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('⚠️ Persistence not supported by browser');
-      } else {
-        console.error('❌ Persistence error:', err);
-      }
-    });
-} catch (error) {
-  console.error('❌ Failed to enable persistence:', error);
+  });
+  console.log('✓ Offline multi-tab persistence enabled (modern API)');
+} catch (err) {
+  if (err.code === 'failed-precondition') {
+    console.warn('⚠️ Persistence failed: Multiple tabs open');
+  } else if (err.code === 'unimplemented') {
+    console.warn('⚠️ Persistence not supported by browser');
+  } else {
+    console.error('❌ Persistence setup error:', err);
+  }
 }
 
 // ============================================
