@@ -666,7 +666,7 @@ async function loadFeeBalance() {
         }
         
         // ✅ FIX: Load ALL payment history (no term filter)
-        await loadAllPaymentHistory(currentPupilId, session);
+        await loadAllPaymentHistory(currentPupilId);
         
     } catch (error) {
         console.error('Error loading fee balance:', error);
