@@ -4474,7 +4474,7 @@ async function deleteFeeStructure(docId, className) {
 }
 
 /**
- * Record a new payment - OVERPAYMENT SAFE
+ * ✅ FIXED: Record payment with robust class ID extraction and validation
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -4516,33 +4516,47 @@ async function recordPayment() {
       .toUpperCase()}`;
 
     const encodedSession = session.replace(/\//g, '-');
-    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    
+    // ✅ CRITICAL FIX: Validate classId before constructing fee document ID
+    if (!classId || classId === 'undefined' || classId === 'null') {
+      throw new Error(
+        `Invalid class ID for pupil ${pupilName}.\n\n` +
+        `This pupil may have outdated class data.\n` +
+        `Please edit the pupil record and re-save to fix this issue.`
+      );
+    }
+    
+    // ✅ FIXED: Class-based fee structure lookup (permanent)
+    const feeDocId = `fee_${classId}`;
+    console.log(`📋 Looking up fee structure: ${feeDocId}`);
+    
+    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
+    if (!feeDoc.exists) {
+      throw new Error(
+        `No fee structure configured for class: ${className}\n\n` +
+        `Fee structure ID: ${feeDocId}\n\n` +
+        `Please configure fees for this class in the Fee Management section first.`
+      );
+    }
+    
+    console.log(`✅ Fee structure found for ${className}`);
+    
+    const feeStructure = feeDoc.data();
+    const amountDue = Number(feeStructure.total) || 0;
+
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
 
     let currentPaid = 0;
-    let amountDue = 0;
     let arrears = 0;
 
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
       currentPaid = data.totalPaid || 0;
-      amountDue = data.amountDue || 0;
       arrears = data.arrears || 0;
     } else {
-      const feeSnap = await db
-        .collection('fee_structures')
-        .where('classId', '==', classId)
-        .where('session', '==', session)
-        .where('term', '==', term)
-        .limit(1)
-        .get();
-
-      if (!feeSnap.empty) {
-        amountDue = feeSnap.docs[0].data().total || 0;
-      }
-
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
@@ -4659,8 +4673,8 @@ async function recordPayment() {
       printReceipt(receiptNo);
     }
   } catch (error) {
-    console.error('Error recording payment:', error);
-    window.showToast?.('Failed to record payment: ' + error.message, 'danger');
+    console.error('❌ Error recording payment:', error);
+    window.showToast?.('Failed to record payment: ' + error.message, 'danger', 8000);
   } finally {
     if (recordBtn) {
       recordBtn.disabled = false;
@@ -4668,6 +4682,9 @@ async function recordPayment() {
     }
   }
 }
+
+// Make globally available
+window.recordPayment = recordPayment;
 
 // Open receipt in new window for printing
 function printReceipt(receiptNo) {
