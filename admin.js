@@ -6745,7 +6745,7 @@ async function loadPupils() {
         <td data-label="Class">${className}</td>
         <td data-label="Gender">${pupil.gender || '-'}</td>
         <td data-label="Parent Name">${pupil.parentName || '-'}</td>
-        <td data-label="Parent Email">${pupil.parentEmail || '-'}</td>
+        <td data-label="Parent Contact">${pupil.contact || '-'}</td>
         <td data-label="Actions">
           <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
           <button class="btn-small btn-danger" onclick="deleteItem('pupils', '${pupil.id}')">Delete</button>
