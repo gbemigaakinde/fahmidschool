@@ -517,11 +517,88 @@ async function loadFeeBalance() {
         const currentTerm = settings.term;
         const encodedSession = session.replace(/\//g, '-');
 
-        // Get payment record for CURRENT TERM ONLY
-        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
-        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        // Get current pupil data for class info
+        const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
+        if (!pupilDoc.exists) {
+            throw new Error('Pupil profile not found');
+        }
+        
+        const pupilData = pupilDoc.data();
+        const classId = pupilData.class?.id;
+        const className = pupilData.class?.name || 'Unknown';
 
-        if (!paymentDoc.exists) {
+        // Get payment record for CURRENT TERM
+        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
+        let paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+
+        let amountDue = 0;
+        let arrears = 0;
+        let totalPaid = 0;
+        let balance = 0;
+        let status = 'owing';
+        let recordExists = paymentDoc.exists;
+
+        // If record doesn't exist, try to create it automatically
+        if (!recordExists && classId) {
+            console.log('⚠️ Payment record missing, attempting auto-creation...');
+            
+            // Get fee structure
+            const feeDocId = `${classId}_${encodedSession}`;
+            const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+            
+            if (feeDoc.exists) {
+                const feeData = feeDoc.data();
+                amountDue = Number(feeData.total) || 0;
+                
+                // Calculate arrears from previous session
+                const previousSession = getPreviousSessionName(session);
+                if (previousSession) {
+                    arrears = await calculateSessionBalance(currentPupilId, previousSession);
+                }
+                
+                // Create payment record
+                await db.collection('payments').doc(paymentDocId).set({
+                    pupilId: currentPupilId,
+                    pupilName: pupilData.name || 'Unknown',
+                    classId: classId,
+                    className: className,
+                    session: session,
+                    term: currentTerm,
+                    amountDue: amountDue,
+                    arrears: arrears,
+                    totalDue: amountDue + arrears,
+                    totalPaid: 0,
+                    balance: amountDue + arrears,
+                    status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+                    lastPaymentDate: null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    autoCreated: true
+                });
+                
+                console.log('✅ Auto-created payment record');
+                
+                // Reload the record we just created
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+                recordExists = true;
+                
+                balance = amountDue + arrears;
+                status = arrears > 0 ? 'owing_with_arrears' : 'owing';
+            }
+        }
+
+        // Extract data if record exists
+        if (recordExists) {
+            const data = paymentDoc.data();
+            amountDue = Number(data.amountDue) || 0;
+            arrears = Number(data.arrears) || 0;
+            totalPaid = Number(data.totalPaid) || 0;
+            balance = Number(data.balance) || 0;
+            status = data.status || 'owing';
+        }
+
+        // If still no data, show appropriate message
+        if (amountDue === 0 && !recordExists) {
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -529,24 +606,20 @@ async function loadFeeBalance() {
                     </div>
                     <div class="section-title">
                         <h2>Fee Information</h2>
-                        <p>No fee structure configured for ${currentTerm} yet</p>
+                        <p>No fee structure configured for ${className} yet</p>
                     </div>
                 </div>
                 <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
                     <p>Fee details will appear here once configured by the school administration.</p>
+                    <p style="margin-top:var(--space-md); font-size:var(--text-sm);">
+                        If you believe this is an error, please contact the school office.
+                    </p>
                 </div>
             `;
+            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
-
-        const data = paymentDoc.data();
-
-        // Extract payment data
-        const amountDue = Number(data.amountDue) || 0;
-        const arrears = Number(data.arrears) || 0;
-        const totalPaid = Number(data.totalPaid) || 0;
-        const balance = Number(data.balance) || 0;
-        const status = data.status || 'owing';
 
         // Status colors and icons
         let statusColor = '#f44336';
@@ -563,7 +636,7 @@ async function loadFeeBalance() {
             statusIcon = 'clock';
         }
 
-        // Arrears HTML block
+        // Arrears warning block
         const arrearsHTML = arrears > 0 ? `
             <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
@@ -583,6 +656,7 @@ async function loadFeeBalance() {
         ` : '';
 
         const totalDue = amountDue + arrears;
+        const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
         // Render fee section
         feeSection.innerHTML = `
@@ -615,7 +689,7 @@ async function loadFeeBalance() {
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Paid</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${totalPaid.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
-                        ${totalPaid > 0 ? Math.round((totalPaid / totalDue) * 100) + '% collected' : 'No payments yet'}
+                        ${totalPaid > 0 ? percentPaid + '% collected' : 'No payments yet'}
                     </div>
                 </div>
 
@@ -632,7 +706,7 @@ async function loadFeeBalance() {
             <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
                 <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
                     <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
-                    Payment History (All Terms)
+                    Payment History (All Sessions)
                 </h3>
                 <div id="payment-history-list" style="display: grid; gap: var(--space-md);">
                     <div style="text-align:center; padding:var(--space-lg); color:var(--color-gray-600);">
@@ -658,7 +732,7 @@ async function loadFeeBalance() {
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
-        // Load payment history for pupil (all terms/sessions)
+        // Load payment history for pupil (all sessions)
         await loadAllPaymentHistory(currentPupilId);
 
     } catch (error) {
@@ -666,11 +740,61 @@ async function loadFeeBalance() {
         feeSection.innerHTML = `
             <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
                 <i data-lucide="alert-triangle" style="width: 48px; height: 48px; margin: 0 auto var(--space-md);"></i>
-                <p>Unable to load fee information. Please try again later.</p>
+                <p style="font-weight: 600; margin-bottom: var(--space-sm);">Unable to load fee information</p>
+                <p style="font-size: var(--text-sm);">Error: ${error.message}</p>
+                <button class="btn btn-primary" onclick="loadFeeBalance()" style="margin-top: var(--space-lg);">
+                    🔄 Retry
+                </button>
             </div>
         `;
+        
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
+
+
+/**
+ * Helper: Get previous session name
+ */
+function getPreviousSessionName(currentSession) {
+    const match = currentSession.match(/(\d{4})\/(\d{4})/);
+    if (!match) return null;
+    
+    const startYear = parseInt(match[1]);
+    const endYear = parseInt(match[2]);
+    
+    return `${startYear - 1}/${endYear - 1}`;
+}
+
+/**
+ * Helper: Calculate total balance for entire session
+ */
+async function calculateSessionBalance(pupilId, session) {
+    try {
+        const paymentsSnap = await db.collection('payments')
+            .where('pupilId', '==', pupilId)
+            .where('session', '==', session)
+            .get();
+        
+        let totalBalance = 0;
+        
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            totalBalance += Number(data.balance) || 0;
+        });
+        
+        return totalBalance;
+        
+    } catch (error) {
+        console.error('Error calculating session balance:', error);
+        return 0;
+    }
+}
+
+// Replace the existing loadFeeBalance function with this one
+window.loadFeeBalance = loadFeeBalance;
+
+console.log('✅ Pupil fee display fixes loaded');
 
 async function loadAllPaymentHistory(pupilId) {
     if (!pupilId) return;
