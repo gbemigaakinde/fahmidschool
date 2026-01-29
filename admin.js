@@ -3314,7 +3314,7 @@ async function loadPupilPaymentStatus() {
       amountInput.value = '';
     }
 
-    // Load the fully updated payment history
+    // CRITICAL FIX: Await the payment history load
     await loadPaymentHistory(pupilId, session, term);
 
   } catch (error) {
@@ -3327,23 +3327,27 @@ window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
 /**
  * Load complete payment history for selected pupil - ALL TERMS WITH ARREARS
+ * ADMIN VERSION - Shows full transaction details
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
-  if (!container) return;
+  if (!container) {
+    console.error('payment-history-list container not found');
+    return;
+  }
 
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
 
   try {
-    // Fetch all payment documents for this pupil/session
-    const snapshot = await db.collection('payments')
+    // Fetch all payment transactions for this pupil in current session
+    const snapshot = await db.collection('payment_transactions')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)
       .orderBy('paymentDate', 'desc')
       .get();
 
     if (snapshot.empty) {
-      container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
+      container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet for this session</p>';
       return;
     }
 
@@ -3352,24 +3356,37 @@ async function loadPaymentHistory(pupilId, session, term) {
       const data = doc.data();
       transactions.push({
         id: doc.id,
+        receiptNo: data.receiptNo || 'N/A',
         amountPaid: data.amountPaid || 0,
+        arrearsPayment: data.arrearsPayment || 0,
+        currentTermPayment: data.currentTermPayment || 0,
         paymentDate: data.paymentDate || null,
         paymentMethod: data.paymentMethod || 'Cash',
-        receiptNo: data.receiptNo || 'N/A',
         term: data.term || 'N/A',
-        session: data.session || 'N/A'
+        session: data.session || 'N/A',
+        recordedBy: data.recordedBy || 'Unknown'
       });
     });
 
     container.innerHTML = transactions.map(txn => {
       const date = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB') : 'N/A';
+      const hasArrears = txn.arrearsPayment > 0;
+      
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
-          <div>
-            <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
-            <div style="font-size:var(--text-sm); color:var(--color-gray-600); margin-top:var(--space-xs);">
-              ${date} • ${txn.paymentMethod} • Receipt #${txn.receiptNo} • ${txn.term} • ${txn.session}
+          <div style="flex:1;">
+            <div style="font-weight:700; font-size:var(--text-lg); margin-bottom:var(--space-xs);">
+              ₦${Number(txn.amountPaid).toLocaleString()}
             </div>
+            <div style="font-size:var(--text-sm); color:var(--color-gray-600);">
+              ${date} • ${txn.paymentMethod} • Receipt #${txn.receiptNo} • ${txn.term}
+            </div>
+            ${hasArrears ? `
+              <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:#991b1b; font-weight:600;">
+                💰 Arrears: ₦${txn.arrearsPayment.toLocaleString()} 
+                ${txn.currentTermPayment > 0 ? `• Current: ₦${txn.currentTermPayment.toLocaleString()}` : ''}
+              </div>
+            ` : ''}
           </div>
           <button class="btn-small btn-secondary" onclick="printReceipt('${txn.receiptNo}')">
             Print Receipt
@@ -3378,12 +3395,15 @@ async function loadPaymentHistory(pupilId, session, term) {
       `;
     }).join('');
 
+    console.log(`✓ Loaded ${transactions.length} payment transactions for ${session}`);
+
   } catch (error) {
     console.error('Error loading payment history:', error);
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
   }
 }
 
+// Make function globally available
 window.loadPaymentHistory = loadPaymentHistory;
 
 /**
