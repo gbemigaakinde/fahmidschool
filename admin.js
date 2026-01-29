@@ -3200,7 +3200,6 @@ async function loadPupilPaymentStatus() {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     const term = settings.term;
-
     const encodedSession = session.replace(/\//g, '-');
 
     // Load fee structure for current class/session
@@ -3229,7 +3228,7 @@ async function loadPupilPaymentStatus() {
     let balance = amountDue;
     let status = 'owing';
 
-    // Load current term payment
+    // Load current term payment document
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
 
@@ -3241,7 +3240,7 @@ async function loadPupilPaymentStatus() {
       balance = paymentData.balance || 0;
       status = paymentData.status || 'owing';
     } else {
-      // Check arrears from previous session
+      // Check arrears from previous session(s)
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
@@ -3250,13 +3249,13 @@ async function loadPupilPaymentStatus() {
       }
     }
 
-    const statusBadge = 
+    const statusBadge =
       status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
       status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
       arrears > 0 ? '<span class="status-badge" style="background:#dc3545;">Owing (with Arrears)</span>' :
       '<span class="status-badge" style="background:#f44336;">Owing</span>';
 
-    // Render status card
+    // Render payment status card
     statusContainer.innerHTML = `
       <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -3336,54 +3335,40 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
 
   try {
-    // 1️⃣ Load fee structure for current class/session
-    const feeDocs = await db.collection('payments')
+    // Fetch all payment documents for this pupil/session
+    const snapshot = await db.collection('payments')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)
-      .orderBy('term', 'asc')
+      .orderBy('paymentDate', 'desc')
       .get();
 
-    if (feeDocs.empty) {
+    if (snapshot.empty) {
       container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
       return;
     }
 
-    // 2️⃣ Prepare transactions array
     const transactions = [];
-    feeDocs.forEach(doc => {
+    snapshot.forEach(doc => {
       const data = doc.data();
-      if (data.payments && Array.isArray(data.payments)) {
-        data.payments.forEach(p => {
-          transactions.push({
-            ...p,
-            term: data.term,
-            session: data.session
-          });
-        });
-      }
+      transactions.push({
+        id: doc.id,
+        amountPaid: data.amountPaid || 0,
+        paymentDate: data.paymentDate || null,
+        paymentMethod: data.paymentMethod || 'Cash',
+        receiptNo: data.receiptNo || 'N/A',
+        term: data.term || 'N/A',
+        session: data.session || 'N/A'
+      });
     });
 
-    // 3️⃣ Sort transactions by date descending
-    transactions.sort((a, b) => {
-      const aTime = a.paymentDate ? a.paymentDate.toDate().getTime() : 0;
-      const bTime = b.paymentDate ? b.paymentDate.toDate().getTime() : 0;
-      return bTime - aTime;
-    });
-
-    // 4️⃣ Render transactions
     container.innerHTML = transactions.map(txn => {
-      const date = txn.paymentDate 
-        ? txn.paymentDate.toDate().toLocaleDateString('en-GB')
-        : 'N/A';
-      const termLabel = txn.term || term;
-      const sessionLabel = txn.session || session;
-
+      const date = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB') : 'N/A';
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
           <div>
             <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
             <div style="font-size:var(--text-sm); color:var(--color-gray-600); margin-top:var(--space-xs);">
-              ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo} • ${termLabel} • ${sessionLabel}
+              ${date} • ${txn.paymentMethod} • Receipt #${txn.receiptNo} • ${txn.term} • ${txn.session}
             </div>
           </div>
           <button class="btn-small btn-secondary" onclick="printReceipt('${txn.receiptNo}')">
