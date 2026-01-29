@@ -483,18 +483,8 @@ async function loadResults() {
 }
 
 /**
- * FIXED: Pupil Fee Balance with Cumulative Debt Tracking
- * Replace loadFeeBalance() in pupil.js (lines 700-900)
- * 
- * FIXES:
- * - Shows ALL outstanding balances from current session
- * - Displays term-by-term breakdown
- * - Prevents hidden debts
- */
-
-/**
- * FIXED: Load Fee Balance - Current Term Only
- * Shows only the current term's fee status based on school settings
+ * FIXED: Load Fee Balance (Class-Based Fee Lookup)
+ * Replace loadFeeBalance() in pupil.js
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -527,78 +517,11 @@ async function loadFeeBalance() {
         const classId = pupilData.class?.id;
         const className = pupilData.class?.name || 'Unknown';
 
-        // Get payment record for CURRENT TERM
-        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
-        let paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-
-        let amountDue = 0;
-        let arrears = 0;
-        let totalPaid = 0;
-        let balance = 0;
-        let status = 'owing';
-        let recordExists = paymentDoc.exists;
-
-        // If record doesn't exist, try to create it automatically
-        if (!recordExists && classId) {
-            console.log('⚠️ Payment record missing, attempting auto-creation...');
-            
-            // Get fee structure
-            const feeDocId = `${classId}_${encodedSession}`;
-            const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-            
-            if (feeDoc.exists) {
-                const feeData = feeDoc.data();
-                amountDue = Number(feeData.total) || 0;
-                
-                // Calculate arrears from previous session
-                const previousSession = getPreviousSessionName(session);
-                if (previousSession) {
-                    arrears = await calculateSessionBalance(currentPupilId, previousSession);
-                }
-                
-                // Create payment record
-                await db.collection('payments').doc(paymentDocId).set({
-                    pupilId: currentPupilId,
-                    pupilName: pupilData.name || 'Unknown',
-                    classId: classId,
-                    className: className,
-                    session: session,
-                    term: currentTerm,
-                    amountDue: amountDue,
-                    arrears: arrears,
-                    totalDue: amountDue + arrears,
-                    totalPaid: 0,
-                    balance: amountDue + arrears,
-                    status: arrears > 0 ? 'owing_with_arrears' : 'owing',
-                    lastPaymentDate: null,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    autoCreated: true
-                });
-                
-                console.log('✅ Auto-created payment record');
-                
-                // Reload the record we just created
-                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-                recordExists = true;
-                
-                balance = amountDue + arrears;
-                status = arrears > 0 ? 'owing_with_arrears' : 'owing';
-            }
-        }
-
-        // Extract data if record exists
-        if (recordExists) {
-            const data = paymentDoc.data();
-            amountDue = Number(data.amountDue) || 0;
-            arrears = Number(data.arrears) || 0;
-            totalPaid = Number(data.totalPaid) || 0;
-            balance = Number(data.balance) || 0;
-            status = data.status || 'owing';
-        }
-
-        // If still no data, show appropriate message
-        if (amountDue === 0 && !recordExists) {
+        // ✅ FIX: Get persistent fee structure (class-based)
+        const feeDocId = `fee_${classId}`;
+        const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+        
+        if (!feeDoc.exists) {
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -619,6 +542,70 @@ async function loadFeeBalance() {
             
             if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
+        }
+        
+        const feeStructure = feeDoc.data();
+        const amountDueBase = Number(feeStructure.total) || 0;
+
+        // Get payment record for CURRENT TERM
+        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
+        let paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+
+        let amountDue = amountDueBase;
+        let arrears = 0;
+        let totalPaid = 0;
+        let balance = amountDueBase;
+        let status = 'owing';
+        let recordExists = paymentDoc.exists;
+
+        // If record doesn't exist, try to create it automatically
+        if (!recordExists && classId) {
+            console.log('⚠️ Payment record missing, attempting auto-creation...');
+            
+            // Calculate arrears from previous session
+            const previousSession = getPreviousSessionName(session);
+            if (previousSession) {
+                arrears = await calculateSessionBalance(currentPupilId, previousSession);
+            }
+            
+            // Create payment record
+            await db.collection('payments').doc(paymentDocId).set({
+                pupilId: currentPupilId,
+                pupilName: pupilData.name || 'Unknown',
+                classId: classId,
+                className: className,
+                session: session,
+                term: currentTerm,
+                amountDue: amountDue,
+                arrears: arrears,
+                totalDue: amountDue + arrears,
+                totalPaid: 0,
+                balance: amountDue + arrears,
+                status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+                lastPaymentDate: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                autoCreated: true
+            });
+            
+            console.log('✅ Auto-created payment record');
+            
+            // Reload the record we just created
+            paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            recordExists = true;
+            
+            balance = amountDue + arrears;
+            status = arrears > 0 ? 'owing_with_arrears' : 'owing';
+        }
+
+        // Extract data if record exists
+        if (recordExists) {
+            const data = paymentDoc.data();
+            amountDue = Number(data.amountDue) || 0;
+            arrears = Number(data.arrears) || 0;
+            totalPaid = Number(data.totalPaid) || 0;
+            balance = Number(data.balance) || 0;
+            status = data.status || 'owing';
         }
 
         // Status colors and icons
@@ -751,6 +738,8 @@ async function loadFeeBalance() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
+
+window.loadFeeBalance = loadFeeBalance;
 
 
 /**
