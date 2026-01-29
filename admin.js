@@ -3175,65 +3175,64 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * Load pupil payment status - FIXED SESSION ENCODING
+ * Load pupil payment status - FULLY UPDATED WITH ARREARS AND SESSION HANDLING
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
   const pupilId = pupilSelect?.value;
-  
+
   if (!pupilId) {
     document.getElementById('payment-form-container').style.display = 'none';
     return;
   }
-  
+
   const classId = document.getElementById('payment-class-filter')?.value;
   const pupilName = pupilSelect.selectedOptions[0]?.dataset.pupilName;
   const className = pupilSelect.selectedOptions[0]?.dataset.className;
-  
+
   const formContainer = document.getElementById('payment-form-container');
   const statusContainer = document.getElementById('payment-status-display');
-  
+
   formContainer.style.display = 'block';
   statusContainer.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
-  
+
   try {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     const term = settings.term;
-    
+
     const encodedSession = session.replace(/\//g, '-');
-    
-    // Get fee structure
+
+    // Load fee structure for current class/session
     const feeStructureSnap = await db.collection('fee_structures')
       .where('classId', '==', classId)
       .where('session', '==', session)
       .limit(1)
       .get();
-    
+
     if (feeStructureSnap.empty) {
       statusContainer.innerHTML = `
         <div class="alert alert-warning">
           <strong>⚠️ Fee Structure Not Configured</strong>
-          <p>No fee structure has been set for ${className} in ${session}. Please configure it in the Fee Management section first.</p>
+          <p>No fee structure has been set for ${className} in ${session}. Configure it in the Fee Management section first.</p>
         </div>
       `;
       document.getElementById('payment-input-section').style.display = 'none';
       return;
     }
-    
+
     const feeStructure = feeStructureSnap.docs[0].data();
-    
-    // Get payment document
-    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-    const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-    
     let amountDue = feeStructure.total || 0;
     let totalPaid = 0;
     let arrears = 0;
     let totalDue = amountDue;
     let balance = amountDue;
     let status = 'owing';
-    
+
+    // Load current term payment
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+
     if (paymentDoc.exists) {
       const paymentData = paymentDoc.data();
       totalPaid = paymentData.totalPaid || 0;
@@ -3242,7 +3241,7 @@ async function loadPupilPaymentStatus() {
       balance = paymentData.balance || 0;
       status = paymentData.status || 'owing';
     } else {
-      // Check for arrears from previous session
+      // Check arrears from previous session
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
@@ -3250,13 +3249,14 @@ async function loadPupilPaymentStatus() {
         balance = totalDue;
       }
     }
-    
+
     const statusBadge = 
       status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
       status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
       arrears > 0 ? '<span class="status-badge" style="background:#dc3545;">Owing (with Arrears)</span>' :
       '<span class="status-badge" style="background:#f44336;">Owing</span>';
-    
+
+    // Render status card
     statusContainer.innerHTML = `
       <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -3266,38 +3266,35 @@ async function loadPupilPaymentStatus() {
           </div>
           ${statusBadge}
         </div>
-        
+
         ${arrears > 0 ? `
         <div style="background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm); padding:var(--space-md); margin-bottom:var(--space-lg);">
           <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-xs);">
             <i data-lucide="alert-triangle" style="width:20px; height:20px; color:#dc3545;"></i>
             <strong style="color:#991b1b;">Outstanding Arrears from Previous Session</strong>
           </div>
-          <p style="margin:0; font-size:var(--text-sm); color:#7f1d1d);">
-            This pupil has ₦${arrears.toLocaleString()} unpaid from previous session(s). 
-            Payments will prioritize clearing arrears first.
+          <p style="margin:0; font-size:var(--text-sm); color:#7f1d1d;">
+            ₦${arrears.toLocaleString()} unpaid from previous session(s). Payments will prioritize clearing arrears first.
           </p>
-        </div>
-        ` : ''}
-        
+        </div>` : ''}
+
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
           ${arrears > 0 ? `
           <div style="text-align:center; padding:var(--space-md); background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:#991b1b; margin-bottom:var(--space-xs); font-weight:600;">Arrears</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:#dc3545;">₦${arrears.toLocaleString()}</div>
-          </div>
-          ` : ''}
-          
+          </div>` : ''}
+
           <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Current Term Fee</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
           </div>
-          
+
           <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
           </div>
-          
+
           <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Total Balance</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
@@ -3305,21 +3302,22 @@ async function loadPupilPaymentStatus() {
         </div>
       </div>
     `;
-    
+
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
-    
+
     document.getElementById('payment-input-section').style.display = 'block';
-    
+
     const amountInput = document.getElementById('payment-amount');
     if (amountInput) {
       amountInput.max = balance;
       amountInput.value = '';
     }
-    
+
+    // Load the fully updated payment history
     await loadPaymentHistory(pupilId, session, term);
-    
+
   } catch (error) {
     console.error('Error loading payment status:', error);
     statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
@@ -3329,47 +3327,63 @@ async function loadPupilPaymentStatus() {
 window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
 /**
- * Load payment history for selected pupil - FIXED SESSION HANDLING
+ * Load complete payment history for selected pupil - ALL TERMS WITH ARREARS
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
   if (!container) return;
-  
+
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
-  
+
   try {
-    // Session should already be in ORIGINAL format "2025/2026"
-    // No decoding needed - just use it directly for query
-    
-    // Query transactions (use ORIGINAL session format)
-    const transactionsSnap = await db.collection('payment_transactions')
+    // 1️⃣ Load fee structure for current class/session
+    const feeDocs = await db.collection('payments')
       .where('pupilId', '==', pupilId)
-      .where('session', '==', session)  // Use ORIGINAL format "2025/2026"
-      .where('term', '==', term)
-      .orderBy('paymentDate', 'desc')
+      .where('session', '==', session)
+      .orderBy('term', 'asc')
       .get();
-    
-    if (transactionsSnap.empty) {
+
+    if (feeDocs.empty) {
       container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding:var(--space-lg);">No payment history yet</p>';
       return;
     }
-    
+
+    // 2️⃣ Prepare transactions array
     const transactions = [];
-    transactionsSnap.forEach(doc => {
-      transactions.push({ id: doc.id, ...doc.data() });
+    feeDocs.forEach(doc => {
+      const data = doc.data();
+      if (data.payments && Array.isArray(data.payments)) {
+        data.payments.forEach(p => {
+          transactions.push({
+            ...p,
+            term: data.term,
+            session: data.session
+          });
+        });
+      }
     });
-    
+
+    // 3️⃣ Sort transactions by date descending
+    transactions.sort((a, b) => {
+      const aTime = a.paymentDate ? a.paymentDate.toDate().getTime() : 0;
+      const bTime = b.paymentDate ? b.paymentDate.toDate().getTime() : 0;
+      return bTime - aTime;
+    });
+
+    // 4️⃣ Render transactions
     container.innerHTML = transactions.map(txn => {
       const date = txn.paymentDate 
         ? txn.paymentDate.toDate().toLocaleDateString('en-GB')
         : 'N/A';
-      
+      const termLabel = txn.term || term;
+      const sessionLabel = txn.session || session;
+
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
           <div>
             <strong>₦${Number(txn.amountPaid).toLocaleString()}</strong>
             <div style="font-size:var(--text-sm); color:var(--color-gray-600); margin-top:var(--space-xs);">
-              ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo}
+              ${date} • ${txn.paymentMethod || 'Cash'} • Receipt #${txn.receiptNo} • ${termLabel} • ${sessionLabel}
             </div>
           </div>
           <button class="btn-small btn-secondary" onclick="printReceipt('${txn.receiptNo}')">
@@ -3378,12 +3392,14 @@ async function loadPaymentHistory(pupilId, session, term) {
         </div>
       `;
     }).join('');
-    
+
   } catch (error) {
     console.error('Error loading payment history:', error);
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment history</p>';
   }
 }
+
+window.loadPaymentHistory = loadPaymentHistory;
 
 /**
  * FIXED: Outstanding Fees Report - Current Term with Arrears
@@ -3645,10 +3661,11 @@ window.loadFinancialReports = loadFinancialReports;
 async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) {
     const chartContainer = document.getElementById('term-breakdown-chart');
     if (!chartContainer) return;
-    
+
     const termOrder = ['First Term', 'Second Term', 'Third Term'];
     const termData = {};
-    
+
+    // Initialize term data
     termOrder.forEach(term => {
         termData[term] = {
             expected: 0,
@@ -3656,31 +3673,30 @@ async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) 
             outstanding: 0
         };
     });
-    
-    // Expected fees per term (fixed structure)
+
+    // Calculate expected fees per term from feeStructureMap
     Object.values(feeStructureMap).forEach(classFees => {
         termOrder.forEach(term => {
             termData[term].expected += classFees[term] || 0;
         });
     });
-    
-    // ORIGINAL APPROXIMATION PRESERVED
+
+    // Allocate collected payments proportionally across terms
     Object.values(paymentMap).forEach(pupilPayments => {
         pupilPayments.terms.forEach(term => {
             if (termData[term]) {
-                const portion =
-                    pupilPayments.totalPaid / pupilPayments.terms.length;
+                const portion = pupilPayments.totalPaid / pupilPayments.terms.length;
                 termData[term].collected += portion;
             }
         });
     });
-    
+
+    // Compute outstanding fees per term
     Object.keys(termData).forEach(term => {
-        termData[term].outstanding =
-            termData[term].expected - termData[term].collected;
+        termData[term].outstanding = termData[term].expected - termData[term].collected;
     });
-    
-    // Rendering logic untouched
+
+    // Render chart
     const chartHTML = `
         <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0; margin-top: var(--space-xl);">
             <h3 style="margin: 0 0 var(--space-lg);">📊 Term-by-Term Breakdown</h3>
@@ -3688,11 +3704,11 @@ async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) 
                 ${termOrder.map(term => {
                     const data = termData[term];
                     if (data.expected === 0) return '';
-                    
-                    const collectionRate = data.expected > 0 
+
+                    const collectionRate = data.expected > 0
                         ? Math.round((data.collected / data.expected) * 100)
                         : 0;
-                    
+
                     return `
                         <div style="padding: var(--space-md); background: #f8fafc; border-radius: var(--radius-md);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
@@ -3701,10 +3717,10 @@ async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) 
                                     ${collectionRate}% collected
                                 </span>
                             </div>
-                            <div>
-                                Expected: ₦${Math.round(data.expected).toLocaleString()}
-                                Collected: ₦${Math.round(data.collected).toLocaleString()}
-                                Outstanding: ₦${Math.round(data.outstanding).toLocaleString()}
+                            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                                <span>Expected: ₦${Math.round(data.expected).toLocaleString()}</span>
+                                <span>Collected: ₦${Math.round(data.collected).toLocaleString()}</span>
+                                <span>Outstanding: ₦${Math.round(data.outstanding).toLocaleString()}</span>
                             </div>
                         </div>
                     `;
@@ -3712,7 +3728,7 @@ async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) 
             </div>
         </div>
     `;
-    
+
     chartContainer.innerHTML = chartHTML;
 }
 
