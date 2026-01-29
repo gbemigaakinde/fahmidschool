@@ -680,20 +680,20 @@ async function loadFeeBalance() {
 }
 
 /**
- * ✅ NEW: Load ALL payment history for pupil (across all terms/sessions)
- * Replaces term-filtered payment history
+ * ✅ UPDATED: Load ALL payment history for pupil (across all terms/sessions)
+ * Shows payment breakdown: arrears vs current term
  */
-async function loadAllPaymentHistory(pupilId, currentSession) {
+async function loadAllPaymentHistory(pupilId) {
     const container = document.getElementById('payment-history-list');
     if (!container || !pupilId) return;
-    
+
     try {
-        // Query ALL transactions for this pupil (no session/term filter)
+        // Query ALL transactions for this pupil
         const transactionsSnap = await db.collection('payment_transactions')
             .where('pupilId', '==', pupilId)
             .orderBy('paymentDate', 'desc')
             .get();
-        
+
         if (transactionsSnap.empty) {
             container.innerHTML = `
                 <div style="text-align:center; padding:var(--space-xl); color:var(--color-gray-600); background: #f8fafc; border-radius: var(--radius-md);">
@@ -701,31 +701,22 @@ async function loadAllPaymentHistory(pupilId, currentSession) {
                     <p style="margin: 0;">No payment history yet</p>
                 </div>
             `;
-            
             if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
-        
+
         container.innerHTML = '';
-        
-        // Group transactions by session for better organization
         const transactionsBySession = {};
-        
+
         transactionsSnap.forEach(doc => {
             const data = doc.data();
             const session = data.session || 'Unknown Session';
-            
-            if (!transactionsBySession[session]) {
-                transactionsBySession[session] = [];
-            }
-            
+            if (!transactionsBySession[session]) transactionsBySession[session] = [];
             transactionsBySession[session].push({ id: doc.id, ...data });
         });
-        
-        // Render transactions grouped by session
+
         Object.keys(transactionsBySession)
             .sort((a, b) => {
-                // Sort sessions newest first
                 const yearA = parseInt(a.split('/')[0]) || 0;
                 const yearB = parseInt(b.split('/')[0]) || 0;
                 return yearB - yearA;
@@ -749,17 +740,17 @@ async function loadAllPaymentHistory(pupilId, currentSession) {
                     </span>
                 `;
                 container.appendChild(sessionHeader);
-                
-                // Render transactions for this session
+
+                // Render transactions
                 transactionsBySession[session].forEach(txn => {
-                    const paymentDate = txn.paymentDate 
-                        ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })
+                    const paymentDate = txn.paymentDate
+                        ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
                         : 'N/A';
-                    
+                    const paymentMethodIcon = (txn.paymentMethod || 'Cash').toLowerCase() === 'cash' ? 'banknote' : 'credit-card';
+                    const amountPaid = parseFloat(txn.amountPaid || 0);
+                    const arrearsPayment = parseFloat(txn.arrearsPayment || 0);
+                    const currentTermPayment = parseFloat(txn.currentTermPayment || 0);
+
                     const itemDiv = document.createElement('div');
                     itemDiv.style.cssText = `
                         padding: var(--space-md);
@@ -772,58 +763,61 @@ async function loadAllPaymentHistory(pupilId, currentSession) {
                         transition: all 0.2s ease;
                         margin-bottom: var(--space-sm);
                     `;
-                    
+
                     itemDiv.innerHTML = `
                         <div style="flex: 1;">
                             <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
-                                ₦${parseFloat(txn.amountPaid).toLocaleString()}
+                                ₦${amountPaid.toLocaleString()}
                             </div>
-                            <div style="font-size: var(--text-sm); color: #64748b; display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
-                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                    <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-                                    ${paymentDate}
-                                </span>
-                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                    <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
-                                    ${txn.term || 'N/A'}
-                                </span>
-                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                    <i data-lucide="${txn.paymentMethod === 'cash' ? 'banknote' : 'credit-card'}" style="width: 14px; height: 14px;"></i>
-                                    ${txn.paymentMethod || 'Cash'}
-                                </span>
-                                <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                    <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
-                                    ${txn.receiptNo}
-                                </span>
+                            <div style="font-size: var(--text-sm); color: #64748b; display: flex; flex-direction: column; gap: var(--space-xs);">
+                                <div style="display: flex; flex-wrap: wrap; gap: var(--space-md);">
+                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                        <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                                        ${paymentDate}
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                        <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
+                                        ${txn.term || 'N/A'}
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                        <i data-lucide="${paymentMethodIcon}" style="width: 14px; height: 14px;"></i>
+                                        ${txn.paymentMethod || 'Cash'}
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                        <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+                                        ${txn.receiptNo || 'N/A'}
+                                    </span>
+                                </div>
+                                <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); color: #0f172a; font-weight: 500;">
+                                    ${arrearsPayment > 0 ? `💰 Arrears: ₦${arrearsPayment.toLocaleString()}` : ''}
+                                    ${currentTermPayment > 0 ? `📌 Current Term: ₦${currentTermPayment.toLocaleString()}` : ''}
+                                </div>
                             </div>
                         </div>
-                        <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')" style="white-space: nowrap;">
+                        <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')">
                             <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
                             View Receipt
                         </button>
                     `;
-                    
+
                     itemDiv.onmouseenter = () => {
                         itemDiv.style.background = 'white';
                         itemDiv.style.borderColor = '#cbd5e1';
-                        itemDiv.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
+                        itemDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
                     };
                     itemDiv.onmouseleave = () => {
                         itemDiv.style.background = '#f8fafc';
                         itemDiv.style.borderColor = '#e2e8f0';
                         itemDiv.style.boxShadow = 'none';
                     };
-                    
+
                     container.appendChild(itemDiv);
                 });
             });
-        
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-        
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         console.log(`✓ Loaded ${transactionsSnap.size} total payment records for pupil`);
-        
+
     } catch (error) {
         console.error('Error loading payment history:', error);
         container.innerHTML = `
@@ -834,9 +828,7 @@ async function loadAllPaymentHistory(pupilId, currentSession) {
     }
 }
 
-// Make function globally available
 window.loadAllPaymentHistory = loadAllPaymentHistory;
-
 // Make functions globally available
 window.loadFeeBalance = loadFeeBalance;
 
