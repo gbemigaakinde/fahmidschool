@@ -78,8 +78,8 @@ const finance = {
   },
 
   /**
- * ✅ FIXED: Record payment with class-based fee lookup
- * REGRESSION FIX: Changed from session-based to class-based ID format
+ * ✅ VERIFIED: Record payment with class-based fee lookup
+ * FINAL FIX: Corrected arrears validation logic
  */
 async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
   try {
@@ -91,11 +91,9 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     const encodedSession = session.replace(/\//g, '-');
 
     /* ---------------------------
-       ✅ FIXED: Use class-based fee structure ID (permanent)
-       Changed from: `${classId}_${encodedSession}` (session-based)
-       Changed to: `fee_${classId}` (class-based, matches admin.js)
+       ✅ CORRECT: Use class-based fee structure ID (permanent)
     ---------------------------- */
-    const feeDocId = `fee_${classId}`;  // ✅ CORRECTED
+    const feeDocId = `fee_${classId}`;
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
     if (!feeDoc.exists) {
@@ -121,10 +119,10 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     }
 
     /* ---------------------------
-       VALIDATE arrears mathematically
+       ✅ FIXED: Correct arrears validation
+       Arrears should not be validated against amountDue
     ---------------------------- */
-    const maxPossibleArrears = Math.max(0, amountDue - currentTotalPaid);
-    const arrears = Math.min(storedArrears, maxPossibleArrears);
+    const arrears = Math.max(0, storedArrears);
 
     const totalDue = amountDue + arrears;
     const newTotalPaid = currentTotalPaid + amountPaid;
