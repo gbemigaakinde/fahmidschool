@@ -498,10 +498,10 @@ async function loadResults() {
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
-    
+
     const feeSection = document.getElementById('fee-balance-section');
     if (!feeSection) return;
-    
+
     // Show loading state
     feeSection.style.display = 'block';
     feeSection.innerHTML = `
@@ -510,19 +510,18 @@ async function loadFeeBalance() {
             <p>Loading fee information...</p>
         </div>
     `;
-    
+
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
-        const currentTerm = settings.term; // Get current term from settings
+        const currentTerm = settings.term;
         const encodedSession = session.replace(/\//g, '-');
-        
-        // ✅ FIX: Get payment record for CURRENT TERM ONLY
+
+        // Get payment record for CURRENT TERM ONLY
         const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
         const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-        
+
         if (!paymentDoc.exists) {
-            // No fee structure configured for current term
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -539,21 +538,21 @@ async function loadFeeBalance() {
             `;
             return;
         }
-        
-        const paymentData = paymentDoc.data();
-        
-        // Extract current term data
-        const amountDue = paymentData.amountDue || 0;
-        const totalPaid = paymentData.totalPaid || 0;
-        const balance = paymentData.balance || 0;
-        const arrears = paymentData.arrears || 0;
-        const status = paymentData.status || 'owing';
-        
-        // Determine status color and badge
+
+        const data = paymentDoc.data();
+
+        // Extract payment data
+        const amountDue = Number(data.amountDue) || 0;
+        const arrears = Number(data.arrears) || 0;
+        const totalPaid = Number(data.totalPaid) || 0;
+        const balance = Number(data.balance) || 0;
+        const status = data.status || 'owing';
+
+        // Status colors and icons
         let statusColor = '#f44336';
         let statusText = 'Outstanding Balance';
         let statusIcon = 'alert-circle';
-        
+
         if (balance <= 0) {
             statusColor = '#4CAF50';
             statusText = 'Fully Paid';
@@ -563,8 +562,8 @@ async function loadFeeBalance() {
             statusText = 'Partial Payment';
             statusIcon = 'clock';
         }
-        
-        // Build arrears alert if exists
+
+        // Arrears HTML block
         const arrearsHTML = arrears > 0 ? `
             <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
@@ -582,10 +581,9 @@ async function loadFeeBalance() {
                 </p>
             </div>
         ` : '';
-        
-        // Calculate total due (term fee + arrears)
+
         const totalDue = amountDue + arrears;
-        
+
         // Render fee section
         feeSection.innerHTML = `
             <div class="section-header">
@@ -600,21 +598,19 @@ async function loadFeeBalance() {
 
             ${arrearsHTML}
 
-            <!-- Current Term Fee Cards -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
                 ${arrears > 0 ? `
                 <div style="text-align: center; padding: var(--space-xl); background: #fef2f2; border: 2px solid #dc3545; border-radius: var(--radius-lg);">
                     <div style="font-size: var(--text-xs); color: #991b1b; margin-bottom: var(--space-xs); font-weight: 600;">Arrears</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700; color: #dc3545;">₦${arrears.toLocaleString()}</div>
-                </div>
-                ` : ''}
-                
+                </div>` : ''}
+
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Current Term Fee</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${amountDue.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">${currentTerm}</div>
                 </div>
-                
+
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Paid</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${totalPaid.toLocaleString()}</div>
@@ -622,7 +618,7 @@ async function loadFeeBalance() {
                         ${totalPaid > 0 ? Math.round((totalPaid / totalDue) * 100) + '% collected' : 'No payments yet'}
                     </div>
                 </div>
-                
+
                 <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(${statusColor === '#4CAF50' ? '76, 175, 80' : '244, 67, 54'}, 0.3);">
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Outstanding</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${balance.toLocaleString()}</div>
@@ -632,7 +628,7 @@ async function loadFeeBalance() {
                 </div>
             </div>
 
-            <!-- Payment History (ALL transactions across all terms/sessions) -->
+            <!-- Payment History -->
             <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
                 <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
                     <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
@@ -659,15 +655,12 @@ async function loadFeeBalance() {
                 </p>
             </div>
         `;
-        
-        // Re-initialize Lucide icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-        
-        // ✅ FIX: Load ALL payment history (no term filter)
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // Load payment history for pupil (all terms/sessions)
         await loadAllPaymentHistory(currentPupilId);
-        
+
     } catch (error) {
         console.error('Error loading fee balance:', error);
         feeSection.innerHTML = `
@@ -679,22 +672,18 @@ async function loadFeeBalance() {
     }
 }
 
-/**
- * ✅ UPDATED: Load ALL payment history for pupil (across all terms/sessions)
- * Shows payment breakdown: arrears vs current term
- */
 async function loadAllPaymentHistory(pupilId) {
+    if (!pupilId) return;
     const container = document.getElementById('payment-history-list');
-    if (!container || !pupilId) return;
+    if (!container) return;
 
     try {
-        // Query ALL transactions for this pupil
-        const transactionsSnap = await db.collection('payment_transactions')
+        const snapshot = await db.collection('payment_transactions')
             .where('pupilId', '==', pupilId)
             .orderBy('paymentDate', 'desc')
             .get();
 
-        if (transactionsSnap.empty) {
+        if (snapshot.empty) {
             container.innerHTML = `
                 <div style="text-align:center; padding:var(--space-xl); color:var(--color-gray-600); background: #f8fafc; border-radius: var(--radius-md);">
                     <i data-lucide="inbox" style="width: 40px; height: 40px; margin: 0 auto var(--space-md); opacity: 0.5;"></i>
@@ -708,7 +697,7 @@ async function loadAllPaymentHistory(pupilId) {
         container.innerHTML = '';
         const transactionsBySession = {};
 
-        transactionsSnap.forEach(doc => {
+        snapshot.forEach(doc => {
             const data = doc.data();
             const session = data.session || 'Unknown Session';
             if (!transactionsBySession[session]) transactionsBySession[session] = [];
@@ -716,52 +705,29 @@ async function loadAllPaymentHistory(pupilId) {
         });
 
         Object.keys(transactionsBySession)
-            .sort((a, b) => {
-                const yearA = parseInt(a.split('/')[0]) || 0;
-                const yearB = parseInt(b.split('/')[0]) || 0;
-                return yearB - yearA;
-            })
+            .sort((a, b) => (parseInt(b.split('/')[0]) || 0) - (parseInt(a.split('/')[0]) || 0))
             .forEach(session => {
-                // Session header
-                const sessionHeader = document.createElement('div');
-                sessionHeader.style.cssText = `
-                    font-weight: 700;
-                    font-size: var(--text-lg);
-                    color: #0f172a;
-                    margin-top: var(--space-lg);
-                    margin-bottom: var(--space-md);
-                    padding-bottom: var(--space-sm);
-                    border-bottom: 2px solid #e2e8f0;
+                const header = document.createElement('div');
+                header.style.cssText = `
+                    font-weight: 700; font-size: var(--text-lg);
+                    color: #0f172a; margin-top: var(--space-lg); margin-bottom: var(--space-md);
+                    padding-bottom: var(--space-sm); border-bottom: 2px solid #e2e8f0;
                 `;
-                sessionHeader.innerHTML = `
-                    📅 ${session} 
-                    <span style="font-size: var(--text-sm); font-weight: 400; color: var(--color-gray-600);">
-                        (${transactionsBySession[session].length} payment${transactionsBySession[session].length > 1 ? 's' : ''})
-                    </span>
-                `;
-                container.appendChild(sessionHeader);
+                header.innerHTML = `📅 ${session} (${transactionsBySession[session].length} payment${transactionsBySession[session].length > 1 ? 's' : ''})`;
+                container.appendChild(header);
 
-                // Render transactions
                 transactionsBySession[session].forEach(txn => {
-                    const paymentDate = txn.paymentDate
-                        ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                        : 'N/A';
+                    const paymentDate = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
+                    const amountPaid = Number(txn.amountPaid || 0);
+                    const arrearsPayment = Number(txn.arrearsPayment || 0);
+                    const currentTermPayment = Number(txn.currentTermPayment || 0);
                     const paymentMethodIcon = (txn.paymentMethod || 'Cash').toLowerCase() === 'cash' ? 'banknote' : 'credit-card';
-                    const amountPaid = parseFloat(txn.amountPaid || 0);
-                    const arrearsPayment = parseFloat(txn.arrearsPayment || 0);
-                    const currentTermPayment = parseFloat(txn.currentTermPayment || 0);
 
                     const itemDiv = document.createElement('div');
                     itemDiv.style.cssText = `
-                        padding: var(--space-md);
-                        background: #f8fafc;
-                        border: 1px solid #e2e8f0;
-                        border-radius: var(--radius-md);
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        transition: all 0.2s ease;
-                        margin-bottom: var(--space-sm);
+                        padding: var(--space-md); background: #f8fafc; border: 1px solid #e2e8f0;
+                        border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;
+                        transition: all 0.2s ease; margin-bottom: var(--space-sm);
                     `;
 
                     itemDiv.innerHTML = `
@@ -816,7 +782,7 @@ async function loadAllPaymentHistory(pupilId) {
             });
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
-        console.log(`✓ Loaded ${transactionsSnap.size} total payment records for pupil`);
+        console.log(`✓ Loaded ${snapshot.size} total payment records for pupil`);
 
     } catch (error) {
         console.error('Error loading payment history:', error);
@@ -828,9 +794,8 @@ async function loadAllPaymentHistory(pupilId) {
     }
 }
 
-window.loadAllPaymentHistory = loadAllPaymentHistory;
-// Make functions globally available
 window.loadFeeBalance = loadFeeBalance;
+window.loadAllPaymentHistory = loadAllPaymentHistory;
 
 /**
  * Open receipt in new window
