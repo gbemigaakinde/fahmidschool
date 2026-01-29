@@ -1563,14 +1563,31 @@ button[onclick="exportPupilResults()"]:hover {
     </div>
   </div>
 
-<div style="margin-top: var(--space-xl); padding: var(--space-lg); background: #fff3cd; border: 1px solid #ffc107; border-radius: var(--radius-md);">
-  <h4 style="margin-top: 0; color: #856404;">🔧 One-Time Setup</h4>
-  <p style="margin-bottom: var(--space-md); color: #856404;">
-    If you configured fees before today, click this button to create payment records for all pupils in classes with existing fee structures.
+<!-- UPDATED: Bulk Actions Section -->
+<div style="margin-top: var(--space-2xl); padding: var(--space-xl); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+  <h3 style="margin: 0 0 var(--space-md);">💼 Bulk Operations</h3>
+  
+  <p style="margin: 0 0 var(--space-lg); color: var(--color-gray-600); font-size: var(--text-sm);">
+    Generate payment records for all pupils who don't have them yet. This ensures complete financial tracking.
   </p>
-  <button class="btn btn-primary" onclick="bulkGenerateAllPaymentRecords()" id="bulk-generate-btn">
+  
+  <button 
+    id="bulk-generate-btn" 
+    class="btn btn-primary" 
+    onclick="ensureAllPupilsHavePaymentRecords()"
+    style="width: 100%;">
     📋 Generate All Missing Payment Records
   </button>
+  
+  <div style="margin-top: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-sm); font-size: var(--text-sm);">
+    <strong>What this does:</strong>
+    <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
+      <li>Creates payment records for pupils who don't have them</li>
+      <li>Calculates and applies arrears from previous sessions</li>
+      <li>Preserves all existing payment data (100% safe)</li>
+      <li>Shows detailed summary of what was created</li>
+    </ul>
+  </div>
 </div>
 </section>
 
