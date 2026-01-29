@@ -510,8 +510,7 @@ function getClassIdSafely(pupilData) {
 window.getClassIdSafely = getClassIdSafely;
 
 /**
- * FIXED: Load Fee Balance (Class-Based Fee Lookup)
- * Replace loadFeeBalance() in pupil.js
+ * ✅ FIXED: Load Fee Balance with Robust Class ID Extraction
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -541,11 +540,82 @@ async function loadFeeBalance() {
         }
         
         const pupilData = pupilDoc.data();
-        const classId = pupilData.class?.id;
-        const className = pupilData.class?.name || 'Unknown';
+        
+        // ✅ CRITICAL FIX: Robust class ID extraction with validation
+        let classId = null;
+        let className = 'Unknown';
+        
+        if (pupilData.class) {
+          // New format: {id: "xyz", name: "Primary 3"}
+          if (typeof pupilData.class === 'object') {
+            classId = pupilData.class.id || null;
+            className = pupilData.class.name || 'Unknown';
+          } 
+          // Old format: just "Primary 3" as string
+          else if (typeof pupilData.class === 'string') {
+            className = pupilData.class;
+            
+            // Try to find class by name (fallback for old data)
+            console.warn('⚠️ Old class format detected, attempting lookup...');
+            
+            try {
+              const classesSnap = await db.collection('classes')
+                .where('name', '==', className)
+                .limit(1)
+                .get();
+              
+              if (!classesSnap.empty) {
+                classId = classesSnap.docs[0].id;
+                console.log(`✅ Found class ID ${classId} for class name "${className}"`);
+              } else {
+                console.error(`❌ No class found with name "${className}"`);
+              }
+            } catch (lookupError) {
+              console.error('❌ Class lookup failed:', lookupError);
+            }
+          }
+        }
+        
+        // Validate classId before proceeding
+        if (!classId || classId === 'undefined' || classId === 'null') {
+          feeSection.innerHTML = `
+            <div class="section-header">
+                <div class="section-icon" style="background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">
+                    <i data-lucide="alert-triangle"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Fee Information Unavailable</h2>
+                    <p>Class information missing or outdated</p>
+                </div>
+            </div>
+            <div style="background: #fef2f2; border: 2px solid #dc3545; border-radius: var(--radius-md); padding: var(--space-xl); margin-top: var(--space-lg);">
+                <h3 style="margin: 0 0 var(--space-md); color: #991b1b; display: flex; align-items: center; gap: var(--space-sm);">
+                    <i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i>
+                    Invalid Class Data
+                </h3>
+                <p style="margin: 0 0 var(--space-md); color: #7f1d1d; line-height: 1.6;">
+                    Your pupil record has outdated class information that prevents loading fee details.
+                </p>
+                <p style="margin: 0; color: #7f1d1d; font-weight: 600;">
+                    Please contact the school office to update your record.
+                </p>
+                <div style="margin-top: var(--space-lg); padding: var(--space-md); background: white; border-radius: var(--radius-sm);">
+                    <p style="margin: 0; font-size: var(--text-sm); color: #64748b;">
+                        <strong>Current Class:</strong> ${className}<br>
+                        <strong>Class ID:</strong> <code style="color: #dc3545;">${classId || 'MISSING'}</code>
+                    </p>
+                </div>
+            </div>
+          `;
+          
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+          return;
+        }
 
-        // ✅ FIX: Get persistent fee structure (class-based)
+        // ✅ FIXED: Class-based fee structure lookup (permanent)
         const feeDocId = `fee_${classId}`;
+        console.log(`📋 Looking up fee structure: ${feeDocId}`);
+        
         const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
         
         if (!feeDoc.exists) {
@@ -562,6 +632,9 @@ async function loadFeeBalance() {
                 <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
                     <p>Fee details will appear here once configured by the school administration.</p>
                     <p style="margin-top:var(--space-md); font-size:var(--text-sm);">
+                        Fee structure ID: <code>${feeDocId}</code>
+                    </p>
+                    <p style="margin-top:var(--space-sm); font-size:var(--text-sm);">
                         If you believe this is an error, please contact the school office.
                     </p>
                 </div>
@@ -571,9 +644,12 @@ async function loadFeeBalance() {
             return;
         }
         
+        console.log(`✅ Fee structure found for ${className}`);
+        
         const feeStructure = feeDoc.data();
         const amountDueBase = Number(feeStructure.total) || 0;
 
+        // [Rest of the function remains the same...]
         // Get payment record for CURRENT TERM
         const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
         let paymentDoc = await db.collection('payments').doc(paymentDocId).get();
@@ -635,6 +711,7 @@ async function loadFeeBalance() {
             status = data.status || 'owing';
         }
 
+        // [Render fee section - same as before...]
         // Status colors and icons
         let statusColor = '#f44336';
         let statusText = 'Outstanding Balance';
@@ -750,7 +827,7 @@ async function loadFeeBalance() {
         await loadAllPaymentHistory(currentPupilId);
 
     } catch (error) {
-        console.error('Error loading fee balance:', error);
+        console.error('❌ Error loading fee balance:', error);
         feeSection.innerHTML = `
             <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
                 <i data-lucide="alert-triangle" style="width: 48px; height: 48px; margin: 0 auto var(--space-md);"></i>
@@ -766,8 +843,8 @@ async function loadFeeBalance() {
     }
 }
 
+// Make globally available
 window.loadFeeBalance = loadFeeBalance;
-
 
 /**
  * Helper: Get previous session name
