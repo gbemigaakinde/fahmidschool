@@ -631,9 +631,6 @@ async function loadFeeBalance() {
                 </div>
                 <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
                     <p>Fee details will appear here once configured by the school administration.</p>
-                    <p style="margin-top:var(--space-md); font-size:var(--text-sm);">
-                        Fee structure ID: <code>${feeDocId}</code>
-                    </p>
                     <p style="margin-top:var(--space-sm); font-size:var(--text-sm);">
                         If you believe this is an error, please contact the school office.
                     </p>
