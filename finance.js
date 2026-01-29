@@ -48,26 +48,27 @@ const finance = {
   },
 
   /**
-   * Get fee structure for a class (session-based)
-   */
-  async getFeeStructure(classId, session) {
-    try {
-      const encodedSession = session.replace(/\//g, '-');
-      const feeStructureId = `${classId}_${encodedSession}`;
-      const doc = await db.collection('fee_structures').doc(feeStructureId).get();
+ * FIXED: Get fee structure (class-based, no session dependency)
+ * Replace getFeeStructure() in finance.js
+ */
+async getFeeStructure(classId) {
+  try {
+    // ✅ FIX: Class-based lookup only
+    const feeDocId = `fee_${classId}`;
+    const doc = await db.collection('fee_structures').doc(feeDocId).get();
 
-      if (!doc.exists) {
-        console.warn(`Fee structure not found: ${feeStructureId}`);
-        return null;
-      }
-
-      return doc.data();
-
-    } catch (error) {
-      console.error('Error getting fee structure:', error);
+    if (!doc.exists) {
+      console.warn(`Fee structure not found for class: ${classId}`);
       return null;
     }
-  },
+
+    return doc.data();
+
+  } catch (error) {
+    console.error('Error getting fee structure:', error);
+    return null;
+  }
+},
 
   /**
  * FIXED: Record payment with validated arrears and overpayment prevention
