@@ -4086,6 +4086,151 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
 
 window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
 
+async function ensureAllPupilsHavePaymentRecords() {
+  const btn = document.getElementById('bulk-generate-btn');
+  
+  if (!confirm(
+    'Generate/verify payment records for all pupils?\n\n' +
+    'This will:\n' +
+    '• Create records for pupils who don\'t have them\n' +
+    '• Preserve all existing payment data\n' +
+    '• Calculate and apply arrears correctly\n\n' +
+    'Continue?'
+  )) {
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Generating records...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const session = settings.session;
+    const term = settings.term;
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get all pupils
+    const pupilsSnap = await db.collection('pupils').get();
+    
+    if (pupilsSnap.empty) {
+      window.showToast?.('No pupils found', 'info');
+      return;
+    }
+    
+    // Get all fee structures
+    const feeStructuresSnap = await db.collection('fee_structures')
+      .where('session', '==', session)
+      .get();
+    
+    const feeStructureMap = {};
+    feeStructuresSnap.forEach(doc => {
+      const data = doc.data();
+      feeStructureMap[data.classId] = data.total || 0;
+    });
+    
+    let totalCreated = 0;
+    let totalSkipped = 0;
+    let totalArrears = 0;
+    
+    const batch = db.batch();
+    let batchCount = 0;
+    
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      const classId = pupilData.class?.id;
+      
+      if (!classId) continue;
+      
+      const amountDue = feeStructureMap[classId];
+      if (!amountDue) {
+        console.log(`⏭️ No fee structure for class ${pupilData.class?.name}`);
+        continue;
+      }
+      
+      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+      const existingPayment = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (existingPayment.exists) {
+        totalSkipped++;
+        continue;
+      }
+      
+      // Calculate arrears from previous session
+      const previousSession = getPreviousSessionName(session);
+      let arrears = 0;
+      
+      if (previousSession) {
+        arrears = await calculateSessionBalance(pupilId, previousSession);
+      }
+      
+      if (arrears > 0) {
+        totalArrears += arrears;
+      }
+      
+      // Create payment record
+      const paymentRef = db.collection('payments').doc(paymentDocId);
+      
+      batch.set(paymentRef, {
+        pupilId: pupilId,
+        pupilName: pupilData.name || 'Unknown',
+        classId: classId,
+        className: pupilData.class?.name || 'Unknown',
+        session: session,
+        term: term,
+        amountDue: amountDue,
+        arrears: arrears,
+        totalDue: amountDue + arrears,
+        totalPaid: 0,
+        balance: amountDue + arrears,
+        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        autoCreated: true
+      });
+      
+      totalCreated++;
+      batchCount++;
+      
+      if (batchCount >= 400) {
+        await batch.commit();
+        batchCount = 0;
+      }
+    }
+    
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✅ Payment records verified!\n\n` +
+      `Created: ${totalCreated} new records\n` +
+      `Skipped: ${totalSkipped} (already exist)\n` +
+      `Total arrears: ₦${totalArrears.toLocaleString()}`,
+      'success',
+      10000
+    );
+    
+    // Reload reports
+    await loadOutstandingFeesReport();
+    await loadFinancialReports();
+    
+  } catch (error) {
+    console.error('Error generating payment records:', error);
+    window.handleError?.(error, 'Failed to generate payment records');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '📋 Generate All Missing Payment Records';
+    }
+  }
+}
+
+window.ensureAllPupilsHavePaymentRecords = ensureAllPupilsHavePaymentRecords;
+
 /**
  * Helper: Get previous session name
  */
@@ -8720,155 +8865,12 @@ window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
 window.renderHierarchyUI = renderHierarchyUI;
 window.showSection = showSection;
 
-async function ensureAllPupilsHavePaymentRecords() {
-  const btn = document.getElementById('bulk-generate-btn');
-  
-  if (!confirm(
-    'Generate/verify payment records for all pupils?\n\n' +
-    'This will:\n' +
-    '• Create records for pupils who don\'t have them\n' +
-    '• Preserve all existing payment data\n' +
-    '• Calculate and apply arrears correctly\n\n' +
-    'Continue?'
-  )) {
-    return;
-  }
-  
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-loading">Generating records...</span>';
-  }
-  
-  try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const term = settings.term;
-    const encodedSession = session.replace(/\//g, '-');
-    
-    // Get all pupils
-    const pupilsSnap = await db.collection('pupils').get();
-    
-    if (pupilsSnap.empty) {
-      window.showToast?.('No pupils found', 'info');
-      return;
-    }
-    
-    // Get all fee structures
-    const feeStructuresSnap = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .get();
-    
-    const feeStructureMap = {};
-    feeStructuresSnap.forEach(doc => {
-      const data = doc.data();
-      feeStructureMap[data.classId] = data.total || 0;
-    });
-    
-    let totalCreated = 0;
-    let totalSkipped = 0;
-    let totalArrears = 0;
-    
-    const batch = db.batch();
-    let batchCount = 0;
-    
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
-      const pupilData = pupilDoc.data();
-      const classId = pupilData.class?.id;
-      
-      if (!classId) continue;
-      
-      const amountDue = feeStructureMap[classId];
-      if (!amountDue) {
-        console.log(`⏭️ No fee structure for class ${pupilData.class?.name}`);
-        continue;
-      }
-      
-      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-      const existingPayment = await db.collection('payments').doc(paymentDocId).get();
-      
-      if (existingPayment.exists) {
-        totalSkipped++;
-        continue;
-      }
-      
-      // Calculate arrears from previous session
-      const previousSession = getPreviousSessionName(session);
-      let arrears = 0;
-      
-      if (previousSession) {
-        arrears = await calculateSessionBalance(pupilId, previousSession);
-      }
-      
-      if (arrears > 0) {
-        totalArrears += arrears;
-      }
-      
-      // Create payment record
-      const paymentRef = db.collection('payments').doc(paymentDocId);
-      
-      batch.set(paymentRef, {
-        pupilId: pupilId,
-        pupilName: pupilData.name || 'Unknown',
-        classId: classId,
-        className: pupilData.class?.name || 'Unknown',
-        session: session,
-        term: term,
-        amountDue: amountDue,
-        arrears: arrears,
-        totalDue: amountDue + arrears,
-        totalPaid: 0,
-        balance: amountDue + arrears,
-        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
-        lastPaymentDate: null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        autoCreated: true
-      });
-      
-      totalCreated++;
-      batchCount++;
-      
-      if (batchCount >= 400) {
-        await batch.commit();
-        batchCount = 0;
-      }
-    }
-    
-    if (batchCount > 0) {
-      await batch.commit();
-    }
-    
-    window.showToast?.(
-      `✅ Payment records verified!\n\n` +
-      `Created: ${totalCreated} new records\n` +
-      `Skipped: ${totalSkipped} (already exist)\n` +
-      `Total arrears: ₦${totalArrears.toLocaleString()}`,
-      'success',
-      10000
-    );
-    
-    // Reload reports
-    await loadOutstandingFeesReport();
-    await loadFinancialReports();
-    
-  } catch (error) {
-    console.error('Error generating payment records:', error);
-    window.handleError?.(error, 'Failed to generate payment records');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '📋 Generate All Missing Payment Records';
-    }
-  }
-}
-
 // Make functions globally available
 window.editFeeStructure = editFeeStructure;
 window.saveFeeStructure = saveFeeStructure;
 window.loadFeeStructures = loadFeeStructures;
 window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
-window.ensureAllPupilsHavePaymentRecords = ensureAllPupilsHavePaymentRecords;
+
 
 console.log('✅ Complete fee management fixes loaded');
 
