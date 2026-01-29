@@ -3050,8 +3050,10 @@ async function loadFeeStructures() {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
   
   try {
-    // ✅ FIX: Query all fee structures (no session filter)
+    // ✅ FIX: Query ALL fee structures (no session filter)
     const snapshot = await db.collection('fee_structures').get();
+    
+    console.log(`Found ${snapshot.size} fee structures`);
     
     if (snapshot.empty) {
       container.innerHTML = `
@@ -3063,10 +3065,45 @@ async function loadFeeStructures() {
       return;
     }
     
-    container.innerHTML = '';
+    // ✅ CRITICAL FIX: Check for duplicates by classId
+    const feesByClass = new Map();
     
     snapshot.forEach(doc => {
       const data = doc.data();
+      const classId = data.classId;
+      
+      if (!feesByClass.has(classId)) {
+        feesByClass.set(classId, []);
+      }
+      
+      feesByClass.get(classId).push({
+        id: doc.id,
+        ...data
+      });
+    });
+    
+    // Log duplicates
+    feesByClass.forEach((fees, classId) => {
+      if (fees.length > 1) {
+        console.warn(`⚠️ DUPLICATE DETECTED: ${fees.length} fee structures for class ${classId}`);
+        console.warn('   IDs:', fees.map(f => f.id));
+      }
+    });
+    
+    container.innerHTML = '';
+    
+    // Render each unique class (show most recent if duplicates exist)
+    feesByClass.forEach((fees, classId) => {
+      // If duplicates exist, use the most recently updated
+      const feeToShow = fees.length > 1
+        ? fees.reduce((latest, current) => {
+            const latestTime = latest.updatedAt?.toMillis() || 0;
+            const currentTime = current.updatedAt?.toMillis() || 0;
+            return currentTime > latestTime ? current : latest;
+          })
+        : fees[0];
+      
+      const data = feeToShow;
       
       const feeItems = Object.entries(data.fees || {})
         .map(([key, value]) => `
@@ -3084,10 +3121,20 @@ async function loadFeeStructures() {
         border-radius: var(--radius-md);
         padding: var(--space-lg);
         margin-bottom: var(--space-md);
+        ${fees.length > 1 ? 'border-left: 4px solid #ff9800;' : ''}
       `;
       
       // ✅ FIX: Show as permanent (not session-specific)
       card.innerHTML = `
+        ${fees.length > 1 ? `
+          <div style="background: #fff3cd; border: 1px solid #ff9800; border-radius: var(--radius-sm); padding: var(--space-sm); margin-bottom: var(--space-md); font-size: var(--text-sm);">
+            ⚠️ <strong>Note:</strong> ${fees.length} duplicate fee records exist for this class. Showing most recent. 
+            <button class="btn-small btn-secondary" onclick="fixDuplicateFees('${classId}')" style="margin-left: var(--space-sm);">
+              Fix Duplicates
+            </button>
+          </div>
+        ` : ''}
+        
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--color-gray-200);">
           <div>
             <h3 style="margin:0; color:var(--color-primary);">${data.className}</h3>
@@ -3096,10 +3143,10 @@ async function loadFeeStructures() {
             </p>
           </div>
           <div style="display:flex; gap:var(--space-sm);">
-            <button class="btn-small btn-primary" onclick="editFeeStructure('${doc.id}')">
+            <button class="btn-small btn-primary" onclick="editFeeStructure('${data.id}')">
               ✏️ Edit
             </button>
-            <button class="btn-small btn-danger" onclick="deleteFeeStructure('${doc.id}', '${data.className}')">
+            <button class="btn-small btn-danger" onclick="deleteFeeStructure('${data.id}', '${data.className}')">
               Delete
             </button>
           </div>
@@ -3122,13 +3169,96 @@ async function loadFeeStructures() {
       container.appendChild(card);
     });
     
+    console.log(`✓ Displayed ${feesByClass.size} unique fee structures`);
+    
   } catch (error) {
-    console.error('Error loading fee structures:', error);
+    console.error('❌ Error loading fee structures:', error);
     container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading fee structures</p>';
   }
 }
 
 window.loadFeeStructures = loadFeeStructures;
+
+async function fixDuplicateFees(classId) {
+  if (!confirm(
+    `Fix Duplicate Fee Structures?\n\n` +
+    `This will:\n` +
+    `• Keep the most recent fee structure\n` +
+    `• Archive all older duplicates\n` +
+    `• Clean up the database\n\n` +
+    `Continue?`
+  )) {
+    return;
+  }
+  
+  try {
+    // Get all fee structures for this class
+    const snapshot = await db.collection('fee_structures')
+      .where('classId', '==', classId)
+      .get();
+    
+    if (snapshot.size <= 1) {
+      window.showToast?.('No duplicates found', 'info');
+      return;
+    }
+    
+    const fees = [];
+    snapshot.forEach(doc => {
+      fees.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Find most recent
+    const mostRecent = fees.reduce((latest, current) => {
+      const latestTime = latest.updatedAt?.toMillis() || latest.createdAt?.toMillis() || 0;
+      const currentTime = current.updatedAt?.toMillis() || current.createdAt?.toMillis() || 0;
+      return currentTime > latestTime ? current : latest;
+    });
+    
+    console.log(`Most recent fee structure: ${mostRecent.id}`);
+    
+    // Archive and delete duplicates
+    const batch = db.batch();
+    let deleted = 0;
+    
+    for (const fee of fees) {
+      if (fee.id !== mostRecent.id) {
+        // Archive
+        const archiveRef = db.collection('fee_structure_history').doc();
+        batch.set(archiveRef, {
+          ...fee,
+          archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          archivedBy: auth.currentUser.uid,
+          reason: 'Duplicate cleanup - keeping most recent'
+        });
+        
+        // Delete
+        batch.delete(db.collection('fee_structures').doc(fee.id));
+        deleted++;
+      }
+    }
+    
+    await batch.commit();
+    
+    window.showToast?.(
+      `✓ Cleaned up ${deleted} duplicate(s)\n\nKept most recent fee structure.`,
+      'success',
+      5000
+    );
+    
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('Error fixing duplicates:', error);
+    window.handleError?.(error, 'Failed to fix duplicates');
+  }
+}
+
+// Make functions globally available
+window.saveFeeStructure = saveFeeStructure;
+window.loadFeeStructures = loadFeeStructures;
+window.fixDuplicateFees = fixDuplicateFees;
+
+console.log('✅ Fee structure duplicate prevention fix loaded');
 
 /**
  * Load payment recording section
@@ -3967,67 +4097,77 @@ async function saveFeeStructure() {
   }
   
   try {
-    // ✅ FIX: Class-based ID only (no session)
+    // ✅ CRITICAL FIX: Use class-based ID only (permanent)
     const feeDocId = `fee_${classId}`;
     
-    // Check if creating new and already exists
-    if (!isEditing) {
-      const existingFeeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+    console.log(`Checking for existing fee structure: ${feeDocId}`);
+    
+    // Check if fee structure already exists
+    const existingFeeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+    
+    if (existingFeeDoc.exists && !isEditing) {
+      const existingData = existingFeeDoc.data();
+      const existingTotal = existingData.total || 0;
       
-      if (existingFeeDoc.exists) {
-        const existingData = existingFeeDoc.data();
-        const existingTotal = existingData.total || 0;
-        
-        const confirmation = confirm(
-          `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
-          `Class: ${className}\n\n` +
-          `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
-          `New fee: ₦${total.toLocaleString()} per term\n\n` +
-          `This will UPDATE the existing fee structure.\n\n` +
-          `Continue?`
-        );
-        
-        if (!confirmation) {
-          window.showToast?.('Operation cancelled', 'info');
-          return;
-        }
+      // ✅ FIX: Show clear update vs. create message
+      const confirmation = confirm(
+        `⚠️ FEE STRUCTURE ALREADY EXISTS\n\n` +
+        `Class: ${className}\n\n` +
+        `Current fee: ₦${existingTotal.toLocaleString()} per term\n` +
+        `New fee: ₦${total.toLocaleString()} per term\n\n` +
+        `This will UPDATE the existing fee structure (not create a duplicate).\n\n` +
+        `Continue?`
+      );
+      
+      if (!confirmation) {
+        window.showToast?.('Operation cancelled', 'info');
+        return;
       }
+      
+      console.log('User confirmed update of existing fee structure');
     }
     
-    // Archive old version if editing
-    if (isEditing) {
+    // Archive old version if updating
+    if (isEditing || existingFeeDoc.exists) {
       const oldDoc = await db.collection('fee_structures').doc(feeDocId).get();
       if (oldDoc.exists) {
         await db.collection('fee_structure_history').add({
           ...oldDoc.data(),
           archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
           archivedBy: auth.currentUser.uid,
-          reason: 'Fee structure updated by admin'
+          reason: isEditing ? 'Fee structure edited' : 'Fee structure recreated'
         });
+        console.log('✓ Old fee structure archived');
       }
     }
     
-    // ✅ FIX: Save WITHOUT session field (persistent)
+    // ✅ CRITICAL FIX: Save WITHOUT session field (permanent)
+    const createdAt = existingFeeDoc.exists 
+      ? existingFeeDoc.data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp()
+      : firebase.firestore.FieldValue.serverTimestamp();
+    
     await db.collection('fee_structures').doc(feeDocId).set({
       classId,
       className,
       fees: feeBreakdown,
       total: total,
       // NO SESSION FIELD - applies to all sessions
-      createdAt: isEditing 
-        ? (await db.collection('fee_structures').doc(feeDocId).get()).data()?.createdAt || firebase.firestore.FieldValue.serverTimestamp() 
-        : firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: createdAt,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: auth.currentUser.uid
     });
 
+    const action = existingFeeDoc.exists ? 'updated' : 'created';
+    
     window.showToast?.(
-      `✓ Fee structure ${isEditing ? 'updated' : 'saved'} for ${className}!\n\n` +
+      `✓ Fee structure ${action} for ${className}!\n\n` +
       `Per-term fee: ₦${total.toLocaleString()}\n\n` +
-      `This fee will apply to ALL terms and sessions until you change it.`,
+      `This fee applies to ALL terms and sessions until you change it.`,
       'success',
       8000
     );
+    
+    console.log(`✓ Fee structure ${action}: ${feeDocId}`);
     
     // Clear form
     document.getElementById('fee-config-class').value = '';
@@ -4045,7 +4185,7 @@ async function saveFeeStructure() {
     await loadFeeStructures();
     
   } catch (error) {
-    console.error('Error saving fee structure:', error);
+    console.error('❌ Error saving fee structure:', error);
     window.showToast?.('Failed to save fee structure: ' + error.message, 'danger');
   } finally {
     if (saveBtn) {
