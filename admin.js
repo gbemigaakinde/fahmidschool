@@ -3851,97 +3851,6 @@ async function saveFeeStructure() {
 }
 
 /**
- * AUTOMATED: Migrate arrears when term changes
- * Runs automatically when admin updates term in settings
- */
-async function autoMigrateArrearsOnTermChange(oldTerm, newTerm, session) {
-  console.log(`🔄 Auto-migrating arrears: ${oldTerm} → ${newTerm}`);
-  
-  try {
-    const encodedSession = session.replace(/\//g, '-');
-    
-    // Get all payment records from the OLD term
-    const oldTermPaymentsSnap = await db.collection('payments')
-      .where('session', '==', session)
-      .where('term', '==', oldTerm)
-      .get();
-    
-    if (oldTermPaymentsSnap.empty) {
-      console.log('No payments from previous term to migrate');
-      return { success: true, count: 0 };
-    }
-    
-    const batch = db.batch();
-    let migratedCount = 0;
-    let totalArrearsCreated = 0;
-    
-    for (const doc of oldTermPaymentsSnap.docs) {
-      const oldData = doc.data();
-      const balance = oldData.balance || 0;
-      
-      // Skip if fully paid
-      if (balance <= 0) continue;
-      
-      const pupilId = oldData.pupilId;
-      const classId = oldData.classId;
-      
-      // Get fee structure for this class
-      const feeDocId = `${classId}_${encodedSession}`;
-      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-      
-      if (!feeDoc.exists) continue;
-      
-      const feeData = feeDoc.data();
-      const newTermFee = feeData.total || 0;
-      
-      // Create NEW term payment record with arrears
-      const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
-      
-      batch.set(db.collection('payments').doc(newPaymentDocId), {
-        pupilId: pupilId,
-        pupilName: oldData.pupilName,
-        classId: classId,
-        className: oldData.className,
-        session: session,
-        term: newTerm,
-        amountDue: newTermFee,
-        arrears: balance, // OLD term balance becomes arrears
-        totalDue: newTermFee + balance,
-        totalPaid: 0,
-        balance: newTermFee + balance,
-        status: 'owing_with_arrears',
-        lastPaymentDate: null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        migratedFrom: oldTerm,
-        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      migratedCount++;
-      totalArrearsCreated += balance;
-    }
-    
-    if (migratedCount > 0) {
-      await batch.commit();
-      console.log(`✓ Migrated ${migratedCount} pupils with ₦${totalArrearsCreated.toLocaleString()} total arrears`);
-    }
-    
-    return {
-      success: true,
-      count: migratedCount,
-      totalArrears: totalArrearsCreated
-    };
-    
-  } catch (error) {
-    console.error('❌ Arrears migration failed:', error);
-    throw error;
-  }
-}
-
-// Make globally available
-window.autoMigrateArrearsOnTermChange = autoMigrateArrearsOnTermChange;
-
-/**
  * Generate payment records for all pupils in a class
  */
 async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
@@ -8397,9 +8306,10 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
   submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
   
   try {
-    // Get OLD settings to check if term changed
+    // Get OLD settings to detect changes
     const oldSettings = await window.getCurrentSettings();
     const oldTerm = oldSettings.term;
+    const oldSession = oldSettings.session;
     const session = `${startYear}/${endYear}`;
     
     // Save new settings
@@ -8417,8 +8327,8 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     
-    // CRITICAL: If term changed, migrate arrears automatically
-    if (oldTerm && oldTerm !== newTerm) {
+    // ✅ CRITICAL FIX: Auto-migrate arrears on term change
+    if (oldTerm && oldTerm !== newTerm && oldSession === session) {
       console.log(`⚠️ Term changed: ${oldTerm} → ${newTerm}`);
       
       window.showToast?.(
@@ -8427,7 +8337,7 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
         3000
       );
       
-      const result = await window.autoMigrateArrearsOnTermChange(oldTerm, newTerm, session);
+      const result = await migrateArrears OnTermChange(oldTerm, newTerm, session);
       
       if (result.success && result.count > 0) {
         window.showToast?.(
@@ -8454,6 +8364,97 @@ document.getElementById('settings-form')?.addEventListener('submit', async (e) =
     submitBtn.innerHTML = '💾 Save Settings';
   }
 });
+
+/**
+ * ✅ CRITICAL FIX: Automatic arrears migration when term changes
+ */
+async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
+  console.log(`🔄 Auto-migrating arrears: ${oldTerm} → ${newTerm}`);
+  
+  try {
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // Get all payment records from the OLD term with outstanding balances
+    const oldTermPaymentsSnap = await db.collection('payments')
+      .where('session', '==', session)
+      .where('term', '==', oldTerm)
+      .get();
+    
+    if (oldTermPaymentsSnap.empty) {
+      console.log('No payments from previous term to migrate');
+      return { success: true, count: 0, totalArrears: 0 };
+    }
+    
+    const batch = db.batch();
+    let migratedCount = 0;
+    let totalArrearsCreated = 0;
+    
+    for (const doc of oldTermPaymentsSnap.docs) {
+      const oldData = doc.data();
+      const balance = oldData.balance || 0;
+      
+      // Skip if fully paid
+      if (balance <= 0) continue;
+      
+      const pupilId = oldData.pupilId;
+      const classId = oldData.classId;
+      
+      // Get fee structure for this class
+      const feeDocId = `${classId}_${encodedSession}`;
+      const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+      
+      if (!feeDoc.exists) continue;
+      
+      const feeData = feeDoc.data();
+      const newTermFee = feeData.total || 0;
+      
+      // Create NEW term payment record with arrears
+      const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
+      
+      batch.set(db.collection('payments').doc(newPaymentDocId), {
+        pupilId: pupilId,
+        pupilName: oldData.pupilName,
+        classId: classId,
+        className: oldData.className,
+        session: session,
+        term: newTerm,
+        amountDue: newTermFee,
+        arrears: balance, // OLD term balance becomes arrears
+        totalDue: newTermFee + balance,
+        totalPaid: 0,
+        balance: newTermFee + balance,
+        status: 'owing_with_arrears',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        migratedFrom: oldTerm,
+        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      migratedCount++;
+      totalArrearsCreated += balance;
+    }
+    
+    if (migratedCount > 0) {
+      await batch.commit();
+      console.log(`✓ Migrated ${migratedCount} pupils with ₦${totalArrearsCreated.toLocaleString()} total arrears`);
+    }
+    
+    return {
+      success: true,
+      count: migratedCount,
+      totalArrears: totalArrearsCreated
+    };
+    
+  } catch (error) {
+    console.error('❌ Arrears migration failed:', error);
+    throw error;
+  }
+}
+
+// Make globally available
+window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
+
 // Export hierarchy functions globally
 window.loadClassHierarchyUI = loadClassHierarchyUI;
 window.refreshHierarchyUI = refreshHierarchyUI;
