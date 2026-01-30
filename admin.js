@@ -9647,6 +9647,177 @@ window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
 
 console.log('✅ Complete fee management fixes loaded');
 
+/**
+ * ✅ ONE-TIME DATA MIGRATION: Fix All Payment Records
+ * Run this ONCE to correct all existing payment data
+ */
+async function migratePaymentRecordsToAdjustedFees() {
+  const confirmation = confirm(
+    '⚠️ DATA MIGRATION: Fix Payment Records\n\n' +
+    'This will:\n' +
+    '• Recalculate ALL payment records with adjusted fees\n' +
+    '• Recalculate ALL arrears correctly\n' +
+    '• Update balances for ALL pupils\n' +
+    '• Preserve payment history\n\n' +
+    'This may take several minutes.\n\n' +
+    'Continue?'
+  );
+  
+  if (!confirmation) return;
+  
+  const migrateBtn = document.getElementById('migrate-payments-btn');
+  if (migrateBtn) {
+    migrateBtn.disabled = true;
+    migrateBtn.innerHTML = '<span class="btn-loading">Migrating...</span>';
+  }
+  
+  try {
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session;
+    const currentTerm = settings.term;
+    
+    // Get all payment records
+    const paymentsSnap = await db.collection('payments').get();
+    
+    if (paymentsSnap.empty) {
+      window.showToast?.('No payment records to migrate', 'info');
+      return;
+    }
+    
+    console.log(`📊 Found ${paymentsSnap.size} payment records to migrate`);
+    
+    let corrected = 0;
+    let skipped = 0;
+    let errors = 0;
+    
+    const batch = db.batch();
+    let batchCount = 0;
+    
+    for (const paymentDoc of paymentsSnap.docs) {
+      try {
+        const paymentData = paymentDoc.data();
+        const pupilId = paymentData.pupilId;
+        const session = paymentData.session;
+        const term = paymentData.term;
+        const classId = paymentData.classId;
+        
+        // Get pupil data
+        const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+        if (!pupilDoc.exists) {
+          console.warn(`Pupil ${pupilId} not found, skipping`);
+          skipped++;
+          continue;
+        }
+        
+        const pupilInfo = pupilDoc.data();
+        
+        // Get base fee
+        const feeDocId = `fee_${classId}`;
+        const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+        
+        if (!feeDoc.exists) {
+          console.warn(`Fee structure not found for class ${classId}, skipping`);
+          skipped++;
+          continue;
+        }
+        
+        const baseFee = Number(feeDoc.data().total) || 0;
+        
+        // ✅ RECALCULATE adjusted fee
+        const newAmountDue = window.calculateAdjustedFee(pupilInfo, baseFee, term);
+        
+        // ✅ RECALCULATE arrears
+        const newArrears = await window.calculateCompleteArrears(pupilId, session, term);
+        
+        const oldAmountDue = Number(paymentData.amountDue) || 0;
+        const oldArrears = Number(paymentData.arrears) || 0;
+        
+        // Check if correction needed
+        const needsCorrection = 
+          oldAmountDue !== newAmountDue || 
+          oldArrears !== newArrears;
+        
+        if (!needsCorrection) {
+          skipped++;
+          continue;
+        }
+        
+        // Calculate new balances
+        const totalPaid = Number(paymentData.totalPaid) || 0;
+        const newTotalDue = newAmountDue + newArrears;
+        const newBalance = newTotalDue - totalPaid;
+        
+        const newStatus = 
+          newBalance <= 0 ? 'paid' :
+          totalPaid > 0 ? 'partial' :
+          newArrears > 0 ? 'owing_with_arrears' :
+          'owing';
+        
+        // Update payment record
+        batch.update(paymentDoc.ref, {
+          baseFee: baseFee,
+          adjustedFee: newAmountDue,
+          amountDue: newAmountDue,
+          arrears: newArrears,
+          totalDue: newTotalDue,
+          balance: newBalance,
+          status: newStatus,
+          migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          migrationReason: 'Adjusted fees and arrears recalculation'
+        });
+        
+        batchCount++;
+        corrected++;
+        
+        console.log(`✓ Corrected ${pupilInfo.name}: ₦${oldAmountDue} → ₦${newAmountDue}, arrears: ₦${oldArrears} → ₦${newArrears}`);
+        
+        // Commit in batches of 400
+        if (batchCount >= 400) {
+          await batch.commit();
+          batchCount = 0;
+          console.log(`Progress: ${corrected} corrected, ${skipped} skipped`);
+        }
+        
+      } catch (error) {
+        console.error('Error migrating payment record:', error);
+        errors++;
+      }
+    }
+    
+    // Commit remaining
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+    
+    window.showToast?.(
+      `✅ Migration Complete!\n\n` +
+      `• Corrected: ${corrected} records\n` +
+      `• Skipped: ${skipped} (already correct)\n` +
+      `• Errors: ${errors}`,
+      'success',
+      10000
+    );
+    
+    console.log('✅ Payment records migration complete');
+    
+    // Reload reports
+    await loadOutstandingFeesReport();
+    await loadFinancialReports();
+    
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    window.showToast?.(`Migration failed: ${error.message}`, 'danger', 8000);
+  } finally {
+    if (migrateBtn) {
+      migrateBtn.disabled = false;
+      migrateBtn.innerHTML = '🔄 Migrate Payment Records';
+    }
+  }
+}
+
+// Make globally available
+window.migratePaymentRecordsToAdjustedFees = migratePaymentRecordsToAdjustedFees;
+
 /* ========================================
    DATA MIGRATION: BACKFILL SESSION INFO
 ======================================== */
