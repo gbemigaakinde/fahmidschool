@@ -1181,6 +1181,7 @@ async function saveAllResults() {
         return;
     }
 
+    // ✅ FIX 1: Validate scores BEFORE starting save operation
     let hasInvalidScores = false;
 
     inputs.forEach(input => {
@@ -1192,12 +1193,6 @@ async function saveAllResults() {
             hasInvalidScores = true;
             input.style.borderColor = '#f44336';
             input.value = max;
-
-            window.showToast?.(
-                `${field === 'ca' ? 'CA' : 'Exam'} score cannot exceed ${max}`,
-                'danger',
-                4000
-            );
         }
 
         if (value < 0) {
@@ -1216,6 +1211,7 @@ async function saveAllResults() {
         return;
     }
 
+    // ✅ FIX 2: Initialize button state management FIRST
     const saveBtn = document.getElementById('save-results-btn');
     let originalHTML = null;
 
@@ -1233,12 +1229,25 @@ async function saveAllResults() {
     }
 
     try {
-        const settings = await window.getCurrentSettings();
-        const currentSession = settings.session || 'Unknown';
-        const sessionStartYear = settings.currentSession?.startYear;
-        const sessionEndYear = settings.currentSession?.endYear;
+        // ✅ FIX 3: Wrap settings fetch in try-catch
+        let currentSession = 'Unknown';
+        let sessionStartYear = null;
+        let sessionEndYear = null;
 
-        // FIXED: Use transaction for conflict detection
+        try {
+            const settings = await window.getCurrentSettings();
+            currentSession = settings.session || 'Unknown';
+            sessionStartYear = settings.currentSession?.startYear;
+            sessionEndYear = settings.currentSession?.endYear;
+        } catch (settingsError) {
+            console.error('Failed to get session settings:', settingsError);
+            window.showToast?.(
+                'Failed to get current session. Using default values.',
+                'warning',
+                4000
+            );
+        }
+
         const batch = db.batch();
         let hasChanges = false;
         const conflicts = [];
@@ -1263,13 +1272,19 @@ async function saveAllResults() {
             return;
         }
 
-        // Process each pupil's results with version checking
+        // ✅ FIX 4: Process each pupil with better error handling
         for (const [pupilId, scores] of Object.entries(pupilResults)) {
             const docId = `${pupilId}_${term}_${subject}`;
             const ref = db.collection('results').doc(docId);
             
             // Read current document to check for conflicts
-            const currentDoc = await ref.get();
+            let currentDoc = null;
+            try {
+                currentDoc = await ref.get();
+            } catch (readError) {
+                console.warn(`Could not read existing result for ${pupilId}:`, readError.code);
+                // Continue anyway - will create new document
+            }
             
             const sessionTerm = `${currentSession}_${term}`;
             
@@ -1281,15 +1296,15 @@ async function saveAllResults() {
                 sessionStartYear,
                 sessionEndYear,
                 sessionTerm,
-                caScore: scores.ca !== undefined ? scores.ca : (currentDoc.exists ? currentDoc.data().caScore : 0),
-                examScore: scores.exam !== undefined ? scores.exam : (currentDoc.exists ? currentDoc.data().examScore : 0),
-                version: currentDoc.exists ? ((currentDoc.data().version || 0) + 1) : 1,
+                caScore: scores.ca !== undefined ? scores.ca : (currentDoc?.exists ? currentDoc.data().caScore : 0),
+                examScore: scores.exam !== undefined ? scores.exam : (currentDoc?.exists ? currentDoc.data().examScore : 0),
+                version: currentDoc?.exists ? ((currentDoc.data().version || 0) + 1) : 1,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedBy: currentUser.uid
             };
             
             // Check for concurrent modification
-            if (currentDoc.exists) {
+            if (currentDoc?.exists) {
                 const lastUpdated = currentDoc.data().updatedAt;
                 const lastUpdatedBy = currentDoc.data().updatedBy;
                 
@@ -1325,26 +1340,42 @@ async function saveAllResults() {
             }
         }
 
+        // ✅ FIX 5: Commit with proper error handling
         await batch.commit();
         window.showToast?.('✓ All results saved successfully', 'success');
         
     } catch (err) {
         console.error('Error saving results:', err);
         
+        // ✅ FIX 6: User-friendly error messages
         if (err.code === 'failed-precondition') {
             window.showToast?.(
                 'Conflict detected: Another teacher modified these results. Please refresh and try again.',
                 'danger',
                 8000
             );
+        } else if (err.code === 'permission-denied') {
+            window.showToast?.(
+                'Permission denied. You may not have access to save these results.',
+                'danger',
+                6000
+            );
         } else {
-            window.handleError?.(err, 'Failed to save results');
+            window.showToast?.(
+                `Failed to save results: ${err.message || 'Unknown error'}`,
+                'danger',
+                6000
+            );
         }
+        
     } finally {
+        // ✅ CRITICAL FIX 7: ALWAYS restore button state
         if (saveBtn) {
             saveBtn.disabled = false;
             if (originalHTML) {
                 saveBtn.innerHTML = originalHTML;
+            } else {
+                saveBtn.innerHTML = '💾 Save Results';
             }
             saveBtn.style.opacity = '';
             saveBtn.style.cursor = '';
