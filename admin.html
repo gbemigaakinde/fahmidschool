@@ -1015,6 +1015,22 @@ button[onclick="exportPupilResults()"]:hover {
                     </select>
                 </div>
             </div>
+            const enrollmentPeriodHelpHTML = `
+<div class="info-box" style="margin-top: var(--space-md); padding: var(--space-md); background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: var(--radius-sm);">
+  <h4 style="margin: 0 0 var(--space-sm); color: #1565c0; font-size: var(--text-sm);">
+    ℹ️ About Enrollment Period
+  </h4>
+  <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #0d47a1;">
+    <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
+    <li><strong>Exit Term:</strong> Last term the pupil is enrolled (fees stop after this)</li>
+    <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
+    <li><strong>Effect:</strong> Pupil is NOT billed for terms outside this period</li>
+  </ul>
+  <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
+    Example: If admission term = "Second Term", pupil will NOT be charged for First Term fees.
+  </p>
+</div>
+`;
 
             <!-- Fee Adjustment -->
             <div class="form-group">
