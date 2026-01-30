@@ -800,8 +800,8 @@ async function loadResultsTable() {
 }
 
 /**
- * ✅ FIXED: Check result lock status with proper error handling
- * Handles permission errors gracefully
+ * ✅ FIXED: Check result lock status with comprehensive error handling
+ * Prevents infinite spinners and handles all permission scenarios
  */
 async function checkResultLockStatus() {
     const term = document.getElementById('result-term')?.value;
@@ -819,27 +819,26 @@ async function checkResultLockStatus() {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         
-        // CRITICAL FIX: Encode session to avoid path separator issues
+        // Encode session to avoid Firestore path issues (e.g., "2025/2026" → "2025-2026")
         const encodedSession = session.replace(/\//g, '-');
         
-        // ✅ FIX: Add defensive try-catch for lock status check
+        // ✅ FIX 1: Check lock status with defensive error handling
         let lockStatus = { locked: false };
         
         try {
             lockStatus = await window.resultLocking.isLocked(classId, term, subject, encodedSession);
-        } catch (lockError) {
-            // If permission denied or lock check fails, assume unlocked
-            console.warn('Could not check lock status (assuming unlocked):', lockError.code);
             
-            // Only log actual errors, not permission issues
-            if (lockError.code !== 'permission-denied') {
-                console.error('Unexpected lock check error:', lockError);
+            // If lock check returned an error, treat as unlocked
+            if (lockStatus.error) {
+                console.warn('Lock check returned error, assuming unlocked:', lockStatus.errorCode);
+                lockStatus = { locked: false };
             }
-            
-            // Default to unlocked state - teacher can proceed
+        } catch (lockError) {
+            console.warn('Could not check lock status, assuming unlocked:', lockError.code || lockError.message);
             lockStatus = { locked: false };
         }
         
+        // If results are locked, disable editing
         if (lockStatus.locked) {
             showLockedBanner(lockStatus);
             hideSubmissionControls();
@@ -847,7 +846,7 @@ async function checkResultLockStatus() {
             return;
         }
         
-        // ✅ FIX: Add defensive try-catch for submission status check
+        // ✅ FIX 2: Check submission status with proper null handling
         let submissionExists = false;
         let submissionData = null;
         
@@ -860,10 +859,16 @@ async function checkResultLockStatus() {
                 submissionData = submissionDoc.data();
             }
         } catch (submissionError) {
-            console.warn('Could not check submission status:', submissionError.code);
-            // Continue - assume no submission
+            // ✅ CRITICAL: Don't fail on permission-denied for non-existent docs
+            if (submissionError.code === 'permission-denied') {
+                console.warn('Permission denied checking submission (assuming no submission exists)');
+            } else {
+                console.error('Unexpected error checking submission status:', submissionError);
+            }
+            // Continue execution - assume no submission
         }
         
+        // Handle submission status
         if (submissionExists && submissionData) {
             if (submissionData.status === 'pending') {
                 showSubmissionStatusBanner(submissionData);
@@ -871,40 +876,46 @@ async function checkResultLockStatus() {
                 disableResultInputs();
                 return;
             } else if (submissionData.status === 'rejected') {
-                // Rejected - teacher can edit again
-                window.showToast?.(
-                    'Admin rejected your previous submission. You can now edit and resubmit.',
-                    'warning',
-                    6000
-                );
+                // Rejected - teacher can edit and resubmit
+                if (window.showToast) {
+                    window.showToast(
+                        'Your previous submission was rejected. You can now edit and resubmit.',
+                        'warning',
+                        6000
+                    );
+                }
                 showSubmissionControls(term, subject, className);
                 hideAllResultBanners();
                 enableResultInputs();
                 return;
+            } else if (submissionData.status === 'approved') {
+                // Approved - results are finalized, no editing
+                showApprovedBanner(submissionData);
+                hideSubmissionControls();
+                disableResultInputs();
+                return;
             }
         }
         
-        // Not locked, not submitted - show submission controls
+        // Default state: Not locked, not submitted - allow editing
         showSubmissionControls(term, subject, className);
         hideAllResultBanners();
         enableResultInputs();
         
     } catch (error) {
-        // ✅ FIX: Don't break the UI on permission errors
-        console.error('Error in checkResultLockStatus:', error);
+        // ✅ FIX 3: Final catch-all - never leave UI in broken state
+        console.error('Critical error in checkResultLockStatus:', error);
         
-        // Show warning but allow teacher to proceed
-        if (error.code === 'permission-denied') {
-            console.warn('Permission issue checking locks - proceeding with unlocked assumption');
-        } else {
-            window.showToast?.(
-                'Could not verify lock status. Proceeding with caution.',
+        // Show user-friendly message
+        if (window.showToast) {
+            window.showToast(
+                'Could not verify result status. Proceeding with caution.',
                 'warning',
-                4000
+                5000
             );
         }
         
-        // Default to unlocked state
+        // Default to safe state: allow editing but warn user
         hideAllResultBanners();
         showSubmissionControls(term, subject, className);
         enableResultInputs();
