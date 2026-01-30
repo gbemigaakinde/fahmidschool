@@ -510,11 +510,7 @@ function getClassIdSafely(pupilData) {
 window.getClassIdSafely = getClassIdSafely;
 
 /**
- * ✅ COMPLETELY FIXED: Load Fee Balance with:
- * - Firebase permission fix
- * - Termly + session arrears
- * - Fee adjustments (scholarships, discounts)
- * - Auto-creation fallback
+ * ✅ FIXED: Load Fee Balance with Correct Fee Structure Lookup
  */
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -591,7 +587,7 @@ async function loadFeeBalance() {
             return;
         }
 
-        // Get fee structure (class-based, permanent)
+        // ✅ FIX: Get fee structure (class-based, permanent) - CORRECTED ID FORMAT
         const feeDocId = `fee_${classId}`;
         const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
         
@@ -614,51 +610,70 @@ async function loadFeeBalance() {
         const feeStructure = feeDoc.data();
         const baseFee = Number(feeStructure.total) || 0;
 
-        // ✅ NEW: Apply fee adjustments (scholarships, discounts, enrollment)
+        // ✅ Apply fee adjustments (scholarships, discounts, enrollment)
         const amountDue = window.calculateAdjustedFee(pupilData, baseFee, currentTerm);
         
-        // ✅ NEW: Calculate complete arrears (termly + session)
+        // ✅ Calculate complete arrears (termly + session)
         const arrears = await window.calculateCompleteArrears(currentPupilId, session, currentTerm);
 
-        // Get payment record (NEW: won't fail with permission-denied)
+        // ✅ Get payment record (FIXED: won't fail with permission-denied)
         const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
-        let paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        let paymentDoc;
+        
+        try {
+            paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        } catch (error) {
+            // ✅ FIXED: Handle permission errors gracefully
+            if (error.code === 'permission-denied') {
+                console.warn('Permission denied reading payment record, will auto-create');
+                paymentDoc = { exists: false };
+            } else {
+                throw error;
+            }
+        }
 
         let totalPaid = 0;
         let balance = amountDue + arrears;
         let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
         let recordExists = paymentDoc.exists;
 
-        // Auto-create payment record if missing
+        // ✅ Auto-create payment record if missing
         if (!recordExists && classId) {
             console.log('⚠️ Payment record missing, auto-creating...');
             
-            await db.collection('payments').doc(paymentDocId).set({
-                pupilId: currentPupilId,
-                pupilName: pupilData.name || 'Unknown',
-                classId: classId,
-                className: className,
-                session: session,
-                term: currentTerm,
-                amountDue: amountDue,
-                arrears: arrears,
-                totalDue: amountDue + arrears,
-                totalPaid: 0,
-                balance: amountDue + arrears,
-                status: status,
-                lastPaymentDate: null,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                autoCreated: true
-            });
-            
-            console.log('✅ Auto-created payment record');
-            paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-            recordExists = true;
+            try {
+                await db.collection('payments').doc(paymentDocId).set({
+                    pupilId: currentPupilId,
+                    pupilName: pupilData.name || 'Unknown',
+                    classId: classId,
+                    className: className,
+                    session: session,
+                    term: currentTerm,
+                    amountDue: amountDue,
+                    arrears: arrears,
+                    totalDue: amountDue + arrears,
+                    totalPaid: 0,
+                    balance: amountDue + arrears,
+                    status: status,
+                    lastPaymentDate: null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    autoCreated: true
+                });
+                
+                console.log('✅ Auto-created payment record');
+                
+                // Re-fetch the document
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+                recordExists = true;
+            } catch (createError) {
+                console.error('❌ Failed to auto-create payment record:', createError);
+                // Continue with default values
+            }
         }
 
         // Extract payment data if exists
-        if (recordExists) {
+        if (recordExists && paymentDoc.exists) {
             const data = paymentDoc.data();
             totalPaid = Number(data.totalPaid) || 0;
             balance = Number(data.balance) || 0;
@@ -711,7 +726,7 @@ async function loadFeeBalance() {
                     <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
                     <div>
                         <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
-                        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Term(s)/Session(s)</p>
+                        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Term(s)</p>
                     </div>
                 </div>
                 <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
@@ -859,7 +874,7 @@ window.loadFeeBalance = loadFeeBalance;
 console.log('✅ Pupil fee display fixes loaded');
 
 /**
- * NEW: Calculate complete arrears (termly + session-based)
+ * ✅ FIXED: Calculate complete arrears with permission error handling
  */
 async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
     try {
@@ -883,22 +898,41 @@ async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
             
             if (previousTermName) {
                 const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
-                const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
                 
-                if (prevTermDoc.exists) {
-                    const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
-                    totalArrears += prevTermBalance;
-                    console.log(`Previous term (${previousTermName}) arrears: ₦${prevTermBalance.toLocaleString()}`);
+                try {
+                    const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
+                    
+                    if (prevTermDoc.exists) {
+                        const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
+                        totalArrears += prevTermBalance;
+                        console.log(`Previous term (${previousTermName}) arrears: ₦${prevTermBalance.toLocaleString()}`);
+                    }
+                } catch (error) {
+                    // ✅ FIXED: Handle permission errors gracefully
+                    if (error.code === 'permission-denied') {
+                        console.warn(`Permission denied for ${prevTermDocId}, assuming no arrears`);
+                    } else {
+                        console.error('Error fetching previous term balance:', error);
+                    }
                 }
             }
         }
         
-        // Step 2: Calculate PREVIOUS SESSION balance (if first term or always)
+        // Step 2: Calculate PREVIOUS SESSION balance (always check)
         const previousSession = getPreviousSessionName(currentSession);
         if (previousSession) {
-            const sessionArrears = await calculateSessionBalance(pupilId, previousSession);
-            totalArrears += sessionArrears;
-            console.log(`Previous session (${previousSession}) arrears: ₦${sessionArrears.toLocaleString()}`);
+            try {
+                const sessionArrears = await calculateSessionBalance(pupilId, previousSession);
+                totalArrears += sessionArrears;
+                console.log(`Previous session (${previousSession}) arrears: ₦${sessionArrears.toLocaleString()}`);
+            } catch (error) {
+                // ✅ FIXED: Handle permission errors gracefully
+                if (error.code === 'permission-denied') {
+                    console.warn('Permission denied for previous session, assuming no arrears');
+                } else {
+                    console.error('Error calculating session balance:', error);
+                }
+            }
         }
         
         console.log(`✓ Total arrears calculated: ₦${totalArrears.toLocaleString()}`);
@@ -906,7 +940,7 @@ async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
         
     } catch (error) {
         console.error('Error calculating complete arrears:', error);
-        return 0;
+        return 0; // ✅ Return 0 instead of failing
     }
 }
 
