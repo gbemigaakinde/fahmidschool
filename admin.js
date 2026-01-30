@@ -3353,7 +3353,8 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * FIXED: Load Pupil Payment Status (Class-Based Fee Lookup)
+ * ✅ FIXED: Load Pupil Payment Status - MATCHES PUPIL PORTAL LOGIC
+ * Replace the loadPupilPaymentStatus function in admin.js (around line 2100)
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -3378,10 +3379,26 @@ async function loadPupilPaymentStatus() {
     const settings = await window.getCurrentSettings();
     const session = settings.session;
     const term = settings.term;
-    const encodedSession = session.replace(/\//g, '-');
 
-    // ✅ FIX: Get persistent fee structure (class-based)
+    /* ═══════════════════════════════════════════════════════════
+       STEP 1: GET PUPIL DATA (for adjustments)
+    ═══════════════════════════════════════════════════════════ */
+    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+    
+    if (!pupilDoc.exists) {
+      throw new Error('Pupil record not found');
+    }
+    
+    const pupilData = pupilDoc.data();
+    
+    console.log('📊 Loading payment status for:', pupilName);
+
+    /* ═══════════════════════════════════════════════════════════
+       STEP 2: GET BASE FEE (class-based, permanent)
+    ═══════════════════════════════════════════════════════════ */
     const feeDocId = `fee_${classId}`;
+    console.log(`Looking up fee structure: ${feeDocId}`);
+    
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
     if (!feeDoc.exists) {
@@ -3396,43 +3413,149 @@ async function loadPupilPaymentStatus() {
     }
 
     const feeStructure = feeDoc.data();
-    let amountDue = feeStructure.total || 0;
-    let arrears = 0;
-    let totalPaid = 0;
-    let balance = 0;
-    let status = 'owing';
+    const baseFee = Number(feeStructure.total) || 0;
+    
+    console.log(`✓ Base fee for ${className}: ₦${baseFee.toLocaleString()}`);
 
-    // Load current term payment document
+    /* ═══════════════════════════════════════════════════════════
+       STEP 3: CALCULATE ADJUSTED FEE
+       ⚠️ CRITICAL: Use the SAME function as pupil portal
+    ═══════════════════════════════════════════════════════════ */
+    const amountDue = window.calculateAdjustedFee 
+      ? window.calculateAdjustedFee(pupilData, baseFee, term)
+      : baseFee;
+    
+    console.log(`📊 Fee calculation:`);
+    console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
+    console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
+    console.log(`   Difference: ₦${Math.abs(baseFee - amountDue).toLocaleString()}`);
+
+    // Check if pupil is enrolled for this term
+    if (amountDue === 0 && baseFee > 0) {
+      statusContainer.innerHTML = `
+        <div class="alert alert-info">
+          <strong>ℹ️ ${pupilName} is not enrolled for ${term}</strong>
+          <p>Admission term: ${pupilData.admissionTerm || 'First Term'} | Exit term: ${pupilData.exitTerm || 'Third Term'}</p>
+          <p>Cannot record payment for unenrolled term.</p>
+        </div>
+      `;
+      document.getElementById('payment-input-section').style.display = 'none';
+      return;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       STEP 4: CALCULATE COMPLETE ARREARS
+       ⚠️ CRITICAL: Use the SAME function as pupil portal
+    ═══════════════════════════════════════════════════════════ */
+    const arrears = window.calculateCompleteArrears
+      ? await window.calculateCompleteArrears(pupilId, session, term)
+      : 0;
+    
+    console.log(`💰 Arrears calculation:`);
+    console.log(`   Total arrears: ₦${arrears.toLocaleString()}`);
+
+    /* ═══════════════════════════════════════════════════════════
+       STEP 5: GET PAYMENT RECORD
+    ═══════════════════════════════════════════════════════════ */
+    const encodedSession = session.replace(/\//g, '-');
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-    const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+    
+    let paymentDoc;
+    try {
+      paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+    } catch (error) {
+      console.warn('Could not fetch payment record:', error.message);
+      paymentDoc = { exists: false };
+    }
+
+    let totalPaid = 0;
+    let balance = amountDue + arrears;
+    let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
 
     if (paymentDoc.exists) {
-      const paymentData = paymentDoc.data();
-      totalPaid = paymentData.totalPaid || 0;
-      arrears = paymentData.arrears || 0;
-      amountDue = paymentData.amountDue || amountDue;
-      balance = paymentData.balance || 0;
-      status = paymentData.status || 'owing';
+      const data = paymentDoc.data();
+      totalPaid = Number(data.totalPaid) || 0;
+      balance = Number(data.balance) || 0;
+      status = data.status || (arrears > 0 ? 'owing_with_arrears' : 'owing');
+      
+      console.log(`✓ Existing payment record found:`);
+      console.log(`   Total paid: ₦${totalPaid.toLocaleString()}`);
+      console.log(`   Balance: ₦${balance.toLocaleString()}`);
     } else {
-      // Check arrears from previous session(s)
-      const previousSession = getPreviousSessionName(session);
-      if (previousSession) {
-        arrears = await calculateSessionBalance(pupilId, previousSession);
-        balance = amountDue + arrears;
+      console.log(`ℹ️ No payment record yet - will be created on first payment`);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       STEP 6: RENDER STATUS (matching pupil portal style)
+    ═══════════════════════════════════════════════════════════ */
+    const totalDue = amountDue + arrears;
+    
+    let statusBadge = '';
+    if (balance <= 0) {
+      statusBadge = '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>';
+    } else if (totalPaid > 0) {
+      statusBadge = '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>';
+    } else if (arrears > 0) {
+      statusBadge = '<span class="status-badge" style="background:#dc3545;">Owing (with Arrears)</span>';
+    } else {
+      statusBadge = '<span class="status-badge" style="background:#f44336;">Owing</span>';
+    }
+
+    // Build adjustment info badge
+    let adjustmentBadge = '';
+    if (amountDue !== baseFee) {
+      const difference = baseFee - amountDue;
+      const percentDiff = baseFee > 0 ? Math.abs((difference / baseFee) * 100).toFixed(0) : 0;
+      
+      if (amountDue === 0) {
+        adjustmentBadge = `
+          <div style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); text-align: center;">
+            <strong>🎓 FREE EDUCATION APPLIED</strong>
+            <p style="margin: var(--space-xs) 0 0; opacity: 0.9; font-size: var(--text-sm);">
+              Base fee waived: ₦${baseFee.toLocaleString()}
+            </p>
+          </div>
+        `;
+      } else if (amountDue < baseFee) {
+        adjustmentBadge = `
+          <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); text-align: center;">
+            <strong>💎 SCHOLARSHIP/DISCOUNT APPLIED</strong>
+            <p style="margin: var(--space-xs) 0 0; opacity: 0.9; font-size: var(--text-sm);">
+              ${percentDiff}% reduction • Saving ₦${difference.toLocaleString()} per term
+            </p>
+          </div>
+        `;
       } else {
-        balance = amountDue;
+        adjustmentBadge = `
+          <div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); text-align: center;">
+            <strong>⚠️ FEE SURCHARGE APPLIED</strong>
+            <p style="margin: var(--space-xs) 0 0; opacity: 0.9; font-size: var(--text-sm);">
+              Additional charge: ₦${Math.abs(difference).toLocaleString()} per term
+            </p>
+          </div>
+        `;
       }
     }
 
-    const totalDue = amountDue + arrears;
+    // Build arrears warning
+    const arrearsHTML = arrears > 0 ? `
+      <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
+        <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+          <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+          <div>
+            <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
+            <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Term(s)</p>
+          </div>
+        </div>
+        <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+          ₦${arrears.toLocaleString()}
+        </div>
+        <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
+          ⚠️ Payments will prioritize clearing arrears first before applying to current term.
+        </p>
+      </div>
+    ` : '';
 
-    const statusBadge =
-      status === 'paid' ? '<span class="status-badge" style="background:#4CAF50;">Paid in Full</span>' :
-      status === 'partial' ? '<span class="status-badge" style="background:#ff9800;">Partial Payment</span>' :
-      arrears > 0 ? '<span class="status-badge" style="background:#dc3545;">Owing (with Arrears)</span>' :
-      '<span class="status-badge" style="background:#f44336;">Owing</span>';
-
-    // Render payment status card
     statusContainer.innerHTML = `
       <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -3443,39 +3566,45 @@ async function loadPupilPaymentStatus() {
           ${statusBadge}
         </div>
 
-        ${arrears > 0 ? `
-        <div style="background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm); padding:var(--space-md); margin-bottom:var(--space-lg);">
-          <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-xs);">
-            <i data-lucide="alert-triangle" style="width:20px; height:20px; color:#dc3545;"></i>
-            <strong style="color:#991b1b;">Outstanding Arrears from Previous Session</strong>
-          </div>
-          <p style="margin:0; font-size:var(--text-sm); color:#7f1d1d;">
-            ₦${arrears.toLocaleString()} unpaid from previous session(s). Payments will prioritize clearing arrears first.
-          </p>
-        </div>` : ''}
+        ${adjustmentBadge}
+        ${arrearsHTML}
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
+          ${baseFee !== amountDue ? `
+          <div style="text-align:center; padding:var(--space-md); background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Base Fee</div>
+            <div style="font-size:var(--text-lg); font-weight:700; color:var(--color-gray-700); text-decoration: line-through;">₦${baseFee.toLocaleString()}</div>
+          </div>` : ''}
+
           ${arrears > 0 ? `
           <div style="text-align:center; padding:var(--space-md); background:#fef2f2; border:2px solid #dc3545; border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:#991b1b; margin-bottom:var(--space-xs); font-weight:600;">Arrears</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:#dc3545;">₦${arrears.toLocaleString()}</div>
           </div>` : ''}
 
-          <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border-radius:var(--radius-sm);">
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-gray-50); border:1px solid var(--color-gray-300); border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Current Term Fee</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-gray-900);">₦${amountDue.toLocaleString()}</div>
           </div>
 
-          <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border-radius:var(--radius-sm);">
+          <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border:1px solid var(--color-success); border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
           </div>
 
-          <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs);">Total Balance</div>
+          <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border:2px solid ${balance > 0 ? 'var(--color-danger)' : 'var(--color-success)'}; border-radius:var(--radius-sm);">
+            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs); font-weight:600;">Total Balance</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
           </div>
         </div>
+
+        ${balance > 0 ? `
+        <div style="margin-top: var(--space-lg); padding: var(--space-md); background: #fef2f2; border: 1px solid #dc3545; border-radius: var(--radius-sm);">
+          <p style="margin: 0; font-size: var(--text-sm); color: #991b1b;">
+            <strong>⚠️ Payment Advice:</strong> Outstanding balance is ₦${balance.toLocaleString()}. 
+            ${arrears > 0 ? `Includes ₦${arrears.toLocaleString()} arrears that will be cleared first.` : ''}
+          </p>
+        </div>` : ''}
       </div>
     `;
 
@@ -3483,25 +3612,41 @@ async function loadPupilPaymentStatus() {
       lucide.createIcons();
     }
 
+    // Update payment input
     document.getElementById('payment-input-section').style.display = 'block';
-
+    
     const amountInput = document.getElementById('payment-amount');
     if (amountInput) {
       amountInput.max = balance;
       amountInput.value = '';
+      amountInput.placeholder = `Enter amount (max: ₦${balance.toLocaleString()})`;
     }
 
     // Load payment history
     await loadPaymentHistory(pupilId, session, term);
+    
+    console.log('✅ Payment status loaded successfully');
+    console.log(`   Outstanding: ₦${balance.toLocaleString()}`);
+    console.log(`   (Adjusted fee: ₦${amountDue.toLocaleString()} + Arrears: ₦${arrears.toLocaleString()})`);
 
   } catch (error) {
-    console.error('Error loading payment status:', error);
-    statusContainer.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading payment status</p>';
+    console.error('❌ Error loading payment status:', error);
+    statusContainer.innerHTML = `
+      <div style="padding:var(--space-lg); text-align:center; color:var(--color-danger);">
+        <p style="font-weight:600;">Error Loading Payment Status</p>
+        <p style="font-size:var(--text-sm);">${error.message}</p>
+        <button class="btn btn-secondary" onclick="loadPupilPaymentStatus()" style="margin-top:var(--space-md);">
+          🔄 Retry
+        </button>
+      </div>
+    `;
   }
 }
 
+// Replace the existing function in admin.js
 window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
+console.log('✅ Admin payment status fix loaded - now matches pupil portal logic');
 /**
  * ✅ FIXED: Load complete payment history with proper query
  */
