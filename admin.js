@@ -3583,9 +3583,8 @@ async function loadPaymentHistory(pupilId, session, term) {
 window.loadPaymentHistory = loadPaymentHistory;
 
 /**
- * ✅ FIXED: Outstanding Fees Report - Uses Adjusted Fees from Payment Records
+ * ✅ FIXED: Outstanding Fees Report - Accounts for Adjusted Fees
  */
-
 async function loadOutstandingFeesReport() {
     const container = document.getElementById('outstanding-fees-table');
     if (!container) return;
@@ -3599,61 +3598,125 @@ async function loadOutstandingFeesReport() {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         const currentTerm = settings.term;
-        const encodedSession = session.replace(/\//g, '-');
 
-        /* ---------------------------
-           ✅ FIX: Query payment records that already have adjusted fees
-           No need to recalculate - the payment records store correct values
-        ---------------------------- */
-        const paymentsSnap = await db.collection('payments')
-            .where('session', '==', session)
-            .where('term', '==', currentTerm)
-            .where('balance', '>', 0) // Only pupils with outstanding balance
-            .get();
+        // ✅ Step 1: Get ALL currently enrolled pupils
+        const pupilsSnap = await db.collection('pupils').get();
         
-        if (paymentsSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
+        if (pupilsSnap.empty) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600); padding:var(--space-2xl);">No pupils enrolled</td></tr>';
             updateSummaryDisplay(0, 0);
             return;
         }
 
+        // ✅ Step 2: Get ALL fee structures (class-based)
+        const feeStructuresSnap = await db.collection('fee_structures').get();
+        
+        const feeMap = {};
+        feeStructuresSnap.forEach(doc => {
+            const data = doc.data();
+            feeMap[data.classId] = data.total || 0;
+        });
+
+        if (Object.keys(feeMap).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-warning); padding:var(--space-2xl);">⚠️ No fee structures configured yet</td></tr>';
+            updateSummaryDisplay(0, 0);
+            return;
+        }
+
+        console.log(`✓ Found ${feeStructuresSnap.size} fee structures (class-based)`);
+
+        // ✅ Step 3: Build outstanding list with ADJUSTED fees
         const outstandingPupils = [];
         let totalOutstanding = 0;
+        const encodedSession = session.replace(/\//g, '-');
 
-        /* ---------------------------
-           ✅ CRITICAL: Use stored adjusted fees from payment records
-        ---------------------------- */
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
+        for (const pupilDoc of pupilsSnap.docs) {
+            const pupilData = pupilDoc.data();
+            const pupilId = pupilDoc.id;
+            const classId = pupilData.class?.id;
             
-            // ✅ Payment records already contain adjusted fees
-            const adjustedFee = Number(data.adjustedFee) || Number(data.amountDue) || 0;
-            const baseFee = Number(data.baseFee) || adjustedFee; // Fallback for old records
-            const arrears = Number(data.arrears) || 0;
-            const totalPaid = Number(data.totalPaid) || 0;
-            const balance = Number(data.balance) || 0;
-            const status = data.status || 'owing';
+            if (!classId) {
+                console.warn(`Pupil ${pupilData.name} has no classId, skipping`);
+                continue;
+            }
+            
+            const baseFee = feeMap[classId];
+            if (!baseFee) {
+                console.warn(`No fee structure for class ${classId}, skipping pupil ${pupilData.name}`);
+                continue;
+            }
+
+            // ✅ CRITICAL: Calculate ADJUSTED fee (scholarships, enrollment)
+            const amountDue = window.calculateAdjustedFee ? 
+                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
+                baseFee;
+            
+            // Skip if pupil not enrolled for this term
+            if (amountDue === 0) {
+                console.log(`Pupil ${pupilData.name} not enrolled for ${currentTerm}, skipping`);
+                continue;
+            }
+
+            // Get payment record for current term
+            const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
+            
+            let paymentDoc;
+            try {
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            } catch (error) {
+                console.warn(`Could not fetch payment record for ${pupilData.name}:`, error.message);
+                paymentDoc = { exists: false };
+            }
+
+            let balance = amountDue;
+            let totalPaid = 0;
+            let arrears = 0;
+            let status = 'owing';
+
+            if (paymentDoc.exists) {
+                const paymentData = paymentDoc.data();
+                balance = Number(paymentData.balance) || 0;
+                totalPaid = Number(paymentData.totalPaid) || 0;
+                arrears = Number(paymentData.arrears) || 0;
+                status = paymentData.status || 'owing';
+            } else {
+                // ✅ Calculate arrears for non-existent record
+                const previousSession = getPreviousSessionName(session);
+                if (previousSession) {
+                    try {
+                        arrears = await calculateSessionBalance(pupilId, previousSession);
+                        balance = amountDue + arrears;
+                    } catch (error) {
+                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
+                    }
+                }
+            }
 
             // Only include pupils with outstanding balance
             if (balance > 0) {
                 outstandingPupils.push({
-                    name: data.pupilName || 'Unknown',
-                    className: data.className || '-',
-                    baseFee: baseFee,           // ✅ Original class fee
-                    adjustedFee: adjustedFee,   // ✅ Actual fee used
-                    amountDue: adjustedFee,     // Current term adjusted fee
+                    name: pupilData.name || 'Unknown',
+                    className: pupilData.class?.name || '-',
+                    amountDue: amountDue,
                     arrears: arrears,
-                    totalDue: adjustedFee + arrears,
+                    totalDue: amountDue + arrears,
                     totalPaid: totalPaid,
                     balance: balance,
-                    status: status
+                    status: status,
+                    baseFee: baseFee // Track original fee for reference
                 });
                 
                 totalOutstanding += balance;
             }
-        });
+        }
 
         tbody.innerHTML = '';
+
+        if (outstandingPupils.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ' + currentTerm + '!</td></tr>';
+            updateSummaryDisplay(0, 0);
+            return;
+        }
 
         // Sort by balance (highest first)
         outstandingPupils.sort((a, b) => b.balance - a.balance);
@@ -3664,9 +3727,9 @@ async function loadOutstandingFeesReport() {
             const tr = document.createElement('tr');
             
             // ✅ Show adjusted fee indicator if different from base
-            const feeDisplay = pupil.adjustedFee !== pupil.baseFee
-                ? `₦${pupil.adjustedFee.toLocaleString()} <span style="color:#666; font-size:0.85em;">(adjusted from ₦${pupil.baseFee.toLocaleString()})</span>`
-                : `₦${pupil.adjustedFee.toLocaleString()}`;
+            const feeDisplay = pupil.amountDue !== pupil.baseFee
+                ? `₦${pupil.amountDue.toLocaleString()} <span style="color:#666; font-size:0.85em;">(adjusted from ₦${pupil.baseFee.toLocaleString()})</span>`
+                : `₦${pupil.amountDue.toLocaleString()}`;
             
             const arrearsNote = pupil.arrears > 0 
                 ? `<br><span style="color:#dc3545; font-size:0.85em;">+ ₦${pupil.arrears.toLocaleString()} arrears</span>` 
@@ -3702,7 +3765,6 @@ async function loadOutstandingFeesReport() {
 }
 
 window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-console.log('✅ Outstanding fees report fixed (uses stored adjusted fees)');
 
 /**
  * Update summary display elements
@@ -3778,28 +3840,38 @@ window.updateSummaryDisplay = updateSummaryDisplay;
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
- * ✅ FIXED: Financial Reports - Uses Adjusted Fees from Payment Records
+ * ✅ FIXED: Financial Reports - Accounts for Adjusted Fees
  */
-
 async function loadFinancialReports() {
     try {
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         const currentTerm = settings.term;
 
-        /* ---------------------------
-           ✅ FIX: Use payment records that already contain adjusted fees
-           No need to recalculate - the data is already correct
-        ---------------------------- */
-        const paymentsSnap = await db.collection('payments')
-            .where('session', '==', session)
-            .where('term', '==', currentTerm)
-            .get();
+        // ✅ Get ALL pupils
+        const pupilsSnap = await db.collection('pupils').get();
         
-        if (paymentsSnap.empty) {
+        if (pupilsSnap.empty) {
             updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, currentTerm);
             return;
         }
+
+        // ✅ Get ALL fee structures (class-based)
+        const feeStructuresSnap = await db.collection('fee_structures').get();
+        
+        const feeMap = {};
+        feeStructuresSnap.forEach(doc => {
+            const data = doc.data();
+            feeMap[data.classId] = data.total || 0;
+        });
+
+        if (Object.keys(feeMap).length === 0) {
+            console.warn('No fee structures configured');
+            updateFinancialDisplays(0, 0, 0, 0, 0, 0, 0, session, currentTerm);
+            return;
+        }
+
+        console.log(`✓ Found ${feeStructuresSnap.size} fee structures for financial report`);
 
         let totalExpected = 0;
         let totalCollected = 0;
@@ -3808,19 +3880,65 @@ async function loadFinancialReports() {
         let partialPayments = 0;
         let noPayment = 0;
 
-        /* ---------------------------
-           ✅ CRITICAL: Use adjusted fees from payment records
-        ---------------------------- */
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
+        const encodedSession = session.replace(/\//g, '-');
 
-            // ✅ Payment records already contain correct adjusted fees
-            const adjustedFee = Number(data.adjustedFee) || Number(data.amountDue) || 0;
-            const arrears = Number(data.arrears) || 0;
-            const totalDue = adjustedFee + arrears;
-            const totalPaid = Number(data.totalPaid) || 0;
-            const balance = Number(data.balance) || 0;
-            const status = data.status || 'owing';
+        // ✅ Process each pupil with ADJUSTED fees
+        for (const pupilDoc of pupilsSnap.docs) {
+            const pupilData = pupilDoc.data();
+            const pupilId = pupilDoc.id;
+            const classId = pupilData.class?.id;
+            
+            if (!classId) continue;
+            
+            const baseFee = feeMap[classId];
+            if (!baseFee) continue;
+
+            // ✅ CRITICAL: Calculate ADJUSTED fee
+            const amountDue = window.calculateAdjustedFee ? 
+                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
+                baseFee;
+            
+            // Skip if not enrolled this term
+            if (amountDue === 0) {
+                console.log(`Pupil ${pupilData.name} not enrolled for ${currentTerm}, skipping from financial report`);
+                continue;
+            }
+
+            // Get payment record
+            const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
+            
+            let paymentDoc;
+            try {
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            } catch (error) {
+                console.warn(`Could not fetch payment for ${pupilData.name}:`, error.message);
+                paymentDoc = { exists: false };
+            }
+
+            let totalDue = amountDue;
+            let totalPaid = 0;
+            let balance = amountDue;
+            let arrears = 0;
+
+            if (paymentDoc.exists) {
+                const data = paymentDoc.data();
+                arrears = Number(data.arrears) || 0;
+                totalDue = amountDue + arrears;
+                totalPaid = Number(data.totalPaid) || 0;
+                balance = Number(data.balance) || 0;
+            } else {
+                // Calculate arrears for non-existent record
+                const previousSession = getPreviousSessionName(session);
+                if (previousSession) {
+                    try {
+                        arrears = await calculateSessionBalance(pupilId, previousSession);
+                        totalDue = amountDue + arrears;
+                        balance = totalDue;
+                    } catch (error) {
+                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
+                    }
+                }
+            }
 
             totalExpected += totalDue;
             totalCollected += totalPaid;
@@ -3834,7 +3952,7 @@ async function loadFinancialReports() {
             } else {
                 noPayment++;
             }
-        });
+        }
 
         const collectionRate = totalExpected > 0
             ? ((totalCollected / totalExpected) * 100).toFixed(1)
@@ -3853,7 +3971,7 @@ async function loadFinancialReports() {
         );
 
         console.log(`✓ Financial report generated:`);
-        console.log(`  - Expected: ₦${totalExpected.toLocaleString()} (using adjusted fees)`);
+        console.log(`  - Expected: ₦${totalExpected.toLocaleString()}`);
         console.log(`  - Collected: ₦${totalCollected.toLocaleString()}`);
         console.log(`  - Outstanding: ₦${totalOutstanding.toLocaleString()}`);
         console.log(`  - Collection rate: ${collectionRate}%`);
@@ -3865,7 +3983,6 @@ async function loadFinancialReports() {
 }
 
 window.loadFinancialReports = loadFinancialReports;
-console.log('✅ Financial reports fixed (uses stored adjusted fees)');
 
 /**
  * ✅ NEW: Generate term-by-term breakdown chart
