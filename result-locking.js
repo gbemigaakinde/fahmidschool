@@ -11,7 +11,7 @@
 
 const resultLocking = {
   /**
-   * Check if results are locked for a specific term/subject/class
+   * ✅ FIXED: Check if results are locked with proper error handling
    */
   async isLocked(classId, term, subject, session) {
     try {
@@ -31,7 +31,13 @@ const resultLocking = {
       };
     } catch (error) {
       console.error('Error checking lock status:', error);
-      return { locked: false, error: error.message };
+      
+      // ✅ FIX: Return meaningful error info
+      return { 
+        locked: false, 
+        error: error.message,
+        errorCode: error.code 
+      };
     }
   },
 
