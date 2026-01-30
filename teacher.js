@@ -923,6 +923,37 @@ async function checkResultLockStatus() {
 }
 
 /**
+ * ✅ NEW: Show approved banner
+ */
+function showApprovedBanner(submissionData) {
+    const banner = document.getElementById('result-locked-banner');
+    const detailsDiv = document.getElementById('lock-details');
+    
+    if (!banner || !detailsDiv) return;
+    
+    const approvedDate = submissionData.approvedAt 
+        ? submissionData.approvedAt.toDate().toLocaleDateString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : 'Unknown';
+    
+    detailsDiv.innerHTML = `
+        <div style="font-size: var(--text-sm); color: var(--color-gray-600);">
+            <strong>Status:</strong> Approved and locked<br>
+            <strong>Approved on:</strong> ${approvedDate}<br>
+            <strong>Note:</strong> These results are finalized and cannot be edited.
+        </div>
+    `;
+    
+    banner.style.display = 'block';
+}
+
+// Make globally available
+window.showApprovedBanner = showApprovedBanner;
+
+/**
  * Show locked banner
  */
 function showLockedBanner(lockStatus) {
@@ -1112,7 +1143,7 @@ async function submitResultsForApproval() {
         // Get teacher name
         const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
         const teacherName = teacherDoc.exists 
-          ? teacherDoc.data().fullName 
+          ? teacherDoc.data().fullName || teacherDoc.data().name
           : currentUser.displayName || 'Unknown Teacher';
 
         // ✅ FIX: Call submitForApproval and handle response properly
@@ -1171,6 +1202,9 @@ async function submitResultsForApproval() {
 window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
+/**
+ * ✅ FIXED: Save all results with guaranteed button state restoration
+ */
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
     const term = document.getElementById('result-term')?.value;
@@ -1211,7 +1245,7 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ FIX 2: Initialize button state management FIRST
+    // ✅ FIX 2: Get FRESH button reference and initialize state FIRST
     const saveBtn = document.getElementById('save-results-btn');
     let originalHTML = null;
 
@@ -1369,16 +1403,17 @@ async function saveAllResults() {
         }
         
     } finally {
-        // ✅ CRITICAL FIX 7: ALWAYS restore button state
-        if (saveBtn) {
-            saveBtn.disabled = false;
+        // ✅ CRITICAL FIX 7: ALWAYS restore button state using FRESH reference
+        const finalSaveBtn = document.getElementById('save-results-btn');
+        if (finalSaveBtn) {
+            finalSaveBtn.disabled = false;
             if (originalHTML) {
-                saveBtn.innerHTML = originalHTML;
+                finalSaveBtn.innerHTML = originalHTML;
             } else {
-                saveBtn.innerHTML = '💾 Save Results';
+                finalSaveBtn.innerHTML = '💾 Save Results';
             }
-            saveBtn.style.opacity = '';
-            saveBtn.style.cursor = '';
+            finalSaveBtn.style.opacity = '';
+            finalSaveBtn.style.cursor = '';
         }
     }
 }
