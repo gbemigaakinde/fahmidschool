@@ -1957,6 +1957,31 @@ button[onclick="exportPupilResults()"]:hover {
             </table>
         </div>
         
+        <!-- Add this in the Settings section, after the session management area -->
+<div class="admin-card" style="margin-top: var(--space-2xl); border-left: 4px solid #ff9800;">
+  <h3 style="margin-top: 0; color: #f57c00;">⚠️ Data Migration Tools</h3>
+  
+  <div style="background: #fff3cd; padding: var(--space-lg); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
+    <p style="margin: 0 0 var(--space-sm); font-weight: 600;">Payment Records Migration</p>
+    <p style="margin: 0; font-size: var(--text-sm);">
+      If payment records were created before the adjusted fees system was implemented, 
+      they may contain incorrect amounts. Run this migration to recalculate all balances.
+    </p>
+  </div>
+  
+  <button 
+    id="migrate-payments-btn" 
+    class="btn btn-warning" 
+    onclick="migratePaymentRecordsToAdjustedFees()">
+    🔄 Migrate Payment Records to Adjusted Fees
+  </button>
+  
+  <p style="margin-top: var(--space-md); font-size: var(--text-sm); color: var(--color-gray-600);">
+    <strong>Note:</strong> This is a one-time operation. It will recalculate all payment records 
+    with correct adjusted fees and arrears. Payment history will be preserved.
+  </p>
+</div>
+
         <!-- Add inside Settings section, after session history -->
 <div class="admin-card" style="margin-top: var(--space-xl);">
   <h3>Arrears Management</h3>
