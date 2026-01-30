@@ -1881,58 +1881,114 @@ async function loadPromotionPeriodStatus() {
  * Load result approvals section
  */
 async function loadResultApprovals() {
-  const tbody = document.getElementById('result-approvals-table');
-  const noApprovalsMsg = document.getElementById('no-approvals-message');
-  
-  if (!tbody) return;
-  
-  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
-  
-  try {
-    const submissions = await window.resultLocking.getSubmittedResults();
+    const tbody = document.getElementById('result-approvals-table');
+    const noApprovalsMsg = document.getElementById('no-approvals-message');
     
-    tbody.innerHTML = '';
+    if (!tbody) return;
     
-    if (submissions.length === 0) {
-      if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-      return;
+    tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
+    
+    try {
+        const submissions = await window.resultLocking.getSubmittedResults();
+        
+        tbody.innerHTML = '';
+        
+        if (submissions.length === 0) {
+            if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
+            return;
+        }
+        
+        if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+        
+        for (const submission of submissions) {
+            const submittedDate = submission.submittedAt 
+                ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
+                : '-';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
+                <td data-label="Class">${submission.className || '-'}</td>
+                <td data-label="Subject">${submission.subject || '-'}</td>
+                <td data-label="Term">${submission.term || '-'}</td>
+                <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
+                <td data-label="Submitted">${submittedDate}</td>
+                <td data-label="Status">
+                    <span class="status-pending">Pending</span>
+                </td>
+                <td data-label="Actions">
+                    <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
+                        ✓ Approve
+                    </button>
+                    <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
+                        ✗ Reject
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+        
+    } catch (error) {
+        console.error('Error loading result approvals:', error);
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
     }
-    
-    if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
-    
-    for (const submission of submissions) {
-      const submittedDate = submission.submittedAt 
-        ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
-        : '-';
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
-        <td data-label="Class">${submission.className || '-'}</td>
-        <td data-label="Subject">${submission.subject || '-'}</td>
-        <td data-label="Term">${submission.term || '-'}</td>
-        <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
-        <td data-label="Submitted">${submittedDate}</td>
-        <td data-label="Status">
-          <span class="status-pending">Pending</span>
-        </td>
-        <td data-label="Actions">
-          <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
-            ✓ Approve
-          </button>
-          <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
-            ✗ Reject
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    }
-    
-  } catch (error) {
-    console.error('Error loading result approvals:', error);
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
-  }
 }
+
+/**
+ * Approve result submission
+ */
+async function approveResultSubmission(submissionId) {
+    if (!confirm('Approve these results and lock them?\n\nTeacher will not be able to edit unless you unlock.')) {
+        return;
+    }
+    
+    try {
+        const result = await window.resultLocking.approveResults(submissionId, auth.currentUser.uid);
+        
+        if (result.success) {
+            window.showToast?.(result.message, 'success');
+            await loadResultApprovals();
+        } else {
+            window.showToast?.(result.message || result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error approving results:', error);
+        window.handleError(error, 'Failed to approve results');
+    }
+}
+
+/**
+ * Reject result submission
+ */
+async function rejectResultSubmission(submissionId) {
+    const reason = prompt('Reason for rejection (teacher will see this):');
+    
+    if (!reason) {
+        window.showToast?.('Rejection cancelled - reason required', 'info');
+        return;
+    }
+    
+    try {
+        const result = await window.resultLocking.rejectResults(submissionId, auth.currentUser.uid, reason);
+        
+        if (result.success) {
+            window.showToast?.(result.message, 'success');
+            await loadResultApprovals();
+        } else {
+            window.showToast?.(result.message || result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error rejecting results:', error);
+        window.handleError(error, 'Failed to reject results');
+    }
+}
+
+// Make functions globally available
+window.loadResultApprovals = loadResultApprovals;
+window.approveResultSubmission = approveResultSubmission;
+window.rejectResultSubmission = rejectResultSubmission;
 
 /* ========================================
    ADMIN: VIEW PUPIL RESULTS BY SESSION
@@ -9065,118 +9121,6 @@ async function deleteItem(collection, docId) {
 window.deleteItem = deleteItem;
 
 console.log('✓ deleteItem function exposed globally');
-/**
- * Load result approvals section
- */
-async function loadResultApprovals() {
-    const tbody = document.getElementById('result-approvals-table');
-    const noApprovalsMsg = document.getElementById('no-approvals-message');
-    
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
-    
-    try {
-        const submissions = await window.resultLocking.getSubmittedResults();
-        
-        tbody.innerHTML = '';
-        
-        if (submissions.length === 0) {
-            if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-            return;
-        }
-        
-        if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
-        
-        for (const submission of submissions) {
-            const submittedDate = submission.submittedAt 
-                ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
-                : '-';
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
-                <td data-label="Class">${submission.className || '-'}</td>
-                <td data-label="Subject">${submission.subject || '-'}</td>
-                <td data-label="Term">${submission.term || '-'}</td>
-                <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
-                <td data-label="Submitted">${submittedDate}</td>
-                <td data-label="Status">
-                    <span class="status-pending">Pending</span>
-                </td>
-                <td data-label="Actions">
-                    <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
-                        ✓ Approve
-                    </button>
-                    <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
-                        ✗ Reject
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        }
-        
-    } catch (error) {
-        console.error('Error loading result approvals:', error);
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
-    }
-}
-
-/**
- * Approve result submission
- */
-async function approveResultSubmission(submissionId) {
-    if (!confirm('Approve these results and lock them?\n\nTeacher will not be able to edit unless you unlock.')) {
-        return;
-    }
-    
-    try {
-        const result = await window.resultLocking.approveResults(submissionId, auth.currentUser.uid);
-        
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Error approving results:', error);
-        window.handleError(error, 'Failed to approve results');
-    }
-}
-
-/**
- * Reject result submission
- */
-async function rejectResultSubmission(submissionId) {
-    const reason = prompt('Reason for rejection (teacher will see this):');
-    
-    if (!reason) {
-        window.showToast?.('Rejection cancelled - reason required', 'info');
-        return;
-    }
-    
-    try {
-        const result = await window.resultLocking.rejectResults(submissionId, auth.currentUser.uid, reason);
-        
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Error rejecting results:', error);
-        window.handleError(error, 'Failed to reject results');
-    }
-}
-
-// Make functions globally available
-window.loadResultApprovals = loadResultApprovals;
-window.approveResultSubmission = approveResultSubmission;
-window.rejectResultSubmission = rejectResultSubmission;
 
 /**
  * FIXED: Initialize Sidebar Navigation
