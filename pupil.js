@@ -874,7 +874,7 @@ window.loadFeeBalance = loadFeeBalance;
 console.log('✅ Pupil fee display fixes loaded');
 
 /**
- * ✅ FIXED: Calculate complete arrears with permission error handling
+ * ✅ FIXED: Calculate complete arrears with graceful fallback for missing records
  */
 async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
     try {
@@ -902,36 +902,31 @@ async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
                 try {
                     const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
                     
+                    // ✅ FIX: Handle non-existent documents (no longer throws permission error)
                     if (prevTermDoc.exists) {
                         const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
                         totalArrears += prevTermBalance;
-                        console.log(`Previous term (${previousTermName}) arrears: ₦${prevTermBalance.toLocaleString()}`);
+                        console.log(`✓ Previous term (${previousTermName}) arrears: ₦${prevTermBalance.toLocaleString()}`);
+                    } else {
+                        console.log(`ℹ️ No payment record for ${previousTermName}, assuming ₦0 arrears`);
                     }
                 } catch (error) {
-                    // ✅ FIXED: Handle permission errors gracefully
-                    if (error.code === 'permission-denied') {
-                        console.warn(`Permission denied for ${prevTermDocId}, assuming no arrears`);
-                    } else {
-                        console.error('Error fetching previous term balance:', error);
-                    }
+                    console.error('Error fetching previous term balance:', error);
+                    // Continue without adding arrears for this term
                 }
             }
         }
         
-        // Step 2: Calculate PREVIOUS SESSION balance (always check)
+        // Step 2: Calculate PREVIOUS SESSION balance
         const previousSession = getPreviousSessionName(currentSession);
         if (previousSession) {
             try {
-                const sessionArrears = await calculateSessionBalance(pupilId, previousSession);
+                const sessionArrears = await calculateSessionBalanceSafe(pupilId, previousSession);
                 totalArrears += sessionArrears;
-                console.log(`Previous session (${previousSession}) arrears: ₦${sessionArrears.toLocaleString()}`);
+                console.log(`✓ Previous session (${previousSession}) arrears: ₦${sessionArrears.toLocaleString()}`);
             } catch (error) {
-                // ✅ FIXED: Handle permission errors gracefully
-                if (error.code === 'permission-denied') {
-                    console.warn('Permission denied for previous session, assuming no arrears');
-                } else {
-                    console.error('Error calculating session balance:', error);
-                }
+                console.error('Error calculating previous session balance:', error);
+                // Continue without adding session arrears
             }
         }
         
@@ -939,13 +934,53 @@ async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
         return totalArrears;
         
     } catch (error) {
-        console.error('Error calculating complete arrears:', error);
-        return 0; // ✅ Return 0 instead of failing
+        console.error('Error in calculateCompleteArrears:', error);
+        return 0; // Safe fallback
+    }
+}
+
+/**
+ * ✅ NEW: Safe session balance calculation that handles missing documents
+ */
+async function calculateSessionBalanceSafe(pupilId, session) {
+    try {
+        const encodedSession = session.replace(/\//g, '-');
+        let totalBalance = 0;
+        
+        // Try each term individually to avoid query permission errors
+        const terms = ['First Term', 'Second Term', 'Third Term'];
+        
+        for (const term of terms) {
+            const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+            
+            try {
+                const doc = await db.collection('payments').doc(paymentDocId).get();
+                
+                if (doc.exists) {
+                    const balance = Number(doc.data().balance) || 0;
+                    totalBalance += balance;
+                    
+                    if (balance > 0) {
+                        console.log(`  - ${term}: ₦${balance.toLocaleString()}`);
+                    }
+                }
+            } catch (docError) {
+                // Skip this term if error occurs
+                console.warn(`Skipped ${term} for session ${session}:`, docError.message);
+            }
+        }
+        
+        return totalBalance;
+        
+    } catch (error) {
+        console.error('Error in calculateSessionBalanceSafe:', error);
+        return 0;
     }
 }
 
 // Make globally available
 window.calculateCompleteArrears = calculateCompleteArrears;
+window.calculateSessionBalanceSafe = calculateSessionBalanceSafe;
 
 /**
  * ✅ NEW: Calculate actual fee for pupil with adjustments
