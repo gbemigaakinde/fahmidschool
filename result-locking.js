@@ -234,7 +234,7 @@ async submitForApproval(classId, term, subject, session, teacherUid, teacherName
       error: error.code || 'unknown'
     };
   }
-}
+},
 
   /**
    * Approve submitted results
