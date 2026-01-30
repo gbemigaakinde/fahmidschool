@@ -1877,63 +1877,6 @@ async function loadPromotionPeriodStatus() {
   }
 }
 
-/**
- * Load result approvals section
- */
-async function loadResultApprovals() {
-  const tbody = document.getElementById('result-approvals-table');
-  const noApprovalsMsg = document.getElementById('no-approvals-message');
-  
-  if (!tbody) return;
-  
-  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
-  
-  try {
-    const submissions = await window.resultLocking.getSubmittedResults();
-    
-    tbody.innerHTML = '';
-    
-    if (submissions.length === 0) {
-      if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-      return;
-    }
-    
-    if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
-    
-    for (const submission of submissions) {
-      const submittedDate = submission.submittedAt 
-        ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
-        : '-';
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
-        <td data-label="Class">${submission.className || '-'}</td>
-        <td data-label="Subject">${submission.subject || '-'}</td>
-        <td data-label="Term">${submission.term || '-'}</td>
-        <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
-        <td data-label="Submitted">${submittedDate}</td>
-        <td data-label="Status">
-          <span class="status-pending">Pending</span>
-        </td>
-        <td data-label="Actions">
-          <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
-            ✓ Approve
-          </button>
-          <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
-            ✗ Reject
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    }
-    
-  } catch (error) {
-    console.error('Error loading result approvals:', error);
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
-  }
-}
-
 /* ========================================
    ADMIN: VIEW PUPIL RESULTS BY SESSION
 ======================================== */
@@ -9065,12 +9008,14 @@ async function deleteItem(collection, docId) {
 window.deleteItem = deleteItem;
 
 console.log('✓ deleteItem function exposed globally');
+
 /**
- * Load result approvals section
+ * ✅ FIXED: Load result approvals section with "Approve All" button
  */
 async function loadResultApprovals() {
     const tbody = document.getElementById('result-approvals-table');
     const noApprovalsMsg = document.getElementById('no-approvals-message');
+    const bulkActionsBar = document.getElementById('bulk-approval-actions');
     
     if (!tbody) return;
     
@@ -9083,10 +9028,12 @@ async function loadResultApprovals() {
         
         if (submissions.length === 0) {
             if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
+            if (bulkActionsBar) bulkActionsBar.style.display = 'none';
             return;
         }
         
         if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+        if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
         
         for (const submission of submissions) {
             const submittedDate = submission.submittedAt 
@@ -9116,67 +9063,318 @@ async function loadResultApprovals() {
             tbody.appendChild(tr);
         }
         
+        console.log(`✓ Loaded ${submissions.length} pending approval(s)`);
+        
     } catch (error) {
-        console.error('Error loading result approvals:', error);
+        console.error('❌ Error loading result approvals:', error);
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
+        if (bulkActionsBar) bulkActionsBar.style.display = 'none';
     }
 }
 
 /**
- * Approve result submission
+ * ✅ COMPLETE FIX: Approve result submission
+ * Approves results and locks them from further editing
  */
 async function approveResultSubmission(submissionId) {
-    if (!confirm('Approve these results and lock them?\n\nTeacher will not be able to edit unless you unlock.')) {
+    if (!submissionId) {
+        window.showToast?.('Invalid submission ID', 'danger');
         return;
     }
+
+    const confirmation = confirm(
+        'Approve these results?\n\n' +
+        '✓ Results will be locked and visible to pupils\n' +
+        '✓ Teacher cannot edit unless you unlock\n\n' +
+        'Continue?'
+    );
     
+    if (!confirmation) return;
+
     try {
-        const result = await window.resultLocking.approveResults(submissionId, auth.currentUser.uid);
+        // Get submission data
+        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
         
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
+        if (!submissionDoc.exists) {
+            window.showToast?.('Submission not found', 'danger');
+            return;
         }
         
+        const submissionData = submissionDoc.data();
+        
+        // Validate submission has required data
+        if (!submissionData.classId || !submissionData.term || !submissionData.subject || !submissionData.session) {
+            window.showToast?.('Invalid submission data', 'danger');
+            return;
+        }
+
+        console.log('Approving submission:', {
+            class: submissionData.className,
+            term: submissionData.term,
+            subject: submissionData.subject,
+            session: submissionData.session
+        });
+
+        // Update submission status to approved
+        await db.collection('result_submissions').doc(submissionId).update({
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedBy: auth.currentUser.uid,
+            approvedByEmail: auth.currentUser.email
+        });
+
+        // Lock the results using result-locking module
+        const lockResult = await window.resultLocking.lockResults(
+            submissionData.classId,
+            submissionData.className,
+            submissionData.term,
+            submissionData.subject,
+            submissionData.session,
+            auth.currentUser.uid
+        );
+
+        if (!lockResult.success) {
+            throw new Error('Failed to lock results: ' + (lockResult.error || 'Unknown error'));
+        }
+
+        // Mark all related results as approved (visible to pupils)
+        const resultsSnapshot = await db.collection('results')
+            .where('session', '==', submissionData.session)
+            .where('term', '==', submissionData.term)
+            .where('subject', '==', submissionData.subject)
+            .get();
+
+        if (!resultsSnapshot.empty) {
+            const batch = db.batch();
+            resultsSnapshot.forEach(doc => {
+                batch.update(doc.ref, {
+                    approved: true,
+                    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    approvedBy: auth.currentUser.uid
+                });
+            });
+            await batch.commit();
+            console.log(`✓ Marked ${resultsSnapshot.size} results as approved`);
+        }
+
+        window.showToast?.(
+            `✓ Results approved successfully!\n\n` +
+            `Class: ${submissionData.className}\n` +
+            `Subject: ${submissionData.subject}\n` +
+            `Term: ${submissionData.term}\n\n` +
+            `Results are now locked and visible to pupils.`,
+            'success',
+            8000
+        );
+
+        // Reload approvals table
+        await loadResultApprovals();
+
     } catch (error) {
-        console.error('Error approving results:', error);
-        window.handleError(error, 'Failed to approve results');
+        console.error('❌ Error approving results:', error);
+        window.showToast?.(
+            `Failed to approve results: ${error.message}`,
+            'danger',
+            6000
+        );
     }
 }
 
 /**
- * Reject result submission
+ * ✅ COMPLETE FIX: Reject result submission
+ * Rejects results and allows teacher to re-edit and resubmit
  */
 async function rejectResultSubmission(submissionId) {
-    const reason = prompt('Reason for rejection (teacher will see this):');
-    
-    if (!reason) {
-        window.showToast?.('Rejection cancelled - reason required', 'info');
+    if (!submissionId) {
+        window.showToast?.('Invalid submission ID', 'danger');
         return;
     }
+
+    const reason = prompt(
+        'Reason for rejection:\n\n' +
+        '(Teacher will see this message and can re-edit the results)'
+    );
     
+    if (!reason || reason.trim() === '') {
+        window.showToast?.('Rejection reason is required', 'warning');
+        return;
+    }
+
     try {
-        const result = await window.resultLocking.rejectResults(submissionId, auth.currentUser.uid, reason);
+        // Get submission data
+        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
         
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
+        if (!submissionDoc.exists) {
+            window.showToast?.('Submission not found', 'danger');
+            return;
         }
         
+        const submissionData = submissionDoc.data();
+
+        console.log('Rejecting submission:', {
+            class: submissionData.className,
+            term: submissionData.term,
+            subject: submissionData.subject,
+            reason: reason
+        });
+
+        // Update submission status to rejected
+        await db.collection('result_submissions').doc(submissionId).update({
+            status: 'rejected',
+            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rejectedBy: auth.currentUser.uid,
+            rejectedByEmail: auth.currentUser.email,
+            rejectionReason: reason.trim()
+        });
+
+        window.showToast?.(
+            `✓ Results rejected\n\n` +
+            `Teacher: ${submissionData.teacherName}\n` +
+            `Class: ${submissionData.className}\n` +
+            `Subject: ${submissionData.subject}\n\n` +
+            `Teacher can now re-edit and resubmit.`,
+            'success',
+            6000
+        );
+
+        // Reload approvals table
+        await loadResultApprovals();
+
     } catch (error) {
-        console.error('Error rejecting results:', error);
-        window.handleError(error, 'Failed to reject results');
+        console.error('❌ Error rejecting results:', error);
+        window.showToast?.(
+            `Failed to reject results: ${error.message}`,
+            'danger',
+            6000
+        );
     }
 }
 
-// Make functions globally available
-window.loadResultApprovals = loadResultApprovals;
+/**
+ * ✅ NEW: Approve ALL pending result submissions
+ * Bulk approval with safety checks
+ */
+async function approveAllPendingResults() {
+    const confirmation = confirm(
+        '⚠️ APPROVE ALL PENDING RESULTS?\n\n' +
+        'This will:\n' +
+        '✓ Approve ALL pending result submissions\n' +
+        '✓ Lock all approved results\n' +
+        '✓ Make all results visible to pupils\n\n' +
+        'This action affects multiple classes and subjects.\n\n' +
+        'Continue?'
+    );
+    
+    if (!confirmation) return;
+
+    const doubleCheck = prompt('Type "APPROVE ALL" to confirm:');
+    
+    if (doubleCheck !== 'APPROVE ALL') {
+        window.showToast?.('Bulk approval cancelled', 'info');
+        return;
+    }
+
+    try {
+        // Get all pending submissions
+        const pendingSnapshot = await db.collection('result_submissions')
+            .where('status', '==', 'pending')
+            .get();
+
+        if (pendingSnapshot.empty) {
+            window.showToast?.('No pending submissions to approve', 'info');
+            return;
+        }
+
+        const totalSubmissions = pendingSnapshot.size;
+        let successCount = 0;
+        let failCount = 0;
+
+        window.showToast?.(
+            `Processing ${totalSubmissions} submission(s)...`,
+            'info',
+            3000
+        );
+
+        // Process each submission
+        for (const doc of pendingSnapshot.docs) {
+            try {
+                const submissionData = doc.data();
+
+                // Update submission status
+                await db.collection('result_submissions').doc(doc.id).update({
+                    status: 'approved',
+                    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    approvedBy: auth.currentUser.uid,
+                    approvedByEmail: auth.currentUser.email,
+                    bulkApproved: true
+                });
+
+                // Lock results
+                await window.resultLocking.lockResults(
+                    submissionData.classId,
+                    submissionData.className,
+                    submissionData.term,
+                    submissionData.subject,
+                    submissionData.session,
+                    auth.currentUser.uid
+                );
+
+                // Mark results as approved
+                const resultsSnapshot = await db.collection('results')
+                    .where('session', '==', submissionData.session)
+                    .where('term', '==', submissionData.term)
+                    .where('subject', '==', submissionData.subject)
+                    .get();
+
+                if (!resultsSnapshot.empty) {
+                    const batch = db.batch();
+                    resultsSnapshot.forEach(resultDoc => {
+                        batch.update(resultDoc.ref, {
+                            approved: true,
+                            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            approvedBy: auth.currentUser.uid
+                        });
+                    });
+                    await batch.commit();
+                }
+
+                successCount++;
+                console.log(`✓ Approved: ${submissionData.className} - ${submissionData.subject}`);
+
+            } catch (error) {
+                console.error(`❌ Failed to approve submission ${doc.id}:`, error);
+                failCount++;
+            }
+        }
+
+        window.showToast?.(
+            `✓ Bulk Approval Complete!\n\n` +
+            `✓ Approved: ${successCount} submission(s)\n` +
+            `${failCount > 0 ? `❌ Failed: ${failCount} submission(s)\n` : ''}` +
+            `\nAll approved results are now visible to pupils.`,
+            successCount === totalSubmissions ? 'success' : 'warning',
+            10000
+        );
+
+        // Reload approvals table
+        await loadResultApprovals();
+
+    } catch (error) {
+        console.error('❌ Error in bulk approval:', error);
+        window.showToast?.(
+            `Bulk approval failed: ${error.message}`,
+            'danger',
+            6000
+        );
+    }
+}
+
+// ✅ CRITICAL: Make functions globally available
 window.approveResultSubmission = approveResultSubmission;
 window.rejectResultSubmission = rejectResultSubmission;
+window.approveAllPendingResults = approveAllPendingResults;
+
+console.log('✅ Result approval functions loaded and exposed globally');
 
 /**
  * FIXED: Initialize Sidebar Navigation
