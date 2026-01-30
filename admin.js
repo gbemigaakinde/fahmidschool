@@ -3354,7 +3354,6 @@ async function loadPupilsForPayment() {
 
 /**
  * ✅ FIXED: Load Pupil Payment Status - MATCHES PUPIL PORTAL LOGIC
- * Replace the loadPupilPaymentStatus function in admin.js (around line 2100)
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -3381,7 +3380,7 @@ async function loadPupilPaymentStatus() {
     const term = settings.term;
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 1: GET PUPIL DATA (for adjustments)
+       ✅ STEP 1: GET PUPIL DATA (for adjustments)
     ═══════════════════════════════════════════════════════════ */
     const pupilDoc = await db.collection('pupils').doc(pupilId).get();
     
@@ -3394,7 +3393,7 @@ async function loadPupilPaymentStatus() {
     console.log('📊 Loading payment status for:', pupilName);
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 2: GET BASE FEE (class-based, permanent)
+       ✅ STEP 2: GET BASE FEE (class-based, permanent)
     ═══════════════════════════════════════════════════════════ */
     const feeDocId = `fee_${classId}`;
     console.log(`Looking up fee structure: ${feeDocId}`);
@@ -3418,7 +3417,7 @@ async function loadPupilPaymentStatus() {
     console.log(`✓ Base fee for ${className}: ₦${baseFee.toLocaleString()}`);
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 3: CALCULATE ADJUSTED FEE
+       ✅ STEP 3: CALCULATE ADJUSTED FEE
        ⚠️ CRITICAL: Use the SAME function as pupil portal
     ═══════════════════════════════════════════════════════════ */
     const amountDue = window.calculateAdjustedFee 
@@ -3444,7 +3443,7 @@ async function loadPupilPaymentStatus() {
     }
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 4: CALCULATE COMPLETE ARREARS
+       ✅ STEP 4: CALCULATE COMPLETE ARREARS
        ⚠️ CRITICAL: Use the SAME function as pupil portal
     ═══════════════════════════════════════════════════════════ */
     const arrears = window.calculateCompleteArrears
@@ -3455,7 +3454,7 @@ async function loadPupilPaymentStatus() {
     console.log(`   Total arrears: ₦${arrears.toLocaleString()}`);
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 5: GET PAYMENT RECORD
+       ✅ STEP 5: GET/CREATE PAYMENT RECORD
     ═══════════════════════════════════════════════════════════ */
     const encodedSession = session.replace(/\//g, '-');
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
@@ -3472,6 +3471,41 @@ async function loadPupilPaymentStatus() {
     let balance = amountDue + arrears;
     let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
 
+    // ✅ AUTO-CREATE if missing
+    if (!paymentDoc.exists) {
+      console.log('⚠️ Payment record missing, auto-creating...');
+      
+      try {
+        await db.collection('payments').doc(paymentDocId).set({
+          pupilId: pupilId,
+          pupilName: pupilName,
+          classId: classId,
+          className: className,
+          session: session,
+          term: term,
+          baseFee: baseFee,
+          adjustedFee: amountDue,
+          amountDue: amountDue,
+          arrears: arrears,
+          totalDue: amountDue + arrears,
+          totalPaid: 0,
+          balance: amountDue + arrears,
+          status: status,
+          lastPaymentDate: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          autoCreatedByAdmin: true
+        });
+        
+        console.log('✅ Auto-created payment record');
+        
+        // Re-fetch
+        paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+      } catch (createError) {
+        console.error('Failed to auto-create:', createError);
+      }
+    }
+
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
       totalPaid = Number(data.totalPaid) || 0;
@@ -3481,12 +3515,10 @@ async function loadPupilPaymentStatus() {
       console.log(`✓ Existing payment record found:`);
       console.log(`   Total paid: ₦${totalPaid.toLocaleString()}`);
       console.log(`   Balance: ₦${balance.toLocaleString()}`);
-    } else {
-      console.log(`ℹ️ No payment record yet - will be created on first payment`);
     }
 
     /* ═══════════════════════════════════════════════════════════
-       STEP 6: RENDER STATUS (matching pupil portal style)
+       ✅ STEP 6: RENDER STATUS (matching pupil portal style)
     ═══════════════════════════════════════════════════════════ */
     const totalDue = amountDue + arrears;
     
@@ -3643,7 +3675,6 @@ async function loadPupilPaymentStatus() {
   }
 }
 
-// Replace the existing function in admin.js
 window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 
 console.log('✅ Admin payment status fix loaded - now matches pupil portal logic');
@@ -10715,5 +10746,44 @@ window.adminDebug = {
   }
 };
 }
+
+/**
+ * ✅ Helper functions for financial calculations
+ */
+
+// Already exists in pupil.js - copy to admin.js
+window.getPreviousSessionName = function(currentSession) {
+    const match = currentSession.match(/(\d{4})\/(\d{4})/);
+    if (!match) return null;
+    
+    const startYear = parseInt(match[1]);
+    const endYear = parseInt(match[2]);
+    
+    return `${startYear - 1}/${endYear - 1}`;
+};
+
+window.calculateSessionBalance = async function(pupilId, session) {
+    try {
+        const paymentsSnap = await db.collection('payments')
+            .where('pupilId', '==', pupilId)
+            .where('session', '==', session)
+            .get();
+        
+        let totalBalance = 0;
+        
+        paymentsSnap.forEach(doc => {
+            const data = doc.data();
+            totalBalance += Number(data.balance) || 0;
+        });
+        
+        return totalBalance;
+        
+    } catch (error) {
+        console.error('Error calculating session balance:', error);
+        return 0;
+    }
+};
+
+console.log('✅ Financial helper functions loaded');
 console.log('✅ Admin.js v7.0.0 loaded successfully');
 console.log('User creation system: READY');
