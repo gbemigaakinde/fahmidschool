@@ -16,6 +16,178 @@
 'use strict';
 
 /**
+ * ✅ CRITICAL: Calculate adjusted fee (same logic as pupil portal)
+ * Must be available before any admin financial functions run
+ */
+window.calculateAdjustedFee = function(pupilData, baseFee, currentTerm) {
+  if (!pupilData || typeof baseFee !== 'number') {
+    console.warn('Invalid pupilData or baseFee');
+    return baseFee || 0;
+  }
+  
+  // Step 1: Check enrollment period
+  const termOrder = {
+    'First Term': 1,
+    'Second Term': 2,
+    'Third Term': 3
+  };
+  
+  const currentTermNum = termOrder[currentTerm] || 1;
+  const admissionTermNum = termOrder[pupilData.admissionTerm || 'First Term'] || 1;
+  const exitTermNum = termOrder[pupilData.exitTerm || 'Third Term'] || 3;
+  
+  // Not enrolled for this term
+  if (currentTermNum < admissionTermNum || currentTermNum > exitTermNum) {
+    console.log(`Pupil ${pupilData.name} not enrolled for ${currentTerm}`);
+    return 0;
+  }
+  
+  // Step 2: Start with base fee
+  let adjustedFee = baseFee;
+  
+  // Step 3: Apply percentage adjustment
+  const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
+  if (percentAdjustment !== 0) {
+    adjustedFee = adjustedFee * (1 + percentAdjustment / 100);
+    console.log(`Applied ${percentAdjustment}% adjustment: ₦${baseFee.toLocaleString()} → ₦${adjustedFee.toLocaleString()}`);
+  }
+  
+  // Step 4: Apply fixed amount adjustment
+  const amountAdjustment = Number(pupilData.feeAdjustmentAmount) || 0;
+  if (amountAdjustment !== 0) {
+    adjustedFee = adjustedFee + amountAdjustment;
+    console.log(`Applied ₦${amountAdjustment.toLocaleString()} adjustment: final = ₦${adjustedFee.toLocaleString()}`);
+  }
+  
+  // Step 5: Ensure non-negative
+  const finalFee = Math.max(0, adjustedFee);
+  
+  if (finalFee === 0 && baseFee > 0) {
+    console.log(`✓ Free education applied for ${pupilData.name}`);
+  }
+  
+  return finalFee;
+};
+
+console.log('✅ calculateAdjustedFee() loaded for admin portal');
+
+/**
+ * ✅ CRITICAL: Calculate complete arrears (same logic as pupil portal)
+ * Includes previous term (same session) + previous session balances
+ */
+window.calculateCompleteArrears = async function(pupilId, currentSession, currentTerm) {
+  try {
+    let totalArrears = 0;
+    const encodedSession = currentSession.replace(/\//g, '-');
+    
+    // Step 1: Calculate PREVIOUS TERM balance (same session)
+    const termOrder = {
+      'First Term': 1,
+      'Second Term': 2,
+      'Third Term': 3
+    };
+    
+    const currentTermNum = termOrder[currentTerm] || 1;
+    
+    // Get previous term in same session
+    if (currentTermNum > 1) {
+      const previousTermName = Object.keys(termOrder).find(
+        key => termOrder[key] === currentTermNum - 1
+      );
+      
+      if (previousTermName) {
+        const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
+        
+        try {
+          const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
+          
+          if (prevTermDoc.exists) {
+            const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
+            totalArrears += prevTermBalance;
+            console.log(`✓ Previous term (${previousTermName}) arrears: ₦${prevTermBalance.toLocaleString()}`);
+          } else {
+            console.log(`ℹ️ No payment record for ${previousTermName}, assuming ₦0 arrears`);
+          }
+        } catch (error) {
+          console.error('Error fetching previous term balance:', error);
+        }
+      }
+    }
+    
+    // Step 2: Calculate PREVIOUS SESSION balance
+    const previousSession = getPreviousSessionName(currentSession);
+    if (previousSession) {
+      try {
+        const sessionArrears = await calculateSessionBalanceSafe(pupilId, previousSession);
+        totalArrears += sessionArrears;
+        console.log(`✓ Previous session (${previousSession}) arrears: ₦${sessionArrears.toLocaleString()}`);
+      } catch (error) {
+        console.error('Error calculating previous session balance:', error);
+      }
+    }
+    
+    console.log(`✓ Total arrears calculated: ₦${totalArrears.toLocaleString()}`);
+    return totalArrears;
+    
+  } catch (error) {
+    console.error('Error in calculateCompleteArrears:', error);
+    return 0;
+  }
+};
+
+/**
+ * Helper: Safe session balance calculation
+ */
+async function calculateSessionBalanceSafe(pupilId, session) {
+  try {
+    const encodedSession = session.replace(/\//g, '-');
+    let totalBalance = 0;
+    
+    const terms = ['First Term', 'Second Term', 'Third Term'];
+    
+    for (const term of terms) {
+      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+      
+      try {
+        const doc = await db.collection('payments').doc(paymentDocId).get();
+        
+        if (doc.exists) {
+          const balance = Number(doc.data().balance) || 0;
+          totalBalance += balance;
+          
+          if (balance > 0) {
+            console.log(`  - ${term}: ₦${balance.toLocaleString()}`);
+          }
+        }
+      } catch (docError) {
+        console.warn(`Skipped ${term} for session ${session}:`, docError.message);
+      }
+    }
+    
+    return totalBalance;
+    
+  } catch (error) {
+    console.error('Error in calculateSessionBalanceSafe:', error);
+    return 0;
+  }
+}
+
+/**
+ * Helper: Get previous session name
+ */
+function getPreviousSessionName(currentSession) {
+  const match = currentSession.match(/(\d{4})\/(\d{4})/);
+  if (!match) return null;
+  
+  const startYear = parseInt(match[1]);
+  const endYear = parseInt(match[2]);
+  
+  return `${startYear - 1}/${endYear - 1}`;
+}
+
+console.log('✅ calculateCompleteArrears() loaded for admin portal');
+
+/**
  * FIXED: Delete Item with Payment Protection
  * Prevents deletion of any financial records
  */
@@ -3409,7 +3581,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * ✅ FIXED: Load Pupil Payment Status - MATCHES PUPIL PORTAL LOGIC
+ * ✅ FIXED: Load Pupil Payment Status - Now Uses Adjusted Fees
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -3473,12 +3645,13 @@ async function loadPupilPaymentStatus() {
     console.log(`✓ Base fee for ${className}: ₦${baseFee.toLocaleString()}`);
 
     /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 3: CALCULATE ADJUSTED FEE
-       ⚠️ CRITICAL: Use the SAME function as pupil portal
+       ✅ STEP 3: CALCULATE ADJUSTED FEE (CRITICAL - NO FALLBACK)
     ═══════════════════════════════════════════════════════════ */
-    const amountDue = window.calculateAdjustedFee 
-      ? window.calculateAdjustedFee(pupilData, baseFee, term)
-      : baseFee;
+    if (typeof window.calculateAdjustedFee !== 'function') {
+      throw new Error('CRITICAL ERROR: calculateAdjustedFee() not loaded. Cannot calculate fees.');
+    }
+    
+    const amountDue = window.calculateAdjustedFee(pupilData, baseFee, term);
     
     console.log(`📊 Fee calculation:`);
     console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
@@ -3499,12 +3672,13 @@ async function loadPupilPaymentStatus() {
     }
 
     /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 4: CALCULATE COMPLETE ARREARS
-       ⚠️ CRITICAL: Use the SAME function as pupil portal
+       ✅ STEP 4: CALCULATE COMPLETE ARREARS (CRITICAL - NO FALLBACK)
     ═══════════════════════════════════════════════════════════ */
-    const arrears = window.calculateCompleteArrears
-      ? await window.calculateCompleteArrears(pupilId, session, term)
-      : 0;
+    if (typeof window.calculateCompleteArrears !== 'function') {
+      throw new Error('CRITICAL ERROR: calculateCompleteArrears() not loaded. Cannot calculate arrears.');
+    }
+    
+    const arrears = await window.calculateCompleteArrears(pupilId, session, term);
     
     console.log(`💰 Arrears calculation:`);
     console.log(`   Total arrears: ₦${arrears.toLocaleString()}`);
@@ -3574,7 +3748,7 @@ async function loadPupilPaymentStatus() {
     }
 
     /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 6: RENDER STATUS (matching pupil portal style)
+       ✅ STEP 6: RENDER STATUS (shows adjusted fees + arrears)
     ═══════════════════════════════════════════════════════════ */
     const totalDue = amountDue + arrears;
     
@@ -3625,7 +3799,7 @@ async function loadPupilPaymentStatus() {
       }
     }
 
-    // Build arrears warning
+    // Arrears warning
     const arrearsHTML = arrears > 0 ? `
       <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
         <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
@@ -3644,6 +3818,9 @@ async function loadPupilPaymentStatus() {
       </div>
     ` : '';
 
+    const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+
+    // Render complete fee section
     statusContainer.innerHTML = `
       <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -3657,7 +3834,7 @@ async function loadPupilPaymentStatus() {
         ${adjustmentBadge}
         ${arrearsHTML}
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-top:var(--space-lg);">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-md); margin-bottom:var(--space-xl);">
           ${baseFee !== amountDue ? `
           <div style="text-align:center; padding:var(--space-md); background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-gray-600); margin-bottom:var(--space-xs);">Base Fee</div>
@@ -3678,27 +3855,32 @@ async function loadPupilPaymentStatus() {
           <div style="text-align:center; padding:var(--space-md); background:var(--color-success-light); border:1px solid var(--color-success); border-radius:var(--radius-sm);">
             <div style="font-size:var(--text-xs); color:var(--color-success-dark); margin-bottom:var(--space-xs);">Total Paid</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:var(--color-success-dark);">₦${totalPaid.toLocaleString()}</div>
+            <div style="font-size:var(--text-xs); opacity:0.8; margin-top:var(--space-xs);">
+              ${totalPaid > 0 ? percentPaid + '% collected' : 'No payments yet'}
+            </div>
           </div>
 
           <div style="text-align:center; padding:var(--space-md); background:${balance > 0 ? 'var(--color-danger-light)' : 'var(--color-success-light)'}; border:2px solid ${balance > 0 ? 'var(--color-danger)' : 'var(--color-success)'}; border-radius:var(--radius-sm);">
-            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs); font-weight:600;">Total Balance</div>
+            <div style="font-size:var(--text-xs); color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'}; margin-bottom:var(--space-xs); font-weight:600;">Outstanding</div>
             <div style="font-size:var(--text-xl); font-weight:700; color:${balance > 0 ? 'var(--color-danger-dark)' : 'var(--color-success-dark)'};">₦${balance.toLocaleString()}</div>
           </div>
         </div>
 
-        ${balance > 0 ? `
-        <div style="margin-top: var(--space-lg); padding: var(--space-md); background: #fef2f2; border: 1px solid #dc3545; border-radius: var(--radius-sm);">
-          <p style="margin: 0; font-size: var(--text-sm); color: #991b1b;">
-            <strong>⚠️ Payment Advice:</strong> Outstanding balance is ₦${balance.toLocaleString()}. 
-            ${arrears > 0 ? `Includes ₦${arrears.toLocaleString()} arrears that will be cleared first.` : ''}
+        <div style="margin-top: var(--space-lg); padding: var(--space-md); background: ${balance > 0 ? '#fef2f2' : '#f0fdf4'}; border: 2px solid ${balance > 0 ? '#dc3545' : '#4CAF50'}; border-radius: var(--radius-md);">
+          <h4 style="margin: 0 0 var(--space-sm); color: ${balance > 0 ? '#991b1b' : '#065f46'}; display: flex; align-items: center; gap: var(--space-sm);">
+            <i data-lucide="${balance > 0 ? 'alert-triangle' : 'check-circle'}" style="width: 18px; height: 18px;"></i>
+            ${balance > 0 ? 'Payment Required' : 'Term Fees Paid'}
+          </h4>
+          <p style="margin: 0; font-size: var(--text-sm); color: ${balance > 0 ? '#7f1d1d' : '#14532d'};">
+            ${balance > 0 
+              ? `Outstanding balance of ₦${balance.toLocaleString()} for ${term}. ${arrears > 0 ? `Includes ₦${arrears.toLocaleString()} arrears.` : ''}`
+              : `All fees for ${term} have been paid in full. Thank you!`}
           </p>
-        </div>` : ''}
+        </div>
       </div>
     `;
 
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Update payment input
     document.getElementById('payment-input-section').style.display = 'block';
@@ -3831,6 +4013,15 @@ async function loadOutstandingFeesReport() {
         const session = settings.session;
         const currentTerm = settings.term;
 
+        // ✅ CRITICAL: Verify adjustment functions exist
+        if (typeof window.calculateAdjustedFee !== 'function') {
+            throw new Error('CRITICAL: calculateAdjustedFee() not loaded');
+        }
+        
+        if (typeof window.calculateCompleteArrears !== 'function') {
+            throw new Error('CRITICAL: calculateCompleteArrears() not loaded');
+        }
+
         // ✅ Step 1: Get ALL currently enrolled pupils
         const pupilsSnap = await db.collection('pupils').get();
         
@@ -3879,9 +4070,7 @@ async function loadOutstandingFeesReport() {
             }
 
             // ✅ CRITICAL: Calculate ADJUSTED fee (scholarships, enrollment)
-            const amountDue = window.calculateAdjustedFee ? 
-                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
-                baseFee;
+            const amountDue = window.calculateAdjustedFee(pupilData, baseFee, currentTerm);
             
             // Skip if pupil not enrolled for this term
             if (amountDue === 0) {
@@ -3913,15 +4102,8 @@ async function loadOutstandingFeesReport() {
                 status = paymentData.status || 'owing';
             } else {
                 // ✅ Calculate arrears for non-existent record
-                const previousSession = getPreviousSessionName(session);
-                if (previousSession) {
-                    try {
-                        arrears = await calculateSessionBalance(pupilId, previousSession);
-                        balance = amountDue + arrears;
-                    } catch (error) {
-                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
-                    }
-                }
+                arrears = await window.calculateCompleteArrears(pupilId, session, currentTerm);
+                balance = amountDue + arrears;
             }
 
             // Only include pupils with outstanding balance
@@ -4080,6 +4262,11 @@ async function loadFinancialReports() {
         const session = settings.session;
         const currentTerm = settings.term;
 
+        // ✅ CRITICAL: Verify adjustment functions exist
+        if (typeof window.calculateAdjustedFee !== 'function') {
+            throw new Error('CRITICAL: calculateAdjustedFee() not loaded');
+        }
+
         // ✅ Get ALL pupils
         const pupilsSnap = await db.collection('pupils').get();
         
@@ -4126,9 +4313,7 @@ async function loadFinancialReports() {
             if (!baseFee) continue;
 
             // ✅ CRITICAL: Calculate ADJUSTED fee
-            const amountDue = window.calculateAdjustedFee ? 
-                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
-                baseFee;
+            const amountDue = window.calculateAdjustedFee(pupilData, baseFee, currentTerm);
             
             // Skip if not enrolled this term
             if (amountDue === 0) {
@@ -4160,15 +4345,10 @@ async function loadFinancialReports() {
                 balance = Number(data.balance) || 0;
             } else {
                 // Calculate arrears for non-existent record
-                const previousSession = getPreviousSessionName(session);
-                if (previousSession) {
-                    try {
-                        arrears = await calculateSessionBalance(pupilId, previousSession);
-                        totalDue = amountDue + arrears;
-                        balance = totalDue;
-                    } catch (error) {
-                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
-                    }
+                if (typeof window.calculateCompleteArrears === 'function') {
+                    arrears = await window.calculateCompleteArrears(pupilId, session, currentTerm);
+                    totalDue = amountDue + arrears;
+                    balance = totalDue;
                 }
             }
 
