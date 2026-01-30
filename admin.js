@@ -3583,7 +3583,7 @@ async function loadPaymentHistory(pupilId, session, term) {
 window.loadPaymentHistory = loadPaymentHistory;
 
 /**
- * FIXED: Outstanding Fees Report - Current Term with Arrears
+ * ✅ FIXED: Outstanding Fees Report - Accounts for Adjusted Fees
  */
 async function loadOutstandingFeesReport() {
     const container = document.getElementById('outstanding-fees-table');
@@ -3608,13 +3608,12 @@ async function loadOutstandingFeesReport() {
             return;
         }
 
-        // ✅ Step 2: Get ALL fee structures (class-based, NO session filter)
+        // ✅ Step 2: Get ALL fee structures (class-based)
         const feeStructuresSnap = await db.collection('fee_structures').get();
         
         const feeMap = {};
         feeStructuresSnap.forEach(doc => {
             const data = doc.data();
-            // Map classId -> fee amount
             feeMap[data.classId] = data.total || 0;
         });
 
@@ -3626,7 +3625,7 @@ async function loadOutstandingFeesReport() {
 
         console.log(`✓ Found ${feeStructuresSnap.size} fee structures (class-based)`);
 
-        // ✅ Step 3: Build outstanding list by checking each pupil
+        // ✅ Step 3: Build outstanding list with ADJUSTED fees
         const outstandingPupils = [];
         let totalOutstanding = 0;
         const encodedSession = session.replace(/\//g, '-');
@@ -3641,17 +3640,35 @@ async function loadOutstandingFeesReport() {
                 continue;
             }
             
-            const feeAmount = feeMap[classId];
-            if (!feeAmount) {
+            const baseFee = feeMap[classId];
+            if (!baseFee) {
                 console.warn(`No fee structure for class ${classId}, skipping pupil ${pupilData.name}`);
+                continue;
+            }
+
+            // ✅ CRITICAL: Calculate ADJUSTED fee (scholarships, enrollment)
+            const amountDue = window.calculateAdjustedFee ? 
+                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
+                baseFee;
+            
+            // Skip if pupil not enrolled for this term
+            if (amountDue === 0) {
+                console.log(`Pupil ${pupilData.name} not enrolled for ${currentTerm}, skipping`);
                 continue;
             }
 
             // Get payment record for current term
             const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
-            const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            
+            let paymentDoc;
+            try {
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            } catch (error) {
+                console.warn(`Could not fetch payment record for ${pupilData.name}:`, error.message);
+                paymentDoc = { exists: false };
+            }
 
-            let balance = feeAmount; // Default: full amount owed
+            let balance = amountDue;
             let totalPaid = 0;
             let arrears = 0;
             let status = 'owing';
@@ -3663,12 +3680,15 @@ async function loadOutstandingFeesReport() {
                 arrears = Number(paymentData.arrears) || 0;
                 status = paymentData.status || 'owing';
             } else {
-                // No payment record = owing full amount
-                // Check for arrears from previous session
+                // ✅ Calculate arrears for non-existent record
                 const previousSession = getPreviousSessionName(session);
                 if (previousSession) {
-                    arrears = await calculateSessionBalance(pupilId, previousSession);
-                    balance = feeAmount + arrears;
+                    try {
+                        arrears = await calculateSessionBalance(pupilId, previousSession);
+                        balance = amountDue + arrears;
+                    } catch (error) {
+                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
+                    }
                 }
             }
 
@@ -3677,12 +3697,13 @@ async function loadOutstandingFeesReport() {
                 outstandingPupils.push({
                     name: pupilData.name || 'Unknown',
                     className: pupilData.class?.name || '-',
-                    amountDue: feeAmount,
+                    amountDue: amountDue,
                     arrears: arrears,
-                    totalDue: feeAmount + arrears,
+                    totalDue: amountDue + arrears,
                     totalPaid: totalPaid,
                     balance: balance,
-                    status: status
+                    status: status,
+                    baseFee: baseFee // Track original fee for reference
                 });
                 
                 totalOutstanding += balance;
@@ -3705,6 +3726,11 @@ async function loadOutstandingFeesReport() {
         outstandingPupils.forEach(pupil => {
             const tr = document.createElement('tr');
             
+            // ✅ Show adjusted fee indicator if different from base
+            const feeDisplay = pupil.amountDue !== pupil.baseFee
+                ? `₦${pupil.amountDue.toLocaleString()} <span style="color:#666; font-size:0.85em;">(adjusted from ₦${pupil.baseFee.toLocaleString()})</span>`
+                : `₦${pupil.amountDue.toLocaleString()}`;
+            
             const arrearsNote = pupil.arrears > 0 
                 ? `<br><span style="color:#dc3545; font-size:0.85em;">+ ₦${pupil.arrears.toLocaleString()} arrears</span>` 
                 : '';
@@ -3712,7 +3738,7 @@ async function loadOutstandingFeesReport() {
             tr.innerHTML = `
                 <td data-label="Pupil Name">${pupil.name}</td>
                 <td data-label="Class">${pupil.className}</td>
-                <td data-label="Amount Due">₦${pupil.amountDue.toLocaleString()}${arrearsNote}</td>
+                <td data-label="Amount Due">${feeDisplay}${arrearsNote}</td>
                 <td data-label="Total Paid">₦${pupil.totalPaid.toLocaleString()}</td>
                 <td data-label="Balance" class="text-bold text-danger">
                     ₦${pupil.balance.toLocaleString()}
@@ -3814,7 +3840,7 @@ window.updateSummaryDisplay = updateSummaryDisplay;
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
- * FIXED: Financial Reports - Current Term with Arrears Included
+ * ✅ FIXED: Financial Reports - Accounts for Adjusted Fees
  */
 async function loadFinancialReports() {
     try {
@@ -3856,7 +3882,7 @@ async function loadFinancialReports() {
 
         const encodedSession = session.replace(/\//g, '-');
 
-        // ✅ Process each pupil
+        // ✅ Process each pupil with ADJUSTED fees
         for (const pupilDoc of pupilsSnap.docs) {
             const pupilData = pupilDoc.data();
             const pupilId = pupilDoc.id;
@@ -3864,31 +3890,53 @@ async function loadFinancialReports() {
             
             if (!classId) continue;
             
-            const feeAmount = feeMap[classId];
-            if (!feeAmount) continue;
+            const baseFee = feeMap[classId];
+            if (!baseFee) continue;
+
+            // ✅ CRITICAL: Calculate ADJUSTED fee
+            const amountDue = window.calculateAdjustedFee ? 
+                window.calculateAdjustedFee(pupilData, baseFee, currentTerm) : 
+                baseFee;
+            
+            // Skip if not enrolled this term
+            if (amountDue === 0) {
+                console.log(`Pupil ${pupilData.name} not enrolled for ${currentTerm}, skipping from financial report`);
+                continue;
+            }
 
             // Get payment record
             const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
-            const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            
+            let paymentDoc;
+            try {
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            } catch (error) {
+                console.warn(`Could not fetch payment for ${pupilData.name}:`, error.message);
+                paymentDoc = { exists: false };
+            }
 
-            let totalDue = feeAmount;
+            let totalDue = amountDue;
             let totalPaid = 0;
-            let balance = feeAmount;
+            let balance = amountDue;
             let arrears = 0;
 
             if (paymentDoc.exists) {
                 const data = paymentDoc.data();
                 arrears = Number(data.arrears) || 0;
-                totalDue = feeAmount + arrears;
+                totalDue = amountDue + arrears;
                 totalPaid = Number(data.totalPaid) || 0;
                 balance = Number(data.balance) || 0;
             } else {
-                // No payment record - check for arrears
+                // Calculate arrears for non-existent record
                 const previousSession = getPreviousSessionName(session);
                 if (previousSession) {
-                    arrears = await calculateSessionBalance(pupilId, previousSession);
-                    totalDue = feeAmount + arrears;
-                    balance = totalDue;
+                    try {
+                        arrears = await calculateSessionBalance(pupilId, previousSession);
+                        totalDue = amountDue + arrears;
+                        balance = totalDue;
+                    } catch (error) {
+                        console.warn(`Could not calculate arrears for ${pupilData.name}:`, error.message);
+                    }
                 }
             }
 
@@ -4713,7 +4761,7 @@ async function deleteFeeStructure(docId, className) {
 }
 
 /**
- * ✅ FIXED: Record payment with robust class ID extraction and validation
+ * ✅ FIXED: Record payment with adjusted fee calculation
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -4756,7 +4804,7 @@ async function recordPayment() {
 
     const encodedSession = session.replace(/\//g, '-');
     
-    // ✅ CRITICAL FIX: Validate classId before constructing fee document ID
+    // Validate classId
     if (!classId || classId === 'undefined' || classId === 'null') {
       throw new Error(
         `Invalid class ID for pupil ${pupilName}.\n\n` +
@@ -4765,7 +4813,7 @@ async function recordPayment() {
       );
     }
     
-    // ✅ FIXED: Class-based fee structure lookup (permanent)
+    // Get fee structure (class-based, permanent)
     const feeDocId = `fee_${classId}`;
     console.log(`📋 Looking up fee structure: ${feeDocId}`);
     
@@ -4782,8 +4830,37 @@ async function recordPayment() {
     console.log(`✅ Fee structure found for ${className}`);
     
     const feeStructure = feeDoc.data();
-    const amountDue = Number(feeStructure.total) || 0;
+    const baseFee = Number(feeStructure.total) || 0;
 
+    // ✅ CRITICAL FIX: Get pupil data to calculate adjusted fee
+    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+    
+    if (!pupilDoc.exists) {
+      throw new Error('Pupil record not found');
+    }
+    
+    const pupilData = pupilDoc.data();
+    
+    // ✅ CRITICAL FIX: Calculate ADJUSTED fee (scholarships, enrollment, etc.)
+    const amountDue = window.calculateAdjustedFee 
+      ? window.calculateAdjustedFee(pupilData, baseFee, term)
+      : baseFee;
+    
+    console.log(`📊 Fee calculation for ${pupilName}:`);
+    console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
+    console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
+    
+    // Check if pupil is enrolled for this term
+    if (amountDue === 0) {
+      throw new Error(
+        `${pupilName} is not enrolled for ${term}.\n\n` +
+        `Admission term: ${pupilData.admissionTerm || 'First Term'}\n` +
+        `Exit term: ${pupilData.exitTerm || 'Third Term'}\n\n` +
+        `Cannot record payment for unenrolled term.`
+      );
+    }
+
+    // Get existing payment record
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
@@ -4796,6 +4873,7 @@ async function recordPayment() {
       currentPaid = data.totalPaid || 0;
       arrears = data.arrears || 0;
     } else {
+      // Calculate arrears from previous session
       const previousSession = getPreviousSessionName(session);
       if (previousSession) {
         arrears = await calculateSessionBalance(pupilId, previousSession);
@@ -4810,12 +4888,29 @@ async function recordPayment() {
       return;
     }
 
+    // Prevent overpayment
     if (amountPaid > remainingPayable) {
-      amountPaid = remainingPayable;
+      const confirmation = confirm(
+        `Amount exceeds balance!\n\n` +
+        `Balance: ₦${remainingPayable.toLocaleString()}\n` +
+        `Your entry: ₦${amountPaid.toLocaleString()}\n\n` +
+        `Reduce to exact balance (₦${remainingPayable.toLocaleString()})?`
+      );
+      
+      if (confirmation) {
+        amountPaid = remainingPayable;
+      } else {
+        if (recordBtn) {
+          recordBtn.disabled = false;
+          recordBtn.innerHTML = '💰 Record Payment';
+        }
+        return;
+      }
     }
 
     const newTotalPaid = currentPaid + amountPaid;
 
+    // Split payment between arrears and current term
     let arrearsPayment = 0;
     let currentTermPayment = 0;
     let remainingArrears = arrears;
@@ -4839,6 +4934,7 @@ async function recordPayment() {
 
     const batch = db.batch();
 
+    // Update payment summary
     batch.set(
       paymentRef,
       {
@@ -4848,18 +4944,21 @@ async function recordPayment() {
         className,
         session,
         term,
-        amountDue,
+        amountDue, // ✅ Now uses adjusted fee
+        baseFee, // ✅ Store original base fee for reference
         arrears: remainingArrears,
         totalDue: amountDue + remainingArrears,
         totalPaid: newTotalPaid,
         balance: newBalance,
         status: newStatus,
         lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+        lastPaymentAmount: amountPaid,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       },
       { merge: true }
     );
 
+    // Record transaction
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
     batch.set(transactionRef, {
       pupilId,
@@ -4871,6 +4970,9 @@ async function recordPayment() {
       amountPaid,
       arrearsPayment,
       currentTermPayment,
+      baseFee, // ✅ Store base fee
+      adjustedFee: amountDue, // ✅ Store adjusted fee
+      feeAdjustment: baseFee - amountDue, // ✅ Track adjustment amount
       paymentMethod: paymentMethod || 'Cash',
       receiptNo,
       notes,
@@ -4881,11 +4983,20 @@ async function recordPayment() {
 
     await batch.commit();
 
+    // Build success message
     let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
 
+    if (baseFee !== amountDue) {
+      message += `\n\n📊 Fee Details:`;
+      message += `\n  Base fee: ₦${baseFee.toLocaleString()}`;
+      message += `\n  Adjusted fee: ₦${amountDue.toLocaleString()}`;
+      const adjustmentType = amountDue < baseFee ? 'Discount' : 'Surcharge';
+      message += `\n  ${adjustmentType}: ₦${Math.abs(baseFee - amountDue).toLocaleString()}`;
+    }
+
     if (arrearsPayment > 0) {
-      message += `\n\nPayment Breakdown:\n`;
-      message += `  • Arrears: ₦${arrearsPayment.toLocaleString()}`;
+      message += `\n\nPayment Breakdown:`;
+      message += `\n  • Arrears: ₦${arrearsPayment.toLocaleString()}`;
       if (currentTermPayment > 0) {
         message += `\n  • Current Term: ₦${currentTermPayment.toLocaleString()}`;
       }
@@ -4898,19 +5009,19 @@ async function recordPayment() {
 
     window.showToast?.(message, 'success', 10000);
 
+    // Clear form
     if (amountInput) amountInput.value = '';
     const notesInput = document.getElementById('payment-notes');
     if (notesInput) notesInput.value = '';
 
+    // Reload payment status
     await loadPupilPaymentStatus();
 
-    if (
-      confirm(
-        'Payment recorded successfully!\n\nWould you like to print the receipt now?'
-      )
-    ) {
+    // Offer to print receipt
+    if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
       printReceipt(receiptNo);
     }
+    
   } catch (error) {
     console.error('❌ Error recording payment:', error);
     window.showToast?.('Failed to record payment: ' + error.message, 'danger', 8000);
