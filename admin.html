@@ -1015,20 +1015,28 @@ button[onclick="exportPupilResults()"]:hover {
                     </select>
                 </div>
             </div>
-<div class="info-box" style="margin-top: var(--space-md); padding: var(--space-md); background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: var(--radius-sm);">
-  <h4 style="margin: 0 0 var(--space-sm); color: #1565c0; font-size: var(--text-sm);">
-    ℹ️ About Enrollment Period
-  </h4>
-  <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #0d47a1;">
-    <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
-    <li><strong>Exit Term:</strong> Last term the pupil is enrolled (fees stop after this)</li>
-    <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
-    <li><strong>Effect:</strong> Pupil is NOT billed for terms outside this period</li>
-  </ul>
-  <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
-    Example: If admission term = "Second Term", pupil will NOT be charged for First Term fees.
-  </p>
-</div>
+<details style="margin-top: var(--space-md);">
+  <summary style="cursor: pointer; font-size: var(--text-sm); color: #1565c0; font-weight: 600;">
+    ℹ️ About Enrollment Period (click to view)
+  </summary>
+
+  <div class="info-box" style="margin-top: var(--space-sm); padding: var(--space-md); background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: var(--radius-sm);">
+    <h4 style="margin: 0 0 var(--space-sm); color: #1565c0; font-size: var(--text-sm);">
+      ℹ️ About Enrollment Period
+    </h4>
+
+    <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #0d47a1;">
+      <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
+      <li><strong>Exit Term:</strong> Last term the pupil is enrolled (fees stop after this)</li>
+      <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
+      <li><strong>Effect:</strong> Pupil is NOT billed for terms outside this period</li>
+    </ul>
+
+    <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
+      Example: If admission term = "Second Term", pupil will NOT be charged for First Term fees.
+    </p>
+  </div>
+</details>
 
             <!-- Fee Adjustment -->
             <div class="form-group">
@@ -1046,7 +1054,55 @@ button[onclick="exportPupilResults()"]:hover {
                 </div>
                 <small style="color: #666;">Negative % = discount, positive = surcharge. Fixed amount applies after percentage.</small>
             </div>
+            <details style="margin-top: var(--space-md);">
+  <summary style="cursor: pointer; font-size: var(--text-sm); color: #e65100; font-weight: 600;">
+    💰 How Fee Adjustment Works (click to view)
+  </summary>
 
+  <div class="info-box" style="margin-top: var(--space-sm); padding: var(--space-md); background: #fff3e0; border-left: 4px solid #ff9800; border-radius: var(--radius-sm);">
+    <h4 style="margin: 0 0 var(--space-sm); color: #e65100; font-size: var(--text-sm);">
+      💰 How Fee Adjustment Works
+    </h4>
+
+    <div style="margin-bottom: var(--space-md);">
+      <strong style="color: #e65100;">Calculation Formula:</strong>
+      <pre style="background: white; padding: var(--space-sm); border-radius: var(--radius-xs); font-size: var(--text-xs); margin-top: var(--space-xs);">
+Final Fee = (Base Fee × (1 + Percent/100)) + Amount
+
+Example 1: 50% scholarship
+  Base: ₦20,000
+  Percent: -50
+  Amount: ₦0
+  Result: ₦20,000 × 0.5 = ₦10,000
+
+Example 2: ₦5,000 discount
+  Base: ₦20,000
+  Percent: 0
+  Amount: -5,000
+  Result: ₦20,000 - ₦5,000 = ₦15,000
+
+Example 3: Free education
+  Base: ₦20,000
+  Percent: -100%
+  Amount: ₦0
+  Result: ₦20,000 × 0 = ₦0
+      </pre>
+    </div>
+
+    <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #bf360c;">
+      <li><strong>Percentage Adjustment:</strong> Applied FIRST (multiplies base fee)</li>
+      <li><strong>Amount Adjustment:</strong> Applied SECOND (adds or subtracts fixed value)</li>
+      <li><strong>Per Term:</strong> Adjustment applies to EACH term's fee</li>
+      <li><strong>Negative Values:</strong> Use negative numbers for discounts or scholarships</li>
+      <li><strong>Blank = No Change:</strong> Leave empty to use normal class fee</li>
+    </ul>
+
+    <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
+      💡 Tip: For scholarships, use percentage (-50 = half price). For fixed discounts, use amount (-5,000).
+    </p>
+  </div>
+</details>
+        
             <div class="form-actions">
                 <button type="submit" class="btn" id="save-pupil-btn">Save Pupil</button>
                 <button type="button" class="btn btn-secondary" onclick="cancelPupilForm()">Cancel</button>
