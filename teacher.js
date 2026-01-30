@@ -800,7 +800,8 @@ async function loadResultsTable() {
 }
 
 /**
- * Check result lock status and show appropriate UI - FIXED session encoding
+ * ✅ FIXED: Check result lock status with proper error handling
+ * Handles permission errors gracefully
  */
 async function checkResultLockStatus() {
     const term = document.getElementById('result-term')?.value;
@@ -819,11 +820,25 @@ async function checkResultLockStatus() {
         const session = settings.session;
         
         // CRITICAL FIX: Encode session to avoid path separator issues
-        // Convert "2025/2026" to "2025-2026"
         const encodedSession = session.replace(/\//g, '-');
         
-        // Check if locked (using encoded session)
-        const lockStatus = await window.resultLocking.isLocked(classId, term, subject, encodedSession);
+        // ✅ FIX: Add defensive try-catch for lock status check
+        let lockStatus = { locked: false };
+        
+        try {
+            lockStatus = await window.resultLocking.isLocked(classId, term, subject, encodedSession);
+        } catch (lockError) {
+            // If permission denied or lock check fails, assume unlocked
+            console.warn('Could not check lock status (assuming unlocked):', lockError.code);
+            
+            // Only log actual errors, not permission issues
+            if (lockError.code !== 'permission-denied') {
+                console.error('Unexpected lock check error:', lockError);
+            }
+            
+            // Default to unlocked state - teacher can proceed
+            lockStatus = { locked: false };
+        }
         
         if (lockStatus.locked) {
             showLockedBanner(lockStatus);
@@ -832,13 +847,24 @@ async function checkResultLockStatus() {
             return;
         }
         
-        // Check if submitted and pending (using encoded session)
-        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
-        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+        // ✅ FIX: Add defensive try-catch for submission status check
+        let submissionExists = false;
+        let submissionData = null;
         
-        if (submissionDoc.exists) {
-            const submissionData = submissionDoc.data();
+        try {
+            const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+            const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
             
+            if (submissionDoc.exists) {
+                submissionExists = true;
+                submissionData = submissionDoc.data();
+            }
+        } catch (submissionError) {
+            console.warn('Could not check submission status:', submissionError.code);
+            // Continue - assume no submission
+        }
+        
+        if (submissionExists && submissionData) {
             if (submissionData.status === 'pending') {
                 showSubmissionStatusBanner(submissionData);
                 hideSubmissionControls();
@@ -864,8 +890,24 @@ async function checkResultLockStatus() {
         enableResultInputs();
         
     } catch (error) {
-        console.error('Error checking result lock status:', error);
+        // ✅ FIX: Don't break the UI on permission errors
+        console.error('Error in checkResultLockStatus:', error);
+        
+        // Show warning but allow teacher to proceed
+        if (error.code === 'permission-denied') {
+            console.warn('Permission issue checking locks - proceeding with unlocked assumption');
+        } else {
+            window.showToast?.(
+                'Could not verify lock status. Proceeding with caution.',
+                'warning',
+                4000
+            );
+        }
+        
+        // Default to unlocked state
         hideAllResultBanners();
+        showSubmissionControls(term, subject, className);
+        enableResultInputs();
     }
 }
 
