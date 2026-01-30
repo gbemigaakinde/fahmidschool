@@ -135,81 +135,106 @@ const resultLocking = {
     }
   },
 
-  /**
-   * Submit results for admin approval
-   */
-  async submitForApproval(classId, term, subject, session, teacherUid, teacherName) {
+/**
+ * ✅ FIXED: Submit results for admin approval
+ */
+async submitForApproval(classId, term, subject, session, teacherUid, teacherName) {
+  try {
+    // Validate inputs
+    if (!classId || !term || !subject || !session || !teacherUid || !teacherName) {
+      throw new Error('Missing required parameters for submission');
+    }
+
+    const submissionId = `${classId}_${session}_${term}_${subject}`;
+    
+    // ✅ FIX: Check if already submitted with better error handling
+    let existingSubmission = null;
     try {
-      // Validate inputs
-      if (!classId || !term || !subject || !session || !teacherUid || !teacherName) {
-        throw new Error('Missing required parameters for submission');
+      const existingDoc = await db.collection('result_submissions').doc(submissionId).get();
+      if (existingDoc.exists) {
+        existingSubmission = existingDoc.data();
       }
-
-      const submissionId = `${classId}_${session}_${term}_${subject}`;
-      
-      // ✅ FIX: Check if already submitted with better error handling
-      let existingSubmission = null;
-      try {
-        const existingDoc = await db.collection('result_submissions').doc(submissionId).get();
-        if (existingDoc.exists) {
-          existingSubmission = existingDoc.data();
-        }
-      } catch (checkError) {
-        // If permission denied checking non-existent doc, that's OK - proceed with creation
-        if (checkError.code !== 'permission-denied') {
-          throw checkError;
-        }
-        console.log('Could not check existing submission (likely does not exist)');
+    } catch (checkError) {
+      // ✅ FIX: If permission denied checking non-existent doc, that's OK - proceed with creation
+      if (checkError.code !== 'permission-denied') {
+        throw checkError;
       }
-      
-      // Don't allow resubmission if already pending
-      if (existingSubmission && existingSubmission.status === 'pending') {
-        return {
-          success: false,
-          message: 'Results are already submitted and pending approval'
-        };
-      }
-
-      // ✅ FIX: Create submission with proper data structure
-      const submissionData = {
-        classId: classId,
-        term: term,
-        subject: subject,
-        session: session,
-        teacherUid: teacherUid,
-        teacherName: teacherName,
-        status: 'pending', // Must be 'pending' to pass security rules
-        submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      // ✅ CRITICAL FIX: Use set() instead of update() for new documents
-      // update() fails on non-existent docs, set() creates or overwrites
-      await db.collection('result_submissions')
-        .doc(submissionId)
-        .set(submissionData, { merge: true });
-
-      console.log('✅ Results submitted for approval:', submissionId);
-
-      return {
-        success: true,
-        message: 'Results submitted for approval successfully',
-        submissionId: submissionId
-      };
-
-    } catch (error) {
-      console.error('Error submitting for approval:', error);
-      
-      // ✅ FIX: Return structured error instead of throwing
+      console.log('Could not check existing submission (likely does not exist)');
+    }
+    
+    // Don't allow resubmission if already pending
+    if (existingSubmission && existingSubmission.status === 'pending') {
       return {
         success: false,
-        message: error.code === 'permission-denied' 
-          ? 'Permission denied. Please contact administrator.' 
-          : `Submission failed: ${error.message}`,
-        error: error.code || 'unknown'
+        message: 'Results are already submitted and pending approval'
       };
     }
-  },
+
+    // ✅ CRITICAL FIX: Create submission with proper data structure
+    const submissionData = {
+      classId: classId,
+      className: '', // Will be filled from class doc
+      term: term,
+      subject: subject,
+      session: session,
+      teacherUid: teacherUid,
+      teacherName: teacherName,
+      status: 'pending', // CRITICAL: Must be 'pending' to pass security rules
+      pupilCount: 0, // Will be calculated
+      submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Get class name
+    const classDoc = await db.collection('classes').doc(classId).get();
+    if (classDoc.exists) {
+      submissionData.className = classDoc.data().name || 'Unknown Class';
+    }
+    
+    // Count pupils with results
+    const resultsSnap = await db.collection('results')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .where('subject', '==', subject)
+      .get();
+    
+    const pupilIds = new Set();
+    resultsSnap.forEach(doc => {
+      const data = doc.data();
+      if ((data.caScore || 0) > 0 || (data.examScore || 0) > 0) {
+        pupilIds.add(data.pupilId);
+      }
+    });
+    
+    submissionData.pupilCount = pupilIds.size;
+
+    // ✅ CRITICAL FIX: Use set() with merge:true instead of create-only
+    // This works for both new submissions and resubmissions after rejection
+    await db.collection('result_submissions')
+      .doc(submissionId)
+      .set(submissionData, { merge: true });
+
+    console.log('✅ Results submitted for approval:', submissionId);
+
+    return {
+      success: true,
+      message: 'Results submitted for approval successfully',
+      submissionId: submissionId
+    };
+
+  } catch (error) {
+    console.error('❌ Error submitting for approval:', error);
+    
+    // ✅ FIX: Return structured error instead of throwing
+    return {
+      success: false,
+      message: error.code === 'permission-denied' 
+        ? 'Permission denied. Please contact administrator.' 
+        : `Submission failed: ${error.message}`,
+      error: error.code || 'unknown'
+    };
+  }
+}
 
   /**
    * Approve submitted results
