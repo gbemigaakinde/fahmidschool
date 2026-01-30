@@ -7640,20 +7640,30 @@ console.log('✅ Bulk operations module loaded and exposed globally');
 
 async function editPupil(uid) {
   try {
+    console.log(`📝 Loading pupil for edit: ${uid}`);
+    
     const doc = await db.collection('pupils').doc(uid).get();
     if (!doc.exists) throw new Error('Pupil not found');
 
     const data = doc.data();
+    console.log('Pupil data loaded:', data);
 
-    // Safely extract class ID
+    // ✅ FIX #1: Safely extract class ID
     const classId = getClassIdFromPupilData(data.class);
+    console.log('Class ID extracted:', classId);
 
-    // Populate class dropdown and select the pupil's current class
+    // ✅ FIX #1: Populate class dropdown FIRST, then select current class
     await populateClassDropdown(classId);
+    console.log('Class dropdown populated');
 
-    // Fill form fields
+    // ✅ FIX #1: Fill ALL form fields (including admissionNo)
     document.getElementById('pupil-id').value = uid;
     document.getElementById('pupil-name').value = data.name || '';
+    
+    // ✅ FIX #1a: CRITICAL - Load admission number
+    document.getElementById('pupil-admission-no').value = data.admissionNo || '';
+    console.log('Admission No loaded:', data.admissionNo);
+    
     document.getElementById('pupil-dob').value = data.dob || '';
     document.getElementById('pupil-gender').value = data.gender || '';
     document.getElementById('pupil-parent-name').value = data.parentName || '';
@@ -7663,8 +7673,53 @@ async function editPupil(uid) {
     document.getElementById('pupil-email').value = data.email || '';
     document.getElementById('pupil-password').value = ''; // always blank for security
 
-    // Handle old-format class data
-    if (!classId && className && typeof className === 'string') {
+    // ✅ FIX #1b: CRITICAL - Select current class in dropdown
+    const classSelect = document.getElementById('pupil-class');
+    if (classSelect && classId) {
+      classSelect.value = classId;
+      console.log('Class selected in dropdown:', classId);
+    }
+
+    // ✅ FIX #2: Load Enrollment Period fields
+    const admissionTerm = data.admissionTerm || 'First Term';
+    const exitTerm = data.exitTerm || 'Third Term';
+    
+    const admissionTermSelect = document.getElementById('pupil-admission-term');
+    const exitTermSelect = document.getElementById('pupil-exit-term');
+    
+    if (admissionTermSelect) {
+      admissionTermSelect.value = admissionTerm;
+      console.log('Admission term loaded:', admissionTerm);
+    }
+    
+    if (exitTermSelect) {
+      exitTermSelect.value = exitTerm;
+      console.log('Exit term loaded:', exitTerm);
+    }
+
+    // ✅ FIX #3: Load Fee Adjustment fields
+    const feeAdjustmentPercent = data.feeAdjustmentPercent || 0;
+    const feeAdjustmentAmount = data.feeAdjustmentAmount || 0;
+    
+    const percentInput = document.getElementById('pupil-fee-adjustment-percent');
+    const amountInput = document.getElementById('pupil-fee-adjustment-amount');
+    
+    if (percentInput) {
+      percentInput.value = feeAdjustmentPercent;
+      console.log('Fee adjustment percent loaded:', feeAdjustmentPercent);
+    }
+    
+    if (amountInput) {
+      amountInput.value = feeAdjustmentAmount;
+      console.log('Fee adjustment amount loaded:', feeAdjustmentAmount);
+    }
+
+    // ✅ Handle old-format class data (for legacy records)
+    if (!classId && data.class && typeof data.class === 'string') {
+      const className = data.class;
+      
+      console.warn(`⚠️ Old class format detected: "${className}"`);
+      
       const classesSnapshot = await db.collection('classes')
         .where('name', '==', className)
         .get();
@@ -7686,7 +7741,6 @@ async function editPupil(uid) {
           10000
         );
 
-        const classSelect = document.getElementById('pupil-class');
         if (classSelect) {
           classSelect.value = ''; // force manual selection
           classSelect.style.background = '#fff3cd';
@@ -7701,7 +7755,9 @@ async function editPupil(uid) {
       } else {
         // Exactly one match - safe to auto-select
         const matchedClassId = classesSnapshot.docs[0].id;
-        document.getElementById('pupil-class').value = matchedClassId;
+        if (classSelect) {
+          classSelect.value = matchedClassId;
+        }
 
         window.showToast?.(
           'Note: This pupil has old class data format. Saving will upgrade it automatically.',
@@ -7711,6 +7767,7 @@ async function editPupil(uid) {
       }
     } else if (!classId) {
       // classId is missing and className is invalid
+      const className = data.class?.name || data.class || 'Unknown';
       window.showToast?.(
         `Warning: Could not find class "${className}". Please select the correct class.`,
         'warning',
@@ -7725,11 +7782,17 @@ async function editPupil(uid) {
     // Show the form and focus first field
     showPupilForm();
     document.getElementById('pupil-name')?.focus();
+    
+    console.log('✅ Pupil form loaded successfully for editing');
+    
   } catch (error) {
-    console.error('Error loading pupil for edit:', error);
+    console.error('❌ Error loading pupil for edit:', error);
     window.showToast?.('Failed to load pupil details for editing', 'danger');
   }
 }
+
+// ✅ Make globally available
+window.editPupil = editPupil;
 
 /* ======================================== 
    CLASSES MANAGEMENT 
