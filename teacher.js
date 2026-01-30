@@ -1060,81 +1060,110 @@ function enableResultInputs() {
 }
 
 /**
- * Submit results for admin approval - FIXED session encoding
+ * ✅ FIXED: Handle submission button click with proper async handling
  */
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
     const subject = document.getElementById('result-subject')?.value;
     
     if (!term || !subject || assignedClasses.length === 0) {
-        window.showToast?.('Select term and subject first', 'warning');
+        if (window.showToast) {
+            window.showToast('Please select term and subject', 'error');
+        }
         return;
     }
-    
+
     const classId = assignedClasses[0].id;
     const className = assignedClasses[0].name;
     
-    // Validate that results are entered
-    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
-    const pupilIds = new Set();
-    
-    inputs.forEach(input => {
-        const pupilId = input.dataset.pupil;
-        const value = parseFloat(input.value) || 0;
-        
-        if (value > 0 && pupilId) {
-            pupilIds.add(pupilId);
-        }
-    });
-    
-    if (pupilIds.size === 0) {
-        window.showToast?.('No results entered. Enter scores before submitting.', 'warning');
-        return;
-    }
-    
-    const confirmation = confirm(
-        `Submit ${pupilIds.size} pupil result(s) for approval?\n\n` +
+    // Show confirmation dialog
+    const confirmed = confirm(
+        `Submit results for approval?\n\n` +
         `Class: ${className}\n` +
-        `Term: ${term}\n` +
-        `Subject: ${subject}\n\n` +
+        `Subject: ${subject}\n` +
+        `Term: ${term}\n\n` +
         `Once submitted, you cannot edit until admin reviews.`
     );
     
-    if (!confirmation) return;
+    if (!confirmed) {
+        return;
+    }
+
+    // ✅ FIX: Show loading state and ensure it always resolves
+    const submitBtn = document.getElementById('submit-results-btn');
+    const originalBtnText = submitBtn?.innerHTML || 'Submit for Approval';
     
     try {
+        // Show loading spinner
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        }
+
         const settings = await window.getCurrentSettings();
         const session = settings.session;
-        
-        // CRITICAL FIX: Encode session for consistent document IDs
         const encodedSession = session.replace(/\//g, '-');
-        
+
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) {
+            throw new Error('Not authenticated');
+        }
+
         // Get teacher name
         const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
-        const teacherName = teacherDoc.exists ? teacherDoc.data().name : currentUser.email;
-        
+        const teacherName = teacherDoc.exists 
+          ? teacherDoc.data().fullName 
+          : currentUser.displayName || 'Unknown Teacher';
+
+        // ✅ FIX: Call submitForApproval and handle response properly
         const result = await window.resultLocking.submitForApproval(
             classId,
-            className,
             term,
             subject,
-            encodedSession, // Use encoded session
+            encodedSession,
             currentUser.uid,
             teacherName
         );
-        
+
+        // ✅ CRITICAL: Check result.success instead of assuming success
         if (result.success) {
-            window.showToast?.(result.message, 'success', 6000);
+            if (window.showToast) {
+                window.showToast(
+                    'Results submitted for admin approval successfully!',
+                    'success',
+                    5000
+                );
+            }
             
-            // Reload to show submission status
+            // Refresh the UI to show submission status
+            await checkResultLockStatus();
             await loadResultsTable();
+            
         } else {
-            window.showToast?.(result.message || result.error, 'danger');
+            // Submission failed - show error
+            throw new Error(result.message || 'Submission failed');
+        }
+
+    } catch (error) {
+        console.error('Error submitting for approval:', error);
+        
+        // ✅ FIX: Show user-friendly error message
+        const errorMessage = error.code === 'permission-denied'
+            ? 'Permission denied. Please contact your administrator.'
+            : error.message || 'Failed to submit results. Please try again.';
+        
+        if (window.showToast) {
+            window.showToast(errorMessage, 'error', 6000);
+        } else {
+            alert(`Error: ${errorMessage}`);
         }
         
-    } catch (error) {
-        console.error('Error submitting results:', error);
-        window.handleError(error, 'Failed to submit results');
+    } finally {
+        // ✅ CRITICAL: Always restore button state (stops infinite spinner)
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
     }
 }
 
