@@ -423,20 +423,22 @@ async function deleteFeeStructure(docId, className) {
     
     const feeData = feeDoc.data();
 
-const session = feeData.session;
-const classId = feeData.classId;
-const total = feeData.total || 0;
+    const session = feeData.session;
+    const classId = feeData.classId;
+    const total = feeData.total || 0;
 
-if (!session) {
-  window.showToast?.(
-    '⚠ Fee structure is missing session information.\n\n' +
-    'This fee record appears to be incomplete or created using an older system.\n\n' +
-    'Deletion is blocked to prevent financial data corruption.',
-    'danger',
-    10000
-  );
-  return;
-}
+    // Warn if session is missing, but do not block deletion
+    if (!session) {
+      window.showToast?.(
+        '⚠ Fee structure is missing session information.\n\n' +
+        'This fee record appears incomplete or created using an older system.\n\n' +
+        'Deletion will continue regardless.',
+        'warning',
+        10000
+      );
+    }
+
+    // Warn if payments exist, but do not block deletion
     const paymentsSnap = await db.collection('payments')
       .where('classId', '==', classId)
       .where('session', '==', session)
@@ -445,19 +447,17 @@ if (!session) {
     
     if (!paymentsSnap.empty) {
       window.showToast?.(
-        `🚫 Cannot delete fee structure for ${className}\n\n` +
-        `Payment records exist for this class in ${session}.\n\n` +
-        `Financial records must be preserved for audit purposes.\n\n` +
-        `To change fees, use "Edit" instead of deleting.`,
-        'danger',
+        `⚠ Payments exist for ${className} in ${session}.\n\n` +
+        `Deleting this fee structure may affect historical data.\n\n` +
+        `Proceed with caution.`,
+        'warning',
         10000
       );
-      return;
     }
     
     const confirmation = confirm(
       `Delete fee structure for ${className}?\n\n` +
-      `Session: ${session}\n` +
+      `Session: ${session || 'Unknown'}\n` +
       `Fee per term: ₦${total.toLocaleString()}\n\n` +
       `This will remove the fee configuration.\n` +
       `A backup will be archived for records.\n\n` +
@@ -470,7 +470,7 @@ if (!session) {
     await db.collection('fee_structure_history').add({
       classId: classId,
       className: className,
-      session: session,
+      session: session || 'Unknown',
       fees: feeData.fees || {},
       total: total,
       deletedBy: auth.currentUser.uid,
