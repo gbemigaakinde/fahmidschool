@@ -16,6 +16,416 @@
 'use strict';
 
 /**
+ * ARREARS VERIFICATION & CLEANUP SCRIPT
+ * 
+ * This script:
+ * 1. Verifies arrears calculations for all pupils
+ * 2. Detects double-counting or incorrect arrears
+ * 3. Provides detailed reports
+ * 4. Offers automatic correction
+ * 
+ * Add this to admin.js or run as a one-time migration
+ */
+
+/**
+ * ✅ STEP 1: Verify Arrears Logic
+ * Returns detailed report of any discrepancies
+ */
+async function verifyAllArrearsCalculations() {
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log('🔍 ARREARS VERIFICATION REPORT');
+  console.log('═══════════════════════════════════════════════════════════\n');
+  
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session;
+  const currentTerm = settings.term;
+  
+  console.log(`Current Session: ${currentSession}`);
+  console.log(`Current Term: ${currentTerm}\n`);
+  
+  // Get all pupils
+  const pupilsSnap = await db.collection('pupils').get();
+  
+  const report = {
+    totalPupils: pupilsSnap.size,
+    pupilsWithArrears: 0,
+    correctCalculations: 0,
+    incorrectCalculations: 0,
+    discrepancies: [],
+    totalArrearsExpected: 0,
+    totalArrearsRecorded: 0
+  };
+  
+  for (const pupilDoc of pupilsSnap.docs) {
+    const pupilId = pupilDoc.id;
+    const pupilData = pupilDoc.data();
+    const pupilName = pupilData.name || 'Unknown';
+    
+    try {
+      // Calculate what arrears SHOULD be
+      const correctArrears = await window.calculateCompleteArrears(
+        pupilId,
+        currentSession,
+        currentTerm
+      );
+      
+      // Get what's ACTUALLY recorded in payment record
+      const encodedSession = currentSession.replace(/\//g, '-');
+      const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
+      const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (!paymentDoc.exists) {
+        // No payment record - skip
+        continue;
+      }
+      
+      const recordedArrears = Number(paymentDoc.data().arrears) || 0;
+      
+      // Compare
+      if (correctArrears !== recordedArrears) {
+        const discrepancy = {
+          pupilId,
+          pupilName,
+          correctArrears,
+          recordedArrears,
+          difference: recordedArrears - correctArrears,
+          percentError: correctArrears > 0 
+            ? ((recordedArrears - correctArrears) / correctArrears * 100).toFixed(1)
+            : (recordedArrears > 0 ? 'Infinity' : '0')
+        };
+        
+        report.discrepancies.push(discrepancy);
+        report.incorrectCalculations++;
+        
+        console.log(`❌ ${pupilName}:`);
+        console.log(`   Should be: ₦${correctArrears.toLocaleString()}`);
+        console.log(`   Recorded:  ₦${recordedArrears.toLocaleString()}`);
+        console.log(`   Error:     ₦${discrepancy.difference.toLocaleString()} (${discrepancy.percentError}%)\n`);
+      } else {
+        report.correctCalculations++;
+        if (correctArrears > 0) {
+          report.pupilsWithArrears++;
+        }
+      }
+      
+      report.totalArrearsExpected += correctArrears;
+      report.totalArrearsRecorded += recordedArrears;
+      
+    } catch (error) {
+      console.error(`⚠️ Error checking ${pupilName}:`, error.message);
+    }
+  }
+  
+  // Print summary
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log('📊 SUMMARY');
+  console.log('═══════════════════════════════════════════════════════════\n');
+  console.log(`Total Pupils Checked:     ${report.totalPupils}`);
+  console.log(`Pupils with Arrears:      ${report.pupilsWithArrears}`);
+  console.log(`Correct Calculations:     ${report.correctCalculations}`);
+  console.log(`Incorrect Calculations:   ${report.incorrectCalculations}`);
+  console.log(`\nExpected Total Arrears:   ₦${report.totalArrearsExpected.toLocaleString()}`);
+  console.log(`Recorded Total Arrears:   ₦${report.totalArrearsRecorded.toLocaleString()}`);
+  console.log(`Difference:               ₦${(report.totalArrearsRecorded - report.totalArrearsExpected).toLocaleString()}`);
+  
+  if (report.incorrectCalculations === 0) {
+    console.log('\n✅ ALL ARREARS CALCULATIONS ARE CORRECT!\n');
+  } else {
+    console.log(`\n⚠️ FOUND ${report.incorrectCalculations} INCORRECT CALCULATION(S)!\n`);
+  }
+  
+  console.log('═══════════════════════════════════════════════════════════\n');
+  
+  return report;
+}
+
+/**
+ * ✅ STEP 2: Deep Trace for Specific Pupil
+ * Shows EXACTLY how arrears were calculated
+ */
+async function traceArrearsForPupil(pupilId) {
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log(`🔍 DEEP TRACE: Arrears Calculation for Pupil ${pupilId}`);
+  console.log('═══════════════════════════════════════════════════════════\n');
+  
+  const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+  if (!pupilDoc.exists) {
+    console.error('❌ Pupil not found');
+    return;
+  }
+  
+  const pupilData = pupilDoc.data();
+  console.log(`Pupil Name: ${pupilData.name}\n`);
+  
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session;
+  const currentTerm = settings.term;
+  
+  console.log(`Current Session: ${currentSession}`);
+  console.log(`Current Term: ${currentTerm}\n`);
+  
+  // Determine if First Term or Later Term
+  const termOrder = { 'First Term': 1, 'Second Term': 2, 'Third Term': 3 };
+  const currentTermNum = termOrder[currentTerm];
+  
+  console.log(`─── CALCULATION METHOD ───`);
+  
+  if (currentTermNum === 1) {
+    console.log('✓ First Term of Session → Using Previous Session Total\n');
+    
+    // Get previous session
+    const previousSession = getPreviousSessionName(currentSession);
+    console.log(`Previous Session: ${previousSession || 'None'}\n`);
+    
+    if (!previousSession) {
+      console.log('No previous session → Arrears = ₦0');
+      return;
+    }
+    
+    console.log('─── PREVIOUS SESSION BREAKDOWN ───\n');
+    
+    // Check each term of previous session
+    const encodedPrevSession = previousSession.replace(/\//g, '-');
+    let sessionTotal = 0;
+    
+    for (const term of ['First Term', 'Second Term', 'Third Term']) {
+      const paymentDocId = `${pupilId}_${encodedPrevSession}_${term}`;
+      const doc = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (doc.exists) {
+        const data = doc.data();
+        const balance = Number(data.balance) || 0;
+        sessionTotal += balance;
+        
+        console.log(`${term}:`);
+        console.log(`  Amount Due:  ₦${(data.amountDue || 0).toLocaleString()}`);
+        console.log(`  Total Paid:  ₦${(data.totalPaid || 0).toLocaleString()}`);
+        console.log(`  Balance:     ₦${balance.toLocaleString()} ${balance > 0 ? '← UNPAID' : '✓ Paid'}`);
+        console.log('');
+      } else {
+        console.log(`${term}: No record (assuming ₦0)\n`);
+      }
+    }
+    
+    console.log(`═══════════════════════════════════════════════════════════`);
+    console.log(`TOTAL ARREARS FROM ${previousSession}: ₦${sessionTotal.toLocaleString()}`);
+    console.log(`═══════════════════════════════════════════════════════════\n`);
+    
+  } else {
+    console.log('✓ Second/Third Term → Using Previous Term Balance Only\n');
+    
+    const previousTermName = Object.keys(termOrder).find(
+      key => termOrder[key] === currentTermNum - 1
+    );
+    
+    console.log(`Previous Term: ${previousTermName}\n`);
+    
+    const encodedSession = currentSession.replace(/\//g, '-');
+    const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
+    const doc = await db.collection('payments').doc(prevTermDocId).get();
+    
+    if (doc.exists) {
+      const data = doc.data();
+      console.log(`${previousTermName}:`);
+      console.log(`  Amount Due:  ₦${(data.amountDue || 0).toLocaleString()}`);
+      console.log(`  Arrears:     ₦${(data.arrears || 0).toLocaleString()} (from earlier)`);
+      console.log(`  Total Due:   ₦${(data.totalDue || 0).toLocaleString()}`);
+      console.log(`  Total Paid:  ₦${(data.totalPaid || 0).toLocaleString()}`);
+      console.log(`  Balance:     ₦${(data.balance || 0).toLocaleString()}`);
+      console.log('');
+      console.log(`═══════════════════════════════════════════════════════════`);
+      console.log(`ARREARS FOR ${currentTerm}: ₦${(data.balance || 0).toLocaleString()}`);
+      console.log(`(This includes any earlier cascaded arrears)`);
+      console.log(`═══════════════════════════════════════════════════════════\n`);
+    } else {
+      console.log(`No payment record for ${previousTermName} → Arrears = ₦0\n`);
+    }
+  }
+  
+  // Compare with actual recorded value
+  const encodedSession = currentSession.replace(/\//g, '-');
+  const currentPaymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
+  const currentDoc = await db.collection('payments').doc(currentPaymentDocId).get();
+  
+  if (currentDoc.exists) {
+    const recordedArrears = Number(currentDoc.data().arrears) || 0;
+    console.log(`─── RECORDED IN DATABASE ───`);
+    console.log(`Arrears field: ₦${recordedArrears.toLocaleString()}\n`);
+  }
+}
+
+/**
+ * ✅ STEP 3: Automatic Correction
+ * Recalculates and fixes all incorrect arrears
+ */
+async function fixAllArrearsCalculations(dryRun = true) {
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log(dryRun ? '🔍 DRY RUN: Arrears Fix Simulation' : '🔧 LIVE FIX: Correcting Arrears');
+  console.log('═══════════════════════════════════════════════════════════\n');
+  
+  if (!dryRun) {
+    const confirmation = confirm(
+      '⚠️ CRITICAL OPERATION\n\n' +
+      'This will recalculate and fix arrears for ALL pupils.\n\n' +
+      'Are you sure you want to proceed?'
+    );
+    
+    if (!confirmation) {
+      console.log('Operation cancelled by user');
+      return;
+    }
+  }
+  
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session;
+  const currentTerm = settings.term;
+  
+  const pupilsSnap = await db.collection('pupils').get();
+  
+  const results = {
+    checked: 0,
+    fixed: 0,
+    skipped: 0,
+    errors: 0,
+    totalCorrectionAmount: 0
+  };
+  
+  const batch = dryRun ? null : db.batch();
+  let batchCount = 0;
+  
+  for (const pupilDoc of pupilsSnap.docs) {
+    const pupilId = pupilDoc.id;
+    const pupilData = pupilDoc.data();
+    const pupilName = pupilData.name || 'Unknown';
+    
+    results.checked++;
+    
+    try {
+      // Calculate correct arrears
+      const correctArrears = await window.calculateCompleteArrears(
+        pupilId,
+        currentSession,
+        currentTerm
+      );
+      
+      // Get current payment record
+      const encodedSession = currentSession.replace(/\//g, '-');
+      const paymentDocId = `${pupilId}_${encodedSession}_${currentTerm}`;
+      const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+      
+      if (!paymentDoc.exists) {
+        results.skipped++;
+        continue;
+      }
+      
+      const currentData = paymentDoc.data();
+      const recordedArrears = Number(currentData.arrears) || 0;
+      
+      if (correctArrears === recordedArrears) {
+        results.skipped++;
+        continue;
+      }
+      
+      // Found discrepancy
+      const difference = recordedArrears - correctArrears;
+      results.totalCorrectionAmount += Math.abs(difference);
+      
+      console.log(`${dryRun ? '📋' : '🔧'} ${pupilName}:`);
+      console.log(`   Current:  ₦${recordedArrears.toLocaleString()}`);
+      console.log(`   Correct:  ₦${correctArrears.toLocaleString()}`);
+      console.log(`   Change:   ${difference > 0 ? '-' : '+'}₦${Math.abs(difference).toLocaleString()}\n`);
+      
+      if (!dryRun) {
+        // Recalculate totals
+        const amountDue = Number(currentData.amountDue) || 0;
+        const totalPaid = Number(currentData.totalPaid) || 0;
+        const newTotalDue = amountDue + correctArrears;
+        const newBalance = newTotalDue - totalPaid;
+        
+        batch.update(paymentDoc.ref, {
+          arrears: correctArrears,
+          totalDue: newTotalDue,
+          balance: Math.max(0, newBalance),
+          status: newBalance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : correctArrears > 0 ? 'owing_with_arrears' : 'owing',
+          correctedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          correctedBy: 'arrears_fix_script'
+        });
+        
+        batchCount++;
+        results.fixed++;
+        
+        // Commit in batches of 400
+        if (batchCount >= 400) {
+          await batch.commit();
+          batchCount = 0;
+          console.log(`Progress: Fixed ${results.fixed} records...\n`);
+        }
+      } else {
+        results.fixed++;
+      }
+      
+    } catch (error) {
+      console.error(`⚠️ Error processing ${pupilName}:`, error.message);
+      results.errors++;
+    }
+  }
+  
+  // Commit remaining
+  if (!dryRun && batchCount > 0) {
+    await batch.commit();
+  }
+  
+  console.log('\n═══════════════════════════════════════════════════════════');
+  console.log('📊 RESULTS');
+  console.log('═══════════════════════════════════════════════════════════\n');
+  console.log(`Pupils Checked:       ${results.checked}`);
+  console.log(`${dryRun ? 'Would Fix' : 'Fixed'}:            ${results.fixed}`);
+  console.log(`Skipped (Correct):    ${results.skipped}`);
+  console.log(`Errors:               ${results.errors}`);
+  console.log(`Total Correction:     ₦${results.totalCorrectionAmount.toLocaleString()}\n`);
+  
+  if (dryRun && results.fixed > 0) {
+    console.log('⚠️ This was a DRY RUN. No changes were made.');
+    console.log('To apply fixes, run: fixAllArrearsCalculations(false)\n');
+  } else if (!dryRun) {
+    console.log('✅ All corrections have been applied!\n');
+  } else {
+    console.log('✅ All arrears calculations are already correct!\n');
+  }
+  
+  console.log('═══════════════════════════════════════════════════════════\n');
+  
+  return results;
+}
+
+/**
+ * Helper: Get previous session name
+ */
+function getPreviousSessionName(currentSession) {
+  const match = currentSession.match(/(\d{4})\/(\d{4})/);
+  if (!match) return null;
+  
+  const startYear = parseInt(match[1]);
+  const endYear = parseInt(match[2]);
+  
+  return `${startYear - 1}/${endYear - 1}`;
+}
+
+// Make functions globally available
+window.verifyAllArrearsCalculations = verifyAllArrearsCalculations;
+window.traceArrearsForPupil = traceArrearsForPupil;
+window.fixAllArrearsCalculations = fixAllArrearsCalculations;
+
+console.log('✅ Arrears verification & cleanup tools loaded');
+console.log('');
+console.log('Available commands:');
+console.log('  verifyAllArrearsCalculations() - Check all calculations');
+console.log('  traceArrearsForPupil("pupilId") - Deep trace for specific pupil');
+console.log('  fixAllArrearsCalculations(true) - Dry run fix (no changes)');
+console.log('  fixAllArrearsCalculations(false) - Live fix (applies changes)');
+console.log('');
+
+/**
  * ✅ CRITICAL: Calculate adjusted fee (same logic as pupil portal)
  * Must be available before any admin financial functions run
  */
