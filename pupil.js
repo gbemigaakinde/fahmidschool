@@ -877,6 +877,98 @@ async function calculateCompleteArrears(pupilId, currentSession, currentTerm) {
 }
 
 /**
+ * ✅ CANONICAL: Calculate current outstanding balance
+ * This is the SINGLE SOURCE OF TRUTH for outstanding calculations
+ */
+window.calculateCurrentOutstanding = async function(pupilId, session, term) {
+    try {
+        // Step 1: Get pupil data
+        const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+        if (!pupilDoc.exists) {
+            throw new Error('Pupil not found');
+        }
+        const pupilData = pupilDoc.data();
+        
+        // Step 2: Get class ID
+        const classId = pupilData.class?.id;
+        if (!classId) {
+            console.warn(`Pupil ${pupilId} has no valid classId`);
+            return {
+                amountDue: 0,
+                arrears: 0,
+                totalDue: 0,
+                totalPaid: 0,
+                balance: 0,
+                reason: 'Invalid class data'
+            };
+        }
+        
+        // Step 3: Get base fee (class-based, permanent)
+        const feeDocId = `fee_${classId}`;
+        const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+        
+        if (!feeDoc.exists) {
+            return {
+                amountDue: 0,
+                arrears: 0,
+                totalDue: 0,
+                totalPaid: 0,
+                balance: 0,
+                reason: 'No fee structure configured'
+            };
+        }
+        
+        const baseFee = Number(feeDoc.data().total) || 0;
+        
+        // Step 4: Calculate ADJUSTED fee
+        const amountDue = window.calculateAdjustedFee(pupilData, baseFee, term);
+        
+        // Step 5: Calculate COMPLETE arrears
+        const arrears = await window.calculateCompleteArrears(pupilId, session, term);
+        
+        // Step 6: Get total paid for this term
+        const encodedSession = session.replace(/\//g, '-');
+        const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+        
+        let totalPaid = 0;
+        try {
+            const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+            if (paymentDoc.exists) {
+                totalPaid = Number(paymentDoc.data().totalPaid) || 0;
+            }
+        } catch (error) {
+            console.warn('Could not read payment doc:', error.message);
+        }
+        
+        // Step 7: Calculate outstanding
+        const totalDue = amountDue + arrears;
+        const balance = totalDue - totalPaid;
+        
+        return {
+            pupilId,
+            pupilName: pupilData.name,
+            classId,
+            className: pupilData.class?.name || 'Unknown',
+            session,
+            term,
+            baseFee,
+            amountDue,
+            arrears,
+            totalDue,
+            totalPaid,
+            balance: Math.max(0, balance), // Never negative
+            status: balance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'owing'
+        };
+        
+    } catch (error) {
+        console.error('Error calculating outstanding:', error);
+        throw error;
+    }
+};
+
+console.log('✅ calculateCurrentOutstanding() loaded in pupil portal');
+
+/**
  * ✅ NEW: Safe session balance calculation that handles missing documents
  */
 async function calculateSessionBalanceSafe(pupilId, session) {
