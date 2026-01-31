@@ -710,7 +710,7 @@ async function loadFeeBalance() {
                     <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; margin-bottom: var(--space-xs);">Total Paid</div>
                     <div style="font-size: var(--text-3xl); font-weight: 700;">₦${totalPaid.toLocaleString()}</div>
                     <div style="font-size: var(--text-xs); opacity: 0.8; margin-top: var(--space-xs);">
-                        ${totalPaid > 0 ? percentPaid + '% collected' : 'No payments yet'}
+                        ${totalPaid > 0 ? percentPaid + '% paid' : 'No payments yet'}
                     </div>
                 </div>
 
