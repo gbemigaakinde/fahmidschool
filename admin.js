@@ -172,33 +172,37 @@ window.calculateCompleteArrears = async function(pupilId, currentSession, curren
 async function calculateSessionBalanceSafe(pupilId, session) {
   try {
     const encodedSession = session.replace(/\//g, '-');
-    let totalBalance = 0;
     
-    const terms = ['First Term', 'Second Term', 'Third Term'];
+    // ✅ CRITICAL FIX: Only get Third Term balance
+    // Third Term already contains arrears from First and Second Terms
+    const thirdTermDocId = `${pupilId}_${encodedSession}_Third Term`;
     
-    for (const term of terms) {
-      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    console.log(`  Checking session balance for ${session}...`);
+    
+    try {
+      const thirdTermDoc = await db.collection('payments').doc(thirdTermDocId).get();
       
-      try {
-        const doc = await db.collection('payments').doc(paymentDocId).get();
+      if (thirdTermDoc.exists) {
+        const balance = Number(thirdTermDoc.data().balance) || 0;
         
-        if (doc.exists) {
-          const balance = Number(doc.data().balance) || 0;
-          totalBalance += balance;
-          
-          if (balance > 0) {
-            console.log(`  - ${term}: ₦${balance.toLocaleString()}`);
-          }
+        if (balance > 0) {
+          console.log(`  ✓ Third Term balance: ₦${balance.toLocaleString()}`);
+        } else {
+          console.log(`  ✓ Session fully paid (Third Term balance: ₦0)`);
         }
-      } catch (docError) {
-        console.warn(`Skipped ${term} for session ${session}:`, docError.message);
+        
+        return balance;
+      } else {
+        console.log(`  ℹ️ No Third Term payment record for ${session}`);
+        return 0;
       }
+    } catch (error) {
+      console.warn(`  ⚠️ Could not fetch Third Term for ${session}:`, error.message);
+      return 0;
     }
     
-    return totalBalance;
-    
   } catch (error) {
-    console.error('Error in calculateSessionBalanceSafe:', error);
+    console.error('❌ Error in calculateSessionBalanceSafe:', error);
     return 0;
   }
 }
