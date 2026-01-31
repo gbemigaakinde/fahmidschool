@@ -512,6 +512,7 @@ window.getClassIdSafely = getClassIdSafely;
 /**
  * ✅ FIXED: Load Fee Balance with Correct Fee Structure Lookup
  */
+
 async function loadFeeBalance() {
     if (!currentPupilId) return;
 
@@ -587,14 +588,11 @@ async function loadFeeBalance() {
             return;
         }
 
-        // ✅ Use canonical calculation
-        const result = await window.calculateCurrentOutstanding(
-            currentPupilId,
-            session,
-            currentTerm
-        );
-
-        if (result.reason) {
+        // ✅ FIX: Get fee structure (class-based, permanent) - CORRECTED ID FORMAT
+        const feeDocId = `fee_${classId}`;
+        const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+        
+        if (!feeDoc.exists) {
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -602,21 +600,86 @@ async function loadFeeBalance() {
                     </div>
                     <div class="section-title">
                         <h2>Fee Information</h2>
-                        <p>${result.reason}</p>
+                        <p>No fee structure configured for ${className} yet</p>
                     </div>
                 </div>
             `;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
+        
+        const feeStructure = feeDoc.data();
+        const baseFee = Number(feeStructure.total) || 0;
 
-        // Use result.* for all values
-        const baseFee = result.baseFee;
-        const amountDue = result.amountDue;
-        const arrears = result.arrears;
-        const totalPaid = result.totalPaid;
-        const balance = result.balance;
-        const status = result.status;
+        // ✅ Apply fee adjustments (scholarships, discounts, enrollment)
+        const amountDue = window.calculateAdjustedFee(pupilData, baseFee, currentTerm);
+        
+        // ✅ Calculate complete arrears (termly + session)
+        const arrears = await window.calculateCompleteArrears(currentPupilId, session, currentTerm);
+
+        // ✅ Get payment record (FIXED: won't fail with permission-denied)
+        const paymentDocId = `${currentPupilId}_${encodedSession}_${currentTerm}`;
+        let paymentDoc;
+        
+        try {
+            paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        } catch (error) {
+            // ✅ FIXED: Handle permission errors gracefully
+            if (error.code === 'permission-denied') {
+                console.warn('Permission denied reading payment record, will auto-create');
+                paymentDoc = { exists: false };
+            } else {
+                throw error;
+            }
+        }
+
+        let totalPaid = 0;
+        let balance = amountDue + arrears;
+        let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
+        let recordExists = paymentDoc.exists;
+
+        // ✅ Auto-create payment record if missing
+        if (!recordExists && classId) {
+            console.log('⚠️ Payment record missing, auto-creating...');
+            
+            try {
+                await db.collection('payments').doc(paymentDocId).set({
+                    pupilId: currentPupilId,
+                    pupilName: pupilData.name || 'Unknown',
+                    classId: classId,
+                    className: className,
+                    session: session,
+                    term: currentTerm,
+                    amountDue: amountDue,
+                    arrears: arrears,
+                    totalDue: amountDue + arrears,
+                    totalPaid: 0,
+                    balance: amountDue + arrears,
+                    status: status,
+                    lastPaymentDate: null,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    autoCreated: true
+                });
+                
+                console.log('✅ Auto-created payment record');
+                
+                // Re-fetch the document
+                paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+                recordExists = true;
+            } catch (createError) {
+                console.error('❌ Failed to auto-create payment record:', createError);
+                // Continue with default values
+            }
+        }
+
+        // Extract payment data if exists
+        if (recordExists && paymentDoc.exists) {
+            const data = paymentDoc.data();
+            totalPaid = Number(data.totalPaid) || 0;
+            balance = Number(data.balance) || 0;
+            status = data.status || (arrears > 0 ? 'owing_with_arrears' : 'owing');
+        }
 
         // Status colors
         let statusColor = '#f44336';
@@ -679,6 +742,7 @@ async function loadFeeBalance() {
         const totalDue = amountDue + arrears;
         const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
+        // Render complete fee section
         feeSection.innerHTML = `
             <div class="section-header">
                 <div class="section-icon" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%);">
