@@ -5626,25 +5626,8 @@ function getPreviousSessionName(currentSession) {
  * Helper: Calculate total unpaid balance for entire session
  */
 async function calculateSessionBalance(pupilId, session) {
-  try {
-    const paymentsSnap = await db.collection('payments')
-      .where('pupilId', '==', pupilId)
-      .where('session', '==', session)
-      .get();
-    
-    let totalBalance = 0;
-    
-    paymentsSnap.forEach(doc => {
-      const data = doc.data();
-      totalBalance += (data.balance || 0);
-    });
-    
-    return totalBalance;
-    
-  } catch (error) {
-    console.error('Error calculating session balance:', error);
-    return 0;
-  }
+  // Just delegate to the safe version (which is now fixed)
+  return await calculateSessionBalanceSafe(pupilId, session);
 }
 
 /**
