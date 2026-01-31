@@ -6386,23 +6386,31 @@ function renderPage(page) {
     }
     
     // FIXED: Add keyboard navigation support
-    paginationContainer.innerHTML = `
-      <button 
-        onclick="window.${paginationFuncName}(${page - 1})" 
-        ${page === 1 ? 'disabled' : ''}
-        aria-label="Previous page">
-        Previous
-      </button>
-      <span class="page-info" role="status" aria-live="polite">
-        Page ${page} of ${total || 1}
-      </span>
-      <button 
-        onclick="window.${paginationFuncName}(${page + 1})" 
-        ${page === total ? 'disabled' : ''}
-        aria-label="Next page">
-        Next
-      </button>
-    `;
+    // Hide controls if only 1 page
+if (total <= 1) {
+  paginationContainer.innerHTML = '';
+  paginationContainer.style.display = 'none';
+  return;
+}
+
+paginationContainer.style.display = 'flex';
+paginationContainer.innerHTML = `
+  <button 
+    onclick="window.${paginationFuncName}(${page - 1})" 
+    ${page === 1 ? 'disabled' : ''}
+    aria-label="Previous page">
+    Previous
+  </button>
+  <span class="page-info" role="status" aria-live="polite">
+    Page ${page} of ${total}
+  </span>
+  <button 
+    onclick="window.${paginationFuncName}(${page + 1})" 
+    ${page === total ? 'disabled' : ''}
+    aria-label="Next page">
+    Next
+  </button>
+`;
   }
   
   // Create pagination function
