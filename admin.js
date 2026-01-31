@@ -407,90 +407,6 @@ window.deleteItem = async function(collection, docId) {
   }
 };
 
-/**
- * Delete fee structure - WITH PROTECTION AND HISTORY
- * FIXED: Archives before deletion and checks for dependent records
- */
-async function deleteFeeStructure(docId, className) {
-  try {
-    // Get fee structure data
-    const feeDoc = await db.collection('fee_structures').doc(docId).get();
-    
-    if (!feeDoc.exists) {
-      window.showToast?.('Fee structure not found', 'danger');
-      return;
-    }
-    
-    const feeData = feeDoc.data();
-    const session = feeData.session;
-    const classId = feeData.classId;
-    const total = feeData.total || 0;
-    
-    // Check if any payments exist for this fee structure
-    const encodedSession = session.replace(/\//g, '-');
-    const paymentsSnap = await db.collection('payments')
-      .where('classId', '==', classId)
-      .where('session', '==', session)
-      .limit(1)
-      .get();
-    
-    if (!paymentsSnap.empty) {
-      window.showToast?.(
-        `🚫 Cannot delete fee structure for ${className}\n\n` +
-        `Payment records exist for this class in ${session}.\n\n` +
-        `Financial records must be preserved for audit purposes.\n\n` +
-        `To change fees, use "Edit" instead of deleting.`,
-        'danger',
-        10000
-      );
-      return;
-    }
-    
-    const confirmation = confirm(
-      `Delete fee structure for ${className}?\n\n` +
-      `Session: ${session}\n` +
-      `Fee per term: ₦${total.toLocaleString()}\n\n` +
-      `This will remove the fee configuration.\n` +
-      `A backup will be archived for records.\n\n` +
-      `Continue?`
-    );
-    
-    if (!confirmation) return;
-    
-    // Archive before deletion
-    await db.collection('fee_structure_history').add({
-      classId: classId,
-      className: className,
-      session: session,
-      fees: feeData.fees || {},
-      total: total,
-      deletedBy: auth.currentUser.uid,
-      deletedByEmail: auth.currentUser.email,
-      deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      reason: 'Admin deleted fee structure',
-      originalData: feeData
-    });
-    
-    console.log('✓ Fee structure archived before deletion');
-    
-    // Now delete
-    await db.collection('fee_structures').doc(docId).delete();
-    
-    window.showToast?.(
-      `✓ Fee structure for ${className} deleted\n\n` +
-      `A backup has been archived for records.`,
-      'success',
-      5000
-    );
-    
-    await loadFeeStructures();
-    
-  } catch (error) {
-    console.error('Error deleting fee structure:', error);
-    window.handleError(error, 'Failed to delete fee structure');
-  }
-}
-
 const db = window.db;
 const auth = window.auth;
 
@@ -4796,6 +4712,9 @@ async function saveFeeStructure() {
 
 window.saveFeeStructure = saveFeeStructure;
 
+/**
+ * ✅ FIXED: Edit fee structure - Works with permanent (class-based) fee structures
+ */
 async function editFeeStructure(feeDocId) {
   try {
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
@@ -4808,7 +4727,12 @@ async function editFeeStructure(feeDocId) {
     const data = feeDoc.data();
     
     // Populate form with existing data
-    document.getElementById('fee-config-class').value = data.classId;
+    const classSelect = document.getElementById('fee-config-class');
+    if (classSelect) {
+      classSelect.value = data.classId;
+      classSelect.disabled = true; // Prevent changing class during edit
+    }
+    
     document.getElementById('fee-tuition').value = data.fees?.tuition || 0;
     document.getElementById('fee-exam').value = data.fees?.exam_fee || 0;
     document.getElementById('fee-uniform').value = data.fees?.uniform || 0;
@@ -4823,17 +4747,114 @@ async function editFeeStructure(feeDocId) {
       saveBtn.dataset.editingId = feeDocId;
     }
     
-    // Scroll to form
-    document.getElementById('fee-config-class').scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'start' 
-    });
+    // Update form title
+    const formTitle = document.querySelector('#fee-management h3');
+    if (formTitle) {
+      formTitle.textContent = `Edit Fee Structure: ${data.className}`;
+    }
     
-    window.showToast?.(`Editing fee structure for ${data.className}`, 'info', 3000);
+    // Scroll to form
+    const feeConfigCard = document.querySelector('#fee-management .admin-card');
+    if (feeConfigCard) {
+      feeConfigCard.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+    
+    window.showToast?.(
+      `Editing fee structure for ${data.className}\n\n` +
+      `Note: You cannot change which class this fee applies to.\n` +
+      `Current fee: ₦${data.total.toLocaleString()} per term`,
+      'info',
+      6000
+    );
     
   } catch (error) {
-    console.error('Error loading fee for edit:', error);
+    console.error('❌ Error loading fee for edit:', error);
     window.showToast?.('Failed to load fee structure', 'danger');
+  }
+}
+
+/**
+ * ✅ FIXED: Delete fee structure - Works with permanent (class-based) fee structures
+ * No longer depends on session field since fees are now permanent
+ */
+async function deleteFeeStructure(docId, className) {
+  try {
+    // Get fee structure data
+    const feeDoc = await db.collection('fee_structures').doc(docId).get();
+    
+    if (!feeDoc.exists) {
+      window.showToast?.('Fee structure not found', 'danger');
+      return;
+    }
+    
+    const feeData = feeDoc.data();
+    const classId = feeData.classId;
+    const total = feeData.total || 0;
+    
+    // ✅ CRITICAL FIX: Check if ANY payment records exist for this class
+    // (across all sessions, since fee structure is permanent)
+    console.log(`Checking for payment records for class: ${classId}`);
+    
+    const paymentsSnap = await db.collection('payments')
+      .where('classId', '==', classId)
+      .limit(1)
+      .get();
+    
+    if (!paymentsSnap.empty) {
+      window.showToast?.(
+        `🚫 Cannot delete fee structure for ${className}\n\n` +
+        `Payment records exist for this class.\n\n` +
+        `Financial records must be preserved for audit purposes.\n\n` +
+        `To change fees, use "Edit" instead of deleting.`,
+        'danger',
+        10000
+      );
+      return;
+    }
+    
+    const confirmation = confirm(
+      `⚠️ DELETE FEE STRUCTURE FOR ${className}?\n\n` +
+      `Fee per term: ₦${total.toLocaleString()}\n\n` +
+      `This will remove the fee configuration for this class.\n` +
+      `A backup will be archived for records.\n\n` +
+      `This action cannot be undone. Continue?`
+    );
+    
+    if (!confirmation) return;
+    
+    // Archive before deletion (no session field needed)
+    await db.collection('fee_structure_history').add({
+      classId: classId,
+      className: className,
+      fees: feeData.fees || {},
+      total: total,
+      deletedBy: auth.currentUser.uid,
+      deletedByEmail: auth.currentUser.email,
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      reason: 'Admin deleted permanent fee structure',
+      originalData: feeData
+    });
+    
+    console.log('✓ Fee structure archived before deletion');
+    
+    // Now delete
+    await db.collection('fee_structures').doc(docId).delete();
+    
+    window.showToast?.(
+      `✓ Fee structure for ${className} deleted\n\n` +
+      `A backup has been archived for records.`,
+      'success',
+      5000
+    );
+    
+    await loadFeeStructures();
+    
+  } catch (error) {
+    console.error('❌ Error deleting fee structure:', error);
+    window.handleError(error, 'Failed to delete fee structure');
   }
 }
 
