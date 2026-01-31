@@ -773,6 +773,9 @@ function showSection(sectionId) {
  * Load Audit Log Section
  * CRITICAL FIX: This function was missing, causing ReferenceError
  */
+// Global variable to store all audit log data
+let allAuditLogsData = [];
+
 async function loadAuditLog() {
   console.log('📋 Loading audit log...');
   
@@ -803,6 +806,7 @@ async function loadAuditLog() {
           <p style="font-size:var(--text-sm);">All administrative actions will be logged here for compliance and security.</p>
         </div>
       `;
+      allAuditLogsData = [];
       return;
     }
     
@@ -811,7 +815,10 @@ async function loadAuditLog() {
       logs.push({ id: doc.id, ...doc.data() });
     });
     
-    // Render audit log table
+    // ✅ Store globally for search
+    allAuditLogsData = logs;
+    
+    // Render audit log table with search
     container.innerHTML = `
       <div style="margin-bottom:var(--space-lg);">
         <input 
@@ -819,7 +826,8 @@ async function loadAuditLog() {
           id="audit-search" 
           placeholder="🔍 Search by email, action, or collection..." 
           style="width:100%; padding:var(--space-sm); border:1px solid var(--color-gray-300); border-radius:var(--radius-sm);"
-          onkeyup="filterAuditLog()">
+          oninput="filterAuditLog()">
+        <p id="audit-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
       </div>
       
       <div class="table-container">
@@ -845,28 +853,8 @@ async function loadAuditLog() {
       </button>
     `;
     
-    // Use pagination
-    paginateTable(logs, 'audit-log-tbody', 25, (log, tbody) => {
-      const timestamp = log.timestamp 
-        ? log.timestamp.toDate().toLocaleString('en-GB')
-        : 'Unknown';
-      
-      const actionBadge = getActionBadge(log.action);
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Timestamp">${timestamp}</td>
-        <td data-label="Action">${actionBadge}</td>
-        <td data-label="Collection">${log.collection || '-'}</td>
-        <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
-        <td data-label="Details">
-          <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
-            View Details
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    // Render with pagination
+    renderAuditLogTable(allAuditLogsData);
     
     console.log(`✓ Loaded ${logs.length} audit log entries`);
     
@@ -884,6 +872,89 @@ async function loadAuditLog() {
     window.showToast?.('Failed to load audit log', 'danger');
   }
 }
+
+/**
+ * Render audit log table with pagination
+ */
+function renderAuditLogTable(logsData) {
+  const tbody = document.getElementById('audit-log-tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (logsData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No logs match your search</td></tr>';
+    return;
+  }
+  
+  paginateTable(logsData, 'audit-log-tbody', 25, (log, tbody) => {
+    const timestamp = log.timestamp 
+      ? log.timestamp.toDate().toLocaleString('en-GB')
+      : 'Unknown';
+    
+    const actionBadge = getActionBadge(log.action);
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Timestamp">${timestamp}</td>
+      <td data-label="Action">${actionBadge}</td>
+      <td data-label="Collection">${log.collection || '-'}</td>
+      <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
+      <td data-label="Details">
+        <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
+          View Details
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Filter audit log by search term
+ */
+function filterAuditLog() {
+  const searchInput = document.getElementById('audit-search');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    renderAuditLogTable(allAuditLogsData);
+    return;
+  }
+  
+  // Filter across all fields
+  const filtered = allAuditLogsData.filter(log => {
+    const email = (log.performedByEmail || '').toLowerCase();
+    const action = (log.action || '').toLowerCase();
+    const collection = (log.collection || '').toLowerCase();
+    
+    return email.includes(searchTerm) || 
+           action.includes(searchTerm) || 
+           collection.includes(searchTerm);
+  });
+  
+  console.log(`Audit log search: "${searchTerm}" → ${filtered.length} of ${allAuditLogsData.length} matches`);
+  
+  renderAuditLogTable(filtered);
+  
+  const countDisplay = document.getElementById('audit-search-count');
+  if (countDisplay) {
+    countDisplay.textContent = filtered.length === allAuditLogsData.length 
+      ? '' 
+      : `Showing ${filtered.length} of ${allAuditLogsData.length}`;
+  }
+}
+
+// Make functions globally available
+window.filterAuditLog = filterAuditLog;
+window.renderAuditLogTable = renderAuditLogTable;
+
+// Make functions globally available
+window.loadAuditLog = loadAuditLog;
+window.viewAuditDetails = viewAuditDetails;
+window.downloadAuditLog = downloadAuditLog;
 
 /**
  * Helper: Get action badge with color coding
@@ -1034,34 +1105,6 @@ async function downloadAuditLog() {
     window.showToast?.('Failed to download audit log', 'danger');
   }
 }
-
-/**
- * Filter audit log table by search term
- */
-function filterAuditLog() {
-  const searchTerm = document.getElementById('audit-search')?.value.toLowerCase() || '';
-  const rows = document.querySelectorAll('#audit-log-tbody tr');
-  
-  let visibleCount = 0;
-  
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    const matches = text.includes(searchTerm);
-    row.style.display = matches ? '' : 'none';
-    if (matches) visibleCount++;
-  });
-  
-  console.log(`Filter: ${visibleCount} of ${rows.length} entries match "${searchTerm}"`);
-}
-
-// ✅ CRITICAL: Make functions globally available
-window.loadAuditLog = loadAuditLog;
-window.getActionBadge = getActionBadge;
-window.viewAuditDetails = viewAuditDetails;
-window.downloadAuditLog = downloadAuditLog;
-window.filterAuditLog = filterAuditLog;
-
-console.log('✓ Audit log module loaded successfully');
 
 // ============================================
 // LOAD SECTION DATA (Defensive loading)
@@ -9481,89 +9524,6 @@ async function refreshHierarchyUI() {
 window.saveHierarchyOrder = saveHierarchyOrder;
 window.refreshHierarchyUI = refreshHierarchyUI;
 
-/* ========================================
-DELETE FUNCTIONS
-======================================== */
-
-/**
- * FIXED: Unified delete function with proper cascade deletion
- */
-async function deleteItem(collection, docId) {
-  if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-    return;
-  }
-
-  try {
-    // Get item data before deletion for audit log
-    const itemDoc = await db.collection(collection).doc(docId).get();
-    const itemData = itemDoc.exists ? itemDoc.data() : {};
-    
-    // AUDIT: Log deletion
-    await db.collection('audit_log').add({
-      action: collection === 'teachers' || collection === 'pupils' ? 'delete_user' : 'delete_item',
-      collection: collection,
-      documentId: docId,
-      deletedData: {
-        name: itemData.name || 'Unknown',
-        email: itemData.email || 'Unknown',
-      },
-      performedBy: auth.currentUser.uid,
-      performedByEmail: auth.currentUser.email,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-      userAgent: navigator.userAgent
-    });
-
-    // Handle user collections with cascade deletion
-    if (collection === 'pupils') {
-      // Delete pupil data
-      await db.collection('pupils').doc(docId).delete();
-      await db.collection('users').doc(docId).delete();
-      
-      window.showToast?.('Pupil deleted successfully', 'success');
-      loadPupils();
-      
-    } else if (collection === 'teachers') {
-      // Delete teacher data
-      await db.collection('teachers').doc(docId).delete();
-      await db.collection('users').doc(docId).delete();
-      
-      window.showToast?.('Teacher deleted successfully', 'success');
-      loadTeachers();
-      loadTeacherAssignments();
-      
-    } else {
-      // Regular item deletion
-      await db.collection(collection).doc(docId).delete();
-      window.showToast?.('Item deleted successfully', 'success');
-      
-      // Reload appropriate section
-      switch(collection) {
-        case 'classes':
-          loadClasses();
-          loadTeacherAssignments();
-          break;
-        case 'subjects':
-          loadSubjects();
-          break;
-        case 'announcements':
-          loadAdminAnnouncements();
-          break;
-      }
-    }
-    
-    loadDashboardStats();
-
-  } catch (error) {
-    console.error('Error deleting document:', error);
-    window.handleError?.(error, 'Failed to delete item');
-  }
-}
-
-// ✅ CRITICAL: Make deleteItem globally available IMMEDIATELY
-window.deleteItem = deleteItem;
-
-console.log('✓ deleteItem function exposed globally');
-
 /**
  * FIXED: Initialize Sidebar Navigation
  * Handles all sidebar link clicks and group toggles
@@ -10731,84 +10691,6 @@ function toggleAllPupils(masterCheckbox) {
   updateBulkActionButtons();
 }
 
-/**
- * AUDIT LOG VIEWER - FIXED
- */
-async function loadAuditLog() {
-  const container = document.getElementById('audit-log-container');
-  if (!container) return;
-  
-  container.innerHTML = '<div style="text-align:center; padding:var(--space-2xl);"><div class="spinner"></div><p>Loading audit log...</p></div>';
-  
-  try {
-    const logsSnap = await db.collection('audit_log')
-      .orderBy('timestamp', 'desc')
-      .limit(100)
-      .get();
-    
-    if (logsSnap.empty) {
-      container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No audit logs yet</p>';
-      return;
-    }
-    
-    const logs = [];
-    logsSnap.forEach(doc => {
-      logs.push({ id: doc.id, ...doc.data() });
-    });
-    
-    container.innerHTML = `
-      <div style="margin-bottom:var(--space-lg);">
-        <input type="text" id="audit-search" placeholder="Search by email, action, or collection..." 
-               style="width:100%; padding:var(--space-sm);" onkeyup="filterAuditLog()">
-      </div>
-      <div class="table-container">
-        <table class="responsive-table" id="audit-log-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Action</th>
-              <th>Collection</th>
-              <th>Performed By</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody id="audit-log-tbody"></tbody>
-        </table>
-      </div>
-      <button class="btn btn-secondary" onclick="downloadAuditLog()" style="margin-top:var(--space-lg);">
-        📥 Download Full Audit Log (CSV)
-      </button>
-    `;
-    
-    // FIXED: Use tbody ID, not table ID
-    paginateTable(logs, 'audit-log-tbody', 25, (log, tbody) => {
-      const timestamp = log.timestamp ? 
-        log.timestamp.toDate().toLocaleString('en-GB') : 
-        'Unknown';
-      
-      const actionBadge = getActionBadge(log.action);
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Timestamp">${timestamp}</td>
-        <td data-label="Action">${actionBadge}</td>
-        <td data-label="Collection">${log.collection || '-'}</td>
-        <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
-        <td data-label="Details">
-          <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
-            View Details
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-    
-  } catch (error) {
-    console.error('Error loading audit log:', error);
-    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading audit log</p>';
-  }
-}
-
 function getActionBadge(action) {
   const badges = {
     'delete_user': '<span style="background:#dc3545; color:white; padding:4px 8px; border-radius:4px; font-size:12px;">DELETE USER</span>',
@@ -10819,289 +10701,6 @@ function getActionBadge(action) {
   
   return badges[action] || `<span style="color:var(--color-gray-600);">${action}</span>`;
 }
-
-async function viewAuditDetails(logId) {
-  try {
-    const logDoc = await db.collection('audit_log').doc(logId).get();
-    if (!logDoc.exists) {
-      window.showToast?.('Audit log entry not found', 'danger');
-      return;
-    }
-    
-    const log = logDoc.data();
-    
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000; overflow-y:auto; padding:var(--space-lg);';
-    modal.innerHTML = `
-      <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:700px; width:90%; max-height:80vh; overflow-y:auto;">
-        <h3 style="margin-top:0;">Audit Log Details</h3>
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>Action:</strong> ${log.action}
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>Timestamp:</strong> ${log.timestamp ? log.timestamp.toDate().toLocaleString('en-GB') : 'Unknown'}
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>Performed By:</strong> ${log.performedByEmail || 'Unknown'} (${log.performedBy || 'Unknown ID'})
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>Collection:</strong> ${log.collection || 'N/A'}
-        </div>
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>Document ID:</strong> ${log.documentId || 'N/A'}
-        </div>
-        
-        ${log.deletedData ? `
-          <div style="margin-bottom:var(--space-md);">
-            <strong>Deleted Data:</strong>
-            <pre style="background:#f5f5f5; padding:var(--space-md); border-radius:var(--radius-sm); overflow-x:auto; font-size:12px;">${JSON.stringify(log.deletedData, null, 2)}</pre>
-          </div>
-        ` : ''}
-        
-        <div style="margin-bottom:var(--space-md);">
-          <strong>User Agent:</strong>
-          <div style="font-size:12px; color:var(--color-gray-600);">${log.userAgent || 'Unknown'}</div>
-        </div>
-        
-        <button class="btn btn-primary" onclick="this.closest('[style*=position]').remove()">Close</button>
-      </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-  } catch (error) {
-    console.error('Error loading audit details:', error);
-    window.showToast?.('Failed to load audit details', 'danger');
-  }
-}
-
-async function downloadAuditLog() {
-  try {
-    const logsSnap = await db.collection('audit_log')
-      .orderBy('timestamp', 'desc')
-      .get();
-    
-    if (logsSnap.empty) {
-      window.showToast?.('No audit logs to download', 'info');
-      return;
-    }
-    
-    // Create CSV
-    let csv = 'Timestamp,Action,Collection,Document ID,Performed By,Email,User Agent\n';
-    
-    logsSnap.forEach(doc => {
-      const log = doc.data();
-      const timestamp = log.timestamp ? log.timestamp.toDate().toISOString() : '';
-      
-      csv += `"${timestamp}","${log.action}","${log.collection || ''}","${log.documentId || ''}","${log.performedBy || ''}","${log.performedByEmail || ''}","${(log.userAgent || '').replace(/"/g, '""')}"\n`;
-    });
-    
-    // Download
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    window.showToast?.('✓ Audit log downloaded', 'success');
-    
-  } catch (error) {
-    console.error('Error downloading audit log:', error);
-    window.showToast?.('Failed to download audit log', 'danger');
-  }
-}
-
-// Global variable to store all audit log data
-let allAuditLogsData = [];
-
-async function loadAuditLog() {
-  console.log('📋 Loading audit log...');
-  
-  const container = document.getElementById('audit-log-container');
-  if (!container) {
-    console.error('❌ audit-log-container element not found');
-    return;
-  }
-  
-  container.innerHTML = `
-    <div style="text-align:center; padding:var(--space-2xl);">
-      <div class="spinner"></div>
-      <p>Loading audit log...</p>
-    </div>
-  `;
-  
-  try {
-    // Get latest 100 audit entries
-    const logsSnap = await db.collection('audit_log')
-      .orderBy('timestamp', 'desc')
-      .limit(100)
-      .get();
-    
-    if (logsSnap.empty) {
-      container.innerHTML = `
-        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
-          <p style="font-size:var(--text-lg); margin-bottom:var(--space-md);">📋 No Audit Logs Yet</p>
-          <p style="font-size:var(--text-sm);">All administrative actions will be logged here for compliance and security.</p>
-        </div>
-      `;
-      allAuditLogsData = [];
-      return;
-    }
-    
-    const logs = [];
-    logsSnap.forEach(doc => {
-      logs.push({ id: doc.id, ...doc.data() });
-    });
-    
-    // ✅ Store globally for search
-    allAuditLogsData = logs;
-    
-    // Render audit log table with search
-    container.innerHTML = `
-      <div style="margin-bottom:var(--space-lg);">
-        <input 
-          type="text" 
-          id="audit-search" 
-          placeholder="🔍 Search by email, action, or collection..." 
-          style="width:100%; padding:var(--space-sm); border:1px solid var(--color-gray-300); border-radius:var(--radius-sm);"
-          oninput="filterAuditLog()">
-        <p id="audit-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
-      </div>
-      
-      <div class="table-container">
-        <table class="responsive-table" id="audit-log-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Action</th>
-              <th>Collection</th>
-              <th>Performed By</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody id="audit-log-tbody"></tbody>
-        </table>
-      </div>
-      
-      <button 
-        class="btn btn-secondary" 
-        onclick="downloadAuditLog()" 
-        style="margin-top:var(--space-lg);">
-        📥 Download Full Audit Log (CSV)
-      </button>
-    `;
-    
-    // Render with pagination
-    renderAuditLogTable(allAuditLogsData);
-    
-    console.log(`✓ Loaded ${logs.length} audit log entries`);
-    
-  } catch (error) {
-    console.error('❌ Error loading audit log:', error);
-    container.innerHTML = `
-      <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
-        <p><strong>Error Loading Audit Log</strong></p>
-        <p>${error.message}</p>
-        <button class="btn btn-primary" onclick="loadAuditLog()" style="margin-top:var(--space-md);">
-          🔄 Retry
-        </button>
-      </div>
-    `;
-    window.showToast?.('Failed to load audit log', 'danger');
-  }
-}
-
-/**
- * Render audit log table with pagination
- */
-function renderAuditLogTable(logsData) {
-  const tbody = document.getElementById('audit-log-tbody');
-  if (!tbody) return;
-  
-  tbody.innerHTML = '';
-  
-  if (logsData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No logs match your search</td></tr>';
-    return;
-  }
-  
-  paginateTable(logsData, 'audit-log-tbody', 25, (log, tbody) => {
-    const timestamp = log.timestamp 
-      ? log.timestamp.toDate().toLocaleString('en-GB')
-      : 'Unknown';
-    
-    const actionBadge = getActionBadge(log.action);
-    
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td data-label="Timestamp">${timestamp}</td>
-      <td data-label="Action">${actionBadge}</td>
-      <td data-label="Collection">${log.collection || '-'}</td>
-      <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
-      <td data-label="Details">
-        <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
-          View Details
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-/**
- * Filter audit log by search term
- */
-function filterAuditLog() {
-  const searchInput = document.getElementById('audit-search');
-  if (!searchInput) return;
-  
-  const searchTerm = searchInput.value.toLowerCase().trim();
-  
-  if (!searchTerm) {
-    renderAuditLogTable(allAuditLogsData);
-    return;
-  }
-  
-  // Filter across all fields
-  const filtered = allAuditLogsData.filter(log => {
-    const email = (log.performedByEmail || '').toLowerCase();
-    const action = (log.action || '').toLowerCase();
-    const collection = (log.collection || '').toLowerCase();
-    
-    return email.includes(searchTerm) || 
-           action.includes(searchTerm) || 
-           collection.includes(searchTerm);
-  });
-  
-  console.log(`Audit log search: "${searchTerm}" → ${filtered.length} of ${allAuditLogsData.length} matches`);
-  
-  renderAuditLogTable(filtered);
-  
-  const countDisplay = document.getElementById('audit-search-count');
-  if (countDisplay) {
-    countDisplay.textContent = filtered.length === allAuditLogsData.length 
-      ? '' 
-      : `Showing ${filtered.length} of ${allAuditLogsData.length}`;
-  }
-}
-
-// Make functions globally available
-window.filterAuditLog = filterAuditLog;
-window.renderAuditLogTable = renderAuditLogTable;
-
-// Make functions globally available
-window.loadAuditLog = loadAuditLog;
-window.viewAuditDetails = viewAuditDetails;
-window.downloadAuditLog = downloadAuditLog;
 
 /**
  * Export all pupils data to CSV
