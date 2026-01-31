@@ -422,23 +422,12 @@ async function deleteFeeStructure(docId, className) {
     }
     
     const feeData = feeDoc.data();
-
     const session = feeData.session;
     const classId = feeData.classId;
     const total = feeData.total || 0;
-
-    // Warn if session is missing, but do not block deletion
-    if (!session) {
-      window.showToast?.(
-        '⚠ Fee structure is missing session information.\n\n' +
-        'This fee record appears incomplete or created using an older system.\n\n' +
-        'Deletion will continue regardless.',
-        'warning',
-        10000
-      );
-    }
-
-    // Warn if payments exist, but do not block deletion
+    
+    // Check if any payments exist for this fee structure
+    const encodedSession = session.replace(/\//g, '-');
     const paymentsSnap = await db.collection('payments')
       .where('classId', '==', classId)
       .where('session', '==', session)
@@ -447,17 +436,19 @@ async function deleteFeeStructure(docId, className) {
     
     if (!paymentsSnap.empty) {
       window.showToast?.(
-        `⚠ Payments exist for ${className} in ${session}.\n\n` +
-        `Deleting this fee structure may affect historical data.\n\n` +
-        `Proceed with caution.`,
-        'warning',
+        `🚫 Cannot delete fee structure for ${className}\n\n` +
+        `Payment records exist for this class in ${session}.\n\n` +
+        `Financial records must be preserved for audit purposes.\n\n` +
+        `To change fees, use "Edit" instead of deleting.`,
+        'danger',
         10000
       );
+      return;
     }
     
     const confirmation = confirm(
       `Delete fee structure for ${className}?\n\n` +
-      `Session: ${session || 'Unknown'}\n` +
+      `Session: ${session}\n` +
       `Fee per term: ₦${total.toLocaleString()}\n\n` +
       `This will remove the fee configuration.\n` +
       `A backup will be archived for records.\n\n` +
@@ -470,7 +461,7 @@ async function deleteFeeStructure(docId, className) {
     await db.collection('fee_structure_history').add({
       classId: classId,
       className: className,
-      session: session || 'Unknown',
+      session: session,
       fees: feeData.fees || {},
       total: total,
       deletedBy: auth.currentUser.uid,
