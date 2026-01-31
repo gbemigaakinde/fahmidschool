@@ -877,7 +877,16 @@ button[onclick="exportPupilResults()"]:hover {
         <div id="teachers" class="admin-card" style="display:none;">
             <h1>Manage Teachers</h1>
             <button class="btn" onclick="showTeacherForm()">+ Add New Teacher</button>
-
+<!-- Add this ABOVE the teachers table -->
+<div style="margin-bottom: var(--space-lg);">
+  <input 
+    type="text" 
+    id="teachers-search" 
+    placeholder="🔍 Search by name..." 
+    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
+    oninput="filterTeachers()">
+  <p id="teachers-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
+</div>
             <div id="teacher-form" class="form-section" style="display:none;">
                 <h3>Add New Teacher</h3>
                 <form id="add-teacher-form" class="admin-form">
@@ -931,7 +940,16 @@ button[onclick="exportPupilResults()"]:hover {
         <button class="btn btn-success" onclick="exportPupilsToExcel()">📊 Export to Excel</button>
         <button class="btn btn-primary" onclick="exportPupilsToPDF()">📄 Export to PDF</button>
     </div>
-
+<!-- Add this ABOVE the pupils table, inside the pupils section -->
+<div style="margin-bottom: var(--space-lg);">
+  <input 
+    type="text" 
+    id="pupils-search" 
+    placeholder="🔍 Search by name or admission number..." 
+    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
+    oninput="filterPupils()">
+  <p id="pupils-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
+</div>
     <div id="pupil-form" class="form-section" style="display:none;">
         <h3 id="pupil-form-title">Add / Edit Pupil</h3>
         <form id="add-pupil-form" class="admin-form">
@@ -1157,7 +1175,16 @@ Example 3: Free education
 <div id="alumni" class="admin-card" style="display:none;">
     <h1>Alumni (Graduated Pupils)</h1>
     <p class="section-description">Pupils who have graduated from the terminal class</p>
-
+<!-- Add this ABOVE the alumni table -->
+<div style="margin-bottom: var(--space-lg);">
+  <input 
+    type="text" 
+    id="alumni-search" 
+    placeholder="🔍 Search by name or graduation session..." 
+    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
+    oninput="filterAlumni()">
+  <p id="alumni-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
+</div>
     <div class="table-container">
         <table class="responsive-table">
             <thead>
