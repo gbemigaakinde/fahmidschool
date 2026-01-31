@@ -1019,39 +1019,40 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
  * ✅ NEW: Safe session balance calculation that handles missing documents
  */
 async function calculateSessionBalanceSafe(pupilId, session) {
+  try {
+    const encodedSession = session.replace(/\//g, '-');
+    
+    // ✅ CRITICAL FIX: Only get Third Term balance
+    const thirdTermDocId = `${pupilId}_${encodedSession}_Third Term`;
+    
+    console.log(`  Checking session balance for ${session}...`);
+    
     try {
-        const encodedSession = session.replace(/\//g, '-');
-        let totalBalance = 0;
+      const thirdTermDoc = await db.collection('payments').doc(thirdTermDocId).get();
+      
+      if (thirdTermDoc.exists) {
+        const balance = Number(thirdTermDoc.data().balance) || 0;
         
-        // Try each term individually to avoid query permission errors
-        const terms = ['First Term', 'Second Term', 'Third Term'];
-        
-        for (const term of terms) {
-            const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-            
-            try {
-                const doc = await db.collection('payments').doc(paymentDocId).get();
-                
-                if (doc.exists) {
-                    const balance = Number(doc.data().balance) || 0;
-                    totalBalance += balance;
-                    
-                    if (balance > 0) {
-                        console.log(`  - ${term}: ₦${balance.toLocaleString()}`);
-                    }
-                }
-            } catch (docError) {
-                // Skip this term if error occurs
-                console.warn(`Skipped ${term} for session ${session}:`, docError.message);
-            }
+        if (balance > 0) {
+          console.log(`  ✓ Third Term balance: ₦${balance.toLocaleString()}`);
+        } else {
+          console.log(`  ✓ Session fully paid`);
         }
         
-        return totalBalance;
-        
-    } catch (error) {
-        console.error('Error in calculateSessionBalanceSafe:', error);
+        return balance;
+      } else {
+        console.log(`  ℹ️ No Third Term record`);
         return 0;
+      }
+    } catch (error) {
+      console.warn(`  ⚠️ Could not fetch Third Term:`, error.message);
+      return 0;
     }
+    
+  } catch (error) {
+    console.error('❌ Error in calculateSessionBalanceSafe:', error);
+    return 0;
+  }
 }
 
 // Make globally available
