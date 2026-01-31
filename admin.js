@@ -3753,7 +3753,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * ✅ FIXED: Load Pupil Payment Status - Now Uses Adjusted Fees
+ * ✅ FIXED: Load Pupil Payment Status with safer auto-creation
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -3779,9 +3779,7 @@ async function loadPupilPaymentStatus() {
     const session = settings.session;
     const term = settings.term;
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 1: GET PUPIL DATA (for adjustments)
-    ═══════════════════════════════════════════════════════════ */
+    // Step 1: Get pupil data
     const pupilDoc = await db.collection('pupils').doc(pupilId).get();
     
     if (!pupilDoc.exists) {
@@ -3792,9 +3790,7 @@ async function loadPupilPaymentStatus() {
     
     console.log('📊 Loading payment status for:', pupilName);
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 2: GET BASE FEE (class-based, permanent)
-    ═══════════════════════════════════════════════════════════ */
+    // Step 2: Get base fee
     const feeDocId = `fee_${classId}`;
     console.log(`Looking up fee structure: ${feeDocId}`);
     
@@ -3816,11 +3812,9 @@ async function loadPupilPaymentStatus() {
     
     console.log(`✓ Base fee for ${className}: ₦${baseFee.toLocaleString()}`);
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 3: CALCULATE ADJUSTED FEE (CRITICAL - NO FALLBACK)
-    ═══════════════════════════════════════════════════════════ */
+    // Step 3: Calculate adjusted fee
     if (typeof window.calculateAdjustedFee !== 'function') {
-      throw new Error('CRITICAL ERROR: calculateAdjustedFee() not loaded. Cannot calculate fees.');
+      throw new Error('CRITICAL ERROR: calculateAdjustedFee() not loaded');
     }
     
     const amountDue = window.calculateAdjustedFee(pupilData, baseFee, term);
@@ -3828,7 +3822,6 @@ async function loadPupilPaymentStatus() {
     console.log(`📊 Fee calculation:`);
     console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
     console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
-    console.log(`   Difference: ₦${Math.abs(baseFee - amountDue).toLocaleString()}`);
 
     // Check if pupil is enrolled for this term
     if (amountDue === 0 && baseFee > 0) {
@@ -3843,25 +3836,22 @@ async function loadPupilPaymentStatus() {
       return;
     }
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 4: CALCULATE COMPLETE ARREARS (CRITICAL - NO FALLBACK)
-    ═══════════════════════════════════════════════════════════ */
+    // Step 4: Calculate arrears
     if (typeof window.calculateCompleteArrears !== 'function') {
-      throw new Error('CRITICAL ERROR: calculateCompleteArrears() not loaded. Cannot calculate arrears.');
+      throw new Error('CRITICAL ERROR: calculateCompleteArrears() not loaded');
     }
     
     const arrears = await window.calculateCompleteArrears(pupilId, session, term);
     
-    console.log(`💰 Arrears calculation:`);
-    console.log(`   Total arrears: ₦${arrears.toLocaleString()}`);
+    console.log(`💰 Arrears: ₦${arrears.toLocaleString()}`);
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 5: GET/CREATE PAYMENT RECORD
-    ═══════════════════════════════════════════════════════════ */
+    // Step 5: Get/create payment record
     const encodedSession = session.replace(/\//g, '-');
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     
     let paymentDoc;
+    let autoCreated = false;
+    
     try {
       paymentDoc = await db.collection('payments').doc(paymentDocId).get();
     } catch (error) {
@@ -3873,7 +3863,7 @@ async function loadPupilPaymentStatus() {
     let balance = amountDue + arrears;
     let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    // ✅ AUTO-CREATE if missing
+    // ✅ FIX: Auto-create with verification
     if (!paymentDoc.exists) {
       console.log('⚠️ Payment record missing, auto-creating...');
       
@@ -3900,28 +3890,34 @@ async function loadPupilPaymentStatus() {
         });
         
         console.log('✅ Auto-created payment record');
+        autoCreated = true;
         
-        // Re-fetch
+        // ✅ CRITICAL FIX: Verify creation before continuing
         paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        
+        if (!paymentDoc.exists) {
+          throw new Error('Failed to create payment record - verification failed');
+        }
+        
       } catch (createError) {
-        console.error('Failed to auto-create:', createError);
+        console.error('❌ Failed to auto-create payment record:', createError);
+        throw new Error(`Could not create payment record: ${createError.message}`);
       }
     }
 
+    // Read existing data
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
       totalPaid = Number(data.totalPaid) || 0;
       balance = Number(data.balance) || 0;
       status = data.status || (arrears > 0 ? 'owing_with_arrears' : 'owing');
       
-      console.log(`✓ Existing payment record found:`);
+      console.log(`✓ Payment record found${autoCreated ? ' (auto-created)' : ''}:`);
       console.log(`   Total paid: ₦${totalPaid.toLocaleString()}`);
       console.log(`   Balance: ₦${balance.toLocaleString()}`);
     }
 
-    /* ═══════════════════════════════════════════════════════════
-       ✅ STEP 6: RENDER STATUS (shows adjusted fees + arrears)
-    ═══════════════════════════════════════════════════════════ */
+    // Render status (existing code continues...)
     const totalDue = amountDue + arrears;
     
     let statusBadge = '';
@@ -3935,7 +3931,7 @@ async function loadPupilPaymentStatus() {
       statusBadge = '<span class="status-badge" style="background:#f44336;">Owing</span>';
     }
 
-    // Build adjustment info badge
+    // Build adjustment info
     let adjustmentBadge = '';
     if (amountDue !== baseFee) {
       const difference = baseFee - amountDue;
@@ -3985,14 +3981,14 @@ async function loadPupilPaymentStatus() {
           ₦${arrears.toLocaleString()}
         </div>
         <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
-          ⚠️ Payments will prioritize clearing arrears first before applying to current term.
+          ⚠️ Payments will prioritize clearing arrears first.
         </p>
       </div>
     ` : '';
 
     const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
-    // Render complete fee section
+    // Render complete UI
     statusContainer.innerHTML = `
       <div style="background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md); padding:var(--space-lg);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -4068,8 +4064,6 @@ async function loadPupilPaymentStatus() {
     await loadPaymentHistory(pupilId, session, term);
     
     console.log('✅ Payment status loaded successfully');
-    console.log(`   Outstanding: ₦${balance.toLocaleString()}`);
-    console.log(`   (Adjusted fee: ₦${amountDue.toLocaleString()} + Arrears: ₦${arrears.toLocaleString()})`);
 
   } catch (error) {
     console.error('❌ Error loading payment status:', error);
@@ -4978,6 +4972,9 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
 
 window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
 
+/**
+ * ✅ FIXED: Ensure all pupils have payment records using permanent fee structures
+ */
 async function ensureAllPupilsHavePaymentRecords() {
   const btn = document.getElementById('bulk-generate-btn');
   
@@ -4985,6 +4982,7 @@ async function ensureAllPupilsHavePaymentRecords() {
     'Generate/verify payment records for all pupils?\n\n' +
     'This will:\n' +
     '• Create records for pupils who don\'t have them\n' +
+    '• Use current permanent fee structures (class-based)\n' +
     '• Preserve all existing payment data\n' +
     '• Calculate and apply arrears correctly\n\n' +
     'Continue?'
@@ -5011,16 +5009,19 @@ async function ensureAllPupilsHavePaymentRecords() {
       return;
     }
     
-    // Get all fee structures
-    const feeStructuresSnap = await db.collection('fee_structures')
-      .where('session', '==', session)
-      .get();
+    // ✅ FIX: Get permanent fee structures (class-based, no session filter)
+    const feeStructuresSnap = await db.collection('fee_structures').get();
     
     const feeStructureMap = {};
     feeStructuresSnap.forEach(doc => {
       const data = doc.data();
       feeStructureMap[data.classId] = data.total || 0;
     });
+    
+    if (Object.keys(feeStructureMap).length === 0) {
+      window.showToast?.('No fee structures configured. Please set up fees first.', 'warning');
+      return;
+    }
     
     let totalCreated = 0;
     let totalSkipped = 0;
@@ -5034,11 +5035,27 @@ async function ensureAllPupilsHavePaymentRecords() {
       const pupilData = pupilDoc.data();
       const classId = pupilData.class?.id;
       
-      if (!classId) continue;
+      if (!classId) {
+        console.log(`⏭️ Skipping ${pupilData.name} - no classId`);
+        totalSkipped++;
+        continue;
+      }
       
-      const amountDue = feeStructureMap[classId];
-      if (!amountDue) {
-        console.log(`⏭️ No fee structure for class ${pupilData.class?.name}`);
+      const baseFee = feeStructureMap[classId];
+      if (!baseFee) {
+        console.log(`⏭️ Skipping ${pupilData.name} - no fee structure for class`);
+        totalSkipped++;
+        continue;
+      }
+      
+      // Calculate adjusted fee
+      const amountDue = window.calculateAdjustedFee 
+        ? window.calculateAdjustedFee(pupilData, baseFee, term)
+        : baseFee;
+      
+      if (amountDue === 0) {
+        console.log(`⏭️ Skipping ${pupilData.name} - not enrolled for ${term}`);
+        totalSkipped++;
         continue;
       }
       
@@ -5050,13 +5067,8 @@ async function ensureAllPupilsHavePaymentRecords() {
         continue;
       }
       
-      // Calculate arrears from previous session
-      const previousSession = getPreviousSessionName(session);
-      let arrears = 0;
-      
-      if (previousSession) {
-        arrears = await calculateSessionBalance(pupilId, previousSession);
-      }
+      // Calculate arrears
+      const arrears = await window.calculateCompleteArrears(pupilId, session, term);
       
       if (arrears > 0) {
         totalArrears += arrears;
@@ -5072,6 +5084,8 @@ async function ensureAllPupilsHavePaymentRecords() {
         className: pupilData.class?.name || 'Unknown',
         session: session,
         term: term,
+        baseFee: baseFee,
+        adjustedFee: amountDue,
         amountDue: amountDue,
         arrears: arrears,
         totalDue: amountDue + arrears,
@@ -5100,7 +5114,7 @@ async function ensureAllPupilsHavePaymentRecords() {
     window.showToast?.(
       `✅ Payment records verified!\n\n` +
       `Created: ${totalCreated} new records\n` +
-      `Skipped: ${totalSkipped} (already exist)\n` +
+      `Skipped: ${totalSkipped} (already exist or not applicable)\n` +
       `Total arrears: ₦${totalArrears.toLocaleString()}`,
       'success',
       10000
@@ -5682,13 +5696,12 @@ async function exportFinancialReport(format) {
 }
 
 /**
- * Export CSV - using complete pupil-based data
+ * ✅ OPTIMIZED: Export CSV with cached fee structures
  */
 async function exportFinancialCSV(session, term) {
     try {
         window.showToast?.('Preparing CSV export...', 'info', 2000);
 
-        // ✅ Get ALL pupils
         const pupilsSnap = await db.collection('pupils').get();
         
         if (pupilsSnap.empty) {
@@ -5696,13 +5709,16 @@ async function exportFinancialCSV(session, term) {
             return;
         }
 
-        // ✅ Get ALL fee structures
+        // ✅ FIX: Cache all fee structures ONCE
         const feeStructuresSnap = await db.collection('fee_structures').get();
         
         const feeMap = {};
         feeStructuresSnap.forEach(doc => {
             const data = doc.data();
-            feeMap[data.classId] = data.total || 0;
+            feeMap[data.classId] = {
+                baseFee: data.total || 0,
+                fees: data.fees || {}
+            };
         });
 
         if (Object.keys(feeMap).length === 0) {
@@ -5718,32 +5734,37 @@ async function exportFinancialCSV(session, term) {
             const pupilId = pupilDoc.id;
             const classId = pupilData.class?.id;
             
-            if (!classId) continue;
+            if (!classId || !feeMap[classId]) continue;
             
-            const feeAmount = feeMap[classId];
-            if (!feeAmount) continue;
+            const baseFee = feeMap[classId].baseFee;
+            
+            // Calculate adjusted fee
+            const amountDue = window.calculateAdjustedFee 
+                ? window.calculateAdjustedFee(pupilData, baseFee, term)
+                : baseFee;
 
             const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
             const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
 
-            let totalDue = feeAmount;
+            let totalDue = amountDue;
             let totalPaid = 0;
-            let balance = feeAmount;
+            let balance = amountDue;
             let arrears = 0;
             let status = 'owing';
 
             if (paymentDoc.exists) {
                 const data = paymentDoc.data();
                 arrears = Number(data.arrears) || 0;
-                totalDue = feeAmount + arrears;
+                totalDue = amountDue + arrears;
                 totalPaid = Number(data.totalPaid) || 0;
                 balance = Number(data.balance) || 0;
                 status = data.status || 'owing';
             } else {
+                // Calculate arrears if no payment record exists
                 const previousSession = getPreviousSessionName(session);
                 if (previousSession) {
                     arrears = await calculateSessionBalance(pupilId, previousSession);
-                    totalDue = feeAmount + arrears;
+                    totalDue = amountDue + arrears;
                     balance = totalDue;
                 }
             }
@@ -5751,7 +5772,8 @@ async function exportFinancialCSV(session, term) {
             reportData.push({
                 pupilName: pupilData.name || 'Unknown',
                 className: pupilData.class?.name || '-',
-                amountDue: feeAmount,
+                baseFee: baseFee,
+                amountDue: amountDue,
                 arrears: arrears,
                 totalDue: totalDue,
                 totalPaid: totalPaid,
@@ -5766,13 +5788,14 @@ async function exportFinancialCSV(session, term) {
         }
 
         // Create CSV
-        const headers = ['Pupil Name', 'Class', 'Term Fee', 'Arrears', 'Total Due', 'Total Paid', 'Balance', 'Status'];
+        const headers = ['Pupil Name', 'Class', 'Base Fee', 'Adjusted Fee', 'Arrears', 'Total Due', 'Total Paid', 'Balance', 'Status'];
         const csvRows = [headers.join(',')];
         
         reportData.forEach(p => {
             csvRows.push([
                 `"${(p.pupilName || '').replace(/"/g, '""')}"`,
                 `"${(p.className || '').replace(/"/g, '""')}"`,
+                p.baseFee,
                 p.amountDue,
                 p.arrears,
                 p.totalDue,
@@ -5789,11 +5812,11 @@ async function exportFinancialCSV(session, term) {
         const collectionRate = totalExpected > 0 ? ((totalCollected / totalExpected) * 100).toFixed(1) : 0;
 
         csvRows.push([]);
-        csvRows.push(['SUMMARY','','','','','','','']);
-        csvRows.push(['Total Expected', '', '', '', totalExpected, '', '', '']);
-        csvRows.push(['Total Collected', '', '', '', totalCollected, '', '', '']);
-        csvRows.push(['Total Outstanding', '', '', '', totalOutstanding, '', '', '']);
-        csvRows.push(['Collection Rate', '', '', '', collectionRate + '%', '', '', '']);
+        csvRows.push(['SUMMARY','','','','','','','','']);
+        csvRows.push(['Total Expected', '', '', '', totalExpected, '', '', '', '']);
+        csvRows.push(['Total Collected', '', '', '', totalCollected, '', '', '', '']);
+        csvRows.push(['Total Outstanding', '', '', '', totalOutstanding, '', '', '', '']);
+        csvRows.push(['Collection Rate', '', '', '', collectionRate + '%', '', '', '', '']);
 
         const csvContent = csvRows.join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
