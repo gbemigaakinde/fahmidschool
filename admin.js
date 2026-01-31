@@ -6489,6 +6489,9 @@ async function loadSessionHistory() {
 /**
  * FIXED: Moved alumni loader to top
  */
+// Global variable to store all alumni data
+let allAlumniData = [];
+
 async function loadAlumni() {
   const tbody = document.getElementById('alumni-table');
   if (!tbody) {
@@ -6507,6 +6510,7 @@ async function loadAlumni() {
     
     if (snapshot.empty) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No alumni yet. Pupils will appear here after graduating from terminal class.</td></tr>';
+      allAlumniData = [];
       return;
     }
     
@@ -6515,23 +6519,11 @@ async function loadAlumni() {
       alumni.push({ id: doc.id, ...doc.data() });
     });
     
-    paginateTable(alumni, 'alumni-table', 20, (alum, tbody) => {
-      const graduationDate = alum.graduationDate 
-        ? alum.graduationDate.toDate().toLocaleDateString('en-GB')
-        : '-';
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Name">${alum.name || 'Unknown'}</td>
-        <td data-label="Final Class">${alum.finalClass || '-'}</td>
-        <td data-label="Graduation Session">${alum.graduationSession || '-'}</td>
-        <td data-label="Graduation Date">${graduationDate}</td>
-        <td data-label="Actions">
-          <button class="btn-small btn-danger" onclick="deleteAlumni('${alum.id}')">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    // ✅ Store globally for search
+    allAlumniData = alumni;
+    
+    // Render with pagination
+    renderAlumniTable(allAlumniData);
     
   } catch (error) {
     console.error('Error loading alumni:', error);
@@ -6539,6 +6531,77 @@ async function loadAlumni() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading alumni</td></tr>';
   }
 }
+
+/**
+ * Render alumni table with pagination
+ */
+function renderAlumniTable(alumniData) {
+  const tbody = document.getElementById('alumni-table');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (alumniData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No alumni match your search</td></tr>';
+    return;
+  }
+  
+  paginateTable(alumniData, 'alumni-table', 20, (alum, tbody) => {
+    const graduationDate = alum.graduationDate 
+      ? alum.graduationDate.toDate().toLocaleDateString('en-GB')
+      : '-';
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Name">${alum.name || 'Unknown'}</td>
+      <td data-label="Final Class">${alum.finalClass || '-'}</td>
+      <td data-label="Graduation Session">${alum.graduationSession || '-'}</td>
+      <td data-label="Graduation Date">${graduationDate}</td>
+      <td data-label="Actions">
+        <button class="btn-small btn-danger" onclick="deleteAlumni('${alum.id}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Filter alumni by search term
+ */
+function filterAlumni() {
+  const searchInput = document.getElementById('alumni-search');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    renderAlumniTable(allAlumniData);
+    return;
+  }
+  
+  // Filter by name or graduation session
+  const filtered = allAlumniData.filter(alum => {
+    const name = (alum.name || '').toLowerCase();
+    const session = (alum.graduationSession || '').toLowerCase();
+    
+    return name.includes(searchTerm) || session.includes(searchTerm);
+  });
+  
+  console.log(`Alumni search: "${searchTerm}" → ${filtered.length} of ${allAlumniData.length} matches`);
+  
+  renderAlumniTable(filtered);
+  
+  const countDisplay = document.getElementById('alumni-search-count');
+  if (countDisplay) {
+    countDisplay.textContent = filtered.length === allAlumniData.length 
+      ? '' 
+      : `Showing ${filtered.length} of ${allAlumniData.length}`;
+  }
+}
+
+// Make functions globally available
+window.filterAlumni = filterAlumni;
+window.renderAlumniTable = renderAlumniTable;
 
 async function deleteAlumni(alumniId) {
   if (!alumniId) {
@@ -7152,6 +7215,9 @@ try {
   console.log('✅ Pupil form handler registered');
 });
 
+// Global variable to store all teachers data
+let allTeachersData = [];
+
 async function loadTeachers() {
   const tbody = document.getElementById('teachers-table');
   if (!tbody) return;
@@ -7164,6 +7230,7 @@ async function loadTeachers() {
     
     if (snapshot.empty) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet. Add one above.</td></tr>';
+      allTeachersData = [];
       return;
     }
     
@@ -7174,24 +7241,82 @@ async function loadTeachers() {
     
     teachers.sort((a, b) => a.name.localeCompare(b.name));
     
-    paginateTable(teachers, 'teachers-table', 20, (teacher, tbody) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Name">${teacher.name}</td>
-        <td data-label="Email">${teacher.email}</td>
-        <td data-label="Subject">${teacher.subject || '-'}</td>
-        <td data-label="Actions">
-          <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    // ✅ Store globally for search
+    allTeachersData = teachers;
+    
+    // Render with pagination
+    renderTeachersTable(allTeachersData);
+    
   } catch (error) {
     console.error('Error loading teachers:', error);
     window.showToast?.('Failed to load teachers list. Check connection and try again.', 'danger');
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading teachers - please refresh</td></tr>';
   }
 }
+
+/**
+ * Render teachers table with pagination
+ */
+function renderTeachersTable(teachersData) {
+  const tbody = document.getElementById('teachers-table');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (teachersData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers match your search</td></tr>';
+    return;
+  }
+  
+  paginateTable(teachersData, 'teachers-table', 20, (teacher, tbody) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Name">${teacher.name}</td>
+      <td data-label="Email">${teacher.email}</td>
+      <td data-label="Subject">${teacher.subject || '-'}</td>
+      <td data-label="Actions">
+        <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Filter teachers by search term
+ */
+function filterTeachers() {
+  const searchInput = document.getElementById('teachers-search');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    renderTeachersTable(allTeachersData);
+    return;
+  }
+  
+  // Filter by name only
+  const filtered = allTeachersData.filter(teacher => {
+    const name = (teacher.name || '').toLowerCase();
+    return name.includes(searchTerm);
+  });
+  
+  console.log(`Teachers search: "${searchTerm}" → ${filtered.length} of ${allTeachersData.length} matches`);
+  
+  renderTeachersTable(filtered);
+  
+  const countDisplay = document.getElementById('teachers-search-count');
+  if (countDisplay) {
+    countDisplay.textContent = filtered.length === allTeachersData.length 
+      ? '' 
+      : `Showing ${filtered.length} of ${allTeachersData.length}`;
+  }
+}
+
+// Make functions globally available
+window.filterTeachers = filterTeachers;
+window.renderTeachersTable = renderTeachersTable;
 
 /* ======================================== 
    PUPILS MANAGEMENT - FIXED
@@ -7222,6 +7347,9 @@ function cancelPupilForm() {
  * FIXED: Load Pupils with Proper Event Delegation
  * Replace the entire loadPupils() function in admin.js (around line 2280)
  */
+// Global variable to store all pupils data
+let allPupilsData = [];
+
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
   if (!tbody) return;
@@ -7246,6 +7374,7 @@ async function loadPupils() {
       const bulkActionsBar = document.getElementById('bulk-actions-bar');
       if (bulkActionsBar) bulkActionsBar.style.display = 'none';
       
+      allPupilsData = []; // Clear global data
       return;
     }
 
@@ -7254,36 +7383,14 @@ async function loadPupils() {
       pupils.push({ id: doc.id, ...doc.data() });
     });
 
+    // ✅ CRITICAL: Store all data globally for search
+    allPupilsData = pupils;
+
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
     if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
 
-    paginateTable(pupils, 'pupils-table', 20, (pupil, tbody) => {
-      let className = '-';
-      if (pupil.class) {
-        if (typeof pupil.class === 'object' && pupil.class.name) {
-          className = pupil.class.name;
-        } else if (typeof pupil.class === 'string') {
-          className = pupil.class;
-        }
-      }
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Select" style="text-align:center;">
-          <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}">
-        </td>
-        <td data-label="Name">${pupil.name}</td>
-        <td data-label="Class">${className}</td>
-        <td data-label="Gender">${pupil.gender || '-'}</td>
-        <td data-label="Parent Name">${pupil.parentName || '-'}</td>
-        <td data-label="Parent Contact">${pupil.contact || '-'}</td>
-        <td data-label="Actions">
-          <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
-          <button class="btn-small btn-danger" onclick="deleteItem('pupils', '${pupil.id}')">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+    // Render with pagination
+    renderPupilsTable(allPupilsData);
     
     setupBulkActionsEventListeners();
     
@@ -7293,6 +7400,90 @@ async function loadPupils() {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
   }
 }
+
+/**
+ * Render pupils table with pagination
+ */
+function renderPupilsTable(pupilsData) {
+  const tbody = document.getElementById('pupils-table');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (pupilsData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils match your search</td></tr>';
+    return;
+  }
+
+  paginateTable(pupilsData, 'pupils-table', 20, (pupil, tbody) => {
+    let className = '-';
+    if (pupil.class) {
+      if (typeof pupil.class === 'object' && pupil.class.name) {
+        className = pupil.class.name;
+      } else if (typeof pupil.class === 'string') {
+        className = pupil.class;
+      }
+    }
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Select" style="text-align:center;">
+        <input type="checkbox" class="pupil-checkbox" data-pupil-id="${pupil.id}">
+      </td>
+      <td data-label="Name">${pupil.name}</td>
+      <td data-label="Class">${className}</td>
+      <td data-label="Gender">${pupil.gender || '-'}</td>
+      <td data-label="Parent Name">${pupil.parentName || '-'}</td>
+      <td data-label="Parent Contact">${pupil.contact || '-'}</td>
+      <td data-label="Actions">
+        <button class="btn-small btn-primary" onclick="editPupil('${pupil.id}')">Edit</button>
+        <button class="btn-small btn-danger" onclick="deleteItem('pupils', '${pupil.id}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/**
+ * Filter pupils by search term
+ */
+function filterPupils() {
+  const searchInput = document.getElementById('pupils-search');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    // No search - show all
+    renderPupilsTable(allPupilsData);
+    return;
+  }
+  
+  // Filter by name or admission number
+  const filtered = allPupilsData.filter(pupil => {
+    const name = (pupil.name || '').toLowerCase();
+    const admissionNo = (pupil.admissionNo || '').toLowerCase();
+    
+    return name.includes(searchTerm) || admissionNo.includes(searchTerm);
+  });
+  
+  console.log(`Pupils search: "${searchTerm}" → ${filtered.length} of ${allPupilsData.length} matches`);
+  
+  // Re-render with filtered data
+  renderPupilsTable(filtered);
+  
+  // Show count
+  const countDisplay = document.getElementById('pupils-search-count');
+  if (countDisplay) {
+    countDisplay.textContent = filtered.length === allPupilsData.length 
+      ? '' 
+      : `Showing ${filtered.length} of ${allPupilsData.length}`;
+  }
+}
+
+// Make functions globally available
+window.filterPupils = filterPupils;
+window.renderPupilsTable = renderPupilsTable;
 
 /* =====================================================
    BULK OPERATIONS - COMPLETE IMPLEMENTATION
@@ -10541,9 +10732,6 @@ function toggleAllPupils(masterCheckbox) {
 }
 
 /**
- * AUDIT LOG VIEWER
- */
-/**
  * AUDIT LOG VIEWER - FIXED
  */
 async function loadAuditLog() {
@@ -10732,21 +10920,188 @@ async function downloadAuditLog() {
   }
 }
 
-function filterAuditLog() {
-  const searchTerm = document.getElementById('audit-search')?.value.toLowerCase() || '';
-  const rows = document.querySelectorAll('#audit-log-tbody tr'); // FIXED: tbody ID
+// Global variable to store all audit log data
+let allAuditLogsData = [];
+
+async function loadAuditLog() {
+  console.log('📋 Loading audit log...');
   
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = text.includes(searchTerm) ? '' : 'none';
+  const container = document.getElementById('audit-log-container');
+  if (!container) {
+    console.error('❌ audit-log-container element not found');
+    return;
+  }
+  
+  container.innerHTML = `
+    <div style="text-align:center; padding:var(--space-2xl);">
+      <div class="spinner"></div>
+      <p>Loading audit log...</p>
+    </div>
+  `;
+  
+  try {
+    // Get latest 100 audit entries
+    const logsSnap = await db.collection('audit_log')
+      .orderBy('timestamp', 'desc')
+      .limit(100)
+      .get();
+    
+    if (logsSnap.empty) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+          <p style="font-size:var(--text-lg); margin-bottom:var(--space-md);">📋 No Audit Logs Yet</p>
+          <p style="font-size:var(--text-sm);">All administrative actions will be logged here for compliance and security.</p>
+        </div>
+      `;
+      allAuditLogsData = [];
+      return;
+    }
+    
+    const logs = [];
+    logsSnap.forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // ✅ Store globally for search
+    allAuditLogsData = logs;
+    
+    // Render audit log table with search
+    container.innerHTML = `
+      <div style="margin-bottom:var(--space-lg);">
+        <input 
+          type="text" 
+          id="audit-search" 
+          placeholder="🔍 Search by email, action, or collection..." 
+          style="width:100%; padding:var(--space-sm); border:1px solid var(--color-gray-300); border-radius:var(--radius-sm);"
+          oninput="filterAuditLog()">
+        <p id="audit-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
+      </div>
+      
+      <div class="table-container">
+        <table class="responsive-table" id="audit-log-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Action</th>
+              <th>Collection</th>
+              <th>Performed By</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="audit-log-tbody"></tbody>
+        </table>
+      </div>
+      
+      <button 
+        class="btn btn-secondary" 
+        onclick="downloadAuditLog()" 
+        style="margin-top:var(--space-lg);">
+        📥 Download Full Audit Log (CSV)
+      </button>
+    `;
+    
+    // Render with pagination
+    renderAuditLogTable(allAuditLogsData);
+    
+    console.log(`✓ Loaded ${logs.length} audit log entries`);
+    
+  } catch (error) {
+    console.error('❌ Error loading audit log:', error);
+    container.innerHTML = `
+      <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
+        <p><strong>Error Loading Audit Log</strong></p>
+        <p>${error.message}</p>
+        <button class="btn btn-primary" onclick="loadAuditLog()" style="margin-top:var(--space-md);">
+          🔄 Retry
+        </button>
+      </div>
+    `;
+    window.showToast?.('Failed to load audit log', 'danger');
+  }
+}
+
+/**
+ * Render audit log table with pagination
+ */
+function renderAuditLogTable(logsData) {
+  const tbody = document.getElementById('audit-log-tbody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (logsData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No logs match your search</td></tr>';
+    return;
+  }
+  
+  paginateTable(logsData, 'audit-log-tbody', 25, (log, tbody) => {
+    const timestamp = log.timestamp 
+      ? log.timestamp.toDate().toLocaleString('en-GB')
+      : 'Unknown';
+    
+    const actionBadge = getActionBadge(log.action);
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Timestamp">${timestamp}</td>
+      <td data-label="Action">${actionBadge}</td>
+      <td data-label="Collection">${log.collection || '-'}</td>
+      <td data-label="Performed By">${log.performedByEmail || 'Unknown'}</td>
+      <td data-label="Details">
+        <button class="btn-small btn-secondary" onclick="viewAuditDetails('${log.id}')">
+          View Details
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 }
+
+/**
+ * Filter audit log by search term
+ */
+function filterAuditLog() {
+  const searchInput = document.getElementById('audit-search');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    renderAuditLogTable(allAuditLogsData);
+    return;
+  }
+  
+  // Filter across all fields
+  const filtered = allAuditLogsData.filter(log => {
+    const email = (log.performedByEmail || '').toLowerCase();
+    const action = (log.action || '').toLowerCase();
+    const collection = (log.collection || '').toLowerCase();
+    
+    return email.includes(searchTerm) || 
+           action.includes(searchTerm) || 
+           collection.includes(searchTerm);
+  });
+  
+  console.log(`Audit log search: "${searchTerm}" → ${filtered.length} of ${allAuditLogsData.length} matches`);
+  
+  renderAuditLogTable(filtered);
+  
+  const countDisplay = document.getElementById('audit-search-count');
+  if (countDisplay) {
+    countDisplay.textContent = filtered.length === allAuditLogsData.length 
+      ? '' 
+      : `Showing ${filtered.length} of ${allAuditLogsData.length}`;
+  }
+}
+
+// Make functions globally available
+window.filterAuditLog = filterAuditLog;
+window.renderAuditLogTable = renderAuditLogTable;
 
 // Make functions globally available
 window.loadAuditLog = loadAuditLog;
 window.viewAuditDetails = viewAuditDetails;
 window.downloadAuditLog = downloadAuditLog;
-window.filterAuditLog = filterAuditLog;
 
 /**
  * Export all pupils data to CSV
