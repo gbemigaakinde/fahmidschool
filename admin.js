@@ -422,12 +422,21 @@ async function deleteFeeStructure(docId, className) {
     }
     
     const feeData = feeDoc.data();
-    const session = feeData.session;
-    const classId = feeData.classId;
-    const total = feeData.total || 0;
-    
-    // Check if any payments exist for this fee structure
-    const encodedSession = session.replace(/\//g, '-');
+
+const session = feeData.session;
+const classId = feeData.classId;
+const total = feeData.total || 0;
+
+if (!session) {
+  window.showToast?.(
+    '⚠ Fee structure is missing session information.\n\n' +
+    'This fee record appears to be incomplete or created using an older system.\n\n' +
+    'Deletion is blocked to prevent financial data corruption.',
+    'danger',
+    10000
+  );
+  return;
+}
     const paymentsSnap = await db.collection('payments')
       .where('classId', '==', classId)
       .where('session', '==', session)
