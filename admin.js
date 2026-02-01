@@ -5716,7 +5716,7 @@ async function bulkGenerateAllPaymentRecords() {
 window.bulkGenerateAllPaymentRecords = bulkGenerateAllPaymentRecords;
 
 /**
- * ✅ FIXED: Record payment with adjusted fee calculation
+ * ✅ FIXED: Record payment with atomic transaction protection
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -5767,200 +5767,195 @@ async function recordPayment() {
         `Please edit the pupil record and re-save to fix this issue.`
       );
     }
-    
-    // Get fee structure (class-based, permanent)
-    const feeDocId = `fee_${classId}`;
-    console.log(`📋 Looking up fee structure: ${feeDocId}`);
-    
-    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
-    if (!feeDoc.exists) {
-      throw new Error(
-        `No fee structure configured for class: ${className}\n\n` +
-        `Fee structure ID: ${feeDocId}\n\n` +
-        `Please configure fees for this class in the Fee Management section first.`
-      );
-    }
+    // ═══════════════════════════════════════════════════════════
+    // ✅ CRITICAL FIX: Use Firestore transaction for atomicity
+    // ═══════════════════════════════════════════════════════════
     
-    console.log(`✅ Fee structure found for ${className}`);
-    
-    const feeStructure = feeDoc.data();
-    const baseFee = Number(feeStructure.total) || 0;
-
-    // ✅ CRITICAL FIX: Get pupil data to calculate adjusted fee
-    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
-    
-    if (!pupilDoc.exists) {
-      throw new Error('Pupil record not found');
-    }
-    
-    const pupilData = pupilDoc.data();
-    
-    // ✅ CRITICAL FIX: Calculate ADJUSTED fee (scholarships, enrollment, etc.)
-    const amountDue = window.calculateAdjustedFee 
-      ? window.calculateAdjustedFee(pupilData, baseFee, term)
-      : baseFee;
-    
-    console.log(`📊 Fee calculation for ${pupilName}:`);
-    console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
-    console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
-    
-    // Check if pupil is enrolled for this term
-    if (amountDue === 0) {
-      throw new Error(
-        `${pupilName} is not enrolled for ${term}.\n\n` +
-        `Admission term: ${pupilData.admissionTerm || 'First Term'}\n` +
-        `Exit term: ${pupilData.exitTerm || 'Third Term'}\n\n` +
-        `Cannot record payment for unenrolled term.`
-      );
-    }
-
-    // Get existing payment record
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
-    const paymentDoc = await paymentRef.get();
+    const transactionRef = db.collection('payment_transactions').doc(receiptNo);
 
-    let currentPaid = 0;
-    let arrears = 0;
-
-    if (paymentDoc.exists) {
-      const data = paymentDoc.data();
-      currentPaid = data.totalPaid || 0;
-      arrears = data.arrears || 0;
-    } else {
-      // Calculate arrears from previous session
-      const previousSession = getPreviousSessionName(session);
-      if (previousSession) {
-        arrears = await calculateSessionBalance(pupilId, previousSession);
-      }
-    }
-
-    const totalDue = amountDue + arrears;
-    const remainingPayable = totalDue - currentPaid;
-
-    if (remainingPayable <= 0) {
-      window.showToast?.('This pupil has fully paid all outstanding fees', 'info');
-      return;
-    }
-
-    // Prevent overpayment
-    if (amountPaid > remainingPayable) {
-      const confirmation = confirm(
-        `Amount exceeds balance!\n\n` +
-        `Balance: ₦${remainingPayable.toLocaleString()}\n` +
-        `Your entry: ₦${amountPaid.toLocaleString()}\n\n` +
-        `Reduce to exact balance (₦${remainingPayable.toLocaleString()})?`
-      );
+    const result = await db.runTransaction(async (transaction) => {
+      // ─── STEP 1: Read current state atomically ───
+      const pupilDoc = await transaction.get(db.collection('pupils').doc(pupilId));
       
-      if (confirmation) {
-        amountPaid = remainingPayable;
+      if (!pupilDoc.exists) {
+        throw new Error('Pupil record not found');
+      }
+      
+      const pupilData = pupilDoc.data();
+      
+      // ─── STEP 2: Get fee structure ───
+      const feeDocId = `fee_${classId}`;
+      const feeDoc = await transaction.get(db.collection('fee_structures').doc(feeDocId));
+
+      if (!feeDoc.exists) {
+        throw new Error(
+          `No fee structure configured for class: ${className}\n\n` +
+          `Please configure fees for this class first.`
+        );
+      }
+      
+      const feeStructure = feeDoc.data();
+      const baseFee = Number(feeStructure.total) || 0;
+
+      // ─── STEP 3: Calculate adjusted fee ───
+      const amountDue = window.calculateAdjustedFee 
+        ? window.calculateAdjustedFee(pupilData, baseFee, term)
+        : baseFee;
+      
+      console.log(`📊 Fee calculation for ${pupilName}:`);
+      console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
+      console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
+      
+      // Check enrollment
+      if (amountDue === 0) {
+        throw new Error(
+          `${pupilName} is not enrolled for ${term}.\n\n` +
+          `Admission term: ${pupilData.admissionTerm || 'First Term'}\n` +
+          `Exit term: ${pupilData.exitTerm || 'Third Term'}\n\n` +
+          `Cannot record payment for unenrolled term.`
+        );
+      }
+
+      // ─── STEP 4: Read payment record atomically ───
+      const paymentDoc = await transaction.get(paymentRef);
+
+      let currentPaid = 0;
+      let storedArrears = 0;
+
+      if (paymentDoc.exists) {
+        const data = paymentDoc.data();
+        currentPaid = Number(data.totalPaid) || 0;
+        storedArrears = Number(data.arrears) || 0;
       } else {
-        if (recordBtn) {
-          recordBtn.disabled = false;
-          recordBtn.innerHTML = '💰 Record Payment';
+        // Payment record doesn't exist - calculate arrears
+        storedArrears = await window.calculateCompleteArrears(pupilId, session, term);
+      }
+
+      const arrears = Math.max(0, storedArrears);
+      const totalDue = amountDue + arrears;
+      const newTotalPaid = currentPaid + amountPaid;
+
+      // ─── STEP 5: Validate overpayment (atomic check) ───
+      if (newTotalPaid > totalDue) {
+        const balance = totalDue - currentPaid;
+        throw new Error(
+          `Payment rejected: Amount exceeds balance.\n\n` +
+          `Total due: ₦${totalDue.toLocaleString()}\n` +
+          `Already paid: ₦${currentPaid.toLocaleString()}\n` +
+          `Balance: ₦${balance.toLocaleString()}\n` +
+          `Your payment: ₦${amountPaid.toLocaleString()}`
+        );
+      }
+
+      // ─── STEP 6: Split payment ───
+      let arrearsPayment = 0;
+      let currentTermPayment = 0;
+      let remainingArrears = arrears;
+
+      if (arrears > 0) {
+        if (amountPaid <= arrears) {
+          arrearsPayment = amountPaid;
+          remainingArrears = arrears - amountPaid;
+        } else {
+          arrearsPayment = arrears;
+          currentTermPayment = amountPaid - arrears;
+          remainingArrears = 0;
         }
-        return;
-      }
-    }
-
-    const newTotalPaid = currentPaid + amountPaid;
-
-    // Split payment between arrears and current term
-    let arrearsPayment = 0;
-    let currentTermPayment = 0;
-    let remainingArrears = arrears;
-
-    if (arrears > 0) {
-      if (amountPaid <= arrears) {
-        arrearsPayment = amountPaid;
-        remainingArrears = arrears - amountPaid;
       } else {
-        arrearsPayment = arrears;
-        currentTermPayment = amountPaid - arrears;
-        remainingArrears = 0;
+        currentTermPayment = amountPaid;
       }
-    } else {
-      currentTermPayment = amountPaid;
-    }
 
-    const newBalance = totalDue - newTotalPaid;
-    const newStatus =
-      newBalance === 0 ? 'paid' : newTotalPaid > 0 ? 'partial' : 'owing';
+      const newBalance = totalDue - newTotalPaid;
+      const paymentStatus =
+        newBalance === 0 ? 'paid' :
+        newTotalPaid > 0 ? 'partial' :
+        remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    const batch = db.batch();
-
-    // Update payment summary
-    batch.set(
-      paymentRef,
-      {
+      // ─── STEP 7: Write transaction record ───
+      transaction.set(transactionRef, {
         pupilId,
         pupilName,
         classId,
         className,
         session,
         term,
-        amountDue, // ✅ Now uses adjusted fee
-        baseFee, // ✅ Store original base fee for reference
+        baseFee,
+        adjustedFee: amountDue,
+        feeAdjustment: baseFee - amountDue,
+        amountPaid,
+        arrearsPayment,
+        currentTermPayment,
+        paymentMethod: paymentMethod || 'Cash',
+        receiptNo,
+        notes,
+        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+        recordedBy: auth.currentUser.uid,
+        recordedByEmail: auth.currentUser.email
+      });
+
+      // ─── STEP 8: Update payment summary ───
+      transaction.set(paymentRef, {
+        pupilId,
+        pupilName,
+        classId,
+        className,
+        session,
+        term,
+        baseFee,
+        adjustedFee: amountDue,
+        amountDue,
         arrears: remainingArrears,
         totalDue: amountDue + remainingArrears,
         totalPaid: newTotalPaid,
         balance: newBalance,
-        status: newStatus,
+        status: paymentStatus,
         lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
         lastPaymentAmount: amountPaid,
+        lastReceiptNo: receiptNo,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      },
-      { merge: true }
-    );
+      }, { merge: true });
 
-    // Record transaction
-    const transactionRef = db.collection('payment_transactions').doc(receiptNo);
-    batch.set(transactionRef, {
-      pupilId,
-      pupilName,
-      classId,
-      className,
-      session,
-      term,
-      amountPaid,
-      arrearsPayment,
-      currentTermPayment,
-      baseFee, // ✅ Store base fee
-      adjustedFee: amountDue, // ✅ Store adjusted fee
-      feeAdjustment: baseFee - amountDue, // ✅ Track adjustment amount
-      paymentMethod: paymentMethod || 'Cash',
-      receiptNo,
-      notes,
-      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-      recordedBy: auth.currentUser.uid,
-      recordedByEmail: auth.currentUser.email
+      // Return result data
+      return {
+        receiptNo,
+        amountPaid,
+        arrearsPayment,
+        currentTermPayment,
+        newBalance,
+        totalPaid: newTotalPaid,
+        status: paymentStatus,
+        baseFee,
+        adjustedFee: amountDue
+      };
     });
 
-    await batch.commit();
+    // ═══════════════════════════════════════════════════════════
+    // Transaction completed successfully
+    // ═══════════════════════════════════════════════════════════
 
     // Build success message
-    let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
+    let message = `✓ Payment Recorded Successfully!\n\nReceipt #${result.receiptNo}\nAmount: ₦${result.amountPaid.toLocaleString()}`;
 
-    if (baseFee !== amountDue) {
+    if (result.baseFee !== result.adjustedFee) {
       message += `\n\n📊 Fee Details:`;
-      message += `\n  Base fee: ₦${baseFee.toLocaleString()}`;
-      message += `\n  Adjusted fee: ₦${amountDue.toLocaleString()}`;
-      const adjustmentType = amountDue < baseFee ? 'Discount' : 'Surcharge';
-      message += `\n  ${adjustmentType}: ₦${Math.abs(baseFee - amountDue).toLocaleString()}`;
+      message += `\n  Base fee: ₦${result.baseFee.toLocaleString()}`;
+      message += `\n  Adjusted fee: ₦${result.adjustedFee.toLocaleString()}`;
+      const adjustmentType = result.adjustedFee < result.baseFee ? 'Discount' : 'Surcharge';
+      message += `\n  ${adjustmentType}: ₦${Math.abs(result.baseFee - result.adjustedFee).toLocaleString()}`;
     }
 
-    if (arrearsPayment > 0) {
+    if (result.arrearsPayment > 0) {
       message += `\n\nPayment Breakdown:`;
-      message += `\n  • Arrears: ₦${arrearsPayment.toLocaleString()}`;
-      if (currentTermPayment > 0) {
-        message += `\n  • Current Term: ₦${currentTermPayment.toLocaleString()}`;
+      message += `\n  • Arrears: ₦${result.arrearsPayment.toLocaleString()}`;
+      if (result.currentTermPayment > 0) {
+        message += `\n  • Current Term: ₦${result.currentTermPayment.toLocaleString()}`;
       }
     }
 
-    message += `\n\nNew Balance: ₦${newBalance.toLocaleString()}`;
-    if (remainingArrears > 0) {
-      message += `\n(Includes ₦${remainingArrears.toLocaleString()} arrears)`;
-    }
+    message += `\n\nNew Balance: ₦${result.newBalance.toLocaleString()}`;
 
     window.showToast?.(message, 'success', 10000);
 
@@ -5974,7 +5969,7 @@ async function recordPayment() {
 
     // Offer to print receipt
     if (confirm('Payment recorded successfully!\n\nWould you like to print the receipt now?')) {
-      printReceipt(receiptNo);
+      printReceipt(result.receiptNo);
     }
     
   } catch (error) {
