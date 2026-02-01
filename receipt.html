@@ -358,39 +358,35 @@ async function loadReceiptData() {
         // ✅ THE EXACT FIX: Calculate balance correctly
         // ============================================================
         
+        // ============================================================
+        // Balance derivation — immune to external snapshot mutation.
+        //
+        // balanceBefore and amountPaid are atomic facts of this
+        // transaction.  No recalculation routine rewrites them.
+        // Their difference is always the correct post-payment balance,
+        // regardless of whether balanceAfter or totalDue have since
+        // been overwritten.
+        // ============================================================
+
         let historicalBalance;
-        
-        // OPTION 1: Use balanceAfter if it exists (new records)
-        if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
+
+        const balanceBefore   = Number(data.balanceBefore);   // balance right before this payment
+        const amountPaid      = Number(data.amountPaid);      // what was paid in this transaction
+
+        if (!isNaN(balanceBefore) && !isNaN(amountPaid)) {
+            // Primary path — works on every record that has these fields.
+            historicalBalance = balanceBefore - amountPaid;
+        } else if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
+            // Fallback for very old records that pre-date balanceBefore.
+            // Less safe against external mutation, but the only option
+            // when the primary fields are missing.
             historicalBalance = Number(data.balanceAfter);
-            console.log('✅ Using balanceAfter from record:', historicalBalance);
+        } else {
+            // Last resort — no usable balance fields at all.
+            historicalBalance = 0;
         }
-        // OPTION 2: Calculate from available fields (old records or fallback)
-        else {
-            console.warn('⚠️ balanceAfter field missing! Calculating from other fields...');
-            
-            const totalDue = Number(data.totalDue) || 0;
-            const totalPaidAfter = Number(data.totalPaidAfter) || 0;
-            
-            // If we have these fields, calculate balance
-            if (totalDue > 0 || totalPaidAfter > 0) {
-                historicalBalance = totalDue - totalPaidAfter;
-                console.log(`📊 Calculated: totalDue(${totalDue}) - totalPaidAfter(${totalPaidAfter}) = ${historicalBalance}`);
-            }
-            // Last resort: try old field names
-            else if (data.balance !== undefined) {
-                historicalBalance = Number(data.balance);
-                console.log('📊 Using legacy "balance" field:', historicalBalance);
-            }
-            // Absolute fallback
-            else {
-                console.error('❌ Cannot determine balance - no valid fields found!');
-                console.error('Available fields:', Object.keys(data));
-                historicalBalance = 0;
-            }
-        }
-        
-        // Ensure non-negative
+
+        // Balance can never be negative on a receipt.
         historicalBalance = Math.max(0, historicalBalance);
         
         // ============================================================
