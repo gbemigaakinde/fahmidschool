@@ -5306,7 +5306,12 @@ async function bulkGenerateAllPaymentRecords() {
 window.bulkGenerateAllPaymentRecords = bulkGenerateAllPaymentRecords;
 
 /**
- * ✅ FIXED: Record payment with adjusted fee calculation
+ * ✅ FIXED: Record payment with CORRECT validation logic
+ * 
+ * KEY FIXES:
+ * 1. Uses STORED arrears from payment doc (not recalculated)
+ * 2. Uses STORED totalDue from payment doc (not recalculated)
+ * 3. Validates against the SAME values shown in UI
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -5357,93 +5362,83 @@ async function recordPayment() {
         `Please edit the pupil record and re-save to fix this issue.`
       );
     }
-    
-    // Get fee structure (class-based, permanent)
-    const feeDocId = `fee_${classId}`;
-    console.log(`📋 Looking up fee structure: ${feeDocId}`);
-    
-    const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
-    if (!feeDoc.exists) {
-      throw new Error(
-        `No fee structure configured for class: ${className}\n\n` +
-        `Fee structure ID: ${feeDocId}\n\n` +
-        `Please configure fees for this class in the Fee Management section first.`
-      );
-    }
+    // ═══════════════════════════════════════════════════════════
+    // ✅ CRITICAL FIX: Get EXISTING payment record FIRST
+    // Use the STORED values, not recalculated ones
+    // ═══════════════════════════════════════════════════════════
     
-    console.log(`✅ Fee structure found for ${className}`);
-    
-    const feeStructure = feeDoc.data();
-    const baseFee = Number(feeStructure.total) || 0;
-
-    // ✅ CRITICAL FIX: Get pupil data to calculate adjusted fee
-    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
-    
-    if (!pupilDoc.exists) {
-      throw new Error('Pupil record not found');
-    }
-    
-    const pupilData = pupilDoc.data();
-    
-    // ✅ CRITICAL FIX: Calculate ADJUSTED fee (scholarships, enrollment, etc.)
-    const amountDue = window.calculateAdjustedFee 
-      ? window.calculateAdjustedFee(pupilData, baseFee, term)
-      : baseFee;
-    
-    console.log(`📊 Fee calculation for ${pupilName}:`);
-    console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
-    console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
-    
-    // Check if pupil is enrolled for this term
-    if (amountDue === 0) {
-      throw new Error(
-        `${pupilName} is not enrolled for ${term}.\n\n` +
-        `Admission term: ${pupilData.admissionTerm || 'First Term'}\n` +
-        `Exit term: ${pupilData.exitTerm || 'Third Term'}\n\n` +
-        `Cannot record payment for unenrolled term.`
-      );
-    }
-
-    // Get existing payment record
     const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
     const paymentRef = db.collection('payments').doc(paymentDocId);
     const paymentDoc = await paymentRef.get();
 
-    let currentPaid = 0;
-    let arrears = 0;
+    let currentTotalPaid = 0;
+    let currentBalance = 0;
+    let currentTotalDue = 0;
+    let currentAmountDue = 0;
+    let currentArrears = 0;
+    let baseFee = 0;
 
     if (paymentDoc.exists) {
       const data = paymentDoc.data();
-      currentPaid = data.totalPaid || 0;
-      arrears = data.arrears || 0;
+      
+      // ✅ Use STORED values from payment doc (same as UI displays)
+      currentTotalPaid = Number(data.totalPaid) || 0;
+      currentBalance = Number(data.balance) || 0;
+      currentTotalDue = Number(data.totalDue) || 0;
+      currentAmountDue = Number(data.amountDue) || 0;
+      currentArrears = Number(data.arrears) || 0;
+      baseFee = Number(data.baseFee) || 0;
+      
+      console.log('📊 Existing payment record:');
+      console.log(`   Total Due: ₦${currentTotalDue.toLocaleString()}`);
+      console.log(`   Total Paid: ₦${currentTotalPaid.toLocaleString()}`);
+      console.log(`   Balance: ₦${currentBalance.toLocaleString()}`);
+      console.log(`   Amount Due: ₦${currentAmountDue.toLocaleString()}`);
+      console.log(`   Arrears: ₦${currentArrears.toLocaleString()}`);
+      
     } else {
-      // Calculate arrears from previous session
-      const previousSession = getPreviousSessionName(session);
-      if (previousSession) {
-        arrears = await calculateSessionBalance(pupilId, previousSession);
+      // ✅ No existing record - calculate fresh (first payment for this term)
+      console.log('📋 No existing payment record - calculating fresh...');
+      
+      const result = await window.calculateCurrentOutstanding(pupilId, session, term);
+      
+      if (result.reason) {
+        throw new Error(result.reason);
       }
+      
+      currentTotalDue = result.totalDue;
+      currentAmountDue = result.amountDue;
+      currentArrears = result.arrears;
+      currentBalance = result.balance;
+      baseFee = result.baseFee;
+      
+      console.log('📊 Fresh calculation:');
+      console.log(`   Total Due: ₦${currentTotalDue.toLocaleString()}`);
+      console.log(`   Amount Due: ₦${currentAmountDue.toLocaleString()}`);
+      console.log(`   Arrears: ₦${currentArrears.toLocaleString()}`);
     }
 
-    const totalDue = amountDue + arrears;
-    const remainingPayable = totalDue - currentPaid;
-
-    if (remainingPayable <= 0) {
+    // ═══════════════════════════════════════════════════════════
+    // ✅ VALIDATION: Check against STORED balance (same as UI)
+    // ═══════════════════════════════════════════════════════════
+    
+    if (currentBalance <= 0) {
       window.showToast?.('This pupil has fully paid all outstanding fees', 'info');
       return;
     }
 
-    // Prevent overpayment
-    if (amountPaid > remainingPayable) {
+    // ✅ Prevent overpayment using STORED balance
+    if (amountPaid > currentBalance) {
       const confirmation = confirm(
         `Amount exceeds balance!\n\n` +
-        `Balance: ₦${remainingPayable.toLocaleString()}\n` +
+        `Balance: ₦${currentBalance.toLocaleString()}\n` +
         `Your entry: ₦${amountPaid.toLocaleString()}\n\n` +
-        `Reduce to exact balance (₦${remainingPayable.toLocaleString()})?`
+        `Reduce to exact balance (₦${currentBalance.toLocaleString()})?`
       );
       
       if (confirmation) {
-        amountPaid = remainingPayable;
+        amountPaid = currentBalance;
       } else {
         if (recordBtn) {
           recordBtn.disabled = false;
@@ -5453,55 +5448,53 @@ async function recordPayment() {
       }
     }
 
-    const newTotalPaid = currentPaid + amountPaid;
-
+    // ═══════════════════════════════════════════════════════════
+    // ✅ CALCULATE NEW BALANCES
+    // ═══════════════════════════════════════════════════════════
+    
+    const newTotalPaid = currentTotalPaid + amountPaid;
+    
     // Split payment between arrears and current term
     let arrearsPayment = 0;
     let currentTermPayment = 0;
-    let remainingArrears = arrears;
+    let remainingArrears = currentArrears;
 
-    if (arrears > 0) {
-      if (amountPaid <= arrears) {
+    if (currentArrears > 0) {
+      if (amountPaid <= currentArrears) {
+        // Payment goes entirely to arrears
         arrearsPayment = amountPaid;
-        remainingArrears = arrears - amountPaid;
+        remainingArrears = currentArrears - amountPaid;
       } else {
-        arrearsPayment = arrears;
-        currentTermPayment = amountPaid - arrears;
+        // Payment clears arrears + pays current term
+        arrearsPayment = currentArrears;
+        currentTermPayment = amountPaid - currentArrears;
         remainingArrears = 0;
       }
     } else {
+      // No arrears - payment goes to current term
       currentTermPayment = amountPaid;
     }
 
-    const newBalance = totalDue - newTotalPaid;
+    const newBalance = currentTotalDue - newTotalPaid;
     const newStatus =
-      newBalance === 0 ? 'paid' : newTotalPaid > 0 ? 'partial' : 'owing';
+      newBalance === 0 ? 'paid' :
+      newTotalPaid > 0 ? 'partial' :
+      remainingArrears > 0 ? 'owing_with_arrears' :
+      'owing';
 
+    console.log('💰 Payment breakdown:');
+    console.log(`   Amount paid: ₦${amountPaid.toLocaleString()}`);
+    console.log(`   To arrears: ₦${arrearsPayment.toLocaleString()}`);
+    console.log(`   To current term: ₦${currentTermPayment.toLocaleString()}`);
+    console.log(`   New total paid: ₦${newTotalPaid.toLocaleString()}`);
+    console.log(`   New balance: ₦${newBalance.toLocaleString()}`);
+    console.log(`   Remaining arrears: ₦${remainingArrears.toLocaleString()}`);
+
+    // ═══════════════════════════════════════════════════════════
+    // ✅ SAVE TRANSACTION & UPDATE PAYMENT RECORD
+    // ═══════════════════════════════════════════════════════════
+    
     const batch = db.batch();
-
-    // Update payment summary
-    batch.set(
-      paymentRef,
-      {
-        pupilId,
-        pupilName,
-        classId,
-        className,
-        session,
-        term,
-        amountDue, // ✅ Now uses adjusted fee
-        baseFee, // ✅ Store original base fee for reference
-        arrears: remainingArrears,
-        totalDue: amountDue + remainingArrears,
-        totalPaid: newTotalPaid,
-        balance: newBalance,
-        status: newStatus,
-        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        lastPaymentAmount: amountPaid,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      },
-      { merge: true }
-    );
 
     // Record transaction
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
@@ -5512,12 +5505,12 @@ async function recordPayment() {
       className,
       session,
       term,
+      baseFee,
+      adjustedFee: currentAmountDue,
+      feeAdjustment: baseFee - currentAmountDue,
       amountPaid,
       arrearsPayment,
       currentTermPayment,
-      baseFee, // ✅ Store base fee
-      adjustedFee: amountDue, // ✅ Store adjusted fee
-      feeAdjustment: baseFee - amountDue, // ✅ Track adjustment amount
       paymentMethod: paymentMethod || 'Cash',
       receiptNo,
       notes,
@@ -5526,18 +5519,34 @@ async function recordPayment() {
       recordedByEmail: auth.currentUser.email
     });
 
+    // ✅ Update payment summary with NEW calculated values
+    batch.set(paymentRef, {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      baseFee,
+      adjustedFee: currentAmountDue,
+      amountDue: currentAmountDue,
+      arrears: remainingArrears,        // ✅ Updated arrears
+      totalDue: currentAmountDue + remainingArrears, // ✅ Recalculated total
+      totalPaid: newTotalPaid,          // ✅ Updated total paid
+      balance: newBalance,              // ✅ Updated balance
+      status: newStatus,
+      lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      lastPaymentAmount: amountPaid,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
     await batch.commit();
 
-    // Build success message
-    let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
+    // ═══════════════════════════════════════════════════════════
+    // ✅ SUCCESS MESSAGE
+    // ═══════════════════════════════════════════════════════════
 
-    if (baseFee !== amountDue) {
-      message += `\n\n📊 Fee Details:`;
-      message += `\n  Base fee: ₦${baseFee.toLocaleString()}`;
-      message += `\n  Adjusted fee: ₦${amountDue.toLocaleString()}`;
-      const adjustmentType = amountDue < baseFee ? 'Discount' : 'Surcharge';
-      message += `\n  ${adjustmentType}: ₦${Math.abs(baseFee - amountDue).toLocaleString()}`;
-    }
+    let message = `✓ Payment Recorded Successfully!\n\nReceipt #${receiptNo}\nAmount: ₦${amountPaid.toLocaleString()}`;
 
     if (arrearsPayment > 0) {
       message += `\n\nPayment Breakdown:`;
@@ -5580,6 +5589,8 @@ async function recordPayment() {
 
 // Make globally available
 window.recordPayment = recordPayment;
+
+console.log('✅ FIXED: Admin recordPayment - now uses stored values for validation');
 
 // Open receipt in new window for printing
 function printReceipt(receiptNo) {
