@@ -296,7 +296,6 @@ async function loadReceiptData() {
 
         console.log('✓ Firebase ready, querying receipt...');
 
-        // Read from transaction record (immutable snapshot)
         const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
         if (!doc.exists) {
@@ -309,12 +308,10 @@ async function loadReceiptData() {
         console.log('✓ Receipt data loaded:', data.receiptNo);
         console.log('📊 Raw transaction data:', data);
 
-        // Store ORIGINAL payment date
         const actualPaymentDate = data.paymentDate 
             ? data.paymentDate.toDate() 
             : new Date();
         
-        // Format payment date (ACTUAL payment time)
         const paymentDateFormatted = actualPaymentDate.toLocaleDateString('en-GB', {
             year: 'numeric',
             month: 'long',
@@ -324,7 +321,6 @@ async function loadReceiptData() {
             hour12: true
         });
         
-        // Current date/time (for "Generated on:")
         const generatedDate = new Date().toLocaleDateString('en-GB', {
             year: 'numeric',
             month: 'long',
@@ -334,14 +330,11 @@ async function loadReceiptData() {
             hour12: true
         });
 
-        // Display receipt information
         document.getElementById('receipt-no').textContent = data.receiptNo;
         document.getElementById('student-name').textContent = data.pupilName;
         document.getElementById('student-class').textContent = data.className;
         document.getElementById('receipt-session').textContent = data.session;
         document.getElementById('receipt-term').textContent = data.term;
-        
-        // Use the ORIGINAL payment date
         document.getElementById('receipt-date').textContent = paymentDateFormatted;
         
         document.getElementById('amount-paid').textContent =
@@ -355,38 +348,25 @@ async function loadReceiptData() {
         }
 
         // ============================================================
-        // ✅ THE EXACT FIX: Calculate balance correctly
+        // ✅ FIX: Use stored balanceAfter directly (historical snapshot)
         // ============================================================
         
-        // ============================================================
-        // Balance derivation — immune to external snapshot mutation.
-        //
-        // balanceBefore and amountPaid are atomic facts of this
-        // transaction.  No recalculation routine rewrites them.
-        // Their difference is always the correct post-payment balance,
-        // regardless of whether balanceAfter or totalDue have since
-        // been overwritten.
-        // ============================================================
-
         let historicalBalance;
-
-        const balanceBefore   = Number(data.balanceBefore);   // balance right before this payment
-        const amountPaid      = Number(data.amountPaid);      // what was paid in this transaction
-
-        if (!isNaN(balanceBefore) && !isNaN(amountPaid)) {
-            // Primary path — works on every record that has these fields.
-            historicalBalance = balanceBefore - amountPaid;
-        } else if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
-            // Fallback for very old records that pre-date balanceBefore.
-            // Less safe against external mutation, but the only option
-            // when the primary fields are missing.
+        
+        // Primary: Use the balance that was stored at time of payment
+        if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
             historicalBalance = Number(data.balanceAfter);
-        } else {
-            // Last resort — no usable balance fields at all.
+        } 
+        // Fallback: Calculate from stored fields if balanceAfter missing
+        else if (!isNaN(data.balanceBefore) && !isNaN(data.amountPaid)) {
+            historicalBalance = Number(data.balanceBefore) - Number(data.amountPaid);
+        }
+        // Last resort: zero
+        else {
             historicalBalance = 0;
         }
-
-        // Balance can never be negative on a receipt.
+        
+        // Ensure non-negative
         historicalBalance = Math.max(0, historicalBalance);
         
         // ============================================================
@@ -394,7 +374,6 @@ async function loadReceiptData() {
         document.getElementById('balance-remaining').textContent =
             `₦${historicalBalance.toLocaleString()}`;
 
-        // Show "Generated on" separately
         document.getElementById('generated-date').textContent = generatedDate;
 
         console.log('✓ Receipt loaded successfully');
@@ -402,7 +381,6 @@ async function loadReceiptData() {
         console.log(`  Balance at payment time: ₦${historicalBalance.toLocaleString()}`);
         console.log(`  Receipt generated: ${generatedDate}`);
         
-        // Auto-print after short delay
         setTimeout(() => window.print(), 1000);
 
     } catch (error) {
