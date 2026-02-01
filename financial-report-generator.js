@@ -403,10 +403,15 @@ async function generateCharts(reportData, analytics) {
   
   const charts = {};
   
-  // Create temporary canvas for chart rendering
+  // ✅ CRITICAL FIX: Attach canvas to DOM (hidden)
   const canvas = document.createElement('canvas');
   canvas.width = 800;
   canvas.height = 400;
+  canvas.style.position = 'absolute';
+  canvas.style.left = '-9999px';
+  canvas.style.top = '-9999px';
+  document.body.appendChild(canvas);
+  
   const ctx = canvas.getContext('2d');
   
   try {
@@ -426,6 +431,9 @@ async function generateCharts(reportData, analytics) {
     
   } catch (error) {
     console.error('Chart generation error:', error);
+  } finally {
+    // ✅ Clean up: Remove canvas from DOM
+    document.body.removeChild(canvas);
   }
   
   return charts;
@@ -435,7 +443,7 @@ async function generateCharts(reportData, analytics) {
  * Create revenue overview bar chart
  */
 function createRevenueChart(canvas, ctx, reportData) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -464,9 +472,26 @@ function createRevenueChart(canvas, ctx, reportData) {
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: false, // Disable animation for faster rendering
+        responsive: false,
+        animation: {
+          duration: 0,
+          onComplete: function() {
+            // ✅ CRITICAL: Wait for browser paint cycle
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                try {
+                  const dataUrl = canvas.toDataURL('image/png', 1.0);
+                  chart.destroy();
+                  resolve(dataUrl);
+                } catch (error) {
+                  console.error('Revenue chart PNG error:', error);
+                  chart.destroy();
+                  reject(error);
+                }
+              }, 200);
+            });
+          }
+        },
         plugins: {
           legend: {
             display: false
@@ -492,19 +517,6 @@ function createRevenueChart(canvas, ctx, reportData) {
         }
       }
     });
-    
-    // Wait for chart to render, then capture
-    setTimeout(() => {
-      try {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        chart.destroy();
-        resolve(dataUrl);
-      } catch (error) {
-        console.error('Failed to generate revenue chart:', error);
-        chart.destroy();
-        resolve(null);
-      }
-    }, 1000);
   });
 }
 
@@ -545,7 +557,6 @@ function createPaymentMethodsChart(canvas, ctx, reportData) {
       },
       options: {
         responsive: true,
-        animation: false,
         plugins: {
           legend: {
             position: 'right'
@@ -563,16 +574,10 @@ function createPaymentMethodsChart(canvas, ctx, reportData) {
     });
     
     setTimeout(() => {
-      try {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        chart.destroy();
-        resolve(dataUrl);
-      } catch (error) {
-        console.error('Failed to generate payment methods chart:', error);
-        chart.destroy();
-        resolve(null);
-      }
-    }, 1000);
+      const dataUrl = canvas.toDataURL('image/png');
+      chart.destroy();
+      resolve(dataUrl);
+    }, 500);
   });
 }
 
@@ -584,11 +589,6 @@ function createClassEfficiencyChart(canvas, ctx, analytics) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     const topClasses = analytics.classEfficiency.slice(0, 8); // Top 8 classes
-    
-    if (topClasses.length === 0) {
-      resolve(null);
-      return;
-    }
     
     const chart = new Chart(ctx, {
       type: 'bar',
@@ -605,7 +605,6 @@ function createClassEfficiencyChart(canvas, ctx, analytics) {
       options: {
         indexAxis: 'y',
         responsive: true,
-        animation: false,
         plugins: {
           legend: {
             display: false
@@ -634,16 +633,10 @@ function createClassEfficiencyChart(canvas, ctx, analytics) {
     });
     
     setTimeout(() => {
-      try {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        chart.destroy();
-        resolve(dataUrl);
-      } catch (error) {
-        console.error('Failed to generate class efficiency chart:', error);
-        chart.destroy();
-        resolve(null);
-      }
-    }, 1000);
+      const dataUrl = canvas.toDataURL('image/png');
+      chart.destroy();
+      resolve(dataUrl);
+    }, 500);
   });
 }
 
@@ -679,7 +672,6 @@ function createStatusDistributionChart(canvas, ctx, reportData) {
       },
       options: {
         responsive: true,
-        animation: false,
         plugins: {
           legend: {
             position: 'bottom'
@@ -697,16 +689,10 @@ function createStatusDistributionChart(canvas, ctx, reportData) {
     });
     
     setTimeout(() => {
-      try {
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        chart.destroy();
-        resolve(dataUrl);
-      } catch (error) {
-        console.error('Failed to generate status distribution chart:', error);
-        chart.destroy();
-        resolve(null);
-      }
-    }, 1000);
+      const dataUrl = canvas.toDataURL('image/png');
+      chart.destroy();
+      resolve(dataUrl);
+    }, 500);
   });
 }
 
