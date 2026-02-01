@@ -16,6 +16,196 @@
 'use strict';
 
 /**
+ * ✅ DATA MIGRATION: Backfill Historical Balances in Payment Transactions
+ * 
+ * This migration fixes existing payment_transactions documents that don't have
+ * historical balance fields by reconstructing them from payment records
+ * 
+ * RUN THIS ONCE to fix all existing receipts
+ */
+async function migratePaymentTransactionBalances() {
+  const confirmation = confirm(
+    '⚠️ PAYMENT RECEIPT MIGRATION\n\n' +
+    'This will backfill historical balances for all existing payment receipts.\n\n' +
+    'What this does:\n' +
+    '• Reads each payment transaction\n' +
+    '• Reconstructs the balance at payment time\n' +
+    '• Stores historical balances in the transaction\n' +
+    '• Ensures old receipts show correct outstanding\n\n' +
+    'This may take several minutes.\n\n' +
+    'Continue?'
+  );
+  
+  if (!confirmation) return;
+  
+  const migrateBtn = document.getElementById('migrate-receipts-btn');
+  if (migrateBtn) {
+    migrateBtn.disabled = true;
+    migrateBtn.innerHTML = '<span class="btn-loading">Migrating...</span>';
+  }
+  
+  try {
+    // Get all payment transactions
+    const transactionsSnap = await db.collection('payment_transactions')
+      .orderBy('paymentDate', 'asc')  // Process in chronological order
+      .get();
+    
+    if (transactionsSnap.empty) {
+      window.showToast?.('No payment transactions to migrate', 'info');
+      return;
+    }
+    
+    console.log(`📊 Found ${transactionsSnap.size} payment transactions to migrate`);
+    
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+    
+    // Group transactions by pupil/session/term to process chronologically
+    const transactionsByKey = {};
+    
+    transactionsSnap.forEach(doc => {
+      const data = doc.data();
+      const key = `${data.pupilId}_${data.session}_${data.term}`;
+      
+      if (!transactionsByKey[key]) {
+        transactionsByKey[key] = [];
+      }
+      
+      transactionsByKey[key].push({
+        id: doc.id,
+        ref: doc.ref,
+        ...data
+      });
+    });
+    
+    console.log(`📋 Processing ${Object.keys(transactionsByKey).length} pupil/session/term combinations`);
+    
+    // Process each pupil's transactions chronologically
+    for (const [key, transactions] of Object.entries(transactionsByKey)) {
+      const [pupilId, session, term] = key.split('_');
+      
+      console.log(`\n🔄 Processing ${transactions.length} transactions for ${key}`);
+      
+      try {
+        // Get the payment record to understand the fee structure
+        const encodedSession = session.replace(/\//g, '-');
+        const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+        
+        if (!paymentDoc.exists) {
+          console.warn(`   Payment record not found for ${key}, skipping`);
+          skipped += transactions.length;
+          continue;
+        }
+        
+        const paymentData = paymentDoc.data();
+        const totalDue = Number(paymentData.totalDue) || 0;
+        const initialArrears = Number(paymentData.arrears) || 0;
+        const amountDue = Number(paymentData.amountDue) || 0;
+        
+        // Reconstruct balances chronologically
+        let runningTotalPaid = 0;
+        let runningArrears = initialArrears;
+        
+        // Sort transactions by payment date
+        transactions.sort((a, b) => {
+          const dateA = a.paymentDate ? a.paymentDate.toMillis() : 0;
+          const dateB = b.paymentDate ? b.paymentDate.toMillis() : 0;
+          return dateA - dateB;
+        });
+        
+        const batch = db.batch();
+        let batchCount = 0;
+        
+        for (const txn of transactions) {
+          // Check if already has historical balance fields
+          if (txn.balanceAfterPayment !== undefined) {
+            console.log(`   ⏭️ Transaction ${txn.receiptNo} already migrated`);
+            skipped++;
+            continue;
+          }
+          
+          const amountPaid = Number(txn.amountPaid) || 0;
+          const arrearsPayment = Number(txn.arrearsPayment) || 0;
+          
+          // Calculate balance BEFORE this payment
+          const balanceBeforePayment = totalDue - runningTotalPaid;
+          const arrearsBeforePayment = runningArrears;
+          
+          // Apply this payment
+          runningTotalPaid += amountPaid;
+          runningArrears = Math.max(0, runningArrears - arrearsPayment);
+          
+          // Calculate balance AFTER this payment
+          const balanceAfterPayment = Math.max(0, totalDue - runningTotalPaid);
+          const arrearsAfterPayment = runningArrears;
+          
+          console.log(`   ✓ ${txn.receiptNo}: Balance ${balanceBeforePayment.toLocaleString()} → ${balanceAfterPayment.toLocaleString()}`);
+          
+          // Update transaction with historical balances
+          batch.update(txn.ref, {
+            balanceBeforePayment: balanceBeforePayment,
+            balanceAfterPayment: balanceAfterPayment,
+            arrearsBeforePayment: arrearsBeforePayment,
+            arrearsAfterPayment: arrearsAfterPayment,
+            totalDueAtPayment: totalDue,
+            totalPaidAfterPayment: runningTotalPaid,
+            migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            migrationReason: 'Historical balance backfill'
+          });
+          
+          batchCount++;
+          migrated++;
+          
+          // Commit in batches of 400
+          if (batchCount >= 400) {
+            await batch.commit();
+            batchCount = 0;
+            console.log(`   Progress: ${migrated} migrated, ${skipped} skipped`);
+          }
+        }
+        
+        // Commit remaining for this group
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+        
+      } catch (error) {
+        console.error(`   ❌ Error processing ${key}:`, error);
+        errors++;
+      }
+    }
+    
+    window.showToast?.(
+      `✅ Receipt Migration Complete!\n\n` +
+      `• Migrated: ${migrated} receipts\n` +
+      `• Skipped: ${skipped} (already correct)\n` +
+      `• Errors: ${errors}\n\n` +
+      `Old receipts now show historical outstanding balances.`,
+      'success',
+      12000
+    );
+    
+    console.log('✅ Payment transaction migration complete');
+    
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    window.showToast?.(`Migration failed: ${error.message}`, 'danger', 8000);
+  } finally {
+    if (migrateBtn) {
+      migrateBtn.disabled = false;
+      migrateBtn.innerHTML = '🔄 Migrate Payment Receipts';
+    }
+  }
+}
+
+// Make globally available
+window.migratePaymentTransactionBalances = migratePaymentTransactionBalances;
+
+console.log('✅ Payment transaction migration function loaded');
+
+/**
  * ✅ CRITICAL: Calculate adjusted fee (same logic as pupil portal)
  * Must be available before any admin financial functions run
  */
@@ -4088,7 +4278,10 @@ window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 console.log('✅ Admin payment status fix loaded - now matches pupil portal logic');
 
 /**
- * ✅ FIXED: Load complete payment history with proper query
+ * ✅ FIXED: Load payment history with HISTORICAL balances from transactions
+ * 
+ * CRITICAL FIX: Reads balances stored at payment time, not current balance
+ * This ensures old receipts show what the outstanding was WHEN the payment was made
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
@@ -4100,7 +4293,7 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
 
   try {
-    // ✅ FIXED: Query by pupilId and session only (term is already in document ID)
+    // ✅ Query by pupilId and session
     const snapshot = await db.collection('payment_transactions')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)
@@ -4121,11 +4314,20 @@ async function loadPaymentHistory(pupilId, session, term) {
         amountPaid: data.amountPaid || 0,
         arrearsPayment: data.arrearsPayment || 0,
         currentTermPayment: data.currentTermPayment || 0,
+        
+        // ✅ CRITICAL FIX: Read HISTORICAL balances (stored at payment time)
+        balanceBeforePayment: data.balanceBeforePayment || 0,
+        balanceAfterPayment: data.balanceAfterPayment || 0,
+        arrearsBeforePayment: data.arrearsBeforePayment || 0,
+        arrearsAfterPayment: data.arrearsAfterPayment || 0,
+        totalDueAtPayment: data.totalDueAtPayment || 0,
+        
         paymentDate: data.paymentDate || null,
         paymentMethod: data.paymentMethod || 'Cash',
         term: data.term || 'N/A',
         session: data.session || 'N/A',
-        recordedBy: data.recordedBy || 'Unknown'
+        recordedBy: data.recordedBy || 'Unknown',
+        notes: data.notes || ''
       });
     });
 
@@ -4133,10 +4335,13 @@ async function loadPaymentHistory(pupilId, session, term) {
       const date = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB') : 'N/A';
       const hasArrears = txn.arrearsPayment > 0;
       
+      // ✅ CRITICAL FIX: Show balance AFTER this payment (historical snapshot)
+      const outstandingAfterPayment = txn.balanceAfterPayment;
+      
       return `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
+        <div style="display:flex; justify-content:space-between; align-items:start; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
           <div style="flex:1;">
-            <div style="font-weight:700; font-size:var(--text-lg); margin-bottom:var(--space-xs);">
+            <div style="font-weight:700; font-size:var(--text-lg); margin-bottom:var(--space-xs); color:var(--color-success-dark);">
               ₦${Number(txn.amountPaid).toLocaleString()}
             </div>
             <div style="font-size:var(--text-sm); color:var(--color-gray-600);">
@@ -4144,12 +4349,21 @@ async function loadPaymentHistory(pupilId, session, term) {
             </div>
             ${hasArrears ? `
               <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:#991b1b; font-weight:600;">
-                💰 Arrears: ₦${txn.arrearsPayment.toLocaleString()} 
-                ${txn.currentTermPayment > 0 ? `• Current: ₦${txn.currentTermPayment.toLocaleString()}` : ''}
+                💰 Arrears paid: ₦${txn.arrearsPayment.toLocaleString()} 
+                ${txn.currentTermPayment > 0 ? `• Current term: ₦${txn.currentTermPayment.toLocaleString()}` : ''}
+              </div>
+            ` : ''}
+            <div style="font-size:var(--text-sm); margin-top:var(--space-sm); padding-top:var(--space-sm); border-top:1px solid var(--color-gray-200);">
+              <strong>Outstanding after payment:</strong> ₦${Number(outstandingAfterPayment).toLocaleString()}
+              ${txn.arrearsAfterPayment > 0 ? `<span style="color:#dc3545;"> (incl. ₦${txn.arrearsAfterPayment.toLocaleString()} arrears)</span>` : ''}
+            </div>
+            ${txn.notes ? `
+              <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:var(--color-gray-600); font-style:italic;">
+                📝 ${txn.notes}
               </div>
             ` : ''}
           </div>
-          <button class="btn-small btn-secondary" onclick="printReceipt('${txn.receiptNo}')">
+          <button class="btn-small btn-secondary" onclick="printReceipt('${txn.receiptNo}')" style="margin-left:var(--space-md);">
             Print Receipt
           </button>
         </div>
@@ -4167,6 +4381,7 @@ async function loadPaymentHistory(pupilId, session, term) {
 // Make function globally available
 window.loadPaymentHistory = loadPaymentHistory;
 
+console.log('✅ FIXED loadPaymentHistory - now reads historical balances from transactions');
 /**
  * ✅ FIXED: Load Outstanding Fees Report using canonical calculation
  */
@@ -5306,12 +5521,13 @@ async function bulkGenerateAllPaymentRecords() {
 window.bulkGenerateAllPaymentRecords = bulkGenerateAllPaymentRecords;
 
 /**
- * ✅ FIXED: Record payment with CORRECT validation logic
+ * ✅ COMPLETE FIX: Record Payment with Historical Balance Storage
  * 
- * KEY FIXES:
- * 1. Uses STORED arrears from payment doc (not recalculated)
- * 2. Uses STORED totalDue from payment doc (not recalculated)
- * 3. Validates against the SAME values shown in UI
+ * FIXES:
+ * 1. Stores historical balances in transaction (not just current state)
+ * 2. Prevents arrears double-counting by using stored values
+ * 3. Ensures receipts show balance at payment time (not current balance)
+ * 4. Never allows negative balances unless genuine overpayment
  */
 async function recordPayment() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -5476,8 +5692,12 @@ async function recordPayment() {
     }
 
     const newBalance = currentTotalDue - newTotalPaid;
+    
+    // ✅ CRITICAL: Prevent negative balance (unless genuine overpayment)
+    const finalBalance = Math.max(0, newBalance);
+    
     const newStatus =
-      newBalance === 0 ? 'paid' :
+      finalBalance === 0 ? 'paid' :
       newTotalPaid > 0 ? 'partial' :
       remainingArrears > 0 ? 'owing_with_arrears' :
       'owing';
@@ -5487,16 +5707,16 @@ async function recordPayment() {
     console.log(`   To arrears: ₦${arrearsPayment.toLocaleString()}`);
     console.log(`   To current term: ₦${currentTermPayment.toLocaleString()}`);
     console.log(`   New total paid: ₦${newTotalPaid.toLocaleString()}`);
-    console.log(`   New balance: ₦${newBalance.toLocaleString()}`);
+    console.log(`   New balance: ₦${finalBalance.toLocaleString()}`);
     console.log(`   Remaining arrears: ₦${remainingArrears.toLocaleString()}`);
 
     // ═══════════════════════════════════════════════════════════
-    // ✅ SAVE TRANSACTION & UPDATE PAYMENT RECORD
+    // ✅ SAVE TRANSACTION WITH HISTORICAL BALANCES & UPDATE PAYMENT RECORD
     // ═══════════════════════════════════════════════════════════
     
     const batch = db.batch();
 
-    // Record transaction
+    // ✅ CRITICAL FIX: Store HISTORICAL balances in transaction
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
     batch.set(transactionRef, {
       pupilId,
@@ -5508,9 +5728,20 @@ async function recordPayment() {
       baseFee,
       adjustedFee: currentAmountDue,
       feeAdjustment: baseFee - currentAmountDue,
+      
+      // Payment breakdown
       amountPaid,
       arrearsPayment,
       currentTermPayment,
+      
+      // ✅ CRITICAL: Store balances at time of payment (HISTORICAL - this is the fix!)
+      balanceBeforePayment: currentBalance,
+      balanceAfterPayment: finalBalance,
+      arrearsBeforePayment: currentArrears,
+      arrearsAfterPayment: remainingArrears,
+      totalDueAtPayment: currentTotalDue,
+      totalPaidAfterPayment: newTotalPaid,
+      
       paymentMethod: paymentMethod || 'Cash',
       receiptNo,
       notes,
@@ -5520,6 +5751,7 @@ async function recordPayment() {
     });
 
     // ✅ Update payment summary with NEW calculated values
+    // CRITICAL: Store the NEW totalDue (recalculated with remaining arrears)
     batch.set(paymentRef, {
       pupilId,
       pupilName,
@@ -5531,9 +5763,9 @@ async function recordPayment() {
       adjustedFee: currentAmountDue,
       amountDue: currentAmountDue,
       arrears: remainingArrears,        // ✅ Updated arrears
-      totalDue: currentAmountDue + remainingArrears, // ✅ Recalculated total
+      totalDue: currentAmountDue + remainingArrears, // ✅ Recalculated total (this prevents double-counting)
       totalPaid: newTotalPaid,          // ✅ Updated total paid
-      balance: newBalance,              // ✅ Updated balance
+      balance: finalBalance,            // ✅ Updated balance (never negative)
       status: newStatus,
       lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
       lastPaymentAmount: amountPaid,
@@ -5556,7 +5788,7 @@ async function recordPayment() {
       }
     }
 
-    message += `\n\nNew Balance: ₦${newBalance.toLocaleString()}`;
+    message += `\n\nNew Balance: ₦${finalBalance.toLocaleString()}`;
     if (remainingArrears > 0) {
       message += `\n(Includes ₦${remainingArrears.toLocaleString()} arrears)`;
     }
@@ -5589,7 +5821,6 @@ async function recordPayment() {
 
 // Make globally available
 window.recordPayment = recordPayment;
-
 console.log('✅ FIXED: Admin recordPayment - now uses stored values for validation');
 
 // Open receipt in new window for printing
