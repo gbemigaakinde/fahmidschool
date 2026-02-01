@@ -780,31 +780,6 @@ function getPreviousSessionName(currentSession) {
     return `${startYear - 1}/${endYear - 1}`;
 }
 
-/**
- * Helper: Calculate total balance for entire session
- */
-async function calculateSessionBalance(pupilId, session) {
-    try {
-        const paymentsSnap = await db.collection('payments')
-            .where('pupilId', '==', pupilId)
-            .where('session', '==', session)
-            .get();
-        
-        let totalBalance = 0;
-        
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            totalBalance += Number(data.balance) || 0;
-        });
-        
-        return totalBalance;
-        
-    } catch (error) {
-        console.error('Error calculating session balance:', error);
-        return 0;
-    }
-}
-
 // Replace the existing loadFeeBalance function with this one
 window.loadFeeBalance = loadFeeBalance;
 
