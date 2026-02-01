@@ -296,7 +296,7 @@ async function loadReceiptData() {
 
         console.log('✓ Firebase ready, querying receipt...');
 
-        // Read receipt document directly
+        // ✅ CRITICAL FIX: Read from transaction record (immutable snapshot)
         const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
         if (!doc.exists) {
@@ -353,20 +353,18 @@ async function loadReceiptData() {
             document.getElementById('notes-row').style.display = 'flex';
         }
 
-        const encodedSession = data.session.replace(/\//g, '-');
-        const paymentDocId = `${data.pupilId}_${encodedSession}_${data.term}`;
-
-        const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
-        const balance = paymentDoc.exists ? (paymentDoc.data().balance || 0) : 0;
+        // ✅ CRITICAL FIX: Use historical balance from transaction record
+        const historicalBalance = Number(data.balanceAfter) || 0;
 
         document.getElementById('balance-remaining').textContent =
-            `₦${balance.toLocaleString()}`;
+            `₦${historicalBalance.toLocaleString()}`;
 
         // ✅ FIX: Show "Generated on" separately
         document.getElementById('generated-date').textContent = generatedDate;
 
         console.log('✓ Receipt loaded successfully');
         console.log(`  Payment made: ${paymentDateFormatted}`);
+        console.log(`  Balance at payment time: ₦${historicalBalance.toLocaleString()}`);
         console.log(`  Receipt generated: ${generatedDate}`);
         
         // Auto-print after short delay
