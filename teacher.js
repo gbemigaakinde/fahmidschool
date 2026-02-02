@@ -800,8 +800,8 @@ async function loadResultsTable() {
 }
 
 /**
- * ✅ FIXED: Check result lock status with comprehensive error handling
- * Prevents infinite spinners and handles all permission scenarios
+ * ✅ FIXED: Check result lock status with clarified error logging
+ * Prevents misleading console errors and handles all permission scenarios
  */
 async function checkResultLockStatus() {
     const term = document.getElementById('result-term')?.value;
@@ -822,19 +822,20 @@ async function checkResultLockStatus() {
         // Encode session to avoid Firestore path issues (e.g., "2025/2026" → "2025-2026")
         const encodedSession = session.replace(/\//g, '-');
         
-        // ✅ FIX 1: Check lock status with defensive error handling
+        // ✅ FIX 1: Check lock status with clarified error handling
         let lockStatus = { locked: false };
         
         try {
             lockStatus = await window.resultLocking.isLocked(classId, term, subject, encodedSession);
             
-            // If lock check returned an error, treat as unlocked
-            if (lockStatus.error) {
-                console.warn('Lock check returned error, assuming unlocked:', lockStatus.errorCode);
-                lockStatus = { locked: false };
+            // Note: If lock check returned 'note' field, it means permission denied or doesn't exist
+            // This is SAFE - we assume unlocked and allow editing
+            if (lockStatus.note) {
+                console.log('✓ No lock found, allowing edits');
             }
         } catch (lockError) {
-            console.warn('Could not check lock status, assuming unlocked:', lockError.code || lockError.message);
+            // This catch should rarely trigger since isLocked() handles its own errors
+            console.log('✓ Lock check failed, assuming no lock exists (safe to edit)');
             lockStatus = { locked: false };
         }
         
@@ -846,7 +847,7 @@ async function checkResultLockStatus() {
             return;
         }
         
-        // ✅ FIX 2: Check submission status with proper null handling
+        // ✅ FIX 2: Check submission status with clarified permission handling
         let submissionExists = false;
         let submissionData = null;
         
@@ -857,13 +858,23 @@ async function checkResultLockStatus() {
             if (submissionDoc.exists) {
                 submissionExists = true;
                 submissionData = submissionDoc.data();
+            } else {
+                console.log('✓ No submission found for these results');
             }
         } catch (submissionError) {
-            // ✅ CRITICAL: Don't fail on permission-denied for non-existent docs
+            // ✅ CRITICAL CLARIFICATION: Permission denied usually means document doesn't exist
             if (submissionError.code === 'permission-denied') {
-                console.warn('Permission denied checking submission (assuming no submission exists)');
+                console.log('✓ No submission document found (permission denied to non-existent doc)');
+                // Safe to assume no submission exists
+            } else if (submissionError.code === 'unavailable') {
+                console.warn('⚠️ Firestore temporarily unavailable, proceeding with caution');
+                window.showToast?.(
+                    'Connection issue detected. Changes may not save properly.',
+                    'warning',
+                    4000
+                );
             } else {
-                console.error('Unexpected error checking submission status:', submissionError);
+                console.error('❌ Unexpected error checking submission status:', submissionError);
             }
             // Continue execution - assume no submission
         }
@@ -898,21 +909,30 @@ async function checkResultLockStatus() {
         }
         
         // Default state: Not locked, not submitted - allow editing
+        console.log('✓ Results are editable');
         showSubmissionControls(term, subject, className);
         hideAllResultBanners();
         enableResultInputs();
         
     } catch (error) {
-        // ✅ FIX 3: Final catch-all - never leave UI in broken state
-        console.error('Critical error in checkResultLockStatus:', error);
+        // ✅ FIX 3: Final catch-all with better diagnostics
+        console.error('❌ Critical error in checkResultLockStatus:', error.code || error.message);
         
         // Show user-friendly message
         if (window.showToast) {
-            window.showToast(
-                'Could not verify result status. Proceeding with caution.',
-                'warning',
-                5000
-            );
+            if (error.code === 'unavailable') {
+                window.showToast(
+                    'Connection issue. Your work may not save. Check your internet.',
+                    'danger',
+                    8000
+                );
+            } else {
+                window.showToast(
+                    'Could not verify result status. Proceeding with caution.',
+                    'warning',
+                    5000
+                );
+            }
         }
         
         // Default to safe state: allow editing but warn user
