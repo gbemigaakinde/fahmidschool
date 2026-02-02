@@ -356,10 +356,21 @@ const finance = {
     return `${startYear - 1}/${endYear - 1}`;
   },
 
-  /*/**
+/**
  * ═══════════════════════════════════════════════════════════
- * PAYMENT RECORDING: Atomic Transaction
+ * COMPLETE FIX: Payment Recording with Proper Overpayment Prevention
  * ═══════════════════════════════════════════════════════════
+ * 
+ * FIXES:
+ * 1. Always recalculates totalDue from scratch (no stale data)
+ * 2. Better error messages showing exactly what's wrong
+ * 3. Validates against ACTUAL remaining balance, not stored values
+ * 4. Handles adjusted fees correctly
+ * 5. Prevents tiny rounding errors from blocking valid payments
+ */
+
+/**
+ * Replace the ENTIRE recordPayment function in finance.js (lines ~300-480)
  */
 async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
   try {
@@ -374,7 +385,9 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
 
     const encodedSession = session.replace(/\//g, '-');
 
-    // ─── Get pupil data for fee adjustments ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 1: Get FRESH pupil data for fee calculations
+    // ═══════════════════════════════════════════════════════════
     console.log('   Fetching pupil data...');
     const pupilDoc = await db.collection('pupils').doc(pupilId).get();
     if (!pupilDoc.exists) {
@@ -383,7 +396,9 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     const pupilData = pupilDoc.data();
     console.log('   ✓ Pupil data loaded');
 
-    // ─── Get base fee ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 2: Get FRESH base fee from fee structure
+    // ═══════════════════════════════════════════════════════════
     console.log(`   Fetching fee structure for class ${classId}...`);
     const feeDocId = `fee_${classId}`;
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
@@ -395,95 +410,167 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     const baseFee = Number(feeDoc.data().total) || 0;
     console.log(`   ✓ Base fee: ₦${baseFee.toLocaleString()}`);
 
-    // ─── Calculate ADJUSTED fee ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 3: Calculate FRESH adjusted fee (handles scholarships, enrollment period)
+    // ═══════════════════════════════════════════════════════════
     const amountDue = this.calculateAdjustedFee(pupilData, baseFee, term);
     console.log(`   ✓ Adjusted fee: ₦${amountDue.toLocaleString()}`);
+    
+    if (amountDue !== baseFee) {
+      console.log(`   📊 Fee adjustment applied: ₦${baseFee.toLocaleString()} → ₦${amountDue.toLocaleString()}`);
+    }
 
-    // ─── Get current payment state ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 4: RECALCULATE arrears from scratch (don't trust stored value)
+    // ═══════════════════════════════════════════════════════════
+    console.log('   Recalculating arrears from scratch...');
+    const arrears = await this.calculateCompleteArrears(pupilId, session, term);
+    console.log(`   ✓ Fresh arrears calculation: ₦${arrears.toLocaleString()}`);
+
+    // ═══════════════════════════════════════════════════════════
+    // STEP 5: Get CURRENT total paid from payment record
+    // ═══════════════════════════════════════════════════════════
     const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
-    console.log(`   Checking existing payment record: ${paymentRecordId}`);
+    console.log(`   Checking payment record: ${paymentRecordId}`);
+    
+    let currentTotalPaid = 0;
     
     const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
-
-    let currentTotalPaid = 0;
-    let storedArrears = 0;
-
+    
     if (existingPaymentDoc.exists) {
       const existingData = existingPaymentDoc.data();
       currentTotalPaid = Number(existingData.totalPaid) || 0;
-      storedArrears = Number(existingData.arrears) || 0;
-      console.log(`   ✓ Found existing payment: Paid ₦${currentTotalPaid.toLocaleString()}, Arrears ₦${storedArrears.toLocaleString()}`);
+      
+      console.log(`   ✓ Found existing payment record`);
+      console.log(`     - Already paid: ₦${currentTotalPaid.toLocaleString()}`);
+      
+      // ✅ FIX: Compare stored arrears vs calculated arrears
+      const storedArrears = Number(existingData.arrears) || 0;
+      if (storedArrears !== arrears) {
+        console.warn(`   ⚠️ ARREARS MISMATCH DETECTED!`);
+        console.warn(`     - Stored in record: ₦${storedArrears.toLocaleString()}`);
+        console.warn(`     - Fresh calculation: ₦${arrears.toLocaleString()}`);
+        console.warn(`     - Using FRESH calculation (more accurate)`);
+      }
     } else {
-      console.log('   No existing payment record - calculating fresh arrears');
-      storedArrears = await this.calculateCompleteArrears(pupilId, session, term);
-      console.log(`   ✓ Calculated arrears: ₦${storedArrears.toLocaleString()}`);
+      console.log(`   ℹ️ No existing payment record (first payment)`);
     }
 
-    const arrears = Math.max(0, storedArrears);
+    // ═══════════════════════════════════════════════════════════
+    // STEP 6: Calculate ACTUAL financial position
+    // ═══════════════════════════════════════════════════════════
     const totalDue = amountDue + arrears;
+    const remainingBalance = totalDue - currentTotalPaid;
     const newTotalPaid = currentTotalPaid + amountPaid;
+    const newBalance = totalDue - newTotalPaid;
 
     console.log('   ═══════════════════════════════════════');
-    console.log(`   Amount Due (this term): ₦${amountDue.toLocaleString()}`);
+    console.log('   📊 FINANCIAL BREAKDOWN:');
+    console.log(`   Current Term Fee: ₦${amountDue.toLocaleString()}`);
     console.log(`   Arrears: ₦${arrears.toLocaleString()}`);
-    console.log(`   Total Due: ₦${totalDue.toLocaleString()}`);
+    console.log(`   ─────────────────────────────────────`);
+    console.log(`   TOTAL DUE: ₦${totalDue.toLocaleString()}`);
     console.log(`   Already Paid: ₦${currentTotalPaid.toLocaleString()}`);
+    console.log(`   ─────────────────────────────────────`);
+    console.log(`   REMAINING BALANCE: ₦${remainingBalance.toLocaleString()}`);
     console.log(`   New Payment: ₦${amountPaid.toLocaleString()}`);
-    console.log(`   New Total Paid: ₦${newTotalPaid.toLocaleString()}`);
+    console.log(`   ─────────────────────────────────────`);
+    console.log(`   Balance After Payment: ₦${newBalance.toLocaleString()}`);
     console.log('   ═══════════════════════════════════════');
 
-    // ─── Prevent overpayment ───
-    if (newTotalPaid > totalDue) {
-      const balance = totalDue - currentTotalPaid;
+    // ═══════════════════════════════════════════════════════════
+    // STEP 7: OVERPAYMENT VALIDATION (Fixed with better error message)
+    // ═══════════════════════════════════════════════════════════
+    
+    // ✅ FIX: Allow small rounding errors (₦1 tolerance)
+    const ROUNDING_TOLERANCE = 1;
+    
+    if (newTotalPaid > (totalDue + ROUNDING_TOLERANCE)) {
+      const overpayment = newTotalPaid - totalDue;
+      
+      console.error('   ❌ OVERPAYMENT DETECTED');
+      console.error(`     - Overpayment amount: ₦${overpayment.toLocaleString()}`);
+      
       throw new Error(
-        `Payment rejected: Amount exceeds balance.\n\n` +
-        `Total due: ₦${totalDue.toLocaleString()}\n` +
-        `Already paid: ₦${currentTotalPaid.toLocaleString()}\n` +
-        `Balance: ₦${balance.toLocaleString()}\n` +
-        `Your payment: ₦${amountPaid.toLocaleString()}`
+        `⚠️ PAYMENT REJECTED: Overpayment Detected\n\n` +
+        `FINANCIAL SUMMARY:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `Current Term Fee: ₦${amountDue.toLocaleString()}\n` +
+        `Outstanding Arrears: ₦${arrears.toLocaleString()}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `TOTAL DUE: ₦${totalDue.toLocaleString()}\n` +
+        `Already Paid: ₦${currentTotalPaid.toLocaleString()}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `REMAINING BALANCE: ₦${remainingBalance.toLocaleString()}\n\n` +
+        `YOUR PAYMENT: ₦${amountPaid.toLocaleString()}\n\n` +
+        `❌ This payment would overpay by ₦${overpayment.toLocaleString()}\n\n` +
+        `Maximum you can pay: ₦${remainingBalance.toLocaleString()}`
       );
     }
+    
+    console.log('   ✅ Overpayment check PASSED');
 
-    // ─── Split payment between arrears and current term ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 8: Split payment between arrears and current term
+    // ═══════════════════════════════════════════════════════════
     let arrearsPayment = 0;
     let currentTermPayment = 0;
     let remainingArrears = arrears;
 
     if (arrears > 0) {
+      // Payments ALWAYS clear arrears first
       if (amountPaid <= arrears) {
+        // Payment doesn't fully clear arrears
         arrearsPayment = amountPaid;
+        currentTermPayment = 0;
         remainingArrears = arrears - amountPaid;
       } else {
+        // Payment clears all arrears and pays toward current term
         arrearsPayment = arrears;
         currentTermPayment = amountPaid - arrears;
         remainingArrears = 0;
       }
-      console.log(`   Payment split: ₦${arrearsPayment.toLocaleString()} to arrears, ₦${currentTermPayment.toLocaleString()} to current term`);
+      
+      console.log(`   💰 Payment allocation:`);
+      console.log(`     - To arrears: ₦${arrearsPayment.toLocaleString()}`);
+      console.log(`     - To current term: ₦${currentTermPayment.toLocaleString()}`);
+      console.log(`     - Remaining arrears: ₦${remainingArrears.toLocaleString()}`);
     } else {
+      // No arrears - all payment goes to current term
       currentTermPayment = amountPaid;
-      console.log(`   Full payment to current term: ₦${currentTermPayment.toLocaleString()}`);
+      console.log(`   💰 Full payment to current term: ₦${currentTermPayment.toLocaleString()}`);
     }
 
-    // ✅ CRITICAL: Calculate balances BEFORE and AFTER
-    const balanceBefore = Math.max(0, totalDue - currentTotalPaid);
-    const balanceAfter = Math.max(0, totalDue - newTotalPaid);
+    // ═══════════════════════════════════════════════════════════
+    // STEP 9: Calculate balances BEFORE and AFTER
+    // ═══════════════════════════════════════════════════════════
+    const balanceBefore = Math.max(0, remainingBalance);
+    const balanceAfter = Math.max(0, newBalance);
 
-    console.log(`   Balance BEFORE payment: ₦${balanceBefore.toLocaleString()}`);
-    console.log(`   Balance AFTER payment: ₦${balanceAfter.toLocaleString()}`);
+    console.log(`   📊 Balance transition:`);
+    console.log(`     - Before: ₦${balanceBefore.toLocaleString()}`);
+    console.log(`     - After: ₦${balanceAfter.toLocaleString()}`);
 
+    // ═══════════════════════════════════════════════════════════
+    // STEP 10: Determine payment status
+    // ═══════════════════════════════════════════════════════════
     const paymentStatus =
       balanceAfter === 0 ? 'paid' :
       newTotalPaid > 0 ? 'partial' :
       remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    console.log(`   Payment status: ${paymentStatus}`);
+    console.log(`   📌 Payment status: ${paymentStatus}`);
 
-    // ─── Generate receipt number ───
+    // ═══════════════════════════════════════════════════════════
+    // STEP 11: Generate receipt number
+    // ═══════════════════════════════════════════════════════════
     const receiptNo = await this.generateReceiptNumber();
     console.log(`   ✓ Generated receipt: ${receiptNo}`);
 
-    // ─── ATOMIC WRITE using Firestore transaction ───
-    console.log('   Writing to Firestore...');
+    // ═══════════════════════════════════════════════════════════
+    // STEP 12: ATOMIC WRITE using Firestore transaction
+    // ═══════════════════════════════════════════════════════════
+    console.log('   📝 Writing to Firestore...');
     
     const paymentRef = db.collection('payments').doc(paymentRecordId);
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
@@ -517,13 +604,13 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
       recordedByEmail: auth.currentUser.email
     };
 
-    console.log('   Transaction data to write:', transactionData);
+    console.log('   📋 Transaction data prepared');
 
     await db.runTransaction(async (transaction) => {
-      // Write transaction record
+      // Write transaction record (frozen snapshot)
       transaction.set(transactionRef, transactionData);
 
-      // Update payment summary
+      // ✅ FIX: Update payment summary with RECALCULATED values
       transaction.set(paymentRef, {
         pupilId,
         pupilName,
@@ -534,8 +621,8 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
         baseFee,
         adjustedFee: amountDue,
         amountDue,
-        arrears: remainingArrears,
-        totalDue: amountDue + remainingArrears,
+        arrears: remainingArrears,  // ✅ Use calculated remaining arrears
+        totalDue: amountDue + remainingArrears,  // ✅ Recalculate with remaining arrears
         totalPaid: newTotalPaid,
         balance: balanceAfter,
         status: paymentStatus,
@@ -547,8 +634,8 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     });
 
     console.log('   ✅ Firestore transaction completed successfully');
-    console.log(`   Receipt: ${receiptNo}`);
-    console.log(`   Balance after payment: ₦${balanceAfter.toLocaleString()}`);
+    console.log(`   🎫 Receipt: ${receiptNo}`);
+    console.log(`   💳 Balance after payment: ₦${balanceAfter.toLocaleString()}`);
 
     return {
       success: true,
