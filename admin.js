@@ -2274,32 +2274,35 @@ async function loadResultApprovals() {
             // Query by term and subject only (both are in document ID pattern)
             let pupilCount = 0;
             
-            try {
-                // Get ALL drafts for this term+subject combination
-                const allDrafts = await db.collection('results_draft')
-                    .where('term', '==', term)
-                    .where('subject', '==', subject)
-                    .get();
-                
-                // Filter by session in memory (avoids composite index requirement)
-                const uniquePupils = new Set();
-                allDrafts.forEach(draftDoc => {
-                    const draftData = draftDoc.data();
-                    
-                    // Only count if session matches
-                    if (draftData.session === session && draftData.pupilId) {
-                        uniquePupils.add(draftData.pupilId);
-                    }
-                });
-                
-                pupilCount = uniquePupils.size;
-                
-                console.log(`✓ Submission ${submissionId}: Found ${pupilCount} pupils`);
-                
-            } catch (draftError) {
-                console.error(`Error counting draft results for ${submissionId}:`, draftError);
-                pupilCount = 0;
-            }
+            // ✅ IMPROVED FIX with volume protection
+try {
+    // Limit initial query to prevent fetching too much
+    const allDrafts = await db.collection('results_draft')
+        .where('term', '==', term)
+        .where('subject', '==', subject)
+        .limit(500) // ✅ Safety limit
+        .get();
+    
+    const uniquePupils = new Set();
+    allDrafts.forEach(draftDoc => {
+        const draftData = draftDoc.data();
+        
+        if (draftData.session === session && draftData.pupilId) {
+            uniquePupils.add(draftData.pupilId);
+        }
+    });
+    
+    pupilCount = uniquePupils.size;
+    
+    // ✅ Warn if limit reached
+    if (allDrafts.size === 500) {
+        console.warn(`⚠️ Query limit reached for ${term} ${subject} - count may be incomplete`);
+    }
+    
+} catch (draftError) {
+    console.error(`Error counting draft results:`, draftError);
+    pupilCount = 0;
+}
             
             // ✅ CRITICAL CHECK: If no pupils found, show warning
             const pupilCountDisplay = pupilCount > 0 
