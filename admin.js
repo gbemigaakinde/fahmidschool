@@ -2228,7 +2228,7 @@ async function loadPromotionPeriodStatus() {
 
 /**
  * ✅ FIXED: Load result approvals with correct pupil count
- * Now queries actual draft collection to count pupils
+ * Now queries actual draft collection WITHOUT composite index dependency
  */
 async function loadResultApprovals() {
     const tbody = document.getElementById('result-approvals-table');
@@ -2270,37 +2270,38 @@ async function loadResultApprovals() {
                 ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB')
                 : '-';
             
-            // ✅ CRITICAL FIX: Count pupils from ACTUAL draft collection
+            // ✅ CRITICAL FIX: Count pupils WITHOUT relying on composite index
+            // Query by term and subject only (both are in document ID pattern)
             let pupilCount = 0;
             
             try {
-                // Query the results_draft collection to find all results for this submission
-                // Draft doc format: {pupilId}_{term}_{subject}
-                const draftQuery = await db.collection('results_draft')
+                // Get ALL drafts for this term+subject combination
+                const allDrafts = await db.collection('results_draft')
                     .where('term', '==', term)
                     .where('subject', '==', subject)
-                    .where('session', '==', session)
                     .get();
                 
-                // Count unique pupils (avoid double-counting if somehow duplicates exist)
+                // Filter by session in memory (avoids composite index requirement)
                 const uniquePupils = new Set();
-                draftQuery.forEach(draftDoc => {
+                allDrafts.forEach(draftDoc => {
                     const draftData = draftDoc.data();
-                    if (draftData.pupilId) {
+                    
+                    // Only count if session matches
+                    if (draftData.session === session && draftData.pupilId) {
                         uniquePupils.add(draftData.pupilId);
                     }
                 });
                 
                 pupilCount = uniquePupils.size;
                 
-                console.log(`✓ Submission ${submissionId}: Found ${pupilCount} pupils in draft`);
+                console.log(`✓ Submission ${submissionId}: Found ${pupilCount} pupils`);
                 
             } catch (draftError) {
                 console.error(`Error counting draft results for ${submissionId}:`, draftError);
                 pupilCount = 0;
             }
             
-            // ✅ CRITICAL CHECK: If no pupils found, show warning but still display submission
+            // ✅ CRITICAL CHECK: If no pupils found, show warning
             const pupilCountDisplay = pupilCount > 0 
                 ? pupilCount 
                 : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
