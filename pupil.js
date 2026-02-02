@@ -1254,26 +1254,33 @@ async function populateSessionSelector() {
         currentOpt.textContent = `Current Session (${currentSession})`;
         selector.appendChild(currentOpt);
         
-        // Query all results for this pupil to find unique sessions
+        // ✅ FIX: Query only APPROVED results to find sessions with viewable data
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
         
-        // Extract unique sessions
+        // Extract unique sessions that have approved results
         const sessions = new Set();
+        let approvedCount = 0;
+        
         resultsSnap.forEach(doc => {
             const data = doc.data();
-            if (data.session && data.session !== currentSession) {
+            
+            // ✅ CRITICAL FIX: Only include sessions with approved results
+            if (data.session && data.status === 'approved' && data.session !== currentSession) {
                 sessions.add(data.session);
+                approvedCount++;
             }
         });
+        
+        console.log(`Found ${approvedCount} approved results across ${sessions.size} historical sessions`);
         
         // Add historical sessions (sorted newest to oldest)
         const sortedSessions = Array.from(sessions).sort((a, b) => {
             // Extract years from session format "2023/2024"
-            const yearA = parseInt(a.split('/')[0]);
-            const yearB = parseInt(b.split('/')[0]);
-            return yearB - yearA; // Descending order
+            const yearA = parseInt(a.split('/')[0]) || 0;
+            const yearB = parseInt(b.split('/')[0]) || 0;
+            return yearB - yearA; // Descending order (newest first)
         });
         
         sortedSessions.forEach(session => {
@@ -1284,6 +1291,11 @@ async function populateSessionSelector() {
         });
         
         console.log(`✓ Session selector populated: 1 current + ${sortedSessions.length} historical`);
+        
+        // ✅ NEW: Show helpful message if no historical sessions
+        if (sortedSessions.length === 0) {
+            console.log('ℹ️ No historical sessions with approved results found');
+        }
         
     } catch (error) {
         console.error('Error populating session selector:', error);
@@ -1320,73 +1332,78 @@ async function loadSessionResults() {
             const currentSessionName = settings.session;
             displaySessionName = `Current Session (${currentSessionName})`;
 
-            // ✅ CRITICAL FIX: Add status filter to only show approved results
-            resultsSnap = await db.collection('results')
-                .where('pupilId', '==', currentPupilId)
-                .where('session', '==', currentSessionName)
-                .where('status', '==', 'approved')
-                .get();
-
-            // Fallback: legacy results (missing session field or matching current)
-            if (resultsSnap.empty) {
-                console.log('No approved results for current session → checking legacy data...');
-
-                const legacySnap = await db.collection('results')
+            // ✅ FIX: Try composite query first, but simplify fallback
+            try {
+                resultsSnap = await db.collection('results')
                     .where('pupilId', '==', currentPupilId)
+                    .where('session', '==', currentSessionName)
+                    .where('status', '==', 'approved')
                     .get();
 
-                const validResults = [];
-                legacySnap.forEach(doc => {
+                console.log(`✓ Loaded ${resultsSnap.size} approved results via indexed query`);
+
+            } catch (error) {
+                // Fallback: Query by pupilId + session only, then filter status manually
+                console.warn('Composite index missing, using fallback query');
+
+                const allResultsSnap = await db.collection('results')
+                    .where('pupilId', '==', currentPupilId)
+                    .where('session', '==', currentSessionName)
+                    .get();
+
+                // ✅ CRITICAL FIX: Only include results with explicit approved status
+                const approvedDocs = [];
+                allResultsSnap.forEach(doc => {
                     const data = doc.data();
-                    // ✅ CRITICAL FIX: Check status is approved OR legacy (missing status field)
-                    const isApproved = !data.status || data.status === 'approved';
-                    const matchesSession = !data.session || data.session === currentSessionName;
-                    
-                    if (isApproved && matchesSession) {
-                        validResults.push(doc);
+                    // STRICT: Only approved results show
+                    if (data.status === 'approved') {
+                        approvedDocs.push(doc);
                     }
                 });
 
-                console.log(`Found ${validResults.length} legacy/matching approved results`);
+                console.log(`✓ Fallback: Found ${approvedDocs.length} approved results out of ${allResultsSnap.size} total`);
 
-                if (validResults.length > 0) {
-                    // Create pseudo-snapshot compatible with Firestore snapshot
-                    resultsSnap = {
-                        empty: false,
-                        size: validResults.length,
-                        forEach: callback => validResults.forEach(callback),
-                        docs: validResults
-                    };
-
-                    // Add legacy data warning banner
-                    const banner = document.createElement('div');
-                    banner.className = 'alert alert-info';
-                    banner.style.marginBottom = 'var(--space-lg)';
-                    banner.innerHTML = `
-                        <strong>ℹ️ Legacy Results Detected</strong>
-                        <p style="margin-top:var(--space-xs); font-size:var(--text-sm);">
-                            Some results lack session information (created before session tracking).
-                            They are shown here because they belong to the current academic period.
-                        </p>
-                    `;
-
-                    const displayContainer = document.getElementById('results-display-container');
-                    if (displayContainer) {
-                        displayContainer.insertBefore(banner, displayContainer.firstChild);
-                    }
-                }
+                // Create pseudo-snapshot
+                resultsSnap = {
+                    empty: approvedDocs.length === 0,
+                    size: approvedDocs.length,
+                    forEach: callback => approvedDocs.forEach(callback),
+                    docs: approvedDocs
+                };
             }
         } 
         // Historical session
         else {
             displaySessionName = `${selectedSession} Session`;
 
-            // ✅ CRITICAL FIX: Add status filter for historical sessions too
-            resultsSnap = await db.collection('results')
-                .where('pupilId', '==', currentPupilId)
-                .where('session', '==', selectedSession)
-                .where('status', '==', 'approved')
-                .get();
+            try {
+                resultsSnap = await db.collection('results')
+                    .where('pupilId', '==', currentPupilId)
+                    .where('session', '==', selectedSession)
+                    .where('status', '==', 'approved')
+                    .get();
+
+            } catch (error) {
+                // Fallback for historical sessions
+                const allResultsSnap = await db.collection('results')
+                    .where('pupilId', '==', currentPupilId)
+                    .where('session', '==', selectedSession)
+                    .get();
+
+                const approvedDocs = [];
+                allResultsSnap.forEach(doc => {
+                    if (doc.data().status === 'approved') {
+                        approvedDocs.push(doc);
+                    }
+                });
+
+                resultsSnap = {
+                    empty: approvedDocs.length === 0,
+                    size: approvedDocs.length,
+                    forEach: callback => approvedDocs.forEach(callback),
+                    docs: approvedDocs
+                };
+            }
         }
 
         // ── Update UI header ─────────────────────────────────────────────────────
@@ -1418,10 +1435,10 @@ async function loadSessionResults() {
         if (pupilResults.length === 0) {
             container.innerHTML = `
                 <p style="text-align:center; padding:var(--space-2xl); font-size:var(--text-lg); color:var(--color-gray-600);">
-                    📚 No results found for this session.<br>
+                    📚 No approved results found for this session.<br>
                     ${selectedSession === 'current' 
-                        ? 'Your teachers will upload scores soon.' 
-                        : 'No historical data available.'}
+                        ? 'Your teachers will upload and admin will approve scores soon.' 
+                        : 'No approved results available for this historical session.'}
                 </p>`;
             return;
         }
@@ -1501,7 +1518,7 @@ async function loadSessionResults() {
             container.appendChild(termSection);
         });
 
-        console.log(`✓ Loaded ${pupilResults.length} approved results for session: ${selectedSession}`);
+        console.log(`✓ Rendered ${pupilResults.length} approved results for ${displaySessionName}`);
 
     } catch (error) {
         console.error('Error loading session results:', error);
