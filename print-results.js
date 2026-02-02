@@ -295,8 +295,8 @@ async function loadReportData() {
 ================================ */
 
 /**
- * FIXED: Load Academic Results with Timeout Protection
- * Prevents infinite loading if initialization fails
+ * ✅ FIXED: Load Academic Results - Only Show Approved Results
+ * Added status filter to prevent draft results from appearing
  */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
@@ -380,19 +380,20 @@ async function loadAcademicResults() {
     tbody.innerHTML = loadingRow();
 
     try {
-        // Query by pupilId, term, AND session
+        // ✅ CRITICAL FIX: Query by pupilId, term, session, AND status
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .where('term', '==', currentSettings.term)
             .where('session', '==', currentSettings.session)
+            .where('status', '==', 'approved')
             .get();
         
-        console.log(`Query returned ${resultsSnap.size} results`);
+        console.log(`Query returned ${resultsSnap.size} approved results`);
         
         if (resultsSnap.empty) {
-            console.log('No results found with query. Trying alternative method...');
+            console.log('No approved results found with query. Trying alternative method...');
             
-            // FALLBACK: Try loading all results for this pupil and filter
+            // ✅ FALLBACK: Try loading all results for this pupil and filter by status
             const allResultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .get();
@@ -402,7 +403,12 @@ async function loadAcademicResults() {
             allResultsSnap.forEach(doc => {
                 const data = doc.data();
                 
-                if (data.term === currentSettings.term && data.session === currentSettings.session) {
+                // ✅ CRITICAL FIX: Check status is approved OR legacy (missing status field)
+                const isApproved = !data.status || data.status === 'approved';
+                const matchesTerm = data.term === currentSettings.term;
+                const matchesSession = data.session === currentSettings.session;
+                
+                if (isApproved && matchesTerm && matchesSession) {
                     results.push({
                         subject: data.subject || 'Unknown Subject',
                         caScore: typeof data.caScore === 'number' ? data.caScore : 0,
@@ -411,11 +417,11 @@ async function loadAcademicResults() {
                 }
             });
             
-            console.log(`Fallback method found ${results.length} results`);
+            console.log(`Fallback method found ${results.length} approved results`);
             
             if (results.length === 0) {
                 tbody.innerHTML = emptyRow(
-                    `No results available for ${currentSettings.term}, ${currentSettings.session} session`
+                    `No approved results available for ${currentSettings.term}, ${currentSettings.session} session`
                 );
                 return;
             }
