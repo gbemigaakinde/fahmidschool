@@ -306,7 +306,13 @@ async function loadReceiptData() {
 
         const data = doc.data();
         console.log('✓ Receipt data loaded:', data.receiptNo);
-        console.log('📊 Raw transaction data:', data);
+        console.log('📊 Transaction data:', {
+            amountPaid: data.amountPaid,
+            balanceBefore: data.balanceBefore,
+            balanceAfter: data.balanceAfter,
+            totalDue: data.totalDue,
+            totalPaidAfter: data.totalPaidAfter
+        });
 
         const actualPaymentDate = data.paymentDate 
             ? data.paymentDate.toDate() 
@@ -347,39 +353,41 @@ async function loadReceiptData() {
             document.getElementById('notes-row').style.display = 'flex';
         }
 
-        // ============================================================
-        // ✅ FIX: Use stored balanceAfter directly (historical snapshot)
-        // ============================================================
+        // ✅ FIXED: Use balanceAfter directly (stored at payment time)
+        let displayBalance = 0;
         
-        let historicalBalance;
-        
-        // Primary: Use the balance that was stored at time of payment
         if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
-            historicalBalance = Number(data.balanceAfter);
+            // Primary: Use the exact balance stored at payment time
+            displayBalance = Number(data.balanceAfter);
+            console.log('✓ Using stored balanceAfter:', displayBalance);
         } 
-        // Fallback: Calculate from stored fields if balanceAfter missing
-        else if (!isNaN(data.balanceBefore) && !isNaN(data.amountPaid)) {
-            historicalBalance = Number(data.balanceBefore) - Number(data.amountPaid);
+        else if (data.totalDue !== undefined && data.totalPaidAfter !== undefined) {
+            // Fallback 1: Calculate from totalDue and totalPaidAfter
+            displayBalance = Number(data.totalDue) - Number(data.totalPaidAfter);
+            console.log('⚠️ Calculated from totalDue - totalPaidAfter:', displayBalance);
         }
-        // Last resort: zero
+        else if (data.balanceBefore !== undefined && data.amountPaid !== undefined) {
+            // Fallback 2: Calculate from balanceBefore - amountPaid
+            displayBalance = Number(data.balanceBefore) - Number(data.amountPaid);
+            console.log('⚠️ Calculated from balanceBefore - amountPaid:', displayBalance);
+        }
         else {
-            historicalBalance = 0;
+            console.error('❌ Cannot determine balance - all fields missing');
+            displayBalance = 0;
         }
         
         // Ensure non-negative
-        historicalBalance = Math.max(0, historicalBalance);
-        
-        // ============================================================
+        displayBalance = Math.max(0, displayBalance);
 
         document.getElementById('balance-remaining').textContent =
-            `₦${historicalBalance.toLocaleString()}`;
+            `₦${displayBalance.toLocaleString()}`;
 
         document.getElementById('generated-date').textContent = generatedDate;
 
-        console.log('✓ Receipt loaded successfully');
-        console.log(`  Payment made: ${paymentDateFormatted}`);
-        console.log(`  Balance at payment time: ₦${historicalBalance.toLocaleString()}`);
-        console.log(`  Receipt generated: ${generatedDate}`);
+        console.log('✅ Receipt loaded successfully');
+        console.log(`   Payment made: ${paymentDateFormatted}`);
+        console.log(`   Balance shown: ₦${displayBalance.toLocaleString()}`);
+        console.log(`   Receipt generated: ${generatedDate}`);
         
         setTimeout(() => window.print(), 1000);
 
