@@ -11,35 +11,52 @@
 
 const resultLocking = {
   /**
-   * ✅ FIXED: Check if results are locked with proper error handling
-   */
-  async isLocked(classId, term, subject, session) {
-    try {
-      const lockId = `${classId}_${session}_${term}_${subject}`;
-      const lockDoc = await db.collection('result_locks').doc(lockId).get();
-      
-      if (!lockDoc.exists) {
-        return { locked: false };
-      }
-      
-      const data = lockDoc.data();
-      return {
-        locked: data.locked || false,
-        lockedAt: data.lockedAt,
-        lockedBy: data.lockedBy,
-        reason: data.reason
-      };
-    } catch (error) {
-      console.error('Error checking lock status:', error);
-      
-      // ✅ FIX: Return meaningful error info
+ * ✅ FIXED: Check if results are locked with clarified error handling
+ */
+async isLocked(classId, term, subject, session) {
+  try {
+    const lockId = `${classId}_${session}_${term}_${subject}`;
+    const lockDoc = await db.collection('result_locks').doc(lockId).get();
+    
+    if (!lockDoc.exists) {
+      return { locked: false };
+    }
+    
+    const data = lockDoc.data();
+    return {
+      locked: data.locked || false,
+      lockedAt: data.lockedAt,
+      lockedBy: data.lockedBy,
+      reason: data.reason
+    };
+  } catch (error) {
+    // ✅ FIX: Clarify what the error actually means
+    if (error.code === 'permission-denied') {
+      console.log('Lock check: Permission denied (likely document does not exist yet)');
       return { 
-        locked: false, 
-        error: error.message,
-        errorCode: error.code 
+        locked: false,
+        note: 'No lock document found or no permission to read it'
       };
     }
-  },
+    
+    if (error.code === 'unavailable') {
+      console.warn('Lock check: Firestore temporarily unavailable');
+      return { 
+        locked: false, 
+        error: 'Service temporarily unavailable',
+        errorCode: 'unavailable'
+      };
+    }
+    
+    console.error('Error checking lock status:', error.code || error.message);
+    
+    return { 
+      locked: false, 
+      error: error.message,
+      errorCode: error.code 
+    };
+  }
+},
 
   /**
    * Lock results after admin approval
