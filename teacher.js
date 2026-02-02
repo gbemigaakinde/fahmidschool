@@ -608,9 +608,6 @@ async function loadResultsSection() {
   await loadResultsTable();
 }
 
-/**
- * ✅ FIXED: Load results from DRAFT collection for teacher editing
- */
 async function loadResultsTable() {
   const container = document.getElementById('results-entry-table-container');
   const saveBtn = document.getElementById('save-results-btn');
@@ -629,7 +626,7 @@ async function loadResultsTable() {
     
     const resultsMap = {};
     
-    // ✅ CRITICAL FIX: Query from DRAFT collection, not main results
+    // Query from DRAFT collection
     for (const pupil of allPupils) {
       const docId = `${pupil.id}_${term}_${subject}`;
       const draftDoc = await db.collection('results_draft').doc(docId).get();
@@ -647,8 +644,57 @@ async function loadResultsTable() {
       }
     }
     
-    // [Rest of the table rendering code remains the same...]
+    // ✅ NEW: Check for rejection reason and display banner
+    let rejectionBanner = '';
+    
+    if (assignedClasses.length > 0) {
+      const classId = assignedClasses[0].id;
+      const encodedSession = currentSession.replace(/\//g, '-');
+      const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+      
+      try {
+        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+        
+        if (submissionDoc.exists) {
+          const submissionData = submissionDoc.data();
+          
+          // If rejected, show rejection reason
+          if (submissionData.status === 'rejected' && submissionData.rejectionReason) {
+            rejectionBanner = `
+              <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+                          color: white; 
+                          padding: var(--space-lg); 
+                          border-radius: var(--radius-md); 
+                          margin-bottom: var(--space-lg);
+                          box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);">
+                <h3 style="margin: 0 0 var(--space-md) 0; font-size: var(--text-lg);">
+                  ⚠️ Results Rejected by Admin
+                </h3>
+                <div style="background: rgba(255,255,255,0.15); 
+                            padding: var(--space-md); 
+                            border-radius: var(--radius-sm);
+                            border-left: 4px solid #fff;">
+                  <strong>Reason for rejection:</strong>
+                  <p style="margin: var(--space-sm) 0 0 0; font-size: var(--text-base);">
+                    ${submissionData.rejectionReason}
+                  </p>
+                </div>
+                <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); opacity: 0.9;">
+                  ℹ️ Your results are now editable. Please make the necessary corrections and resubmit.
+                </p>
+              </div>
+            `;
+          }
+        }
+      } catch (submissionError) {
+        // Silently handle - submission doc might not exist
+        console.log('No submission found or error checking submission:', submissionError.code);
+      }
+    }
+    
+    // Render table with rejection banner (if exists)
     container.innerHTML = `
+      ${rejectionBanner}
       <div class="table-container">
         <table class="responsive-table" id="results-table">
           <thead>
@@ -690,7 +736,7 @@ async function loadResultsTable() {
     
     if (saveBtn) saveBtn.hidden = false;
     
-    // Add input validation (existing code)
+    // Add input validation
     container.querySelectorAll('input[type="number"]').forEach(input => {
       input.addEventListener('input', (e) => {
         const field = e.target.dataset.field;
