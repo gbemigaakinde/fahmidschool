@@ -5342,189 +5342,33 @@ async function recordPayment() {
     const session = settings.session;
     const term = settings.term;
 
-    const receiptNo = `REC-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 5)
-      .toUpperCase()}`;
-
-    const encodedSession = session.replace(/\//g, '-');
-    
-    // Validate classId
-    if (!classId || classId === 'undefined' || classId === 'null') {
-      throw new Error(
-        `Invalid class ID for pupil ${pupilName}.\n\n` +
-        `This pupil may have outdated class data.\n` +
-        `Please edit the pupil record and re-save to fix this issue.`
-      );
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // ✅ CRITICAL FIX: Use Firestore transaction for atomicity
-    // ═══════════════════════════════════════════════════════════
-    
-    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-    const paymentRef = db.collection('payments').doc(paymentDocId);
-    const transactionRef = db.collection('payment_transactions').doc(receiptNo);
-
-    const result = await db.runTransaction(async (transaction) => {
-      // ─── STEP 1: Read current state atomically ───
-      const pupilDoc = await transaction.get(db.collection('pupils').doc(pupilId));
-      
-      if (!pupilDoc.exists) {
-        throw new Error('Pupil record not found');
-      }
-      
-      const pupilData = pupilDoc.data();
-      
-      // ─── STEP 2: Get fee structure ───
-      const feeDocId = `fee_${classId}`;
-      const feeDoc = await transaction.get(db.collection('fee_structures').doc(feeDocId));
-
-      if (!feeDoc.exists) {
-        throw new Error(
-          `No fee structure configured for class: ${className}\n\n` +
-          `Please configure fees for this class first.`
-        );
-      }
-      
-      const feeStructure = feeDoc.data();
-      const baseFee = Number(feeStructure.total) || 0;
-
-      // ─── STEP 3: Calculate adjusted fee ───
-      const amountDue = window.calculateAdjustedFee 
-        ? window.calculateAdjustedFee(pupilData, baseFee, term)
-        : baseFee;
-      
-      console.log(`📊 Fee calculation for ${pupilName}:`);
-      console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
-      console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
-      
-      // Check enrollment
-      if (amountDue === 0) {
-        throw new Error(
-          `${pupilName} is not enrolled for ${term}.\n\n` +
-          `Admission term: ${pupilData.admissionTerm || 'First Term'}\n` +
-          `Exit term: ${pupilData.exitTerm || 'Third Term'}\n\n` +
-          `Cannot record payment for unenrolled term.`
-        );
-      }
-
-      // ─── STEP 4: Read payment record atomically ───
-      const paymentDoc = await transaction.get(paymentRef);
-
-      let currentPaid = 0;
-      let storedArrears = 0;
-
-      if (paymentDoc.exists) {
-        const data = paymentDoc.data();
-        currentPaid = Number(data.totalPaid) || 0;
-        storedArrears = Number(data.arrears) || 0;
-      } else {
-        // Payment record doesn't exist - calculate arrears
-        storedArrears = await window.calculateCompleteArrears(pupilId, session, term);
-      }
-
-      const arrears = Math.max(0, storedArrears);
-      const totalDue = amountDue + arrears;
-      const newTotalPaid = currentPaid + amountPaid;
-
-      // ─── STEP 5: Validate overpayment (atomic check) ───
-      if (newTotalPaid > totalDue) {
-        const balance = totalDue - currentPaid;
-        throw new Error(
-          `Payment rejected: Amount exceeds balance.\n\n` +
-          `Total due: ₦${totalDue.toLocaleString()}\n` +
-          `Already paid: ₦${currentPaid.toLocaleString()}\n` +
-          `Balance: ₦${balance.toLocaleString()}\n` +
-          `Your payment: ₦${amountPaid.toLocaleString()}`
-        );
-      }
-
-      // ─── STEP 6: Split payment ───
-      let arrearsPayment = 0;
-      let currentTermPayment = 0;
-      let remainingArrears = arrears;
-
-      if (arrears > 0) {
-        if (amountPaid <= arrears) {
-          arrearsPayment = amountPaid;
-          remainingArrears = arrears - amountPaid;
-        } else {
-          arrearsPayment = arrears;
-          currentTermPayment = amountPaid - arrears;
-          remainingArrears = 0;
-        }
-      } else {
-        currentTermPayment = amountPaid;
-      }
-
-      const newBalance = totalDue - newTotalPaid;
-      const paymentStatus =
-        newBalance === 0 ? 'paid' :
-        newTotalPaid > 0 ? 'partial' :
-        remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
-
-      // ─── STEP 7: Write transaction record ───
-      transaction.set(transactionRef, {
-        pupilId,
-        pupilName,
-        classId,
-        className,
-        session,
-        term,
-        baseFee,
-        adjustedFee: amountDue,
-        feeAdjustment: baseFee - amountDue,
-        amountPaid,
-        arrearsPayment,
-        currentTermPayment,
-        paymentMethod: paymentMethod || 'Cash',
-        receiptNo,
-        notes,
-        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        recordedBy: auth.currentUser.uid,
-        recordedByEmail: auth.currentUser.email
-      });
-
-      // ─── STEP 8: Update payment summary ───
-      transaction.set(paymentRef, {
-        pupilId,
-        pupilName,
-        classId,
-        className,
-        session,
-        term,
-        baseFee,
-        adjustedFee: amountDue,
-        amountDue,
-        arrears: remainingArrears,
-        totalDue: amountDue + remainingArrears,
-        totalPaid: newTotalPaid,
-        balance: newBalance,
-        status: paymentStatus,
-        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        lastPaymentAmount: amountPaid,
-        lastReceiptNo: receiptNo,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      // Return result data
-      return {
-        receiptNo,
-        amountPaid,
-        arrearsPayment,
-        currentTermPayment,
-        newBalance,
-        totalPaid: newTotalPaid,
-        status: paymentStatus,
-        baseFee,
-        adjustedFee: amountDue
-      };
+    console.log('📝 [ADMIN] Recording payment:', {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      amountPaid,
+      paymentMethod
     });
 
-    // ═══════════════════════════════════════════════════════════
-    // Transaction completed successfully
-    // ═══════════════════════════════════════════════════════════
+    // ✅ Use the finance module's recordPayment function
+    const result = await window.finance.recordPayment(
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      {
+        amountPaid: amountPaid,
+        paymentMethod: paymentMethod || 'Cash',
+        notes: notes
+      }
+    );
+
+    console.log('✅ [ADMIN] Payment recorded successfully:', result);
 
     // Build success message
     let message = `✓ Payment Recorded Successfully!\n\nReceipt #${result.receiptNo}\nAmount: ₦${result.amountPaid.toLocaleString()}`;
@@ -5563,7 +5407,7 @@ async function recordPayment() {
     }
     
   } catch (error) {
-    console.error('❌ Error recording payment:', error);
+    console.error('❌ [ADMIN] Error recording payment:', error);
     window.showToast?.('Failed to record payment: ' + error.message, 'danger', 8000);
   } finally {
     if (recordBtn) {
