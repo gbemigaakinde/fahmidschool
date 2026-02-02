@@ -1320,15 +1320,16 @@ async function loadSessionResults() {
             const currentSessionName = settings.session;
             displaySessionName = `Current Session (${currentSessionName})`;
 
-            // Primary query using the real session name
+            // ✅ CRITICAL FIX: Add status filter to only show approved results
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', currentSessionName)
+                .where('status', '==', 'approved')
                 .get();
 
             // Fallback: legacy results (missing session field or matching current)
             if (resultsSnap.empty) {
-                console.log('No results for current session → checking legacy data...');
+                console.log('No approved results for current session → checking legacy data...');
 
                 const legacySnap = await db.collection('results')
                     .where('pupilId', '==', currentPupilId)
@@ -1337,12 +1338,16 @@ async function loadSessionResults() {
                 const validResults = [];
                 legacySnap.forEach(doc => {
                     const data = doc.data();
-                    if (!data.session || data.session === currentSessionName) {
+                    // ✅ CRITICAL FIX: Check status is approved OR legacy (missing status field)
+                    const isApproved = !data.status || data.status === 'approved';
+                    const matchesSession = !data.session || data.session === currentSessionName;
+                    
+                    if (isApproved && matchesSession) {
                         validResults.push(doc);
                     }
                 });
 
-                console.log(`Found ${validResults.length} legacy/matching results`);
+                console.log(`Found ${validResults.length} legacy/matching approved results`);
 
                 if (validResults.length > 0) {
                     // Create pseudo-snapshot compatible with Firestore snapshot
@@ -1376,9 +1381,11 @@ async function loadSessionResults() {
         else {
             displaySessionName = `${selectedSession} Session`;
 
+            // ✅ CRITICAL FIX: Add status filter for historical sessions too
             resultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .where('session', '==', selectedSession)
+                .where('status', '==', 'approved')
                 .get();
         }
 
@@ -1494,7 +1501,7 @@ async function loadSessionResults() {
             container.appendChild(termSection);
         });
 
-        console.log(`✓ Loaded ${pupilResults.length} results for session: ${selectedSession}`);
+        console.log(`✓ Loaded ${pupilResults.length} approved results for session: ${selectedSession}`);
 
     } catch (error) {
         console.error('Error loading session results:', error);
