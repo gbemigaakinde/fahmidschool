@@ -356,29 +356,35 @@ const finance = {
     return `${startYear - 1}/${endYear - 1}`;
   },
 
-  /*
+  /*/**
  * ═══════════════════════════════════════════════════════════
  * PAYMENT RECORDING: Atomic Transaction
  * ═══════════════════════════════════════════════════════════
  */
 async recordPayment(pupilId, pupilName, classId, className, session, term, paymentData) {
   try {
+    console.log('💰 [FINANCE] Starting payment recording...');
+    console.log('   Input data:', { pupilId, pupilName, classId, className, session, term });
+    
     const amountPaid = parseFloat(paymentData.amountPaid);
     if (!amountPaid || amountPaid <= 0) {
       throw new Error('Invalid payment amount');
     }
+    console.log(`   Amount to pay: ₦${amountPaid.toLocaleString()}`);
 
     const encodedSession = session.replace(/\//g, '-');
 
     // ─── Get pupil data for fee adjustments ───
+    console.log('   Fetching pupil data...');
     const pupilDoc = await db.collection('pupils').doc(pupilId).get();
     if (!pupilDoc.exists) {
       throw new Error('Pupil profile not found');
     }
-    
     const pupilData = pupilDoc.data();
+    console.log('   ✓ Pupil data loaded');
 
     // ─── Get base fee ───
+    console.log(`   Fetching fee structure for class ${classId}...`);
     const feeDocId = `fee_${classId}`;
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
 
@@ -387,17 +393,16 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     }
 
     const baseFee = Number(feeDoc.data().total) || 0;
+    console.log(`   ✓ Base fee: ₦${baseFee.toLocaleString()}`);
 
     // ─── Calculate ADJUSTED fee ───
     const amountDue = this.calculateAdjustedFee(pupilData, baseFee, term);
-    
-    console.log('💰 [FINANCE] Payment Recording:');
-    console.log(`   Base fee: ₦${baseFee.toLocaleString()}`);
-    console.log(`   Adjusted fee: ₦${amountDue.toLocaleString()}`);
-    console.log(`   Payment: ₦${amountPaid.toLocaleString()}`);
+    console.log(`   ✓ Adjusted fee: ₦${amountDue.toLocaleString()}`);
 
     // ─── Get current payment state ───
     const paymentRecordId = `${pupilId}_${encodedSession}_${term}`;
+    console.log(`   Checking existing payment record: ${paymentRecordId}`);
+    
     const existingPaymentDoc = await db.collection('payments').doc(paymentRecordId).get();
 
     let currentTotalPaid = 0;
@@ -407,14 +412,25 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
       const existingData = existingPaymentDoc.data();
       currentTotalPaid = Number(existingData.totalPaid) || 0;
       storedArrears = Number(existingData.arrears) || 0;
+      console.log(`   ✓ Found existing payment: Paid ₦${currentTotalPaid.toLocaleString()}, Arrears ₦${storedArrears.toLocaleString()}`);
     } else {
-      // No payment record exists - calculate arrears fresh
+      console.log('   No existing payment record - calculating fresh arrears');
       storedArrears = await this.calculateCompleteArrears(pupilId, session, term);
+      console.log(`   ✓ Calculated arrears: ₦${storedArrears.toLocaleString()}`);
     }
 
     const arrears = Math.max(0, storedArrears);
     const totalDue = amountDue + arrears;
     const newTotalPaid = currentTotalPaid + amountPaid;
+
+    console.log('   ═══════════════════════════════════════');
+    console.log(`   Amount Due (this term): ₦${amountDue.toLocaleString()}`);
+    console.log(`   Arrears: ₦${arrears.toLocaleString()}`);
+    console.log(`   Total Due: ₦${totalDue.toLocaleString()}`);
+    console.log(`   Already Paid: ₦${currentTotalPaid.toLocaleString()}`);
+    console.log(`   New Payment: ₦${amountPaid.toLocaleString()}`);
+    console.log(`   New Total Paid: ₦${newTotalPaid.toLocaleString()}`);
+    console.log('   ═══════════════════════════════════════');
 
     // ─── Prevent overpayment ───
     if (newTotalPaid > totalDue) {
@@ -442,61 +458,72 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
         currentTermPayment = amountPaid - arrears;
         remainingArrears = 0;
       }
+      console.log(`   Payment split: ₦${arrearsPayment.toLocaleString()} to arrears, ₦${currentTermPayment.toLocaleString()} to current term`);
     } else {
       currentTermPayment = amountPaid;
+      console.log(`   Full payment to current term: ₦${currentTermPayment.toLocaleString()}`);
     }
 
-    // ✅ CRITICAL FIX: Calculate balances BEFORE and AFTER
-    const balanceBefore = totalDue - currentTotalPaid;
-    const balanceAfter = totalDue - newTotalPaid;
+    // ✅ CRITICAL: Calculate balances BEFORE and AFTER
+    const balanceBefore = Math.max(0, totalDue - currentTotalPaid);
+    const balanceAfter = Math.max(0, totalDue - newTotalPaid);
+
+    console.log(`   Balance BEFORE payment: ₦${balanceBefore.toLocaleString()}`);
+    console.log(`   Balance AFTER payment: ₦${balanceAfter.toLocaleString()}`);
 
     const paymentStatus =
       balanceAfter === 0 ? 'paid' :
       newTotalPaid > 0 ? 'partial' :
       remainingArrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    console.log(`   Balance before: ₦${balanceBefore.toLocaleString()}`);
-    console.log(`   Balance after: ₦${balanceAfter.toLocaleString()}`);
+    console.log(`   Payment status: ${paymentStatus}`);
 
     // ─── Generate receipt number ───
     const receiptNo = await this.generateReceiptNumber();
+    console.log(`   ✓ Generated receipt: ${receiptNo}`);
 
     // ─── ATOMIC WRITE using Firestore transaction ───
+    console.log('   Writing to Firestore...');
+    
     const paymentRef = db.collection('payments').doc(paymentRecordId);
     const transactionRef = db.collection('payment_transactions').doc(receiptNo);
 
-    await db.runTransaction(async (transaction) => {
-      // ✅ Write frozen transaction snapshot with CORRECT balance fields
-      transaction.set(transactionRef, {
-        pupilId,
-        pupilName,
-        classId,
-        className,
-        session,
-        term,
-        baseFee,
-        adjustedFee: amountDue,
-        feeAdjustment: baseFee - amountDue,
-        amountDue,
-        arrears,
-        totalDue,
-        amountPaid,
-        arrearsPayment,
-        currentTermPayment,
-        totalPaidBefore: currentTotalPaid,
-        totalPaidAfter: newTotalPaid,
-        balanceBefore: balanceBefore,        // ✅ Balance before this payment
-        balanceAfter: balanceAfter,          // ✅ Balance after this payment
-        status: paymentStatus,
-        paymentMethod: paymentData.paymentMethod || 'Cash',
-        notes: paymentData.notes || '',
-        paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        receiptNo,
-        recordedBy: auth.currentUser.uid,
-        recordedByEmail: auth.currentUser.email
-      });
+    const transactionData = {
+      pupilId,
+      pupilName,
+      classId,
+      className,
+      session,
+      term,
+      baseFee,
+      adjustedFee: amountDue,
+      feeAdjustment: baseFee - amountDue,
+      amountDue,
+      arrears,
+      totalDue,
+      amountPaid,
+      arrearsPayment,
+      currentTermPayment,
+      totalPaidBefore: currentTotalPaid,
+      totalPaidAfter: newTotalPaid,
+      balanceBefore: balanceBefore,
+      balanceAfter: balanceAfter,
+      status: paymentStatus,
+      paymentMethod: paymentData.paymentMethod || 'Cash',
+      notes: paymentData.notes || '',
+      paymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+      receiptNo,
+      recordedBy: auth.currentUser.uid,
+      recordedByEmail: auth.currentUser.email
+    };
 
-      // Update running payment summary
+    console.log('   Transaction data to write:', transactionData);
+
+    await db.runTransaction(async (transaction) => {
+      // Write transaction record
+      transaction.set(transactionRef, transactionData);
+
+      // Update payment summary
       transaction.set(paymentRef, {
         pupilId,
         pupilName,
@@ -510,7 +537,7 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
         arrears: remainingArrears,
         totalDue: amountDue + remainingArrears,
         totalPaid: newTotalPaid,
-        balance: balanceAfter,              // ✅ Use calculated balanceAfter
+        balance: balanceAfter,
         status: paymentStatus,
         lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
         lastPaymentAmount: amountPaid,
@@ -519,7 +546,8 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
       }, { merge: true });
     });
 
-    console.log(`✅ [FINANCE] Payment recorded: Receipt ${receiptNo}`);
+    console.log('   ✅ Firestore transaction completed successfully');
+    console.log(`   Receipt: ${receiptNo}`);
     console.log(`   Balance after payment: ₦${balanceAfter.toLocaleString()}`);
 
     return {
@@ -528,7 +556,7 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
       amountPaid,
       arrearsPayment,
       currentTermPayment,
-      newBalance: balanceAfter,             // ✅ Return correct balance
+      newBalance: balanceAfter,
       totalPaid: newTotalPaid,
       status: paymentStatus,
       baseFee,
