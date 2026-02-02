@@ -254,45 +254,94 @@ async submitForApproval(classId, term, subject, session, teacherUid, teacherName
 },
 
   /**
-   * Approve submitted results
-   */
-  async approveResults(submissionId, adminUid) {
-    try {
-      const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
-      
-      if (!submissionDoc.exists) {
-        return { success: false, message: 'Submission not found' };
-      }
-      
-      const data = submissionDoc.data();
-      
-      // Update submission status
-      await db.collection('result_submissions').doc(submissionId).update({
-        status: 'approved',
-        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        approvedBy: adminUid
-      });
-      
-      // Lock the results
-      await this.lockResults(
-        data.classId,
-        data.className,
-        data.term,
-        data.subject,
-        data.session,
-        adminUid
-      );
-      
-      return { 
-        success: true, 
-        message: 'Results approved and locked successfully' 
-      };
-      
-    } catch (error) {
-      console.error('Error approving results:', error);
-      return { success: false, error: error.message };
+ * ✅ FIXED: Admin approval COPIES draft results to production collection
+ * This is the ONLY action that makes results visible to pupils
+ */
+async approveResults(submissionId, adminUid) {
+  try {
+    const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+    
+    if (!submissionDoc.exists) {
+      return { success: false, message: 'Submission not found' };
     }
-  },
+    
+    const data = submissionDoc.data();
+    const { classId, className, term, subject, session } = data;
+    
+    // ✅ STEP 1: Get all draft results for this submission
+    const draftResults = await db.collection('results_draft')
+      .where('session', '==', session)
+      .where('term', '==', term)
+      .where('subject', '==', subject)
+      .where('teacherId', '==', data.teacherUid)
+      .get();
+    
+    if (draftResults.empty) {
+      return { 
+        success: false, 
+        message: 'No draft results found to approve' 
+      };
+    }
+    
+    // ✅ STEP 2: Copy draft results to PRODUCTION collection (visible to pupils)
+    const batch = db.batch();
+    
+    draftResults.forEach(draftDoc => {
+      const draftData = draftDoc.data();
+      const pupilId = draftData.pupilId;
+      
+      // Create document ID for production results
+      const prodDocId = `${pupilId}_${term}_${subject}`;
+      const prodRef = db.collection('results').doc(prodDocId);
+      
+      // Copy data to production with approval metadata
+      batch.set(prodRef, {
+        ...draftData,
+        status: 'approved', // ✅ Mark as approved
+        approvedBy: adminUid,
+        approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        publishedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    
+    // ✅ STEP 3: Update submission status
+    batch.update(submissionDoc.ref, {
+      status: 'approved',
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      approvedBy: adminUid
+    });
+    
+    // ✅ STEP 4: Lock the results
+    const lockId = `${classId}_${session}_${term}_${subject}`;
+    const lockRef = db.collection('result_locks').doc(lockId);
+    
+    batch.set(lockRef, {
+      classId,
+      className,
+      term,
+      subject,
+      session,
+      locked: true,
+      lockedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lockedBy: adminUid,
+      reason: 'Admin approved and locked'
+    });
+    
+    // ✅ STEP 5: Commit all changes atomically
+    await batch.commit();
+    
+    console.log(`✅ Results approved and published: ${className} - ${term} - ${subject}`);
+    
+    return { 
+      success: true, 
+      message: 'Results approved and published to pupils successfully' 
+    };
+    
+  } catch (error) {
+    console.error('Error approving results:', error);
+    return { success: false, error: error.message };
+  }
+},
 
   /**
    * Reject submitted results
