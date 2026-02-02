@@ -609,15 +609,8 @@ async function loadResultsSection() {
 }
 
 /**
- * FIXED: Load Results Table with Session Filter
- * Replace the loadResultsTable() function in teacher.js (lines 530-680)
- * 
- * CRITICAL FIX:
- * - Added session filter to query
- * - Prevents accidental editing of old session results
- * - Maintains backward compatibility with legacy data
+ * ✅ FIXED: Load results from DRAFT collection for teacher editing
  */
-
 async function loadResultsTable() {
   const container = document.getElementById('results-entry-table-container');
   const saveBtn = document.getElementById('save-results-btn');
@@ -631,58 +624,30 @@ async function loadResultsTable() {
   }
   
   try {
-    // ✅ CRITICAL FIX: Get current session
     const settings = await window.getCurrentSettings();
     const currentSession = settings.session;
     
     const resultsMap = {};
     
-    // ✅ FIXED: Query each pupil with SESSION filter
+    // ✅ CRITICAL FIX: Query from DRAFT collection, not main results
     for (const pupil of allPupils) {
-      // PRIMARY QUERY: Try with session filter first
-      let resultsSnapshot = await db.collection('results')
-        .where('pupilId', '==', pupil.id)
-        .where('term', '==', term)
-        .where('subject', '==', subject)
-        .where('session', '==', currentSession)  // ✅ ADDED SESSION FILTER
-        .limit(1)
-        .get();
+      const docId = `${pupil.id}_${term}_${subject}`;
+      const draftDoc = await db.collection('results_draft').doc(docId).get();
       
-      // FALLBACK: If no results with session, check for legacy data
-      if (resultsSnapshot.empty) {
-        const legacySnapshot = await db.collection('results')
-          .where('pupilId', '==', pupil.id)
-          .where('term', '==', term)
-          .where('subject', '==', subject)
-          .limit(1)
-          .get();
+      if (draftDoc.exists) {
+        const data = draftDoc.data();
         
-        // Only use legacy data if it has NO session field
-        if (!legacySnapshot.empty) {
-          const legacyData = legacySnapshot.docs[0].data();
-          
-          // If legacy data has a DIFFERENT session, ignore it
-          if (legacyData.session && legacyData.session !== currentSession) {
-            console.log(`Skipping old session data for ${pupil.name}: ${legacyData.session}`);
-            continue;
-          }
-          
-          // If no session field OR matches current, use it
-          if (!legacyData.session || legacyData.session === currentSession) {
-            resultsSnapshot = legacySnapshot;
-          }
+        // Only use if it matches current session
+        if (data.session === currentSession) {
+          resultsMap[pupil.id] = {
+            ca: data.caScore || 0,
+            exam: data.examScore || 0
+          };
         }
-      }
-      
-      if (!resultsSnapshot.empty) {
-        const data = resultsSnapshot.docs[0].data();
-        resultsMap[pupil.id] = {
-          ca: data.caScore || 0,
-          exam: data.examScore || 0
-        };
       }
     }
     
+    // [Rest of the table rendering code remains the same...]
     container.innerHTML = `
       <div class="table-container">
         <table class="responsive-table" id="results-table">
@@ -1223,7 +1188,8 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save all results with guaranteed button state restoration
+ * ✅ FIXED: Save results to DRAFT collection only (not visible to pupils)
+ * Results become visible to pupils ONLY after admin approval
  */
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
@@ -1235,9 +1201,8 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ FIX 1: Validate scores BEFORE starting save operation
+    // Validation
     let hasInvalidScores = false;
-
     inputs.forEach(input => {
         const field = input.dataset.field;
         const value = parseFloat(input.value) || 0;
@@ -1248,7 +1213,6 @@ async function saveAllResults() {
             input.style.borderColor = '#f44336';
             input.value = max;
         }
-
         if (value < 0) {
             hasInvalidScores = true;
             input.style.borderColor = '#f44336';
@@ -1258,32 +1222,23 @@ async function saveAllResults() {
 
     if (hasInvalidScores) {
         window.showToast?.(
-            'Invalid scores have been corrected. Please review and try saving again.',
+            'Invalid scores corrected. Please review and try saving again.',
             'warning',
             5000
         );
         return;
     }
 
-    // ✅ FIX 2: Get FRESH button reference and initialize state FIRST
     const saveBtn = document.getElementById('save-results-btn');
     let originalHTML = null;
 
     if (saveBtn) {
         originalHTML = saveBtn.innerHTML;
         saveBtn.disabled = true;
-        saveBtn.innerHTML = `
-            <span style="display:inline-flex; align-items:center; gap:0.5rem;">
-                <span class="spinner" style="width:14px; height:14px; border-width:2px;"></span>
-                Saving...
-            </span>
-        `;
-        saveBtn.style.opacity = '0.65';
-        saveBtn.style.cursor = 'not-allowed';
+        saveBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px;"></span> Saving...';
     }
 
     try {
-        // ✅ FIX 3: Wrap settings fetch in try-catch
         let currentSession = 'Unknown';
         let sessionStartYear = null;
         let sessionEndYear = null;
@@ -1295,16 +1250,10 @@ async function saveAllResults() {
             sessionEndYear = settings.currentSession?.endYear;
         } catch (settingsError) {
             console.error('Failed to get session settings:', settingsError);
-            window.showToast?.(
-                'Failed to get current session. Using default values.',
-                'warning',
-                4000
-            );
         }
 
         const batch = db.batch();
         let hasChanges = false;
-        const conflicts = [];
 
         // Group inputs by pupil
         const pupilResults = {};
@@ -1326,19 +1275,13 @@ async function saveAllResults() {
             return;
         }
 
-        // ✅ FIX 4: Process each pupil with better error handling
+        // ✅ CRITICAL FIX: Save to DRAFT collection (teacher workspace)
+        // NOT to the main 'results' collection
         for (const [pupilId, scores] of Object.entries(pupilResults)) {
             const docId = `${pupilId}_${term}_${subject}`;
-            const ref = db.collection('results').doc(docId);
             
-            // Read current document to check for conflicts
-            let currentDoc = null;
-            try {
-                currentDoc = await ref.get();
-            } catch (readError) {
-                console.warn(`Could not read existing result for ${pupilId}:`, readError.code);
-                // Continue anyway - will create new document
-            }
+            // ✅ NEW: Use 'results_draft' collection
+            const ref = db.collection('results_draft').doc(docId);
             
             const sessionTerm = `${currentSession}_${term}`;
             
@@ -1350,80 +1293,29 @@ async function saveAllResults() {
                 sessionStartYear,
                 sessionEndYear,
                 sessionTerm,
-                caScore: scores.ca !== undefined ? scores.ca : (currentDoc?.exists ? currentDoc.data().caScore : 0),
-                examScore: scores.exam !== undefined ? scores.exam : (currentDoc?.exists ? currentDoc.data().examScore : 0),
-                version: currentDoc?.exists ? ((currentDoc.data().version || 0) + 1) : 1,
+                caScore: scores.ca !== undefined ? scores.ca : 0,
+                examScore: scores.exam !== undefined ? scores.exam : 0,
+                teacherId: currentUser.uid,
+                status: 'draft', // ✅ Mark as draft
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedBy: currentUser.uid
             };
             
-            // Check for concurrent modification
-            if (currentDoc?.exists) {
-                const lastUpdated = currentDoc.data().updatedAt;
-                const lastUpdatedBy = currentDoc.data().updatedBy;
-                
-                if (lastUpdated && lastUpdatedBy && lastUpdatedBy !== currentUser.uid) {
-                    const timeDiff = Date.now() - lastUpdated.toDate().getTime();
-                    
-                    // If updated by someone else in last 5 minutes, flag as potential conflict
-                    if (timeDiff < 300000) {
-                        conflicts.push({
-                            pupilId,
-                            lastUpdatedBy,
-                            timeDiff: Math.floor(timeDiff / 1000)
-                        });
-                    }
-                }
-            }
-            
             batch.set(ref, baseData, { merge: true });
         }
 
-        // If conflicts detected, warn user
-        if (conflicts.length > 0) {
-            const confirmSave = confirm(
-                `⚠️ POTENTIAL CONFLICT DETECTED\n\n` +
-                `${conflicts.length} result(s) were recently modified by another teacher.\n\n` +
-                `If you continue, your changes will overwrite theirs.\n\n` +
-                `Continue saving?`
-            );
-            
-            if (!confirmSave) {
-                window.showToast?.('Save cancelled due to conflicts', 'info');
-                return;
-            }
-        }
-
-        // ✅ FIX 5: Commit with proper error handling
         await batch.commit();
-        window.showToast?.('✓ All results saved successfully', 'success');
+        window.showToast?.('✓ Results saved to your workspace (not visible to pupils yet)', 'success');
         
     } catch (err) {
         console.error('Error saving results:', err);
-        
-        // ✅ FIX 6: User-friendly error messages
-        if (err.code === 'failed-precondition') {
-            window.showToast?.(
-                'Conflict detected: Another teacher modified these results. Please refresh and try again.',
-                'danger',
-                8000
-            );
-        } else if (err.code === 'permission-denied') {
-            window.showToast?.(
-                'Permission denied. You may not have access to save these results.',
-                'danger',
-                6000
-            );
-        } else {
-            window.showToast?.(
-                `Failed to save results: ${err.message || 'Unknown error'}`,
-                'danger',
-                6000
-            );
-        }
+        window.showToast?.(
+            `Failed to save results: ${err.message || 'Unknown error'}`,
+            'danger',
+            6000
+        );
         
     } finally {
-        // ✅ CRITICAL FIX 7: ALWAYS restore button state using FRESH reference
         const finalSaveBtn = document.getElementById('save-results-btn');
         if (finalSaveBtn) {
             finalSaveBtn.disabled = false;
@@ -1432,8 +1324,6 @@ async function saveAllResults() {
             } else {
                 finalSaveBtn.innerHTML = '💾 Save Results';
             }
-            finalSaveBtn.style.opacity = '';
-            finalSaveBtn.style.cursor = '';
         }
     }
 }
