@@ -2227,7 +2227,8 @@ async function loadPromotionPeriodStatus() {
 }
 
 /**
- * Load result approvals section
+ * ✅ FIXED: Load result approvals with correct pupil count
+ * Now queries actual draft collection to count pupils
  */
 async function loadResultApprovals() {
     const tbody = document.getElementById('result-approvals-table');
@@ -2238,48 +2239,108 @@ async function loadResultApprovals() {
     tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
     
     try {
-        const submissions = await window.resultLocking.getSubmittedResults();
+        // Get all pending submissions
+        const submissionsSnap = await db.collection('result_submissions')
+            .where('status', '==', 'pending')
+            .orderBy('submittedAt', 'desc')
+            .get();
         
         tbody.innerHTML = '';
         
-        if (submissions.length === 0) {
+        if (submissionsSnap.empty) {
             if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
             return;
         }
         
         if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
         
-        for (const submission of submissions) {
-            const submittedDate = submission.submittedAt 
-                ? submission.submittedAt.toDate().toLocaleDateString('en-GB')
+        // Process each submission
+        for (const submissionDoc of submissionsSnap.docs) {
+            const submissionData = submissionDoc.data();
+            const submissionId = submissionDoc.id;
+            
+            // Extract submission details
+            const teacherName = submissionData.teacherName || 'Unknown';
+            const className = submissionData.className || '-';
+            const subject = submissionData.subject || '-';
+            const term = submissionData.term || '-';
+            const session = submissionData.session || '-';
+            
+            const submittedDate = submissionData.submittedAt 
+                ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB')
                 : '-';
+            
+            // ✅ CRITICAL FIX: Count pupils from ACTUAL draft collection
+            let pupilCount = 0;
+            
+            try {
+                // Query the results_draft collection to find all results for this submission
+                // Draft doc format: {pupilId}_{term}_{subject}
+                const draftQuery = await db.collection('results_draft')
+                    .where('term', '==', term)
+                    .where('subject', '==', subject)
+                    .where('session', '==', session)
+                    .get();
+                
+                // Count unique pupils (avoid double-counting if somehow duplicates exist)
+                const uniquePupils = new Set();
+                draftQuery.forEach(draftDoc => {
+                    const draftData = draftDoc.data();
+                    if (draftData.pupilId) {
+                        uniquePupils.add(draftData.pupilId);
+                    }
+                });
+                
+                pupilCount = uniquePupils.size;
+                
+                console.log(`✓ Submission ${submissionId}: Found ${pupilCount} pupils in draft`);
+                
+            } catch (draftError) {
+                console.error(`Error counting draft results for ${submissionId}:`, draftError);
+                pupilCount = 0;
+            }
+            
+            // ✅ CRITICAL CHECK: If no pupils found, show warning but still display submission
+            const pupilCountDisplay = pupilCount > 0 
+                ? pupilCount 
+                : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
             
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td data-label="Teacher">${submission.teacherName || 'Unknown'}</td>
-                <td data-label="Class">${submission.className || '-'}</td>
-                <td data-label="Subject">${submission.subject || '-'}</td>
-                <td data-label="Term">${submission.term || '-'}</td>
-                <td data-label="Pupils" style="text-align:center;">${submission.pupilCount || 0}</td>
+                <td data-label="Teacher">${teacherName}</td>
+                <td data-label="Class">${className}</td>
+                <td data-label="Subject">${subject}</td>
+                <td data-label="Term">${term}</td>
+                <td data-label="Pupils" style="text-align:center;">${pupilCountDisplay}</td>
                 <td data-label="Submitted">${submittedDate}</td>
                 <td data-label="Status">
                     <span class="status-pending">Pending</span>
                 </td>
                 <td data-label="Actions">
-                    <button class="btn-small btn-success" onclick="approveResultSubmission('${submission.id}')">
-                        ✓ Approve
-                    </button>
-                    <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submission.id}')">
-                        ✗ Reject
-                    </button>
+                    ${pupilCount > 0 ? `
+                        <button class="btn-small btn-success" onclick="approveResultSubmission('${submissionId}')">
+                            ✓ Approve
+                        </button>
+                        <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+                            ✗ Reject
+                        </button>
+                    ` : `
+                        <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+                            ✗ Reject (No Data)
+                        </button>
+                        <span style="font-size: 0.75rem; color: #dc3545; display: block; margin-top: 4px;">
+                            ⚠️ No draft results found
+                        </span>
+                    `}
                 </td>
             `;
             tbody.appendChild(tr);
         }
         
     } catch (error) {
-        console.error('Error loading result approvals:', error);
+        console.error('❌ Error loading result approvals:', error);
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
+        window.showToast?.('Failed to load result approvals', 'danger');
     }
 }
 
