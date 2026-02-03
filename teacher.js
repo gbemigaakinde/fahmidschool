@@ -1234,7 +1234,7 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save results to DRAFT collection only (not visible to pupils)
+ * ✅ FIXED: Save results to DRAFT collection only
  * Results become visible to pupils ONLY after admin approval
  */
 async function saveAllResults() {
@@ -1321,18 +1321,26 @@ async function saveAllResults() {
             return;
         }
 
-        // ✅ CRITICAL FIX: Save to DRAFT collection (teacher workspace)
-        // NOT to the main 'results' collection
+        // ✅ CRITICAL: Get class info for submission tracking
+        const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
+        const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
+
+        // ✅ Save to DRAFT collection only
         for (const [pupilId, scores] of Object.entries(pupilResults)) {
-            const docId = `${pupilId}_${term}_${subject}`;
+            // Get pupil name for better tracking
+            const pupil = allPupils.find(p => p.id === pupilId);
+            const pupilName = pupil?.name || 'Unknown';
             
-            // ✅ NEW: Use 'results_draft' collection
+            const docId = `${pupilId}_${term}_${subject}`;
             const ref = db.collection('results_draft').doc(docId);
             
             const sessionTerm = `${currentSession}_${term}`;
             
             const baseData = {
                 pupilId,
+                pupilName, // ✅ Add pupil name for easier querying
+                classId,
+                className,
                 term,
                 subject,
                 session: currentSession,
@@ -1342,7 +1350,7 @@ async function saveAllResults() {
                 caScore: scores.ca !== undefined ? scores.ca : 0,
                 examScore: scores.exam !== undefined ? scores.exam : 0,
                 teacherId: currentUser.uid,
-                status: 'draft', // ✅ Mark as draft
+                status: 'draft',
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedBy: currentUser.uid
             };
@@ -1351,7 +1359,13 @@ async function saveAllResults() {
         }
 
         await batch.commit();
-        window.showToast?.('✓ Results saved to your workspace (not visible to pupils yet)', 'success');
+        
+        window.showToast?.(
+            '✓ Results saved to your workspace\n\n' +
+            'ℹ️ Not visible to pupils yet - submit for approval when ready.',
+            'success',
+            6000
+        );
         
     } catch (err) {
         console.error('Error saving results:', err);
