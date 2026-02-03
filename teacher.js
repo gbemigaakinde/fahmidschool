@@ -1122,7 +1122,8 @@ function enableResultInputs() {
 }
 
 /**
- * ✅ FIXED: Handle submission button click with proper async handling
+ * ✅ FIXED: Submit results with ORIGINAL session format
+ * Admin queries will now match draft results correctly
  */
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
@@ -1138,7 +1139,6 @@ async function submitResultsForApproval() {
     const classId = assignedClasses[0].id;
     const className = assignedClasses[0].name;
     
-    // Show confirmation dialog
     const confirmed = confirm(
         `Submit results for approval?\n\n` +
         `Class: ${className}\n` +
@@ -1151,43 +1151,42 @@ async function submitResultsForApproval() {
         return;
     }
 
-    // ✅ FIX: Show loading state and ensure it always resolves
     const submitBtn = document.getElementById('submit-results-btn');
     const originalBtnText = submitBtn?.innerHTML || 'Submit for Approval';
     
     try {
-        // Show loading spinner
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
         }
 
         const settings = await window.getCurrentSettings();
-        const session = settings.session;
+        const session = settings.session; // ✅ ORIGINAL FORMAT: "2025/2026"
+
+        // ✅ FIX: Only encode for document ID, NOT for data storage
         const encodedSession = session.replace(/\//g, '-');
+        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
 
         const currentUser = firebase.auth().currentUser;
         if (!currentUser) {
             throw new Error('Not authenticated');
         }
 
-        // Get teacher name
         const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
         const teacherName = teacherDoc.exists 
           ? teacherDoc.data().fullName || teacherDoc.data().name
           : currentUser.displayName || 'Unknown Teacher';
 
-        // ✅ FIX: Call submitForApproval and handle response properly
+        // ✅ CRITICAL FIX: Store ORIGINAL session format in submission data
         const result = await window.resultLocking.submitForApproval(
             classId,
             term,
             subject,
-            encodedSession,
+            session,  // ✅ ORIGINAL FORMAT - matches draft results
             currentUser.uid,
             teacherName
         );
 
-        // ✅ CRITICAL: Check result.success instead of assuming success
         if (result.success) {
             if (window.showToast) {
                 window.showToast(
@@ -1197,19 +1196,16 @@ async function submitResultsForApproval() {
                 );
             }
             
-            // Refresh the UI to show submission status
             await checkResultLockStatus();
             await loadResultsTable();
             
         } else {
-            // Submission failed - show error
             throw new Error(result.message || 'Submission failed');
         }
 
     } catch (error) {
         console.error('Error submitting for approval:', error);
         
-        // ✅ FIX: Show user-friendly error message
         const errorMessage = error.code === 'permission-denied'
             ? 'Permission denied. Please contact your administrator.'
             : error.message || 'Failed to submit results. Please try again.';
@@ -1221,7 +1217,6 @@ async function submitResultsForApproval() {
         }
         
     } finally {
-        // ✅ CRITICAL: Always restore button state (stops infinite spinner)
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
