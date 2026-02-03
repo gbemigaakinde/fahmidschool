@@ -2227,10 +2227,11 @@ async function loadPromotionPeriodStatus() {
 }
 
 /**
- * ✅ FIXED: Load result approvals with correct pupil count
- * Now queries actual draft collection WITHOUT composite index dependency
+ * ✅ FIXED: Load result approvals with correct pupil count from submissions
  */
 async function loadResultApprovals() {
+    console.log('📋 Loading result approvals...');
+    
     const tbody = document.getElementById('result-approvals-table');
     const noApprovalsMsg = document.getElementById('no-approvals-message');
     
@@ -2239,7 +2240,7 @@ async function loadResultApprovals() {
     tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
     
     try {
-        // Get all pending submissions
+        // ✅ Get all pending submissions
         const submissionsSnap = await db.collection('result_submissions')
             .where('status', '==', 'pending')
             .orderBy('submittedAt', 'desc')
@@ -2254,12 +2255,11 @@ async function loadResultApprovals() {
         
         if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
         
-        // Process each submission
+        // ✅ Process each submission
         for (const submissionDoc of submissionsSnap.docs) {
             const submissionData = submissionDoc.data();
             const submissionId = submissionDoc.id;
             
-            // Extract submission details
             const teacherName = submissionData.teacherName || 'Unknown';
             const className = submissionData.className || '-';
             const subject = submissionData.subject || '-';
@@ -2270,41 +2270,32 @@ async function loadResultApprovals() {
                 ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB')
                 : '-';
             
-            // ✅ CRITICAL FIX: Count pupils WITHOUT relying on composite index
-            // Query by term and subject only (both are in document ID pattern)
+            // ✅ CRITICAL FIX: Count pupils from draft results
             let pupilCount = 0;
             
-            // ✅ IMPROVED FIX with volume protection
-try {
-    // Limit initial query to prevent fetching too much
-    const allDrafts = await db.collection('results_draft')
-        .where('term', '==', term)
-        .where('subject', '==', subject)
-        .limit(500) // ✅ Safety limit
-        .get();
-    
-    const uniquePupils = new Set();
-    allDrafts.forEach(draftDoc => {
-        const draftData = draftDoc.data();
-        
-        if (draftData.session === session && draftData.pupilId) {
-            uniquePupils.add(draftData.pupilId);
-        }
-    });
-    
-    pupilCount = uniquePupils.size;
-    
-    // ✅ Warn if limit reached
-    if (allDrafts.size === 500) {
-        console.warn(`⚠️ Query limit reached for ${term} ${subject} - count may be incomplete`);
-    }
-    
-} catch (draftError) {
-    console.error(`Error counting draft results:`, draftError);
-    pupilCount = 0;
-}
+            try {
+                const draftsSnap = await db.collection('results_draft')
+                    .where('classId', '==', submissionData.classId)
+                    .where('term', '==', term)
+                    .where('subject', '==', subject)
+                    .where('session', '==', session)
+                    .get();
+                
+                // Count unique pupils
+                const uniquePupils = new Set();
+                draftsSnap.forEach(doc => {
+                    const pupilId = doc.data().pupilId;
+                    if (pupilId) uniquePupils.add(pupilId);
+                });
+                
+                pupilCount = uniquePupils.size;
+                
+            } catch (draftError) {
+                console.error('Error counting draft results:', draftError);
+                pupilCount = 0;
+            }
             
-            // ✅ CRITICAL CHECK: If no pupils found, show warning
+            // ✅ Show warning if no pupils found
             const pupilCountDisplay = pupilCount > 0 
                 ? pupilCount 
                 : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
@@ -2341,6 +2332,8 @@ try {
             tbody.appendChild(tr);
         }
         
+        console.log(`✓ Loaded ${submissionsSnap.size} pending submissions`);
+        
     } catch (error) {
         console.error('❌ Error loading result approvals:', error);
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
@@ -2349,53 +2342,158 @@ try {
 }
 
 /**
- * Approve result submission
+ * ✅ FIXED: Approve results and COPY from draft to final collection
+ * This is the KEY function that makes results visible to pupils
  */
 async function approveResultSubmission(submissionId) {
-    if (!confirm('Approve these results and lock them?\n\nTeacher will not be able to edit unless you unlock.')) {
+    if (!confirm(
+        'Approve these results?\n\n' +
+        'This will:\n' +
+        '✓ Lock the results (teacher cannot edit)\n' +
+        '✓ Make results VISIBLE to pupils\n' +
+        '✓ Publish to final results collection\n\n' +
+        'Continue?'
+    )) {
         return;
     }
     
     try {
-        const result = await window.resultLocking.approveResults(submissionId, auth.currentUser.uid);
+        // Get submission details
+        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
         
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
+        if (!submissionDoc.exists) {
+            window.showToast?.('Submission not found', 'danger');
+            return;
         }
         
+        const submissionData = submissionDoc.data();
+        const { classId, term, subject, session } = submissionData;
+        
+        console.log('📋 Approving submission:', { classId, term, subject, session });
+        
+        // ✅ STEP 1: Get all draft results for this submission
+        const draftsSnap = await db.collection('results_draft')
+            .where('classId', '==', classId)
+            .where('term', '==', term)
+            .where('subject', '==', subject)
+            .where('session', '==', session)
+            .get();
+        
+        if (draftsSnap.empty) {
+            window.showToast?.(
+                '⚠️ No draft results found for this submission.\n\n' +
+                'The teacher may not have saved any results yet.',
+                'warning',
+                8000
+            );
+            return;
+        }
+        
+        console.log(`✓ Found ${draftsSnap.size} draft results to publish`);
+        
+        // ✅ STEP 2: Copy results from draft to FINAL collection
+        const batch = db.batch();
+        let copiedCount = 0;
+        
+        draftsSnap.forEach(draftDoc => {
+            const draftData = draftDoc.data();
+            const pupilId = draftData.pupilId;
+            
+            // Create final result document
+            const finalDocId = `${pupilId}_${term}_${subject}`;
+            const finalRef = db.collection('results').doc(finalDocId);
+            
+            // ✅ Copy ALL data from draft, mark as approved
+            batch.set(finalRef, {
+                ...draftData,
+                status: 'approved', // ✅ Change status
+                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                approvedBy: auth.currentUser.uid,
+                publishedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            copiedCount++;
+        });
+        
+        // ✅ STEP 3: Update submission status
+        batch.update(db.collection('result_submissions').doc(submissionId), {
+            status: 'approved',
+            approvedBy: auth.currentUser.uid,
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            resultsPublished: copiedCount
+        });
+        
+        // ✅ STEP 4: Commit all changes atomically
+        await batch.commit();
+        
+        console.log(`✅ Published ${copiedCount} results to final collection`);
+        
+        window.showToast?.(
+            `✓ Results approved and published!\n\n` +
+            `${copiedCount} pupil result(s) are now VISIBLE to pupils.`,
+            'success',
+            8000
+        );
+        
+        // Reload the approvals list
+        await loadResultApprovals();
+        
     } catch (error) {
-        console.error('Error approving results:', error);
-        window.handleError(error, 'Failed to approve results');
+        console.error('❌ Error approving results:', error);
+        window.showToast?.(
+            `Failed to approve results: ${error.message}`,
+            'danger',
+            8000
+        );
     }
 }
 
 /**
- * Reject result submission
+ * ✅ FIXED: Reject results - keeps them in draft, allows teacher to edit
  */
 async function rejectResultSubmission(submissionId) {
-    const reason = prompt('Reason for rejection (teacher will see this):');
+    const reason = prompt(
+        'Reason for rejection?\n\n' +
+        'Teacher will see this message and be able to edit and resubmit.'
+    );
     
-    if (!reason) {
+    if (!reason || reason.trim() === '') {
         window.showToast?.('Rejection cancelled - reason required', 'info');
         return;
     }
     
     try {
-        const result = await window.resultLocking.rejectResults(submissionId, auth.currentUser.uid, reason);
+        // ✅ STEP 1: Update submission status to rejected
+        await db.collection('result_submissions').doc(submissionId).update({
+            status: 'rejected',
+            rejectedBy: auth.currentUser.uid,
+            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rejectionReason: reason.trim()
+        });
         
-        if (result.success) {
-            window.showToast?.(result.message, 'success');
-            await loadResultApprovals();
-        } else {
-            window.showToast?.(result.message || result.error, 'danger');
-        }
+        // ✅ STEP 2: Results stay in results_draft collection
+        // Teacher can now edit them and resubmit
+        
+        console.log('✓ Submission rejected, results remain in draft');
+        
+        window.showToast?.(
+            `✓ Results rejected\n\n` +
+            `Teacher can now edit and resubmit.\n\n` +
+            `Reason: ${reason}`,
+            'success',
+            6000
+        );
+        
+        // Reload the approvals list
+        await loadResultApprovals();
         
     } catch (error) {
-        console.error('Error rejecting results:', error);
-        window.handleError(error, 'Failed to reject results');
+        console.error('❌ Error rejecting results:', error);
+        window.showToast?.(
+            `Failed to reject results: ${error.message}`,
+            'danger',
+            6000
+        );
     }
 }
 
