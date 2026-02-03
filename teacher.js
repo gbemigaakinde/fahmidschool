@@ -1122,8 +1122,7 @@ function enableResultInputs() {
 }
 
 /**
- * ✅ FIXED: Submit results with ORIGINAL session format
- * Admin queries will now match draft results correctly
+ * ✅ FIXED: Encode session for document ID, use original for data
  */
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
@@ -1161,11 +1160,8 @@ async function submitResultsForApproval() {
         }
 
         const settings = await window.getCurrentSettings();
-        const session = settings.session; // ✅ ORIGINAL FORMAT: "2025/2026"
-
-        // ✅ FIX: Only encode for document ID, NOT for data storage
-        const encodedSession = session.replace(/\//g, '-');
-        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+        const session = settings.session; // Original: "2025/2026"
+        const encodedSession = session.replace(/\//g, '-'); // Encoded: "2025-2026"
 
         const currentUser = firebase.auth().currentUser;
         if (!currentUser) {
@@ -1177,31 +1173,62 @@ async function submitResultsForApproval() {
           ? teacherDoc.data().fullName || teacherDoc.data().name
           : currentUser.displayName || 'Unknown Teacher';
 
-        // ✅ CRITICAL FIX: Store ORIGINAL session format in submission data
-        const result = await window.resultLocking.submitForApproval(
-            classId,
-            term,
-            subject,
-            session,  // ✅ ORIGINAL FORMAT - matches draft results
-            currentUser.uid,
-            teacherName
-        );
-
-        if (result.success) {
-            if (window.showToast) {
-                window.showToast(
-                    'Results submitted for admin approval successfully!',
-                    'success',
-                    5000
-                );
-            }
-            
-            await checkResultLockStatus();
-            await loadResultsTable();
-            
-        } else {
-            throw new Error(result.message || 'Submission failed');
+        // ✅ CRITICAL FIX: Create submission document with encoded ID but original session data
+        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+        
+        const submissionData = {
+            classId: classId,
+            className: className,
+            term: term,
+            subject: subject,
+            session: session,  // ✅ Store ORIGINAL format to match draft results
+            encodedSession: encodedSession,  // ✅ Also store encoded for reference
+            teacherUid: currentUser.uid,
+            teacherName: teacherName,
+            status: 'pending',
+            submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Get class name
+        const classDoc = await db.collection('classes').doc(classId).get();
+        if (classDoc.exists) {
+            submissionData.className = classDoc.data().name || 'Unknown Class';
         }
+        
+        // Count pupils with draft results
+        const draftsSnap = await db.collection('results_draft')
+            .where('classId', '==', classId)
+            .where('term', '==', term)
+            .where('subject', '==', subject)
+            .where('session', '==', session)  // ✅ Query with original format
+            .get();
+        
+        const uniquePupils = new Set();
+        draftsSnap.forEach(doc => {
+            const pupilId = doc.data().pupilId;
+            if (pupilId) uniquePupils.add(pupilId);
+        });
+        
+        submissionData.pupilCount = uniquePupils.size;
+        
+        // Create submission
+        await db.collection('result_submissions')
+            .doc(submissionId)
+            .set(submissionData, { merge: true });
+
+        console.log('✅ Results submitted for approval:', submissionId);
+
+        if (window.showToast) {
+            window.showToast(
+                'Results submitted for admin approval successfully!',
+                'success',
+                5000
+            );
+        }
+        
+        await checkResultLockStatus();
+        await loadResultsTable();
 
     } catch (error) {
         console.error('Error submitting for approval:', error);
@@ -1223,7 +1250,6 @@ async function submitResultsForApproval() {
         }
     }
 }
-
 // Make functions globally available
 window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
