@@ -1255,7 +1255,7 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save results with proper async/await flow
+ * ✅ FIXED: Save results with guaranteed button state restoration
  */
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
@@ -1307,7 +1307,7 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ MANUAL button state management (simpler and more reliable)
+    // ✅ ALL VALIDATIONS PASSED - NOW SET LOADING STATE
     const saveBtn = document.getElementById('save-results-btn');
     
     if (!saveBtn) {
@@ -1315,13 +1315,18 @@ async function saveAllResults() {
         return;
     }
 
-    // Save original state
+    // Store original state at function scope
     const originalHTML = saveBtn.innerHTML;
     const originalDisabled = saveBtn.disabled;
-
+    
     // Set loading state
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span> Saving...';
+    saveBtn.innerHTML = `
+        <span style="display:inline-flex; align-items:center; gap:0.5rem;">
+            <span style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span>
+            Saving...
+        </span>
+    `;
 
     try {
         // Get session settings
@@ -1407,9 +1412,15 @@ async function saveAllResults() {
             6000
         );
     } finally {
-        // ✅ GUARANTEED restoration - always runs
-        saveBtn.disabled = originalDisabled;
-        saveBtn.innerHTML = originalHTML;
+        // ✅ GUARANTEED CLEANUP: Re-query button to handle any DOM changes
+        const finalSaveBtn = document.getElementById('save-results-btn');
+        if (finalSaveBtn) {
+            finalSaveBtn.disabled = originalDisabled;
+            finalSaveBtn.innerHTML = originalHTML;
+            // Also clear any inline styles that might have been added
+            finalSaveBtn.style.opacity = '';
+            finalSaveBtn.style.cursor = '';
+        }
     }
 }
 
