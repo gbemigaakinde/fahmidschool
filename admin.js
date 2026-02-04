@@ -2342,8 +2342,8 @@ async function loadResultApprovals() {
 }
 
 /**
- * ✅ FIXED: Approve results and COPY from draft to final collection
- * This is the KEY function that makes results visible to pupils
+ * ✅ FIXED: Approve results - REMOVED SESSION FILTER
+ * Uses only classId + term + subject (3 fields = no index required)
  */
 async function approveResultSubmission(submissionId) {
     if (!confirm(
@@ -2371,12 +2371,13 @@ async function approveResultSubmission(submissionId) {
         
         console.log('📋 Approving submission:', { classId, term, subject, session });
         
-        // ✅ STEP 1: Get all draft results for this submission
+        // ✅ CRITICAL FIX: Query WITHOUT session filter (only 3 fields)
+        // This avoids the composite index requirement
         const draftsSnap = await db.collection('results_draft')
             .where('classId', '==', classId)
             .where('term', '==', term)
             .where('subject', '==', subject)
-            .where('session', '==', session)
+            // ❌ REMOVED: .where('session', '==', session)
             .get();
         
         if (draftsSnap.empty) {
@@ -2391,11 +2392,33 @@ async function approveResultSubmission(submissionId) {
         
         console.log(`✓ Found ${draftsSnap.size} draft results to publish`);
         
-        // ✅ STEP 2: Copy results from draft to FINAL collection
+        // ✅ Verify session matches (client-side filter for safety)
+        const validDrafts = [];
+        draftsSnap.forEach(draftDoc => {
+            const data = draftDoc.data();
+            if (data.session === session) {
+                validDrafts.push(draftDoc);
+            }
+        });
+        
+        if (validDrafts.length === 0) {
+            window.showToast?.(
+                '⚠️ Draft results found but session mismatch.\n\n' +
+                `Expected: ${session}\n` +
+                'Contact support if this persists.',
+                'warning',
+                8000
+            );
+            return;
+        }
+        
+        console.log(`✓ Validated ${validDrafts.length} drafts for session ${session}`);
+        
+        // ✅ Copy results from draft to FINAL collection
         const batch = db.batch();
         let copiedCount = 0;
         
-        draftsSnap.forEach(draftDoc => {
+        validDrafts.forEach(draftDoc => {
             const draftData = draftDoc.data();
             const pupilId = draftData.pupilId;
             
@@ -2406,7 +2429,7 @@ async function approveResultSubmission(submissionId) {
             // ✅ Copy ALL data from draft, mark as approved
             batch.set(finalRef, {
                 ...draftData,
-                status: 'approved', // ✅ Change status
+                status: 'approved',
                 approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 approvedBy: auth.currentUser.uid,
                 publishedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2415,7 +2438,7 @@ async function approveResultSubmission(submissionId) {
             copiedCount++;
         });
         
-        // ✅ STEP 3: Update submission status
+        // ✅ Update submission status
         batch.update(db.collection('result_submissions').doc(submissionId), {
             status: 'approved',
             approvedBy: auth.currentUser.uid,
@@ -2423,7 +2446,7 @@ async function approveResultSubmission(submissionId) {
             resultsPublished: copiedCount
         });
         
-        // ✅ STEP 4: Commit all changes atomically
+        // ✅ Commit all changes atomically
         await batch.commit();
         
         console.log(`✅ Published ${copiedCount} results to final collection`);
