@@ -1255,10 +1255,7 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save results to DRAFT collection only
- * FIX: Moved hasChanges validation BEFORE loading state to prevent stuck button
- * 
- * Results become visible to pupils ONLY after admin approval
+ * ✅ FIXED: Save results to DRAFT collection with proper button state management
  */
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
@@ -1298,7 +1295,7 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ VALIDATION STEP 2: Check if any scores entered (MOVED BEFORE LOADING STATE)
+    // ✅ VALIDATION STEP 2: Check if any scores entered
     let hasChanges = false;
     inputs.forEach(input => {
         const value = parseFloat(input.value) || 0;
@@ -1310,89 +1307,95 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ ALL VALIDATIONS PASSED - NOW SET LOADING STATE
+    // ✅ USE BUTTONLOADER for guaranteed state management
     const saveBtn = document.getElementById('save-results-btn');
-    let originalHTML = null;
-
-    if (saveBtn) {
-        originalHTML = saveBtn.innerHTML;
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px;"></span> Saving...';
+    
+    if (!saveBtn) {
+        console.error('Save button not found');
+        return;
     }
 
+    // Use ButtonLoader's withLoading wrapper for automatic state management
     try {
-        let currentSession = 'Unknown';
-        let sessionStartYear = null;
-        let sessionEndYear = null;
+        await window.ButtonLoader.withLoading(
+            saveBtn,
+            async () => {
+                // Get session settings
+                let currentSession = 'Unknown';
+                let sessionStartYear = null;
+                let sessionEndYear = null;
 
-        try {
-            const settings = await window.getCurrentSettings();
-            currentSession = settings.session || 'Unknown';
-            sessionStartYear = settings.currentSession?.startYear;
-            sessionEndYear = settings.currentSession?.endYear;
-        } catch (settingsError) {
-            console.error('Failed to get session settings:', settingsError);
-        }
+                try {
+                    const settings = await window.getCurrentSettings();
+                    currentSession = settings.session || 'Unknown';
+                    sessionStartYear = settings.currentSession?.startYear;
+                    sessionEndYear = settings.currentSession?.endYear;
+                } catch (settingsError) {
+                    console.error('Failed to get session settings:', settingsError);
+                }
 
-        const batch = db.batch();
+                const batch = db.batch();
 
-        // Group inputs by pupil
-        const pupilResults = {};
-        inputs.forEach(input => {
-            const pupilId = input.dataset.pupil;
-            const field = input.dataset.field;
-            const value = parseFloat(input.value) || 0;
+                // Group inputs by pupil
+                const pupilResults = {};
+                inputs.forEach(input => {
+                    const pupilId = input.dataset.pupil;
+                    const field = input.dataset.field;
+                    const value = parseFloat(input.value) || 0;
 
-            if (!pupilResults[pupilId]) {
-                pupilResults[pupilId] = {};
-            }
-            pupilResults[pupilId][field] = value;
-        });
+                    if (!pupilResults[pupilId]) {
+                        pupilResults[pupilId] = {};
+                    }
+                    pupilResults[pupilId][field] = value;
+                });
 
-        // ✅ CRITICAL: Get class info for submission tracking
-        const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
-        const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
+                // Get class info for submission tracking
+                const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
+                const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
 
-        // ✅ Save to DRAFT collection only
-        for (const [pupilId, scores] of Object.entries(pupilResults)) {
-            // Get pupil name for better tracking
-            const pupil = allPupils.find(p => p.id === pupilId);
-            const pupilName = pupil?.name || 'Unknown';
-            
-            const docId = `${pupilId}_${term}_${subject}`;
-            const ref = db.collection('results_draft').doc(docId);
-            
-            const sessionTerm = `${currentSession}_${term}`;
-            
-            const baseData = {
-                pupilId,
-                pupilName,
-                classId,
-                className,
-                term,
-                subject,
-                session: currentSession,
-                sessionStartYear,
-                sessionEndYear,
-                sessionTerm,
-                caScore: scores.ca !== undefined ? scores.ca : 0,
-                examScore: scores.exam !== undefined ? scores.exam : 0,
-                teacherId: currentUser.uid,
-                status: 'draft',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedBy: currentUser.uid
-            };
-            
-            batch.set(ref, baseData, { merge: true });
-        }
+                // Save to DRAFT collection only
+                for (const [pupilId, scores] of Object.entries(pupilResults)) {
+                    // Get pupil name for better tracking
+                    const pupil = allPupils.find(p => p.id === pupilId);
+                    const pupilName = pupil?.name || 'Unknown';
+                    
+                    const docId = `${pupilId}_${term}_${subject}`;
+                    const ref = db.collection('results_draft').doc(docId);
+                    
+                    const sessionTerm = `${currentSession}_${term}`;
+                    
+                    const baseData = {
+                        pupilId,
+                        pupilName,
+                        classId,
+                        className,
+                        term,
+                        subject,
+                        session: currentSession,
+                        sessionStartYear,
+                        sessionEndYear,
+                        sessionTerm,
+                        caScore: scores.ca !== undefined ? scores.ca : 0,
+                        examScore: scores.exam !== undefined ? scores.exam : 0,
+                        teacherId: currentUser.uid,
+                        status: 'draft',
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedBy: currentUser.uid
+                    };
+                    
+                    batch.set(ref, baseData, { merge: true });
+                }
 
-        await batch.commit();
-        
-        window.showToast?.(
-            '✓ Results saved to your workspace\n\n' +
-            'ℹ️ Not visible to pupils yet - submit for approval when ready.',
-            'success',
-            6000
+                await batch.commit();
+                
+                window.showToast?.(
+                    '✓ Results saved to your workspace\n\n' +
+                    'ℹ️ Not visible to pupils yet - submit for approval when ready.',
+                    'success',
+                    6000
+                );
+            },
+            'Saving...' // Loading text
         );
         
     } catch (err) {
@@ -1402,19 +1405,8 @@ async function saveAllResults() {
             'danger',
             6000
         );
-        
-    } finally {
-        // ✅ GUARANTEED CLEANUP: Always restore button state
-        const finalSaveBtn = document.getElementById('save-results-btn');
-        if (finalSaveBtn) {
-            finalSaveBtn.disabled = false;
-            if (originalHTML) {
-                finalSaveBtn.innerHTML = originalHTML;
-            } else {
-                finalSaveBtn.innerHTML = '💾 Save Results';
-            }
-        }
     }
+    // ButtonLoader.withLoading automatically restores the button state
 }
 
 /* ======================================== 
