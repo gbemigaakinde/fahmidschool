@@ -1255,7 +1255,7 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save results to DRAFT collection with proper button state management
+ * ✅ FIXED: Save results with proper async/await flow
  */
 async function saveAllResults() {
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
@@ -1307,7 +1307,7 @@ async function saveAllResults() {
         return;
     }
 
-    // ✅ USE BUTTONLOADER for guaranteed state management
+    // ✅ MANUAL button state management (simpler and more reliable)
     const saveBtn = document.getElementById('save-results-btn');
     
     if (!saveBtn) {
@@ -1315,87 +1315,88 @@ async function saveAllResults() {
         return;
     }
 
-    // Use ButtonLoader's withLoading wrapper for automatic state management
+    // Save original state
+    const originalHTML = saveBtn.innerHTML;
+    const originalDisabled = saveBtn.disabled;
+
+    // Set loading state
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span> Saving...';
+
     try {
-        await window.ButtonLoader.withLoading(
-            saveBtn,
-            async () => {
-                // Get session settings
-                let currentSession = 'Unknown';
-                let sessionStartYear = null;
-                let sessionEndYear = null;
+        // Get session settings
+        let currentSession = 'Unknown';
+        let sessionStartYear = null;
+        let sessionEndYear = null;
 
-                try {
-                    const settings = await window.getCurrentSettings();
-                    currentSession = settings.session || 'Unknown';
-                    sessionStartYear = settings.currentSession?.startYear;
-                    sessionEndYear = settings.currentSession?.endYear;
-                } catch (settingsError) {
-                    console.error('Failed to get session settings:', settingsError);
-                }
+        try {
+            const settings = await window.getCurrentSettings();
+            currentSession = settings.session || 'Unknown';
+            sessionStartYear = settings.currentSession?.startYear;
+            sessionEndYear = settings.currentSession?.endYear;
+        } catch (settingsError) {
+            console.error('Failed to get session settings:', settingsError);
+        }
 
-                const batch = db.batch();
+        const batch = db.batch();
 
-                // Group inputs by pupil
-                const pupilResults = {};
-                inputs.forEach(input => {
-                    const pupilId = input.dataset.pupil;
-                    const field = input.dataset.field;
-                    const value = parseFloat(input.value) || 0;
+        // Group inputs by pupil
+        const pupilResults = {};
+        inputs.forEach(input => {
+            const pupilId = input.dataset.pupil;
+            const field = input.dataset.field;
+            const value = parseFloat(input.value) || 0;
 
-                    if (!pupilResults[pupilId]) {
-                        pupilResults[pupilId] = {};
-                    }
-                    pupilResults[pupilId][field] = value;
-                });
+            if (!pupilResults[pupilId]) {
+                pupilResults[pupilId] = {};
+            }
+            pupilResults[pupilId][field] = value;
+        });
 
-                // Get class info for submission tracking
-                const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
-                const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
+        // Get class info for submission tracking
+        const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
+        const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
 
-                // Save to DRAFT collection only
-                for (const [pupilId, scores] of Object.entries(pupilResults)) {
-                    // Get pupil name for better tracking
-                    const pupil = allPupils.find(p => p.id === pupilId);
-                    const pupilName = pupil?.name || 'Unknown';
-                    
-                    const docId = `${pupilId}_${term}_${subject}`;
-                    const ref = db.collection('results_draft').doc(docId);
-                    
-                    const sessionTerm = `${currentSession}_${term}`;
-                    
-                    const baseData = {
-                        pupilId,
-                        pupilName,
-                        classId,
-                        className,
-                        term,
-                        subject,
-                        session: currentSession,
-                        sessionStartYear,
-                        sessionEndYear,
-                        sessionTerm,
-                        caScore: scores.ca !== undefined ? scores.ca : 0,
-                        examScore: scores.exam !== undefined ? scores.exam : 0,
-                        teacherId: currentUser.uid,
-                        status: 'draft',
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        updatedBy: currentUser.uid
-                    };
-                    
-                    batch.set(ref, baseData, { merge: true });
-                }
+        // Save to DRAFT collection only
+        for (const [pupilId, scores] of Object.entries(pupilResults)) {
+            // Get pupil name for better tracking
+            const pupil = allPupils.find(p => p.id === pupilId);
+            const pupilName = pupil?.name || 'Unknown';
+            
+            const docId = `${pupilId}_${term}_${subject}`;
+            const ref = db.collection('results_draft').doc(docId);
+            
+            const sessionTerm = `${currentSession}_${term}`;
+            
+            const baseData = {
+                pupilId,
+                pupilName,
+                classId,
+                className,
+                term,
+                subject,
+                session: currentSession,
+                sessionStartYear,
+                sessionEndYear,
+                sessionTerm,
+                caScore: scores.ca !== undefined ? scores.ca : 0,
+                examScore: scores.exam !== undefined ? scores.exam : 0,
+                teacherId: currentUser.uid,
+                status: 'draft',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: currentUser.uid
+            };
+            
+            batch.set(ref, baseData, { merge: true });
+        }
 
-                await batch.commit();
-                
-                window.showToast?.(
-                    '✓ Results saved to your workspace\n\n' +
-                    'ℹ️ Not visible to pupils yet - submit for approval when ready.',
-                    'success',
-                    6000
-                );
-            },
-            'Saving...' // Loading text
+        await batch.commit();
+        
+        window.showToast?.(
+            '✓ Results saved to your workspace\\n\\n' +
+            'ℹ️ Not visible to pupils yet - submit for approval when ready.',
+            'success',
+            6000
         );
         
     } catch (err) {
@@ -1405,8 +1406,11 @@ async function saveAllResults() {
             'danger',
             6000
         );
+    } finally {
+        // ✅ GUARANTEED restoration - always runs
+        saveBtn.disabled = originalDisabled;
+        saveBtn.innerHTML = originalHTML;
     }
-    // ButtonLoader.withLoading automatically restores the button state
 }
 
 /* ======================================== 
