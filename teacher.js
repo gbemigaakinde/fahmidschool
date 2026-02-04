@@ -1426,19 +1426,34 @@ async function saveAllResults() {
             6000
         );
     } finally {
-        // ✅ GUARANTEED CLEANUP: Re-query button to handle any DOM changes
-        const finalSaveBtn = document.getElementById('save-results-btn');
-        if (finalSaveBtn) {
-            finalSaveBtn.disabled = originalDisabled;
-            finalSaveBtn.innerHTML = originalHTML;
-            // Also clear any inline styles that might have been added
-            finalSaveBtn.style.opacity = '';
-            finalSaveBtn.style.cursor = '';
-        }
+    console.log('=== FINALLY BLOCK START ===');
+    console.log('isSavingResults before reset:', isSavingResults);
+    console.log('originalHTML:', originalHTML);
+    console.log('originalDisabled:', originalDisabled);
+    
+    const finalSaveBtn = document.getElementById('save-results-btn');
+    if (finalSaveBtn) {
+        console.log('Button current state:', {
+            innerHTML: finalSaveBtn.innerHTML,
+            disabled: finalSaveBtn.disabled
+        });
         
-        // ✅ RELEASE LOCK FLAG
-        isSavingResults = false;
+        finalSaveBtn.disabled = originalDisabled;
+        finalSaveBtn.innerHTML = originalHTML;
+        finalSaveBtn.style.opacity = '';
+        finalSaveBtn.style.cursor = '';
+        
+        console.log('Button after restore:', {
+            innerHTML: finalSaveBtn.innerHTML,
+            disabled: finalSaveBtn.disabled
+        });
+    } else {
+        console.error('⚠️ Button not found in finally block!');
     }
+    
+    isSavingResults = false;
+    console.log('isSavingResults after reset:', isSavingResults);
+    console.log('=== FINALLY BLOCK END ===');
 }
 
 /* ======================================== 
