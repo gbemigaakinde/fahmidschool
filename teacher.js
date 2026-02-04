@@ -1325,11 +1325,11 @@ async function saveAllResults() {
     
     if (!saveBtn) {
         console.error('Save button not found');
-        isSavingResults = false; // Release lock
+        isSavingResults = false;
         return;
     }
 
-    // Store original state at function scope
+    // Store original state
     const originalHTML = saveBtn.innerHTML;
     const originalDisabled = saveBtn.disabled;
     
@@ -1372,13 +1372,12 @@ async function saveAllResults() {
             pupilResults[pupilId][field] = value;
         });
 
-        // Get class info for submission tracking
+        // Get class info
         const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
         const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
 
-        // Save to DRAFT collection only
+        // Save to DRAFT collection
         for (const [pupilId, scores] of Object.entries(pupilResults)) {
-            // Get pupil name for better tracking
             const pupil = allPupils.find(p => p.id === pupilId);
             const pupilName = pupil?.name || 'Unknown';
             
@@ -1426,34 +1425,18 @@ async function saveAllResults() {
             6000
         );
     } finally {
-    console.log('=== FINALLY BLOCK START ===');
-    console.log('isSavingResults before reset:', isSavingResults);
-    console.log('originalHTML:', originalHTML);
-    console.log('originalDisabled:', originalDisabled);
-    
-    const finalSaveBtn = document.getElementById('save-results-btn');
-    if (finalSaveBtn) {
-        console.log('Button current state:', {
-            innerHTML: finalSaveBtn.innerHTML,
-            disabled: finalSaveBtn.disabled
-        });
+        // ✅ GUARANTEED CLEANUP
+        const finalSaveBtn = document.getElementById('save-results-btn');
+        if (finalSaveBtn) {
+            finalSaveBtn.disabled = originalDisabled;
+            finalSaveBtn.innerHTML = originalHTML;
+            finalSaveBtn.style.opacity = '';
+            finalSaveBtn.style.cursor = '';
+        }
         
-        finalSaveBtn.disabled = originalDisabled;
-        finalSaveBtn.innerHTML = originalHTML;
-        finalSaveBtn.style.opacity = '';
-        finalSaveBtn.style.cursor = '';
-        
-        console.log('Button after restore:', {
-            innerHTML: finalSaveBtn.innerHTML,
-            disabled: finalSaveBtn.disabled
-        });
-    } else {
-        console.error('⚠️ Button not found in finally block!');
+        // ✅ RELEASE LOCK FLAG
+        isSavingResults = false;
     }
-    
-    isSavingResults = false;
-    console.log('isSavingResults after reset:', isSavingResults);
-    console.log('=== FINALLY BLOCK END ===');
 }
 
 /* ======================================== 
