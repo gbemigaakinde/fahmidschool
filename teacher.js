@@ -38,7 +38,7 @@ window.checkRole('teacher')
   .then(async user => {
     currentUser = user;
     const info = document.getElementById('teacher-info');
-    if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
+    if (info) info.innerHTML = `Logged in as:<br><strong>${user.name}</strong>`;
     
     // CRITICAL FIX: Sequential loading with error handling
     try {
