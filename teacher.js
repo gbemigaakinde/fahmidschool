@@ -1255,9 +1255,19 @@ window.checkResultLockStatus = checkResultLockStatus;
 window.submitResultsForApproval = submitResultsForApproval;
 
 /**
- * ✅ FIXED: Save results with guaranteed button state restoration
+ * ✅ FIXED: Save results with click guard to prevent double execution
  */
+
+// Add flag to prevent simultaneous saves
+let isSavingResults = false;
+
 async function saveAllResults() {
+    // ✅ CLICK GUARD: Prevent simultaneous executions
+    if (isSavingResults) {
+        console.log('Save already in progress, ignoring click');
+        return;
+    }
+
     const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
     const term = document.getElementById('result-term')?.value;
     const subject = document.getElementById('result-subject')?.value;
@@ -1307,11 +1317,15 @@ async function saveAllResults() {
         return;
     }
 
+    // ✅ SET LOCK FLAG
+    isSavingResults = true;
+
     // ✅ ALL VALIDATIONS PASSED - NOW SET LOADING STATE
     const saveBtn = document.getElementById('save-results-btn');
     
     if (!saveBtn) {
         console.error('Save button not found');
+        isSavingResults = false; // Release lock
         return;
     }
 
@@ -1398,7 +1412,7 @@ async function saveAllResults() {
         await batch.commit();
         
         window.showToast?.(
-            '✓ Results saved to your workspace\\n\\n' +
+            '✓ Results saved to your workspace\n\n' +
             'ℹ️ Not visible to pupils yet - submit for approval when ready.',
             'success',
             6000
@@ -1421,6 +1435,9 @@ async function saveAllResults() {
             finalSaveBtn.style.opacity = '';
             finalSaveBtn.style.cursor = '';
         }
+        
+        // ✅ RELEASE LOCK FLAG
+        isSavingResults = false;
     }
 }
 
