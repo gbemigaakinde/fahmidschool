@@ -1256,6 +1256,8 @@ window.submitResultsForApproval = submitResultsForApproval;
 
 /**
  * ✅ FIXED: Save results to DRAFT collection only
+ * FIX: Moved hasChanges validation BEFORE loading state to prevent stuck button
+ * 
  * Results become visible to pupils ONLY after admin approval
  */
 async function saveAllResults() {
@@ -1268,7 +1270,7 @@ async function saveAllResults() {
         return;
     }
 
-    // Validation
+    // ✅ VALIDATION STEP 1: Check for invalid scores
     let hasInvalidScores = false;
     inputs.forEach(input => {
         const field = input.dataset.field;
@@ -1296,6 +1298,19 @@ async function saveAllResults() {
         return;
     }
 
+    // ✅ VALIDATION STEP 2: Check if any scores entered (MOVED BEFORE LOADING STATE)
+    let hasChanges = false;
+    inputs.forEach(input => {
+        const value = parseFloat(input.value) || 0;
+        if (value > 0) hasChanges = true;
+    });
+
+    if (!hasChanges) {
+        window.showToast?.('No scores have been entered', 'warning');
+        return;
+    }
+
+    // ✅ ALL VALIDATIONS PASSED - NOW SET LOADING STATE
     const saveBtn = document.getElementById('save-results-btn');
     let originalHTML = null;
 
@@ -1320,7 +1335,6 @@ async function saveAllResults() {
         }
 
         const batch = db.batch();
-        let hasChanges = false;
 
         // Group inputs by pupil
         const pupilResults = {};
@@ -1333,14 +1347,7 @@ async function saveAllResults() {
                 pupilResults[pupilId] = {};
             }
             pupilResults[pupilId][field] = value;
-            
-            if (value > 0) hasChanges = true;
         });
-
-        if (!hasChanges) {
-            window.showToast?.('No scores have been entered', 'warning');
-            return;
-        }
 
         // ✅ CRITICAL: Get class info for submission tracking
         const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
@@ -1359,7 +1366,7 @@ async function saveAllResults() {
             
             const baseData = {
                 pupilId,
-                pupilName, // ✅ Add pupil name for easier querying
+                pupilName,
                 classId,
                 className,
                 term,
@@ -1397,6 +1404,7 @@ async function saveAllResults() {
         );
         
     } finally {
+        // ✅ GUARANTEED CLEANUP: Always restore button state
         const finalSaveBtn = document.getElementById('save-results-btn');
         if (finalSaveBtn) {
             finalSaveBtn.disabled = false;
