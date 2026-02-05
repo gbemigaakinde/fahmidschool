@@ -6901,7 +6901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get form values
     const name = document.getElementById('teacher-name')?.value.trim();
     const email = document.getElementById('teacher-email')?.value.trim();
-    const subject = document.getElementById('teacher-subject')?.value.trim();
+    const contact = document.getElementById('teacher-contact')?.value.trim();
     const tempPassword = document.getElementById('teacher-password')?.value;
     
     // Validation
@@ -6983,7 +6983,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await db.collection('teachers').doc(uid).set({
         name,
         email,
-        subject: subject || '',
+        contact: contact || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       console.log('✓ Teacher profile created');
@@ -7416,7 +7416,7 @@ function renderTeachersTable(teachersData) {
     tr.innerHTML = `
       <td data-label="Name">${teacher.name}</td>
       <td data-label="Email">${teacher.email}</td>
-      <td data-label="Subject">${teacher.subject || '-'}</td>
+      <td data-label="Contact">${teacher.contact || '-'}</td>
       <td data-label="Actions">
         <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
       </td>
