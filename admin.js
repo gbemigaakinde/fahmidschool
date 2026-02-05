@@ -1846,6 +1846,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     }
   }
 
+  // ✅ FIX: Create timestamp ONCE, outside arrayUnion
+  const promotionTimestamp = new Date();
+
   // Get class details if not terminal
   let toClassDetails = null;
   if (!data.isTerminalClass) {
@@ -1888,7 +1891,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       totalOperations++;
       
     } else {
-      // Regular promotion (1 operation)
+      // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
       currentBatch.update(pupilRef, {
         'class.id': data.toClass.id,
         'class.name': data.toClass.name,
@@ -1898,9 +1901,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
           fromClass: data.fromClass.name,
           toClass: data.toClass.name,
           promoted: true,
-          date: firebase.firestore.FieldValue.serverTimestamp()
+          date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
         }),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
       });
       operationCount++;
       totalOperations++;
@@ -1924,6 +1927,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       continue;
     }
     
+    // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
     currentBatch.update(pupilRef, {
       promotionHistory: firebase.firestore.FieldValue.arrayUnion({
         session: data.fromSession,
@@ -1931,9 +1935,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         toClass: data.fromClass.name,
         promoted: false,
         reason: 'Held back by admin/teacher decision',
-        date: firebase.firestore.FieldValue.serverTimestamp()
+        date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
       }),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
     });
     operationCount++;
     totalOperations++;
@@ -1983,6 +1987,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       if (overrideClassDoc.exists) {
         const overrideClassData = overrideClassDoc.data();
         
+        // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
         currentBatch.update(pupilRef, {
           'class.id': override.classId,
           'class.name': overrideClassData.name,
@@ -1993,9 +1998,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
             toClass: overrideClassData.name,
             promoted: true,
             manualOverride: true,
-            date: firebase.firestore.FieldValue.serverTimestamp()
+            date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
           }),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
         });
         operationCount++;
         totalOperations++;
