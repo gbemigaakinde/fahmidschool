@@ -1846,9 +1846,6 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     }
   }
 
-  // ✅ FIX: Create timestamp ONCE, outside arrayUnion
-  const promotionTimestamp = new Date();
-
   // Get class details if not terminal
   let toClassDetails = null;
   if (!data.isTerminalClass) {
@@ -1891,7 +1888,7 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       totalOperations++;
       
     } else {
-      // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
+      // Regular promotion (1 operation)
       currentBatch.update(pupilRef, {
         'class.id': data.toClass.id,
         'class.name': data.toClass.name,
@@ -1901,9 +1898,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
           fromClass: data.fromClass.name,
           toClass: data.toClass.name,
           promoted: true,
-          date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
+          date: firebase.firestore.FieldValue.serverTimestamp()
         }),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       operationCount++;
       totalOperations++;
@@ -1927,7 +1924,6 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       continue;
     }
     
-    // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
     currentBatch.update(pupilRef, {
       promotionHistory: firebase.firestore.FieldValue.arrayUnion({
         session: data.fromSession,
@@ -1935,9 +1931,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
         toClass: data.fromClass.name,
         promoted: false,
         reason: 'Held back by admin/teacher decision',
-        date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
+        date: firebase.firestore.FieldValue.serverTimestamp()
       }),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     operationCount++;
     totalOperations++;
@@ -1987,7 +1983,6 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
       if (overrideClassDoc.exists) {
         const overrideClassData = overrideClassDoc.data();
         
-        // ✅ CRITICAL FIX: Use plain Date object inside arrayUnion
         currentBatch.update(pupilRef, {
           'class.id': override.classId,
           'class.name': overrideClassData.name,
@@ -1998,9 +1993,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
             toClass: overrideClassData.name,
             promoted: true,
             manualOverride: true,
-            date: promotionTimestamp // ✅ FIXED: Use Date object, not serverTimestamp()
+            date: firebase.firestore.FieldValue.serverTimestamp()
           }),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp() // ✅ This is OK at field level
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         operationCount++;
         totalOperations++;
@@ -6906,7 +6901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get form values
     const name = document.getElementById('teacher-name')?.value.trim();
     const email = document.getElementById('teacher-email')?.value.trim();
-    const contact = document.getElementById('teacher-contact')?.value.trim();
+    const subject = document.getElementById('teacher-subject')?.value.trim();
     const tempPassword = document.getElementById('teacher-password')?.value;
     
     // Validation
@@ -6988,7 +6983,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await db.collection('teachers').doc(uid).set({
         name,
         email,
-        contact: contact || '',
+        subject: subject || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       console.log('✓ Teacher profile created');
@@ -7421,7 +7416,7 @@ function renderTeachersTable(teachersData) {
     tr.innerHTML = `
       <td data-label="Name">${teacher.name}</td>
       <td data-label="Email">${teacher.email}</td>
-      <td data-label="Contact">${teacher.contact || '-'}</td>
+      <td data-label="Subject">${teacher.subject || '-'}</td>
       <td data-label="Actions">
         <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
       </td>
