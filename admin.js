@@ -1869,42 +1869,57 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     
     const pupilData = pupilDoc.data();
 
-    if (data.isTerminalClass) {
-      // Move to alumni (2 operations)
-      const alumniRef = db.collection('alumni').doc(pupilId);
-      
-      currentBatch.set(alumniRef, {
-        ...pupilData,
-        graduationSession: data.fromSession,
-        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-        finalClass: data.fromClass.name,
-        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-      
-      currentBatch.delete(pupilRef);
-      operationCount++;
-      totalOperations++;
-      
-    } else {
-      // Regular promotion (1 operation)
-      currentBatch.update(pupilRef, {
-        'class.id': data.toClass.id,
-        'class.name': data.toClass.name,
-        subjects: toClassDetails?.subjects || [],
-        promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-          session: data.fromSession,
-          fromClass: data.fromClass.name,
-          toClass: data.toClass.name,
-          promoted: true,
-          date: firebase.firestore.FieldValue.serverTimestamp()
-        }),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-    }
+  // ═══════════════════════════════════════════════════════════
+//  FIXED: NON-DESTRUCTIVE ALUMNI PROMOTION
+// ═══════════════════════════════════════════════════════════
+
+if (data.isTerminalClass) {
+  // ─── Mark pupil as alumni (preserve all data) ───
+  currentBatch.update(pupilRef, {
+    status: 'alumni',
+    isActive: false,
+    graduationSession: data.fromSession,
+    graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+    finalClass: data.fromClass.name,
+    promotionDate: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  operationCount++;
+  totalOperations++;
+  
+  // ─── Create alumni index entry (for admin listing) ───
+  const alumniRef = db.collection('alumni').doc(pupilId);
+  currentBatch.set(alumniRef, {
+    pupilId: pupilId,  // Link back to original record
+    name: pupilData.name || 'Unknown',
+    finalClass: data.fromClass.name,
+    graduationSession: data.fromSession,
+    graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+    gender: pupilData.gender || null,
+    admissionNo: pupilData.admissionNo || null,
+    // Do NOT copy full pupil data - keep it lightweight
+  });
+  operationCount++;
+  totalOperations++;
+  
+} else {
+  // ─── Regular promotion (unchanged) ───
+  currentBatch.update(pupilRef, {
+    'class.id': data.toClass.id,
+    'class.name': data.toClass.name,
+    subjects: toClassDetails?.subjects || [],
+    promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+      session: data.fromSession,
+      fromClass: data.fromClass.name,
+      toClass: data.toClass.name,
+      promoted: true,
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    }),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  operationCount++;
+  totalOperations++;
+}
     
     // Commit if batch is full
     if (operationCount >= BATCH_SIZE) {
@@ -6635,6 +6650,10 @@ async function loadSessionHistory() {
 // Global variable to store all alumni data
 let allAlumniData = [];
 
+/**
+ * ✅ FIXED: Load Alumni (Non-Destructive Model)
+ * Alumni collection is now an index - fetch full data from pupils collection
+ */
 async function loadAlumni() {
   const tbody = document.getElementById('alumni-table');
   if (!tbody) {
@@ -6645,7 +6664,9 @@ async function loadAlumni() {
   tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>';
   
   try {
-    const snapshot = await db.collection('alumni')
+    // ✅ FIX: Query pupils collection directly (non-destructive model)
+    const snapshot = await db.collection('pupils')
+      .where('status', '==', 'alumni')
       .orderBy('graduationDate', 'desc')
       .get();
     
@@ -6746,21 +6767,47 @@ function filterAlumni() {
 window.filterAlumni = filterAlumni;
 window.renderAlumniTable = renderAlumniTable;
 
+/**
+ * ✅ FIXED: Delete Alumni (Non-Destructive Model)
+ * Removes alumni status and restores to active pupil
+ */
 async function deleteAlumni(alumniId) {
   if (!alumniId) {
     window.showToast?.('Invalid alumni ID', 'warning');
     return;
   }
   
-  if (!confirm('Delete this alumni record? This cannot be undone.')) return;
+  if (!confirm(
+    '⚠️ RESTORE PUPIL TO ACTIVE STATUS?\n\n' +
+    'This will:\n' +
+    '• Remove alumni status\n' +
+    '• Keep all historical data\n' +
+    '• Require re-assigning to a class\n\n' +
+    'Continue?'
+  )) return;
   
   try {
-    await db.collection('alumni').doc(alumniId).delete();
-    window.showToast?.('Alumni record deleted', 'success');
+    // ✅ FIX: Update status instead of deleting
+    await db.collection('pupils').doc(alumniId).update({
+      status: 'active',
+      isActive: true,
+      restoredFromAlumni: firebase.firestore.FieldValue.serverTimestamp(),
+      // Keep graduation data for historical record
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    
+    // Remove from alumni index (if it exists)
+    try {
+      await db.collection('alumni').doc(alumniId).delete();
+    } catch (indexError) {
+      console.warn('Alumni index entry not found (OK - may not exist in new model)');
+    }
+    
+    window.showToast?.('✓ Pupil restored to active status', 'success');
     loadAlumni();
   } catch (error) {
-    console.error('Error deleting alumni:', error);
-    window.handleError(error, 'Failed to delete alumni');
+    console.error('Error restoring pupil:', error);
+    window.handleError(error, 'Failed to restore pupil from alumni');
   }
 }
 
@@ -6833,7 +6880,12 @@ async function loadDashboardStats() {
   
   try {
     const teachersSnap = await db.collection('teachers').get();
-    const pupilsSnap = await db.collection('pupils').get();
+    
+    // ✅ FIX: Only count active pupils (exclude alumni)
+    const pupilsSnap = await db.collection('pupils')
+      .where('status', '!=', 'alumni')
+      .get();
+    
     const classesSnap = await db.collection('classes').get();
     const announcementsSnap = await db.collection('announcements').get();
     
@@ -7503,10 +7555,12 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
-    // FIXED: Use query limit instead of fetching all
+    // ✅ FIX: Exclude alumni from active pupils list
     const snapshot = await db.collection('pupils')
+      .where('status', '!=', 'alumni')
+      .orderBy('status')  // Required for != query
       .orderBy('name')
-      .limit(500) // Fetch max 500 for pagination
+      .limit(500)
       .get();
     
     tbody.innerHTML = '';
@@ -7517,7 +7571,7 @@ async function loadPupils() {
       const bulkActionsBar = document.getElementById('bulk-actions-bar');
       if (bulkActionsBar) bulkActionsBar.style.display = 'none';
       
-      allPupilsData = []; // Clear global data
+      allPupilsData = [];
       return;
     }
 
@@ -7526,7 +7580,7 @@ async function loadPupils() {
       pupils.push({ id: doc.id, ...doc.data() });
     });
 
-    // ✅ CRITICAL: Store all data globally for search
+    // ✅ Store all data globally for search
     allPupilsData = pupils;
 
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
