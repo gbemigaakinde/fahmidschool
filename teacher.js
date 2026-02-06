@@ -2379,8 +2379,15 @@ document.addEventListener('change', (e) => {
 });
 
 async function submitPromotionRequest() {
-  if (!promotionData.currentClassName || !promotionData.nextClassName) {
+  // ✅ FIXED: Allow null nextClassName for terminal classes
+  if (!promotionData.currentClassName) {
     window.showToast?.('Promotion data not loaded. Please refresh the page.', 'danger');
+    return;
+  }
+  
+  // ✅ FIXED: For non-terminal classes, require valid next class
+  if (!promotionData.isTerminalClass && !promotionData.nextClassName) {
+    window.showToast?.('Next class not found in hierarchy. Contact admin.', 'danger');
     return;
   }
   
@@ -2406,9 +2413,14 @@ async function submitPromotionRequest() {
     }
   }
   
+  // ✅ FIXED: Show appropriate destination in confirmation
+  const destinationText = promotionData.isTerminalClass 
+    ? 'Alumni (Graduation)' 
+    : promotionData.nextClassName;
+  
   const confirmation = confirm(
     `Submit Promotion Request?\n\n` +
-    `✓ Promote: ${promotedPupils.length} pupil(s) to ${promotionData.isTerminalClass ? 'Alumni' : promotionData.nextClassName}\n` +
+    `✓ Promote: ${promotedPupils.length} pupil(s) to ${destinationText}\n` +
     `✗ Hold back: ${heldBackPupils.length} pupil(s) in ${promotionData.currentClassName}\n\n` +
     `This request will be sent to the admin for approval.`
   );
@@ -2426,7 +2438,7 @@ async function submitPromotionRequest() {
     const settings = await window.getCurrentSettings();
     const currentSession = settings.session;
     
-    // Find next class ID
+    // ✅ FIXED: Only look up next class ID for non-terminal classes
     let toClassId = null;
     if (!promotionData.isTerminalClass) {
       const classesSnap = await db.collection('classes')
@@ -2438,12 +2450,16 @@ async function submitPromotionRequest() {
         toClassId = classesSnap.docs[0].id;
       } else {
         window.showToast?.('Next class not found in database. Contact admin.', 'danger');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '📋 Submit Promotion List';
+        }
         return;
       }
     }
     
-    // Create promotion request
-    await db.collection('promotions').add({
+    // ✅ FIXED: Proper structure for both terminal and non-terminal
+    const promotionRequest = {
       fromSession: currentSession,
       fromClass: {
         id: assignedClasses[0].id,
@@ -2460,6 +2476,17 @@ async function submitPromotionRequest() {
       initiatedBy: currentUser.uid,
       status: 'pending',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Create promotion request
+    await db.collection('promotions').add(promotionRequest);
+    
+    console.log('✅ Promotion request submitted:', {
+      type: promotionData.isTerminalClass ? 'Terminal → Alumni' : 'Regular',
+      from: promotionData.currentClassName,
+      to: destinationText,
+      promoted: promotedPupils.length,
+      heldBack: heldBackPupils.length
     });
     
     window.showToast?.(
