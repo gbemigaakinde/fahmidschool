@@ -1874,9 +1874,9 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
 // ═══════════════════════════════════════════════════════════
 
 if (data.isTerminalClass) {
-  // ─── Mark pupil as alumni (preserve all data) ───
+  // ✅ Mark pupil as alumni (NON-DESTRUCTIVE)
   currentBatch.update(pupilRef, {
-    status: 'alumni',
+    status: 'alumni',  // ← This field enables filtering
     isActive: false,
     graduationSession: data.fromSession,
     graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1887,21 +1887,19 @@ if (data.isTerminalClass) {
   operationCount++;
   totalOperations++;
   
-  // ─── Create alumni index entry (for admin listing) ───
+  // ✅ Create alumni index entry (optional - for faster queries)
   const alumniRef = db.collection('alumni').doc(pupilId);
   currentBatch.set(alumniRef, {
-    pupilId: pupilId,  // Link back to original record
+    pupilId: pupilId,
     name: pupilData.name || 'Unknown',
     finalClass: data.fromClass.name,
     graduationSession: data.fromSession,
     graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
     gender: pupilData.gender || null,
     admissionNo: pupilData.admissionNo || null,
-    // Do NOT copy full pupil data - keep it lightweight
   });
   operationCount++;
   totalOperations++;
-  
 } else {
   // ─── Regular promotion (unchanged) ───
   currentBatch.update(pupilRef, {
@@ -6651,8 +6649,7 @@ async function loadSessionHistory() {
 let allAlumniData = [];
 
 /**
- * ✅ FIXED: Load Alumni (Non-Destructive Model)
- * Alumni collection is now an index - fetch full data from pupils collection
+ * ✅ FIXED: Load Alumni (Client-Side Filtering)
  */
 async function loadAlumni() {
   const tbody = document.getElementById('alumni-table');
@@ -6664,24 +6661,36 @@ async function loadAlumni() {
   tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>';
   
   try {
-    // ✅ FIX: Query pupils collection directly (non-destructive model)
+    // ✅ FIX: Get all pupils, filter alumni client-side
     const snapshot = await db.collection('pupils')
-      .where('status', '==', 'alumni')
-      .orderBy('graduationDate', 'desc')
+      .orderBy('name')
       .get();
     
     tbody.innerHTML = '';
     
-    if (snapshot.empty) {
+    // Filter alumni client-side
+    const alumni = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'alumni') {
+        alumni.push({ id: doc.id, ...data });
+      }
+    });
+    
+    if (alumni.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No alumni yet. Pupils will appear here after graduating from terminal class.</td></tr>';
       allAlumniData = [];
       return;
     }
     
-    const alumni = [];
-    snapshot.forEach(doc => {
-      alumni.push({ id: doc.id, ...doc.data() });
+    // Sort by graduation date (newest first)
+    alumni.sort((a, b) => {
+      const dateA = a.graduationDate?.toMillis() || 0;
+      const dateB = b.graduationDate?.toMillis() || 0;
+      return dateB - dateA;
     });
+    
+    console.log(`✓ Loaded ${alumni.length} alumni out of ${snapshot.size} total pupils`);
     
     // ✅ Store globally for search
     allAlumniData = alumni;
@@ -6881,20 +6890,27 @@ async function loadDashboardStats() {
   try {
     const teachersSnap = await db.collection('teachers').get();
     
-    // ✅ FIX: Only count active pupils (exclude alumni)
-    const pupilsSnap = await db.collection('pupils')
-      .where('status', '!=', 'alumni')
-      .get();
+    // ✅ FIX: Get all pupils, filter alumni client-side
+    const allPupilsSnap = await db.collection('pupils').get();
+    
+    // Count only active pupils (exclude alumni)
+    let activePupilCount = 0;
+    allPupilsSnap.forEach(doc => {
+      const data = doc.data();
+      if (data.status !== 'alumni') {
+        activePupilCount++;
+      }
+    });
     
     const classesSnap = await db.collection('classes').get();
     const announcementsSnap = await db.collection('announcements').get();
     
     teacherCount.textContent = teachersSnap.size;
-    pupilCount.textContent = pupilsSnap.size;
+    pupilCount.textContent = activePupilCount;
     classCount.textContent = classesSnap.size;
     announceCount.textContent = announcementsSnap.size;
     
-    console.log('✅ Dashboard stats loaded successfully');
+    console.log(`✅ Dashboard stats loaded: ${activePupilCount} active pupils (${allPupilsSnap.size - activePupilCount} alumni)`);
     
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
@@ -7545,6 +7561,10 @@ function cancelPupilForm() {
 // Global variable to store all pupils data
 let allPupilsData = [];
 
+/**
+ * ✅ FIXED: Load Pupils (Client-Side Alumni Filtering)
+ * Avoids composite index requirement
+ */
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
   if (!tbody) return;
@@ -7555,10 +7575,8 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
-    // ✅ FIX: Exclude alumni from active pupils list
+    // ✅ FIX: Simple query (no compound inequality)
     const snapshot = await db.collection('pupils')
-      .where('status', '!=', 'alumni')
-      .orderBy('status')  // Required for != query
       .orderBy('name')
       .limit(500)
       .get();
@@ -7575,16 +7593,24 @@ async function loadPupils() {
       return;
     }
 
+    // ✅ FIX: Filter out alumni CLIENT-SIDE
     const pupils = [];
     snapshot.forEach(doc => {
-      pupils.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      
+      // Exclude alumni (check status field if it exists)
+      if (data.status !== 'alumni') {
+        pupils.push({ id: doc.id, ...data });
+      }
     });
 
-    // ✅ Store all data globally for search
+    console.log(`✓ Loaded ${snapshot.size} total pupils, ${pupils.length} active (${snapshot.size - pupils.length} alumni filtered out)`);
+
+    // ✅ Store filtered data globally for search
     allPupilsData = pupils;
 
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
-    if (bulkActionsBar) bulkActionsBar.style.display = 'flex';
+    if (bulkActionsBar) bulkActionsBar.style.display = pupils.length > 0 ? 'flex' : 'none';
 
     // Render with pagination
     renderPupilsTable(allPupilsData);
