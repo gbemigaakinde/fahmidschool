@@ -126,7 +126,7 @@ async function loadAssignedClasses() {
     });
     allSubjects = Array.from(subjectSet).sort();
     
-    // Load pupils in batches
+    // ✅ CRITICAL FIX: Load pupils with explicit alumni exclusion
     const classIds = assignedClasses.map(c => c.id);
     allPupils = [];
 
@@ -134,6 +134,7 @@ async function loadAssignedClasses() {
       const batch = classIds.slice(i, i + 10);
       const pupilsSnap = await db.collection('pupils')
         .where('class.id', 'in', batch)
+        .where('status', '!=', 'alumni')  // ✅ EXPLICIT ALUMNI EXCLUSION
         .get();
       
       const batchPupils = pupilsSnap.docs.map(doc => ({
@@ -154,7 +155,7 @@ async function loadAssignedClasses() {
     assignedClasses = [];
     allPupils = [];
     allSubjects = [];
-    throw err; // Re-throw to stop initialization
+    throw err;
   }
 }
 
