@@ -228,7 +228,7 @@ console.log('✅ calculateCompleteArrears() loaded for admin portal');
  */
 window.calculateCurrentOutstanding = async function(pupilId, session, term) {
     try {
-        console.log(`\n📊 Calculating outstanding for Pupil ${pupilId}`);
+        console.log(`\\n📊 Calculating outstanding for Pupil ${pupilId}`);
         console.log(`   Session: ${session}, Term: ${term}`);
         
         // Step 1: Get pupil data
@@ -238,6 +238,19 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
         }
         const pupilData = pupilDoc.data();
         console.log(`   ✓ Pupil: ${pupilData.name}`);
+        
+        // ✅ CRITICAL FIX: EXPLICIT ALUMNI CHECK - FIRST PRIORITY
+        if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+            console.log(`   ⏭️ SKIPPED: Alumni/Inactive pupil`);
+            return {
+                amountDue: 0,
+                arrears: 0,
+                totalDue: 0,
+                totalPaid: 0,
+                balance: 0,
+                reason: 'Alumni - not an active pupil'
+            };
+        }
         
         // Step 2: Get class ID
         const classId = pupilData.class?.id;
@@ -287,7 +300,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
         console.log(`   ✓ Arrears: ₦${arrears.toLocaleString()}`);
         
         // Step 6: Get total paid for this term
-        const encodedSession = session.replace(/\//g, '-');
+        const encodedSession = session.replace(/\\//g, '-');
         const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
         
         let totalPaid = 0;
@@ -308,7 +321,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
         console.log(`   ═══════════════════════════════════════`);
         console.log(`   Total Due: ₦${totalDue.toLocaleString()}`);
         console.log(`   Balance: ₦${Math.max(0, balance).toLocaleString()}`);
-        console.log(`   ═══════════════════════════════════════\n`);
+        console.log(`   ═══════════════════════════════════════\\n`);
         
         return {
             pupilId,
@@ -322,7 +335,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
             arrears,
             totalDue,
             totalPaid,
-            balance: Math.max(0, balance), // Never negative
+            balance: Math.max(0, balance),
             status: balance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'owing'
         };
         
@@ -4429,6 +4442,13 @@ async function loadOutstandingFeesReport() {
             const pupilId = pupilDoc.id;
             const pupilData = pupilDoc.data();
             
+            // ✅ DEFENSIVE SKIP - Alumni should not be in financial reports
+            if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+                console.log(`⏭️ Skipping alumni: ${pupilData.name || pupilId}`);
+                skippedCount++;
+                continue;
+            }
+            
             try {
                 // Use the SINGLE SOURCE OF TRUTH
                 const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
@@ -4519,7 +4539,7 @@ async function loadOutstandingFeesReport() {
         
         console.log(`✅ Outstanding fees report complete:`);
         console.log(`   ${outstandingPupils.length} pupils owe ₦${totalOutstanding.toLocaleString()}`);
-        console.log(`   Processed: ${processedCount}, Skipped: ${skippedCount}`);
+        console.log(`   Processed: ${processedCount}, Skipped: ${skippedCount} (including alumni)`);
         
     } catch (error) {
         console.error('❌ Error loading outstanding fees:', error);
@@ -4629,6 +4649,13 @@ async function loadFinancialReports() {
             const pupilId = pupilDoc.id;
             const pupilData = pupilDoc.data();
             
+            // ✅ DEFENSIVE SKIP - Alumni should not be in financial reports
+            if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+                console.log(`⏭️ Skipping alumni: ${pupilData.name || pupilId}`);
+                skippedCount++;
+                continue;
+            }
+            
             try {
                 // Use the SINGLE SOURCE OF TRUTH
                 const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
@@ -4659,13 +4686,12 @@ async function loadFinancialReports() {
             } catch (error) {
                 console.error(`❌ Error calculating for ${pupilData.name}:`, error.message);
                 errorCount++;
-                // Don't throw - continue with other pupils
             }
         }
         
         console.log(`\n📊 Financial Report Summary:`);
         console.log(`   Processed: ${processedCount} pupils`);
-        console.log(`   Skipped: ${skippedCount} pupils`);
+        console.log(`   Skipped: ${skippedCount} pupils (including alumni)`);
         console.log(`   Errors: ${errorCount} pupils`);
         console.log(`   Expected: ₦${totalExpected.toLocaleString()}`);
         console.log(`   Collected: ₦${totalCollected.toLocaleString()}`);
