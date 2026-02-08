@@ -1869,30 +1869,50 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     
     const pupilData = pupilDoc.data();
 
-  // ═══════════════════════════════════════════════════════════
-//  FIXED: NON-DESTRUCTIVE ALUMNI PROMOTION
+// ═══════════════════════════════════════════════════════════
+// FIXED: Complete Alumni Transition (Removes from Active Workflows)
 // ═══════════════════════════════════════════════════════════
 
 if (data.isTerminalClass) {
-  // ✅ Mark pupil as alumni (NON-DESTRUCTIVE)
+  // ✓ Store final class for historical record
+  const finalClassName = pupilData.class?.name || data.fromClass.name;
+  const finalTeacherName = pupilData.assignedTeacher?.name || 'Unknown';
+  
+  // ✓ Update pupil to alumni state
   currentBatch.update(pupilRef, {
-    status: 'alumni',  // ← This field enables filtering
+    // ─── Active State (Clear All) ───
+    status: 'alumni',
     isActive: false,
+    
+    // ✓ CRITICAL FIX: Remove from active class
+    'class.id': null,
+    'class.name': null,
+    
+    // ✓ CRITICAL FIX: Clear active subjects
+    subjects: [],
+    
+    // ✓ CRITICAL FIX: Clear teacher assignment
+    'assignedTeacher.id': null,
+    'assignedTeacher.name': null,
+    
+    // ─── Historical State (Preserve) ───
+    finalClass: finalClassName,
+    finalTeacher: finalTeacherName,
     graduationSession: data.fromSession,
     graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-    finalClass: data.fromClass.name,
     promotionDate: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   operationCount++;
   totalOperations++;
   
-  // ✅ Create alumni index entry (optional - for faster queries)
+  // ✓ Create alumni index entry
   const alumniRef = db.collection('alumni').doc(pupilId);
   currentBatch.set(alumniRef, {
     pupilId: pupilId,
     name: pupilData.name || 'Unknown',
-    finalClass: data.fromClass.name,
+    finalClass: finalClassName,
+    finalTeacher: finalTeacherName,
     graduationSession: data.fromSession,
     graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
     gender: pupilData.gender || null,
@@ -8300,23 +8320,31 @@ async function loadClasses() {
     const classesSnap = await db.collection('classes').get();
     const pupilsSnap = await db.collection('pupils').get();
     
-    const pupilCountMap = {};
-    pupilsSnap.forEach(pupilDoc => {
-      const classData = pupilDoc.data().class;
-      
-      let className = null;
-      if (classData) {
-        if (typeof classData === 'object' && classData.name) {
-          className = classData.name;
-        } else if (typeof classData === 'string') {
-          className = classData;
-        }
-      }
-      
-      if (className) {
-        pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
-      }
-    });
+// ✓ FIXED: Exclude alumni from class pupil counts
+const pupilCountMap = {};
+pupilsSnap.forEach(pupilDoc => {
+  const pupilData = pupilDoc.data();
+  
+  // ✓ Skip alumni
+  if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+    return;
+  }
+  
+  const classData = pupilData.class;
+  
+  let className = null;
+  if (classData) {
+    if (typeof classData === 'object' && classData.name) {
+      className = classData.name;
+    } else if (typeof classData === 'string') {
+      className = classData;
+    }
+  }
+  
+  if (className) {
+    pupilCountMap[className] = (pupilCountMap[className] || 0) + 1;
+  }
+});
     
     tbody.innerHTML = '';
     
