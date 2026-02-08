@@ -107,7 +107,51 @@ async function loadPupilProfile(user) {
         const data = pupilDoc.data();
         currentPupilId = pupilDoc.id;
         currentPupilData = data;
-
+// ✅ ALUMNI CHECK - Stop here if user is alumni
+        const isAlumni = data.status === 'alumni' || data.isActive === false;
+        
+        if (isAlumni) {
+            console.log('✓ Alumni detected, rendering alumni profile');
+            
+            // Render alumni-specific profile (no class/teacher/subjects)
+            renderProfile({
+                name: data.name || '-',
+                dob: data.dob || '-',
+                admissionNo: data.admissionNo || '-',
+                gender: data.gender || '-',
+                contact: data.contact || '-',
+                address: data.address || '-',
+                email: data.email || '-',
+                class: data.finalClass || 'Graduated',
+                teacher: '-',
+                subjects: [],
+                isAlumni: true,
+                graduationSession: data.graduationSession || '-'
+            });
+            
+            // Update dashboard header for alumni
+            const welcomeEl = document.getElementById('pupil-welcome');
+            const classEl = document.getElementById('student-class');
+            const sessionEl = document.getElementById('student-session');
+            
+            if (welcomeEl) {
+                welcomeEl.innerHTML = `Hello, <strong>${data.name}</strong>!`;
+            }
+            if (classEl) {
+                classEl.innerHTML = '<span style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; padding: 4px 12px; border-radius: 20px; font-weight: 600;">🎓 Alumni (Graduated!)</span>';
+            }
+            if (sessionEl) {
+                sessionEl.textContent = data.graduationSession || 'Graduated';
+            }
+            
+            // Load alumni-appropriate data
+            await loadResults(); // Historical results only
+            await loadFeeBalance(); // Payment history only
+            
+            console.log('✓ Alumni profile loaded successfully');
+            window.isLoadingProfile = false;
+            return; // STOP HERE - no class listeners for alumni
+        }
         const classId = getClassIdFromPupilData(data.class);
         const className = getClassNameFromPupilData(data.class);
 
@@ -383,14 +427,44 @@ function renderProfile(profile) {
     if (genderDisplay) genderDisplay.textContent = profile.gender;
     if (contactDisplay) contactDisplay.textContent = profile.contact;
     if (addressDisplay) addressDisplay.textContent = profile.address;
-    if (classDisplay) classDisplay.textContent = profile.class;
-    if (teacherDisplay) teacherDisplay.textContent = profile.teacher;
     
-    if (subjectsDisplay) {
-        const subjectList = profile.subjects && profile.subjects.length > 0 
-            ? profile.subjects.join(', ') 
-            : '-';
-        subjectsDisplay.textContent = subjectList;
+    // ✅ ALUMNI FIX: Conditional rendering for class/teacher/subjects
+    if (profile.isAlumni) {
+        // Alumni: Show final class with graduation badge
+        if (classDisplay) {
+            classDisplay.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>${profile.class}</span>
+                    <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">GRADUATED</span>
+                </div>
+            `;
+        }
+        
+        // Alumni: Hide teacher info
+        if (teacherDisplay) {
+            teacherDisplay.textContent = '-';
+            teacherDisplay.style.color = '#94a3b8';
+        }
+        
+        // Alumni: Hide subjects
+        if (subjectsDisplay) {
+            subjectsDisplay.textContent = '-';
+            subjectsDisplay.style.color = '#94a3b8';
+        }
+    } else {
+        // Active pupil: Normal display
+        if (classDisplay) classDisplay.textContent = profile.class;
+        if (teacherDisplay) {
+            teacherDisplay.textContent = profile.teacher;
+            teacherDisplay.style.color = '';
+        }
+        if (subjectsDisplay) {
+            const subjectList = profile.subjects && profile.subjects.length > 0 
+                ? profile.subjects.join(', ') 
+                : '-';
+            subjectsDisplay.textContent = subjectList;
+            subjectsDisplay.style.color = '';
+        }
     }
 }
 
@@ -529,17 +603,79 @@ async function loadFeeBalance() {
     `;
 
     try {
-        const settings = await window.getCurrentSettings();
-        const session = settings.session;
-        const currentTerm = settings.term;
-
-        // Get current pupil data
+        // ✅ ALUMNI CHECK FIRST
         const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
         if (!pupilDoc.exists) {
             throw new Error('Pupil profile not found');
         }
         
         const pupilData = pupilDoc.data();
+        const isAlumni = pupilData.status === 'alumni' || pupilData.isActive === false;
+        
+        // ═══════════════════════════════════════════════════════════
+        // ALUMNI: Show payment history only (NO current fees)
+        // ═══════════════════════════════════════════════════════════
+        if (isAlumni) {
+            feeSection.innerHTML = `
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);">
+                        <i data-lucide="graduation-cap"></i>
+                    </div>
+                    <div class="section-title">
+                        <h2>Payment Records</h2>
+                        <p style="color: #4CAF50; font-weight: 600;">Alumni • Graduated</p>
+                    </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+                    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <i data-lucide="graduation-cap" style="width: 32px; height: 32px;"></i>
+                        <div>
+                            <h3 style="margin: 0; color: white;">Alumni Status</h3>
+                            <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">Graduated from ${pupilData.finalClass || 'School'}</p>
+                        </div>
+                    </div>
+                    <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
+                        You have successfully graduated. Below is your complete payment history for reference.
+                    </p>
+                </div>
+
+                <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
+                    <h3 style="margin: 0 0 var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);">
+                        <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                        Complete Payment History
+                    </h3>
+                    <div id="payment-history-list" style="display: grid; gap: var(--space-md);">
+                        <div style="text-align:center; padding:var(--space-lg); color:var(--color-gray-600);">
+                            <div class="spinner"></div>
+                            <p>Loading payment records...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--space-xl); padding: var(--space-lg); background: #f0fdf4; border: 2px solid #4CAF50; border-radius: var(--radius-md);">
+                    <h4 style="margin: 0 0 var(--space-sm); color: #065f46; display: flex; align-items: center; gap: var(--space-sm);">
+                        <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+                        Need Documents?
+                    </h4>
+                    <p style="margin: 0; font-size: var(--text-sm); color: #14532d;">
+                        For transcript requests or payment verification, please contact the school office.
+                    </p>
+                </div>
+            `;
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            await loadAllPaymentHistory(currentPupilId);
+            return; // STOP HERE for alumni
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        // ACTIVE PUPIL: Calculate current fees (existing logic)
+        // ═══════════════════════════════════════════════════════════
+        
+        const settings = await window.getCurrentSettings();
+        const session = settings.session;
+        const currentTerm = settings.term;
         
         // Extract class info
         let classId = null;
@@ -593,6 +729,7 @@ async function loadFeeBalance() {
             session,
             currentTerm
         );
+        
         if (result.reason) {
             // Handle special cases (no fee structure, invalid class, etc.)
             feeSection.innerHTML = `
@@ -609,6 +746,7 @@ async function loadFeeBalance() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
+        
         // Use result.* for all values
         const baseFee = result.baseFee;
         const amountDue = result.amountDue;
@@ -1241,6 +1379,11 @@ async function populateSessionSelector() {
     }
     
     try {
+        // ✅ ALUMNI CHECK
+        const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
+        const isAlumni = pupilDoc.exists && 
+            (pupilDoc.data().status === 'alumni' || pupilDoc.data().isActive === false);
+        
         // Get current session settings
         const settings = await window.getCurrentSettings();
         const currentSession = settings.session || 'Current Session';
@@ -1248,13 +1391,15 @@ async function populateSessionSelector() {
         // Clear and rebuild selector
         selector.innerHTML = '';
         
-        // Add current session option (always first)
-        const currentOpt = document.createElement('option');
-        currentOpt.value = 'current';
-        currentOpt.textContent = `Current Session (${currentSession})`;
-        selector.appendChild(currentOpt);
+        // ✅ ONLY add "current session" for ACTIVE pupils
+        if (!isAlumni) {
+            const currentOpt = document.createElement('option');
+            currentOpt.value = 'current';
+            currentOpt.textContent = `Current Session (${currentSession})`;
+            selector.appendChild(currentOpt);
+        }
         
-        // ✅ FIX: Query only APPROVED results to find sessions with viewable data
+        // ✅ Query only APPROVED results to find sessions with viewable data
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
@@ -1266,10 +1411,14 @@ async function populateSessionSelector() {
         resultsSnap.forEach(doc => {
             const data = doc.data();
             
-            // ✅ CRITICAL FIX: Only include sessions with approved results
-            if (data.session && data.status === 'approved' && data.session !== currentSession) {
-                sessions.add(data.session);
-                approvedCount++;
+            // ✅ Only include sessions with approved results
+            // For alumni: Include all historical sessions
+            // For active pupils: Exclude current session (already in dropdown)
+            if (data.session && data.status === 'approved') {
+                if (isAlumni || data.session !== currentSession) {
+                    sessions.add(data.session);
+                    approvedCount++;
+                }
             }
         });
         
@@ -1290,11 +1439,13 @@ async function populateSessionSelector() {
             selector.appendChild(opt);
         });
         
-        console.log(`✓ Session selector populated: 1 current + ${sortedSessions.length} historical`);
+        const typeLabel = isAlumni ? 'alumni (historical only)' : 'active pupil';
+        console.log(`✓ Session selector populated for ${typeLabel}: ${!isAlumni ? '1 current + ' : ''}${sortedSessions.length} historical`);
         
-        // ✅ NEW: Show helpful message if no historical sessions
-        if (sortedSessions.length === 0) {
-            console.log('ℹ️ No historical sessions with approved results found');
+        // ✅ Show helpful message if no sessions available
+        if (sortedSessions.length === 0 && isAlumni) {
+            selector.innerHTML = '<option value="">No results available</option>';
+            console.log('ℹ️ No approved results found for this alumni');
         }
         
     } catch (error) {
