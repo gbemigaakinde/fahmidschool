@@ -6,7 +6,24 @@
     <title>Admin Portal - Fahmid Nursery & Primary School</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-        <style>
+      <!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#2196F3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Fahmid School">
+
+<!-- iOS Meta Tags -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fahmid School">
+<link rel="apple-touch-icon" href="IMG_4628.jpeg">
+
+<!-- Microsoft Meta Tags -->
+<meta name="msapplication-TileColor" content="#2196F3">
+<meta name="msapplication-TileImage" content="IMG_4628.jpeg">
+          <style>
         /* Modal Styles for Subject Assignment */
         .modal {
             display: none;
@@ -2203,5 +2220,19 @@ if ('serviceWorker' in navigator) {
 
 <!-- Financial Report Generator -->
 <script src="financial-report-generator.js"></script>
+<!-- PWA Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+                console.log('✓ Service Worker registered');
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    });
+}
+</script>
 </body>
 </html>
