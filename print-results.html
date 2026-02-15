@@ -6,7 +6,24 @@
     <title>Termly Report Card - Fahmid Nursery & Primary School</title>
     <link href="https://fonts.googleapis.com/css2?family=Arial:wght@400;600;700&display=swap" rel="stylesheet">
    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-   <!-- Replace your current Firebase scripts with these -->
+  <!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#2196F3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Fahmid School">
+
+<!-- iOS Meta Tags -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fahmid School">
+<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+
+<!-- Microsoft Meta Tags -->
+<meta name="msapplication-TileColor" content="#2196F3">
+<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+    <!-- Replace your current Firebase scripts with these -->
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
@@ -737,5 +754,19 @@
     <script src="firebase-init.js"></script>
     <script src="script.js"></script>
     <script src="print-results.js"></script>
+   <!-- PWA Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('✓ Service Worker registered');
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    });
+}
+</script>
 </body>
 </html>
