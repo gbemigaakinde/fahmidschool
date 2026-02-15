@@ -1,83 +1,103 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Service Worker - Offline Support
+ * Service Worker - Production PWA
  * 
- * Purpose: Enable offline functionality and improve performance
- * 
- * @version 1.0.0
- * @date 2026-01-11
+ * @version 2.0.0
+ * @date 2026-02-15
  */
 
 'use strict';
 
-const CACHE_NAME = 'fahmid-school-v1.0.0';
-const OFFLINE_PAGE = '/offline.html';
+const CACHE_VERSION = 'fahmid-pwa-v2.0.0';
+const CACHE_NAME = `${CACHE_VERSION}`;
+const MAX_CACHE_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-// Assets to cache immediately on install
+// Critical assets to cache immediately
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/login.html',
+  '/offline.html',
+  '/manifest.json',
   '/styles.css',
   '/script.js',
   '/firebase-init.js',
-  '/IMG_4628.jpeg', // School logo
-  OFFLINE_PAGE
+  '/IMG_4628.jpeg'
 ];
 
-// Assets to cache on first use
-const RUNTIME_CACHE = [
+// Runtime cache for portal pages
+const RUNTIME_CACHE_URLS = [
   '/portal.html',
   '/admin.html',
   '/teacher.html',
   '/pupil.html',
-  '/print-results.html',
-  '/admin.js',
-  '/teacher.js',
-  '/pupil.js',
-  '/print-results.js',
-  '/class-hierarchy.js',
-  '/pupils-export.js'
+  '/about.html',
+  '/academics.html',
+  '/admissions.html',
+  '/school-life.html',
+  '/gallery.html',
+  '/news.html',
+  '/contact.html'
+];
+
+// External domains to bypass
+const EXTERNAL_DOMAINS = [
+  'firebasestorage.googleapis.com',
+  'firebaseapp.com',
+  'googleapis.com',
+  'gstatic.com',
+  'cdnjs.cloudflare.com',
+  'unpkg.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com'
 ];
 
 /**
  * Install Event - Cache critical assets
  */
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing...');
+  console.log('[SW] Installing version:', CACHE_VERSION);
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[Service Worker] Precaching critical assets');
-        return cache.addAll(PRECACHE_ASSETS);
+        console.log('[SW] Caching precache assets');
+        return cache.addAll(PRECACHE_ASSETS.map(url => new Request(url, {cache: 'reload'})));
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('[SW] Precache complete');
+        return self.skipWaiting();
+      })
       .catch(error => {
-        console.error('[Service Worker] Precaching failed:', error);
+        console.error('[SW] Precache failed:', error);
       })
   );
 });
 
 /**
- * Activate Event - Clean up old caches
+ * Activate Event - Clean old caches
  */
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activating...');
+  console.log('[SW] Activating version:', CACHE_VERSION);
   
   event.waitUntil(
-    caches.keys()
-      .then(cacheNames => {
+    Promise.all([
+      // Clean old caches
+      caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheName !== CACHE_NAME) {
-              console.log('[Service Worker] Deleting old cache:', cacheName);
+              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
-      })
-      .then(() => self.clients.claim())
+      }),
+      // Take control immediately
+      self.clients.claim()
+    ]).then(() => {
+      console.log('[SW] Activation complete');
+    })
   );
 });
 
@@ -91,24 +111,21 @@ self.addEventListener('fetch', event => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
   
-  // Skip Firebase and external requests
-  if (
-    url.origin.includes('firebasestorage.googleapis.com') ||
-    url.origin.includes('firebaseapp.com') ||
-    url.origin.includes('googleapis.com') ||
-    url.origin.includes('gstatic.com') ||
-    url.origin.includes('cdnjs.cloudflare.com')
-  ) {
+  // Skip external domains
+  if (EXTERNAL_DOMAINS.some(domain => url.hostname.includes(domain))) {
     return;
   }
   
-  // Network-first strategy for HTML pages
+  // Skip Chrome extension requests
+  if (url.protocol === 'chrome-extension:') return;
+  
+  // Handle HTML pages - Network-first strategy
   if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then(response => {
-          // Clone and cache successful responses
-          if (response.ok) {
+          // Cache successful HTML responses
+          if (response.ok && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
               cache.put(request, responseClone);
@@ -123,29 +140,35 @@ self.addEventListener('fetch', event => {
               if (cachedResponse) {
                 return cachedResponse;
               }
-              // Show offline page as last resort
-              return caches.match(OFFLINE_PAGE);
+              // Last resort: offline page
+              return caches.match('/offline.html');
             });
         })
     );
     return;
   }
   
-  // Cache-first strategy for static assets (CSS, JS, images)
+  // Handle static assets - Cache-first with network update
   if (
     request.url.endsWith('.css') ||
     request.url.endsWith('.js') ||
     request.url.endsWith('.jpeg') ||
     request.url.endsWith('.jpg') ||
-    request.url.endsWith('.svg')
+    request.url.endsWith('.png') ||
+    request.url.endsWith('.svg') ||
+    request.url.endsWith('.webp') ||
+    request.url.endsWith('.ico') ||
+    request.url.endsWith('.woff') ||
+    request.url.endsWith('.woff2')
   ) {
     event.respondWith(
       caches.match(request)
         .then(cachedResponse => {
+          // Return cached version immediately
           if (cachedResponse) {
-            // Return cached version and update in background
+            // Update cache in background
             fetch(request).then(response => {
-              if (response.ok) {
+              if (response.ok && response.status === 200) {
                 caches.open(CACHE_NAME).then(cache => {
                   cache.put(request, response);
                 });
@@ -157,7 +180,7 @@ self.addEventListener('fetch', event => {
           
           // Not in cache, fetch from network
           return fetch(request).then(response => {
-            if (response.ok) {
+            if (response.ok && response.status === 200) {
               const responseClone = response.clone();
               caches.open(CACHE_NAME).then(cache => {
                 cache.put(request, responseClone);
@@ -170,45 +193,103 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  // Network-only for everything else (API calls, etc.)
+  // For everything else, network-only (API calls, Firebase, etc.)
+  event.respondWith(fetch(request));
+});
+
+/**
+ * Message Event - Handle cache updates
+ */
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'CACHE_URLS') {
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(cache => {
+        return cache.addAll(event.data.urls);
+      })
+    );
+  }
 });
 
 /**
  * Background Sync - Queue failed requests
  */
 self.addEventListener('sync', event => {
-  console.log('[Service Worker] Background sync:', event.tag);
+  console.log('[SW] Background sync:', event.tag);
   
   if (event.tag === 'sync-data') {
-    event.waitUntil(
-      // Implement your sync logic here
-      syncPendingData()
-    );
+    event.waitUntil(syncPendingData());
   }
 });
 
 async function syncPendingData() {
-  // This would sync any pending data when connection is restored
-  console.log('[Service Worker] Syncing pending data...');
-  // Implementation depends on your specific needs
+  console.log('[SW] Syncing pending data...');
+  // Implement sync logic as needed
+  return Promise.resolve();
 }
 
 /**
- * Push Notifications (future feature)
+ * Push Notifications
  */
 self.addEventListener('push', event => {
-  console.log('[Service Worker] Push received');
+  console.log('[SW] Push received');
   
+  const title = 'Fahmid School';
   const options = {
     body: event.data ? event.data.text() : 'New notification',
     icon: '/IMG_4628.jpeg',
     badge: '/IMG_4628.jpeg',
-    vibrate: [200, 100, 200]
+    vibrate: [200, 100, 200],
+    tag: 'fahmid-notification',
+    requireInteraction: false
   };
   
   event.waitUntil(
-    self.registration.showNotification('Fahmid School', options)
+    self.registration.showNotification(title, options)
   );
 });
 
-console.log('[Service Worker] Loaded');
+/**
+ * Notification Click
+ */
+self.addEventListener('notificationclick', event => {
+  console.log('[SW] Notification clicked');
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.openWindow('/')
+  );
+});
+
+/**
+ * Periodic cleanup of old cache entries
+ */
+async function cleanupOldCache() {
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  const now = Date.now();
+  
+  for (const request of requests) {
+    const response = await cache.match(request);
+    if (response) {
+      const dateHeader = response.headers.get('date');
+      if (dateHeader) {
+        const age = now - new Date(dateHeader).getTime();
+        if (age > MAX_CACHE_AGE) {
+          await cache.delete(request);
+          console.log('[SW] Deleted old cache entry:', request.url);
+        }
+      }
+    }
+  }
+}
+
+// Run cleanup periodically
+setInterval(() => {
+  cleanupOldCache().catch(err => console.error('[SW] Cleanup error:', err));
+}, 24 * 60 * 60 * 1000); // Once per day
+
+console.log('[SW] Service Worker loaded');
