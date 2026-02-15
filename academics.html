@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 <!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="manifest.json">
 
 <!-- PWA Meta Tags -->
 <meta name="theme-color" content="#2196F3">
@@ -21,7 +21,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+<link rel="apple-touch-icon" href="IMG_4628.jpeg">
 
 <!-- Microsoft Meta Tags -->
 <meta name="msapplication-TileColor" content="#2196F3">
@@ -358,7 +358,7 @@
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('sw.js')
             .then(registration => {
                 console.log('✓ Service Worker registered');
             })
