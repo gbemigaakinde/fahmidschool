@@ -2457,7 +2457,8 @@ async function approveResultSubmission(submissionId) {
             const pupilId = draftData.pupilId;
             
             // Create final result document
-            const finalDocId = `${pupilId}_${term}_${subject}`;
+             const encodedSession = session.replace(/\//g, '-');
+             const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
             const finalRef = db.collection('results').doc(finalDocId);
             
             // ✅ Copy ALL data from draft, mark as approved
@@ -5320,83 +5321,62 @@ async function ensureAllPupilsHavePaymentRecords() {
     let totalSkipped = 0;
     let totalArrears = 0;
     
-    const batch = db.batch();
+    let batch = db.batch(); // ✅ FIXED: changed from const to let
     let batchCount = 0;
     
+    // REPLACE the for loop inside ensureAllPupilsHavePaymentRecords():
     for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
-      const pupilData = pupilDoc.data();
-      const classId = pupilData.class?.id;
-      
-      if (!classId) {
-        console.log(`⏭️ Skipping ${pupilData.name} - no classId`);
+      try {
+        const pupilId = pupilDoc.id;
+        const pupilData = pupilDoc.data();
+        const classId = pupilData.class?.id;
+        
+        if (!classId) { totalSkipped++; continue; }
+        
+        const baseFee = feeStructureMap[classId];
+        if (!baseFee) { totalSkipped++; continue; }
+        
+        const amountDue = window.calculateAdjustedFee
+          ? window.calculateAdjustedFee(pupilData, baseFee, term)
+          : baseFee;
+        
+        if (amountDue === 0) { totalSkipped++; continue; }
+        
+        const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+        const existingPayment = await db.collection('payments').doc(paymentDocId).get();
+        
+        if (existingPayment.exists) { totalSkipped++; continue; }
+        
+        const arrears = await window.calculateCompleteArrears(pupilId, session, term);
+        if (arrears > 0) totalArrears += arrears;
+        
+        const paymentRef = db.collection('payments').doc(paymentDocId);
+        batch.set(paymentRef, {
+          pupilId, pupilName: pupilData.name || 'Unknown',
+          classId, className: pupilData.class?.name || 'Unknown',
+          session, term,
+          baseFee, adjustedFee: amountDue, amountDue,
+          arrears, totalDue: amountDue + arrears,
+          totalPaid: 0, balance: amountDue + arrears,
+          status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+          lastPaymentDate: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          autoCreated: true
+        });
+        
+        totalCreated++;
+        batchCount++;
+        
+        if (batchCount >= 400) {
+          await batch.commit();
+          batch = db.batch();  
+          batchCount = 0;
+        }
+        
+      } catch (pupilError) {
+        console.error(`⚠️ Skipping pupil ${pupilDoc.id} due to error:`, pupilError.message);
         totalSkipped++;
-        continue;
-      }
-      
-      const baseFee = feeStructureMap[classId];
-      if (!baseFee) {
-        console.log(`⏭️ Skipping ${pupilData.name} - no fee structure for class`);
-        totalSkipped++;
-        continue;
-      }
-      
-      // Calculate adjusted fee
-      const amountDue = window.calculateAdjustedFee 
-        ? window.calculateAdjustedFee(pupilData, baseFee, term)
-        : baseFee;
-      
-      if (amountDue === 0) {
-        console.log(`⏭️ Skipping ${pupilData.name} - not enrolled for ${term}`);
-        totalSkipped++;
-        continue;
-      }
-      
-      const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-      const existingPayment = await db.collection('payments').doc(paymentDocId).get();
-      
-      if (existingPayment.exists) {
-        totalSkipped++;
-        continue;
-      }
-      
-      // Calculate arrears
-      const arrears = await window.calculateCompleteArrears(pupilId, session, term);
-      
-      if (arrears > 0) {
-        totalArrears += arrears;
-      }
-      
-      // Create payment record
-      const paymentRef = db.collection('payments').doc(paymentDocId);
-      
-      batch.set(paymentRef, {
-        pupilId: pupilId,
-        pupilName: pupilData.name || 'Unknown',
-        classId: classId,
-        className: pupilData.class?.name || 'Unknown',
-        session: session,
-        term: term,
-        baseFee: baseFee,
-        adjustedFee: amountDue,
-        amountDue: amountDue,
-        arrears: arrears,
-        totalDue: amountDue + arrears,
-        totalPaid: 0,
-        balance: amountDue + arrears,
-        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
-        lastPaymentDate: null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        autoCreated: true
-      });
-      
-      totalCreated++;
-      batchCount++;
-      
-      if (batchCount >= 400) {
-        await batch.commit();
-        batchCount = 0;
       }
     }
     
@@ -5429,7 +5409,6 @@ async function ensureAllPupilsHavePaymentRecords() {
 }
 
 window.ensureAllPupilsHavePaymentRecords = ensureAllPupilsHavePaymentRecords;
-
 /**
  * Helper: Get previous session name
  */
@@ -7270,59 +7249,68 @@ await db.collection('pupils').doc(uid).set(pupilData);
 
 console.log('✓ Pupil profile created');
 
-// ✅ FIX: Auto-create payment record if fee structure exists
+// ✅ FIXED: Auto-create payment record using permanent fee structure ID
 try {
   const settings = await window.getCurrentSettings();
   const session = settings.session;
   const term = settings.term;
   
-  // Check if fee structure exists for this class
-  const feeDocId = `${classId}_${session.replace(/\//g, '-')}`;
+  // FIXED: Use permanent class-based fee structure ID (not session-based)
+  const feeDocId = `fee_${classId}`;
   const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
   
   if (feeDoc.exists) {
     const feeData = feeDoc.data();
-    const totalFee = feeData.total || 0;
+    const baseFee = Number(feeData.total) || 0;
     
-    console.log(`✓ Found fee structure for ${classData.name}: ₦${totalFee.toLocaleString()}`);
+    // Calculate adjusted fee for this specific pupil
+    const amountDue = window.calculateAdjustedFee
+      ? window.calculateAdjustedFee(pupilData, baseFee, term)
+      : baseFee;
     
-    // Check for arrears from previous session
-    const previousSession = getPreviousSessionName(session);
-    let arrears = 0;
-    
-    if (previousSession) {
-      arrears = await calculateSessionBalance(uid, previousSession);
+    if (amountDue === 0 && baseFee > 0) {
+      console.log(`ℹ️ Pupil not enrolled for ${term}, skipping payment record`);
+    } else {
+      console.log(`✓ Found fee structure for ${classData.name}: ₦${baseFee.toLocaleString()}`);
+      
+      // Calculate arrears from previous session
+      const previousSession = getPreviousSessionName(session);
+      let arrears = 0;
+      if (previousSession && typeof window.calculateCompleteArrears === 'function') {
+        arrears = await window.calculateCompleteArrears(uid, session, term);
+      }
+      
+      const encodedSession = session.replace(/\//g, '-');
+      const paymentDocId = `${uid}_${encodedSession}_${term}`;
+      
+      await db.collection('payments').doc(paymentDocId).set({
+        pupilId: uid,
+        pupilName: name,
+        classId: classId,
+        className: classData.name,
+        session: session,
+        term: term,
+        baseFee: baseFee,
+        adjustedFee: amountDue,
+        amountDue: amountDue,
+        arrears: arrears,
+        totalDue: amountDue + arrears,
+        totalPaid: 0,
+        balance: amountDue + arrears,
+        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+        lastPaymentDate: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log(`✓ Auto-created payment record: ₦${amountDue.toLocaleString()} (arrears: ₦${arrears.toLocaleString()})`);
     }
-    
-    // Create payment record for current term
-    const encodedSession = session.replace(/\//g, '-');
-    const paymentDocId = `${uid}_${encodedSession}_${term}`;
-    
-    await db.collection('payments').doc(paymentDocId).set({
-      pupilId: uid,
-      pupilName: name,
-      classId: classId,
-      className: classData.name,
-      session: session,
-      term: term,
-      amountDue: totalFee,
-      arrears: arrears,
-      totalDue: totalFee + arrears,
-      totalPaid: 0,
-      balance: totalFee + arrears,
-      status: arrears > 0 ? 'owing_with_arrears' : 'owing',
-      lastPaymentDate: null,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    
-    console.log(`✓ Auto-created payment record: ₦${totalFee.toLocaleString()} (arrears: ₦${arrears.toLocaleString()})`);
   } else {
     console.log(`ℹ️ No fee structure configured for ${classData.name} yet`);
   }
-} catch (error) {
-  console.error('⚠️ Failed to auto-create payment record:', error);
-  // Don't throw - pupil was created successfully
+} catch (paymentError) {
+  console.error('⚠️ Failed to auto-create payment record:', paymentError);
+  // Do not throw — pupil was created successfully
 }
         
         window.showToast?.(
@@ -7666,48 +7654,39 @@ window.renderPupilsTable = renderPupilsTable;
  * Setup bulk actions event listeners
  * Called AFTER pupils table is loaded
  */
+// REPLACE THE ENTIRE FUNCTION:
 function setupBulkActionsEventListeners() {
   console.log('🔧 Setting up bulk actions event listeners...');
   
   // 1. Select All checkbox
   const selectAllCheckbox = document.getElementById('select-all-pupils');
   if (selectAllCheckbox) {
-    // Remove old listener by cloning
     const newSelectAll = selectAllCheckbox.cloneNode(true);
     selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
     
-    // Add fresh listener
     newSelectAll.addEventListener('change', function() {
-      console.log('🔘 Select All clicked:', this.checked);
       const checkboxes = document.querySelectorAll('.pupil-checkbox');
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-      });
+      checkboxes.forEach(checkbox => { checkbox.checked = this.checked; });
       updateBulkActionButtons();
     });
-    
-    console.log('✓ Select All listener attached');
   }
   
-  // 2. Individual pupil checkboxes (EVENT DELEGATION)
-  const table = document.getElementById('pupils-table');
-  if (table) {
-    // Use event delegation on tbody
-    const tbody = table.querySelector('tbody');
-    if (tbody) {
-      // Remove old listeners
-      const newTbody = tbody.cloneNode(true);
-      tbody.parentNode.replaceChild(newTbody, tbody);
-      
-      // Add fresh delegation listener
-      const freshTbody = table.querySelector('tbody');
-      freshTbody.addEventListener('change', function(e) {
+  // 2. Individual pupil checkboxes — use delegation on TABLE, not tbody
+  // CRITICAL FIX: Attach to the stable parent container, NOT tbody (which paginateTable replaces)
+  const tableContainer = document.querySelector('#pupils .table-container') 
+    || document.getElementById('pupils-table')?.closest('.table-container')
+    || document.getElementById('pupils-table')?.parentElement;
+  
+  if (tableContainer) {
+    // Remove old delegation flag to allow fresh attachment
+    if (!tableContainer.dataset.bulkDelegationActive) {
+      tableContainer.addEventListener('change', function(e) {
         if (e.target.classList.contains('pupil-checkbox')) {
-          console.log('✓ Pupil checkbox changed');
           updateBulkActionButtons();
         }
       });
-      console.log('✓ Pupil checkboxes delegation attached');
+      tableContainer.dataset.bulkDelegationActive = 'true';
+      console.log('✓ Bulk checkbox delegation attached to table container');
     }
   }
   
@@ -7716,14 +7695,13 @@ function setupBulkActionsEventListeners() {
   if (applyBtn) {
     const newApplyBtn = applyBtn.cloneNode(true);
     applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
-    
-    const freshApplyBtn = document.getElementById('apply-bulk-action-btn');
-    freshApplyBtn.addEventListener('click', applyBulkAction);
-    console.log('✓ Apply button listener attached');
+    document.getElementById('apply-bulk-action-btn').addEventListener('click', applyBulkAction);
   }
   
   console.log('✅ Bulk actions event listeners setup complete');
 }
+
+window.setupBulkActionsEventListeners = setupBulkActionsEventListeners;
 
 /**
  * Update bulk action buttons based on selection
@@ -11008,7 +10986,8 @@ async function _approveSubmissionSilently(submissionId, submissionData) {
     const draftData = draftDoc.data();
     const pupilId = draftData.pupilId;
 
-    const finalDocId = `${pupilId}_${term}_${subject}`;
+    const encodedSession = submissionData.session.replace(/\//g, '-');
+    const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
     const finalRef = db.collection('results').doc(finalDocId);
 
     batch.set(finalRef, {
