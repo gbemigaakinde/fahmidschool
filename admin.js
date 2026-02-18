@@ -2230,13 +2230,45 @@ async function loadResultApprovals() {
             .get();
         
         tbody.innerHTML = '';
-        
-        if (submissionsSnap.empty) {
-            if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-            return;
-        }
-        
-        if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+
+if (submissionsSnap.empty) {
+    if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
+    // Hide bulk bar if visible
+    const existingBulkBar = document.getElementById('results-bulk-action-bar');
+    if (existingBulkBar) existingBulkBar.style.display = 'none';
+    return;
+}
+
+if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+
+// Inject bulk action bar if not already present
+let bulkBar = document.getElementById('results-bulk-action-bar');
+if (!bulkBar) {
+    bulkBar = document.createElement('div');
+    bulkBar.id = 'results-bulk-action-bar';
+    bulkBar.style.cssText = 'display:flex; gap:var(--space-md); align-items:center; flex-wrap:wrap; margin-bottom:var(--space-md); padding:var(--space-md); background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-md);';
+    bulkBar.innerHTML = `
+        <label style="display:flex; align-items:center; gap:var(--space-xs); cursor:pointer; font-weight:600;">
+            <input type="checkbox" id="select-all-results" onchange="toggleAllResultsSelection(this)">
+            Select All
+        </label>
+        <button id="approve-selected-results-btn" class="btn btn-success" disabled
+            onclick="approveAllPendingResults()" style="font-size:var(--text-sm);">
+            ✓ Approve Selected
+        </button>
+        <button id="approve-all-results-btn" class="btn btn-primary"
+            onclick="(function(){ document.querySelectorAll('.result-submission-checkbox').forEach(cb => cb.checked=false); approveAllPendingResults(); })()"
+            style="font-size:var(--text-sm);">
+            ✓ Approve All Pending
+        </button>
+    `;
+    tbody.closest('table').parentElement.insertBefore(bulkBar, tbody.closest('table'));
+} else {
+    bulkBar.style.display = 'flex';
+    // Reset select-all
+    const selectAll = document.getElementById('select-all-results');
+    if (selectAll) selectAll.checked = false;
+}
         
         // ✅ Process each submission
         for (const submissionDoc of submissionsSnap.docs) {
@@ -2284,7 +2316,12 @@ async function loadResultApprovals() {
                 : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
             
             const tr = document.createElement('tr');
-            tr.innerHTML = `
+                  tr.innerHTML = `
+             <td data-label="Select" style="text-align:center;">
+             <input type="checkbox" class="result-submission-checkbox"
+               data-submission-id="${submissionId}"
+               onchange="updateResultsBulkButtons()">
+             </td>
                 <td data-label="Teacher">${teacherName}</td>
                 <td data-label="Class">${className}</td>
                 <td data-label="Subject">${subject}</td>
@@ -10899,6 +10936,207 @@ window.calculateSessionBalance = async function(pupilId, session) {
     }
 };
 
+/* ========================================
+   BULK RESULT APPROVAL
+======================================== */
+
+/**
+ * Approve all currently pending result submissions.
+ * Reuses existing approveResultSubmission() for each — no logic duplication.
+ */
+async function approveAllPendingResults() {
+  const pendingCheckboxes = document.querySelectorAll('.result-submission-checkbox:checked');
+  const useSelected = pendingCheckboxes.length > 0;
+
+  const targetIds = useSelected
+    ? Array.from(pendingCheckboxes).map(cb => cb.dataset.submissionId)
+    : null;
+
+  // If no checkboxes selected, fetch all pending from Firestore
+  let submissionIds = [];
+
+  if (useSelected) {
+    submissionIds = targetIds;
+  } else {
+    try {
+      const snap = await db.collection('result_submissions')
+        .where('status', '==', 'pending')
+        .get();
+
+      if (snap.empty) {
+        window.showToast?.('No pending result submissions found.', 'info');
+        return;
+      }
+
+      submissionIds = snap.docs.map(doc => doc.id);
+    } catch (error) {
+      console.error('❌ Error fetching pending submissions:', error);
+      window.showToast?.('Failed to fetch pending submissions.', 'danger');
+      return;
+    }
+  }
+
+  if (submissionIds.length === 0) {
+    window.showToast?.('No submissions selected or pending.', 'info');
+    return;
+  }
+
+  const confirmed = confirm(
+    `Approve ${submissionIds.length} pending result submission(s)?\n\n` +
+    'This will publish all selected results and make them visible to pupils.\n\n' +
+    'Continue?'
+  );
+
+  if (!confirmed) return;
+
+  const btn = document.getElementById('approve-all-results-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Approving...</span>';
+  }
+
+  let successCount = 0;
+  let skipCount = 0;
+  let failCount = 0;
+
+  for (const submissionId of submissionIds) {
+    try {
+      // Re-check status to avoid double-approving (race condition safety)
+      const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+
+      if (!submissionDoc.exists) {
+        console.warn(`⚠️ Submission ${submissionId} not found, skipping`);
+        skipCount++;
+        continue;
+      }
+
+      if (submissionDoc.data().status !== 'pending') {
+        console.log(`⏭️ Submission ${submissionId} already processed (${submissionDoc.data().status}), skipping`);
+        skipCount++;
+        continue;
+      }
+
+      // Reuse existing approval logic
+      await _approveSubmissionSilently(submissionId, submissionDoc.data());
+      successCount++;
+
+    } catch (error) {
+      console.error(`❌ Failed to approve submission ${submissionId}:`, error);
+      failCount++;
+    }
+  }
+
+  // Refresh UI once after all approvals
+  await loadResultApprovals();
+
+  const message =
+    `✅ Bulk Approval Complete!\n\n` +
+    `• Approved: ${successCount}\n` +
+    `• Skipped (already processed): ${skipCount}\n` +
+    `• Failed: ${failCount}`;
+
+  window.showToast?.(message, failCount > 0 ? 'warning' : 'success', 8000);
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '✓ Approve All Pending';
+  }
+}
+
+/**
+ * Internal: approve one submission without UI refresh or confirm dialog.
+ * Mirrors approveResultSubmission() exactly, minus the confirm + reload.
+ */
+async function _approveSubmissionSilently(submissionId, submissionData) {
+  const { classId, term, subject, session } = submissionData;
+
+  const draftsSnap = await db.collection('results_draft')
+    .where('classId', '==', classId)
+    .where('term', '==', term)
+    .where('subject', '==', subject)
+    .get();
+
+  if (draftsSnap.empty) {
+    throw new Error(`No draft results found for submission ${submissionId}`);
+  }
+
+  // Client-side session filter (same as existing approval)
+  const validDrafts = [];
+  draftsSnap.forEach(draftDoc => {
+    if (draftDoc.data().session === session) {
+      validDrafts.push(draftDoc);
+    }
+  });
+
+  if (validDrafts.length === 0) {
+    throw new Error(`Session mismatch for submission ${submissionId}`);
+  }
+
+  const batch = db.batch();
+  let copiedCount = 0;
+
+  validDrafts.forEach(draftDoc => {
+    const draftData = draftDoc.data();
+    const pupilId = draftData.pupilId;
+
+    const finalDocId = `${pupilId}_${term}_${subject}`;
+    const finalRef = db.collection('results').doc(finalDocId);
+
+    batch.set(finalRef, {
+      ...draftData,
+      status: 'approved',
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      approvedBy: auth.currentUser.uid,
+      publishedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    copiedCount++;
+  });
+
+  batch.update(db.collection('result_submissions').doc(submissionId), {
+    status: 'approved',
+    approvedBy: auth.currentUser.uid,
+    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    resultsPublished: copiedCount
+  });
+
+  await batch.commit();
+
+  console.log(`✅ Silently approved submission ${submissionId}: ${copiedCount} results published`);
+}
+
+/**
+ * Toggle all result submission checkboxes
+ */
+function toggleAllResultsSelection(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.result-submission-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+  });
+  updateResultsBulkButtons();
+}
+
+/**
+ * Update bulk action button state based on selection
+ */
+function updateResultsBulkButtons() {
+  const checked = document.querySelectorAll('.result-submission-checkbox:checked');
+  const approveSelectedBtn = document.getElementById('approve-selected-results-btn');
+
+  if (approveSelectedBtn) {
+    approveSelectedBtn.disabled = checked.length === 0;
+    approveSelectedBtn.textContent = checked.length > 0
+      ? `✓ Approve Selected (${checked.length})`
+      : '✓ Approve Selected';
+  }
+}
+
+// Expose globally
+window.approveAllPendingResults = approveAllPendingResults;
+window.toggleAllResultsSelection = toggleAllResultsSelection;
+window.updateResultsBulkButtons = updateResultsBulkButtons;
+
+console.log('✅ Bulk result approval feature loaded');
 console.log('✅ Financial helper functions loaded');
 console.log('✅ Admin.js v7.0.0 loaded successfully');
 console.log('User creation system: READY');
