@@ -341,98 +341,130 @@ function showSection(sectionId) {
    HAMBURGER MENU FOR MOBILE - FIXED VERSION
 ======================================== */
 
-/**
- * CRITICAL FIX: Initialize hamburger menu
- * This MUST be called from initTeacherPortal() after DOM is fully ready
- */
+// Named handlers stored at module scope so they can be removed on re-init
+let _teacherOutsideClickHandler = null;
+let _teacherKeydownHandler = null;
+let _teacherResizeHandler = null;
+let _teacherResizeTimer = null;
+
 function initTeacherHamburger() {
+  // HARD GUARD: Prevent any chance of double-setup
+  if (window.teacherSidebarInitialized === true) {
+    console.log('✓ Teacher hamburger already initialized, skipping');
+    return;
+  }
+
   const hamburger = document.getElementById('hamburger');
   const sidebar = document.getElementById('teacher-sidebar');
-  
-  // Existence check with debugging
+
   if (!hamburger || !sidebar) {
     console.warn('⚠️ Teacher hamburger or sidebar not found');
     console.log('Hamburger element:', hamburger);
     console.log('Sidebar element:', sidebar);
     return;
   }
-  
-  // Prevent double initialization
-  if (hamburger.dataset.teacherInitialized === 'true') {
-    console.log('✓ Teacher hamburger already initialized');
-    return;
-  }
-  
-  hamburger.dataset.teacherInitialized = 'true';
-  
+
   console.log('🔧 Initializing teacher hamburger menu...');
-  
-  // TOGGLE FUNCTION
-  function toggleSidebar(e) {
-    if (e) e.stopPropagation();
-    
-    const isActive = sidebar.classList.toggle('active');
-    hamburger.classList.toggle('active', isActive);
-    hamburger.setAttribute('aria-expanded', isActive);
-    document.body.style.overflow = isActive ? 'hidden' : '';
-    
-    console.log('📱 Sidebar toggled:', isActive ? 'OPEN' : 'CLOSED');
+
+  // ── STEP 1: Remove ALL prior listeners on hamburger by cloning ──────────
+  const freshHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(freshHamburger, hamburger);
+
+  // ── STEP 2: Remove any previously attached document-level handlers ───────
+  if (_teacherOutsideClickHandler) {
+    document.removeEventListener('click', _teacherOutsideClickHandler);
+    _teacherOutsideClickHandler = null;
   }
-  
-  // CLOSE FUNCTION
+  if (_teacherKeydownHandler) {
+    document.removeEventListener('keydown', _teacherKeydownHandler);
+    _teacherKeydownHandler = null;
+  }
+  if (_teacherResizeHandler) {
+    window.removeEventListener('resize', _teacherResizeHandler);
+    _teacherResizeHandler = null;
+  }
+  clearTimeout(_teacherResizeTimer);
+
+  // ── STEP 3: Helper functions using fresh lookups (no stale closures) ─────
   function closeSidebar() {
-    sidebar.classList.remove('active');
-    hamburger.classList.remove('active');
-    hamburger.setAttribute('aria-expanded', 'false');
+    const sb = document.getElementById('teacher-sidebar');
+    const hb = document.getElementById('hamburger');
+    if (!sb || !hb) return;
+    sb.classList.remove('active');
+    hb.classList.remove('active');
+    hb.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
   }
-  
-  // 1. HAMBURGER CLICK - THE CRITICAL LISTENER
-  hamburger.addEventListener('click', toggleSidebar);
+
+  // ── STEP 4: Attach hamburger click listener to the CLONED element ────────
+  freshHamburger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const sb = document.getElementById('teacher-sidebar');
+    const hb = document.getElementById('hamburger');
+    if (!sb || !hb) return;
+
+    const isActive = sb.classList.toggle('active');
+    hb.classList.toggle('active', isActive);
+    hb.setAttribute('aria-expanded', String(isActive));
+    document.body.style.overflow = isActive ? 'hidden' : '';
+
+    console.log('📱 Teacher sidebar toggled:', isActive ? 'OPEN' : 'CLOSED');
+  });
   console.log('✓ Click listener attached to hamburger');
-  
-  // 2. CLICK OUTSIDE TO CLOSE
-  document.addEventListener('click', (e) => {
-    if (sidebar.classList.contains('active') && 
-        !sidebar.contains(e.target) && 
-        !hamburger.contains(e.target)) {
+
+  // ── STEP 5: Outside-click handler (named so it can be removed later) ─────
+  _teacherOutsideClickHandler = function (e) {
+    const sb = document.getElementById('teacher-sidebar');
+    const hb = document.getElementById('hamburger');
+    if (!sb || !hb) return;
+    if (
+      sb.classList.contains('active') &&
+      !sb.contains(e.target) &&
+      !hb.contains(e.target)
+    ) {
       closeSidebar();
     }
-  });
-  
-  // 3. CLOSE ON NAVIGATION LINK CLICK (mobile only)
+  };
+  document.addEventListener('click', _teacherOutsideClickHandler);
+
+  // ── STEP 6: Navigation links close sidebar on mobile ─────────────────────
   sidebar.querySelectorAll('a[data-section]').forEach(link => {
     link.addEventListener('click', () => {
-      if (window.innerWidth <= 1024) {
-        closeSidebar();
-      }
+      if (window.innerWidth <= 1024) closeSidebar();
     });
   });
-  
-  // 4. ESCAPE KEY TO CLOSE
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sidebar.classList.contains('active')) {
-      closeSidebar();
-      hamburger.focus();
+
+  // ── STEP 7: Escape key ────────────────────────────────────────────────────
+  _teacherKeydownHandler = function (e) {
+    if (e.key === 'Escape') {
+      const sb = document.getElementById('teacher-sidebar');
+      if (sb?.classList.contains('active')) {
+        closeSidebar();
+        document.getElementById('hamburger')?.focus();
+      }
     }
-  });
-  
-  // 5. CLOSE ON WINDOW RESIZE (desktop)
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+  };
+  document.addEventListener('keydown', _teacherKeydownHandler);
+
+  // ── STEP 8: Resize handler ────────────────────────────────────────────────
+  _teacherResizeHandler = function () {
+    clearTimeout(_teacherResizeTimer);
+    _teacherResizeTimer = setTimeout(() => {
+      const sb = document.getElementById('teacher-sidebar');
+      if (window.innerWidth > 1024 && sb?.classList.contains('active')) {
         closeSidebar();
       }
     }, 250);
-  });
-  
+  };
+  window.addEventListener('resize', _teacherResizeHandler);
+
+  // ── STEP 9: Set flag LAST ────────────────────────────────────────────────
+  window.teacherSidebarInitialized = true;
   console.log('✅ Teacher hamburger menu initialized successfully');
 }
 
 // DON'T call initTeacherHamburger() here!
-// It will be called from initTeacherPortal() when DOM is ready
+// It is called from initTeacherPortal() after data is fully loaded.
 console.log('✓ Teacher hamburger function defined');
 
 /* ======================================== 
