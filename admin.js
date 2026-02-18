@@ -228,9 +228,9 @@ console.log('✅ calculateCompleteArrears() loaded for admin portal');
  */
 window.calculateCurrentOutstanding = async function(pupilId, session, term) {
     try {
-        console.log(`\\n📊 Calculating outstanding for Pupil ${pupilId}`);
+        console.log(`\n📊 Calculating outstanding for Pupil ${pupilId}`);
         console.log(`   Session: ${session}, Term: ${term}`);
-        
+
         // Step 1: Get pupil data
         const pupilDoc = await db.collection('pupils').doc(pupilId).get();
         if (!pupilDoc.exists) {
@@ -238,8 +238,8 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
         }
         const pupilData = pupilDoc.data();
         console.log(`   ✓ Pupil: ${pupilData.name}`);
-        
-        // ✅ CRITICAL FIX: EXPLICIT ALUMNI CHECK - FIRST PRIORITY
+
+        // CRITICAL: Alumni check
         if (pupilData.status === 'alumni' || pupilData.isActive === false) {
             console.log(`   ⏭️ SKIPPED: Alumni/Inactive pupil`);
             return {
@@ -251,7 +251,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
                 reason: 'Alumni - not an active pupil'
             };
         }
-        
+
         // Step 2: Get class ID
         const classId = pupilData.class?.id;
         if (!classId) {
@@ -266,11 +266,11 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
             };
         }
         console.log(`   ✓ Class ID: ${classId}`);
-        
-        // Step 3: Get base fee (class-based, permanent)
+
+        // Step 3: Get base fee
         const feeDocId = `fee_${classId}`;
         const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-        
+
         if (!feeDoc.exists) {
             console.warn(`   ⚠️ No fee structure for class ${classId}`);
             return {
@@ -282,27 +282,27 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
                 reason: 'No fee structure configured'
             };
         }
-        
+
         const baseFee = Number(feeDoc.data().total) || 0;
         console.log(`   ✓ Base fee: ₦${baseFee.toLocaleString()}`);
-        
-        // Step 4: Calculate ADJUSTED fee
-        const amountDue = window.calculateAdjustedFee 
+
+        // Step 4: Calculate adjusted fee
+        const amountDue = window.calculateAdjustedFee
             ? window.calculateAdjustedFee(pupilData, baseFee, term)
             : baseFee;
-        
+
         if (amountDue !== baseFee) {
             console.log(`   ✓ Adjusted fee: ₦${amountDue.toLocaleString()} (was ₦${baseFee.toLocaleString()})`);
         }
-        
-        // Step 5: Calculate COMPLETE arrears (FIXED - no double-counting)
+
+        // Step 5: Calculate arrears
         const arrears = await window.calculateCompleteArrears(pupilId, session, term);
         console.log(`   ✓ Arrears: ₦${arrears.toLocaleString()}`);
-        
-        // Step 6: Get total paid for this term
-        const encodedSession = session.replace(/\\//g, '-');
+
+        // Step 6: Get total paid — FIX: use correct regex (single backslash)
+        const encodedSession = session.replace(/\//g, '-');
         const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-        
+
         let totalPaid = 0;
         try {
             const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
@@ -313,16 +313,16 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
             console.warn('   ⚠️ Could not read payment doc:', error.message);
         }
         console.log(`   ✓ Total paid: ₦${totalPaid.toLocaleString()}`);
-        
+
         // Step 7: Calculate outstanding
         const totalDue = amountDue + arrears;
         const balance = totalDue - totalPaid;
-        
+
         console.log(`   ═══════════════════════════════════════`);
         console.log(`   Total Due: ₦${totalDue.toLocaleString()}`);
         console.log(`   Balance: ₦${Math.max(0, balance).toLocaleString()}`);
-        console.log(`   ═══════════════════════════════════════\\n`);
-        
+        console.log(`   ═══════════════════════════════════════\n`);
+
         return {
             pupilId,
             pupilName: pupilData.name,
@@ -338,7 +338,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
             balance: Math.max(0, balance),
             status: balance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'owing'
         };
-        
+
     } catch (error) {
         console.error('❌ Error calculating outstanding:', error);
         throw error;
