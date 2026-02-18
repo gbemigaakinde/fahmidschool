@@ -2315,41 +2315,55 @@ if (!bulkBar) {
                 ? pupilCount 
                 : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
             
-            const tr = document.createElement('tr');
-                  tr.innerHTML = `
-             <td data-label="Select" style="text-align:center;">
-             <input type="checkbox" class="result-submission-checkbox"
-               data-submission-id="${submissionId}"
-               onchange="updateResultsBulkButtons()">
-             </td>
-                <td data-label="Teacher">${teacherName}</td>
-                <td data-label="Class">${className}</td>
-                <td data-label="Subject">${subject}</td>
-                <td data-label="Term">${term}</td>
-                <td data-label="Pupils" style="text-align:center;">${pupilCountDisplay}</td>
-                <td data-label="Submitted">${submittedDate}</td>
-                <td data-label="Status">
-                    <span class="status-pending">Pending</span>
-                </td>
-                <td data-label="Actions">
-                    ${pupilCount > 0 ? `
-                        <button class="btn-small btn-success" onclick="approveResultSubmission('${submissionId}')">
-                            ✓ Approve
-                        </button>
-                        <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
-                            ✗ Reject
-                        </button>
-                    ` : `
-                        <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
-                            ✗ Reject (No Data)
-                        </button>
-                        <span style="font-size: 0.75rem; color: #dc3545; display: block; margin-top: 4px;">
-                            ⚠️ No draft results found
-                        </span>
-                    `}
-                </td>
-            `;
-            tbody.appendChild(tr);
+  const tr = document.createElement('tr');
+    tr.dataset.submissionId = submissionId;           // ← ADD THIS LINE
+    tr.innerHTML = `
+        <td data-label="Select" style="text-align:center;">
+            <input type="checkbox" class="result-submission-checkbox"
+                   data-submission-id="${submissionId}"
+                   onchange="updateResultsBulkButtons()">
+        </td>
+        <td data-label="Teacher">${teacherName}</td>
+        <td data-label="Class">${className}</td>
+        <td data-label="Subject">${subject}</td>
+        <td data-label="Term">${term}</td>
+        <td data-label="Pupils" style="text-align:center;">${pupilCountDisplay}</td>
+        <td data-label="Submitted">${submittedDate}</td>
+        <td data-label="Status">
+            <span class="status-pending">Pending</span>
+        </td>
+        <td data-label="Actions">
+            <button
+                id="preview-btn-${submissionId}"
+                class="btn-small btn-secondary"
+                onclick="toggleResultPreview(
+                    '${submissionId}',
+                    '${submissionData.classId}',
+                    '${term}',
+                    '${subject}',
+                    '${session}',
+                    '${className}'
+                )">
+                🔍 Preview
+            </button>
+            ${pupilCount > 0 ? `
+                <button class="btn-small btn-success" onclick="approveResultSubmission('${submissionId}')">
+                    ✓ Approve
+                </button>
+                <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+                    ✗ Reject
+                </button>
+            ` : `
+                <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+                    ✗ Reject (No Data)
+                </button>
+                <span style="font-size: 0.75rem; color: #dc3545; display: block; margin-top: 4px;">
+                    ⚠️ No draft results found
+                </span>
+            `}
+        </td>
+    `;
+    tbody.appendChild(tr);
         }
         
         console.log(`✓ Loaded ${submissionsSnap.size} pending submissions`);
@@ -11136,6 +11150,435 @@ window.approveAllPendingResults = approveAllPendingResults;
 window.toggleAllResultsSelection = toggleAllResultsSelection;
 window.updateResultsBulkButtons = updateResultsBulkButtons;
 
+/* ============================================================
+   RESULT APPROVAL — INLINE PERFORMANCE PREVIEW PANEL
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   STEP 1 — PURE CALCULATION
+   Accepts an array of draft result objects.
+   Returns all stats needed by the UI.
+------------------------------------------------------------ */
+
+function computePreviewStats(drafts) {
+  if (!drafts || drafts.length === 0) {
+    return null;
+  }
+
+  const scores = drafts.map(d => {
+    const ca   = Number(d.caScore)   || 0;
+    const exam = Number(d.examScore) || 0;
+    return ca + exam;
+  });
+
+  const total   = scores.reduce((sum, s) => sum + s, 0);
+  const average = total / scores.length;
+  const highest = Math.max(...scores);
+  const lowest  = Math.min(...scores);
+  const passed  = scores.filter(s => s >= 50).length;
+  const failed  = scores.length - passed;
+  const passRate = ((passed / scores.length) * 100).toFixed(1);
+
+  // Grade distribution using existing getGrade() logic
+  const gradeMap = { A1: 0, B2: 0, B3: 0, C4: 0, C5: 0, C6: 0, D7: 0, D8: 0, F9: 0 };
+  scores.forEach(s => {
+    const g = getGrade(s);
+    gradeMap[g] = (gradeMap[g] || 0) + 1;
+  });
+
+  return {
+    count:     scores.length,
+    average:   average.toFixed(1),
+    highest,
+    lowest,
+    passed,
+    failed,
+    passRate,
+    gradeMap,
+    scores
+  };
+}
+
+
+/* ------------------------------------------------------------
+   STEP 2 — RENDER
+   Builds the HTML string for the preview panel.
+------------------------------------------------------------ */
+
+function renderResultPreviewPanel(stats, meta) {
+  if (!stats) {
+    return `
+      <div style="padding:var(--space-lg); text-align:center; color:var(--color-gray-600);">
+        ⚠️ No draft results found for this submission. The teacher may not have saved scores yet.
+      </div>
+    `;
+  }
+
+  const avgNum      = parseFloat(stats.average);
+  const avgGrade    = getGrade(avgNum);
+  const avgRemark   = getRemark(avgNum);
+
+  // Colour coding for average
+  const avgColor =
+    avgNum >= 70 ? '#16a34a' :
+    avgNum >= 50 ? '#d97706' :
+                   '#dc2626';
+
+  // Grade bar — only grades that have at least 1 pupil
+  const gradeOrder = ['A1','B2','B3','C4','C5','C6','D7','D8','F9'];
+  const gradeColors = {
+    A1: '#16a34a', B2: '#22c55e', B3: '#4ade80',
+    C4: '#84cc16', C5: '#a3e635', C6: '#facc15',
+    D7: '#fb923c', D8: '#f97316', F9: '#dc2626'
+  };
+
+  const gradeBars = gradeOrder
+    .filter(g => stats.gradeMap[g] > 0)
+    .map(g => {
+      const count   = stats.gradeMap[g];
+      const percent = ((count / stats.count) * 100).toFixed(0);
+      return `
+        <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:6px;">
+          <span style="
+            min-width:28px;
+            font-size:11px;
+            font-weight:700;
+            color:white;
+            background:${gradeColors[g]};
+            padding:2px 6px;
+            border-radius:4px;
+            text-align:center;
+          ">${g}</span>
+          <div style="flex:1; height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+            <div style="
+              width:${percent}%;
+              height:100%;
+              background:${gradeColors[g]};
+              border-radius:999px;
+              transition: width 0.4s ease;
+            "></div>
+          </div>
+          <span style="min-width:48px; font-size:12px; color:#475569; text-align:right;">
+            ${count} pupil${count !== 1 ? 's' : ''} (${percent}%)
+          </span>
+        </div>
+      `;
+    }).join('');
+
+  // Score distribution sparkline (simple bar chart across pupils)
+  const sparkBars = stats.scores
+    .slice()
+    .sort((a, b) => b - a)
+    .map(s => {
+      const h       = Math.max(4, Math.round((s / 100) * 48));
+      const barColor =
+        s >= 70 ? '#16a34a' :
+        s >= 50 ? '#d97706' :
+                  '#dc2626';
+      return `<div title="${s}/100" style="
+        width:6px;
+        height:${h}px;
+        background:${barColor};
+        border-radius:2px 2px 0 0;
+        flex-shrink:0;
+      "></div>`;
+    }).join('');
+
+  return `
+    <div style="
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-top: 3px solid #00B2FF;
+      padding: var(--space-xl);
+      animation: previewFadeIn 0.25s ease;
+    ">
+      <style>
+        @keyframes previewFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      </style>
+
+      <!-- Header row -->
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        margin-bottom:var(--space-lg);
+        flex-wrap:wrap;
+        gap:var(--space-md);
+      ">
+        <div>
+          <h4 style="margin:0 0 4px; color:#0f172a; font-size:var(--text-lg);">
+            📊 Class Performance Preview
+          </h4>
+          <p style="margin:0; font-size:var(--text-sm); color:#64748b;">
+            ${meta.subject} &nbsp;·&nbsp; ${meta.className} &nbsp;·&nbsp; ${meta.term} &nbsp;·&nbsp; ${meta.session}
+          </p>
+        </div>
+        <div style="
+          background:white;
+          border:2px solid ${avgColor};
+          border-radius:var(--radius-lg);
+          padding:var(--space-sm) var(--space-lg);
+          text-align:center;
+          min-width:90px;
+        ">
+          <div style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">
+            Class Avg
+          </div>
+          <div style="font-size:var(--text-2xl); font-weight:800; color:${avgColor}; line-height:1.1;">
+            ${stats.average}
+          </div>
+          <div style="font-size:11px; font-weight:700; color:${avgColor};">
+            ${avgGrade} · ${avgRemark}
+          </div>
+        </div>
+      </div>
+
+      <!-- Key stats grid -->
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));
+        gap:var(--space-md);
+        margin-bottom:var(--space-xl);
+      ">
+        ${[
+          { label: 'Pupils',    value: stats.count,       icon: '👥', color: '#0369a1' },
+          { label: 'Highest',   value: stats.highest,     icon: '🏆', color: '#16a34a' },
+          { label: 'Lowest',    value: stats.lowest,      icon: '📉', color: '#dc2626' },
+          { label: 'Passed',    value: stats.passed,      icon: '✅', color: '#16a34a' },
+          { label: 'Failed',    value: stats.failed,      icon: '❌', color: '#dc2626' },
+          { label: 'Pass Rate', value: stats.passRate + '%', icon: '📈', color: parseFloat(stats.passRate) >= 70 ? '#16a34a' : parseFloat(stats.passRate) >= 50 ? '#d97706' : '#dc2626' },
+        ].map(item => `
+          <div style="
+            background:white;
+            border:1px solid #e2e8f0;
+            border-radius:var(--radius-md);
+            padding:var(--space-md);
+            text-align:center;
+            box-shadow:0 1px 3px rgba(0,0,0,0.05);
+          ">
+            <div style="font-size:18px; margin-bottom:4px;">${item.icon}</div>
+            <div style="font-size:var(--text-xl); font-weight:800; color:${item.color};">${item.value}</div>
+            <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.04em;">${item.label}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Two-column bottom: grade distribution + score sparkline -->
+      <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:var(--space-xl);
+      ">
+        <!-- Grade Distribution -->
+        <div>
+          <p style="
+            margin:0 0 var(--space-md);
+            font-size:var(--text-sm);
+            font-weight:700;
+            color:#475569;
+            text-transform:uppercase;
+            letter-spacing:0.05em;
+          ">Grade Distribution</p>
+          ${gradeBars || '<p style="color:#94a3b8; font-size:var(--text-sm);">No grades to display</p>'}
+        </div>
+
+        <!-- Score Sparkline -->
+        <div>
+          <p style="
+            margin:0 0 var(--space-md);
+            font-size:var(--text-sm);
+            font-weight:700;
+            color:#475569;
+            text-transform:uppercase;
+            letter-spacing:0.05em;
+          ">Score Distribution (ranked)</p>
+          <div style="
+            display:flex;
+            align-items:flex-end;
+            gap:2px;
+            height:52px;
+            padding:var(--space-xs) 0;
+            overflow:hidden;
+          ">
+            ${sparkBars}
+          </div>
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            font-size:10px;
+            color:#94a3b8;
+            margin-top:4px;
+          ">
+            <span>Highest → Lowest</span>
+            <span>Each bar = 1 pupil</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pass/fail visual bar -->
+      <div style="margin-top:var(--space-xl);">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          font-size:12px;
+          font-weight:600;
+          margin-bottom:6px;
+          color:#475569;
+        ">
+          <span style="color:#16a34a;">✅ Passed: ${stats.passed} (${stats.passRate}%)</span>
+          <span style="color:#dc2626;">❌ Failed: ${stats.failed} (${(100 - parseFloat(stats.passRate)).toFixed(1)}%)</span>
+        </div>
+        <div style="
+          height:12px;
+          border-radius:999px;
+          overflow:hidden;
+          background:#fee2e2;
+          box-shadow:inset 0 1px 3px rgba(0,0,0,0.1);
+        ">
+          <div style="
+            width:${stats.passRate}%;
+            height:100%;
+            background:linear-gradient(90deg, #16a34a, #4ade80);
+            border-radius:999px;
+            transition:width 0.5s ease;
+          "></div>
+        </div>
+      </div>
+
+      <!-- Recommendation banner -->
+      <div style="
+        margin-top:var(--space-lg);
+        padding:var(--space-md) var(--space-lg);
+        border-radius:var(--radius-md);
+        background:${
+          parseFloat(stats.passRate) >= 70 ? '#f0fdf4' :
+          parseFloat(stats.passRate) >= 50 ? '#fffbeb' :
+                                             '#fef2f2'
+        };
+        border-left:4px solid ${
+          parseFloat(stats.passRate) >= 70 ? '#16a34a' :
+          parseFloat(stats.passRate) >= 50 ? '#d97706' :
+                                             '#dc2626'
+        };
+        font-size:var(--text-sm);
+        color:${
+          parseFloat(stats.passRate) >= 70 ? '#14532d' :
+          parseFloat(stats.passRate) >= 50 ? '#78350f' :
+                                             '#7f1d1d'
+        };
+      ">
+        ${
+          parseFloat(stats.passRate) >= 70
+            ? `<strong>✅ Good performance.</strong> Class average is ${stats.average}/100 with ${stats.passRate}% pass rate. Results appear suitable for approval.`
+            : parseFloat(stats.passRate) >= 50
+            ? `<strong>⚠️ Mixed performance.</strong> Class average is ${stats.average}/100 with ${stats.passRate}% pass rate. Review carefully before approving.`
+            : `<strong>🚨 Poor performance.</strong> Class average is ${stats.average}/100 with only ${stats.passRate}% pass rate. Consider rejecting and requesting review.`
+        }
+      </div>
+    </div>
+  `;
+}
+
+
+/* ------------------------------------------------------------
+   STEP 3 — TOGGLE
+   Called by the Preview button in each row.
+   Fetches drafts, computes stats, renders panel.
+   Second click collapses.
+------------------------------------------------------------ */
+
+async function toggleResultPreview(submissionId, classId, term, subject, session, className) {
+  const previewRowId = `preview-row-${submissionId}`;
+  const btnId        = `preview-btn-${submissionId}`;
+
+  const existingRow = document.getElementById(previewRowId);
+  const btn         = document.getElementById(btnId);
+
+  // Collapse if already open
+  if (existingRow) {
+    existingRow.remove();
+    if (btn) {
+      btn.textContent = '🔍 Preview';
+      btn.style.background = '';
+    }
+    return;
+  }
+
+  // Show loading state on button
+  if (btn) {
+    btn.textContent = '⏳ Loading...';
+    btn.disabled    = true;
+  }
+
+  try {
+    // Fetch draft results (same query as approveResultSubmission)
+    const draftsSnap = await db.collection('results_draft')
+      .where('classId', '==', classId)
+      .where('term',    '==', term)
+      .where('subject', '==', subject)
+      .get();
+
+    // Filter by session client-side (mirrors existing approval logic)
+    const validDrafts = [];
+    draftsSnap.forEach(doc => {
+      const d = doc.data();
+      if (d.session === session) {
+        validDrafts.push(d);
+      }
+    });
+
+    const stats = computePreviewStats(validDrafts);
+    const meta  = { subject, className, term, session };
+    const html  = renderResultPreviewPanel(stats, meta);
+
+    // Find the submission row and insert a new TR after it
+    const submissionRow = document.querySelector(`tr[data-submission-id="${submissionId}"]`);
+
+    if (!submissionRow) {
+      console.error('Could not find submission row for', submissionId);
+      return;
+    }
+
+    const colCount = submissionRow.querySelectorAll('td').length;
+
+    const previewTr      = document.createElement('tr');
+    previewTr.id         = previewRowId;
+    previewTr.className  = 'result-preview-row';
+
+    const previewTd      = document.createElement('td');
+    previewTd.colSpan    = colCount;
+    previewTd.style.padding = '0';
+    previewTd.innerHTML  = html;
+
+    previewTr.appendChild(previewTd);
+    submissionRow.insertAdjacentElement('afterend', previewTr);
+
+    if (btn) {
+      btn.textContent      = '🔼 Hide Preview';
+      btn.style.background = '#e0f2fe';
+      btn.disabled         = false;
+    }
+
+  } catch (error) {
+    console.error('❌ Error loading result preview:', error);
+    window.showToast?.('Failed to load result preview', 'danger');
+
+    if (btn) {
+      btn.textContent = '🔍 Preview';
+      btn.disabled    = false;
+    }
+  }
+}
+
+// Expose globally
+window.toggleResultPreview  = toggleResultPreview;
+window.computePreviewStats  = computePreviewStats;
+window.renderResultPreviewPanel = renderResultPreviewPanel;
+
+console.log('✅ Result approval performance preview loaded');
 console.log('✅ Bulk result approval feature loaded');
 console.log('✅ Financial helper functions loaded');
 console.log('✅ Admin.js v7.0.0 loaded successfully');
