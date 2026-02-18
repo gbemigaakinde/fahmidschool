@@ -588,72 +588,43 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
-  
-  // CRITICAL: Verify DOM is ready
+
   const sidebar = document.getElementById('admin-sidebar');
   const hamburger = document.getElementById('hamburger');
   const dashboard = document.getElementById('dashboard');
-  
+
   if (!sidebar || !hamburger || !dashboard) {
-    console.error('❌ Critical elements missing!', {
-      sidebar: !!sidebar,
-      hamburger: !!hamburger,
-      dashboard: !!dashboard
-    });
-    
-    // Retry after short delay
-    setTimeout(() => {
-      console.log('⏳ Retrying initialization...');
-      initializeAdminPortal();
-    }, 100);
+    console.error('❌ Critical elements missing, retrying in 200ms...');
+    setTimeout(initializeAdminPortal, 200);
     return;
   }
-  
-  console.log('✓ All critical elements found');
-  
-  // Step 1: Setup sidebar FIRST (this includes hamburger menu handling)
+
+  // CRITICAL: Reset flag before setup so setupSidebarNavigation can run fresh
+  window.adminSidebarInitialized = false;
   setupSidebarNavigation();
-  
-  // Step 2: Mark data as loading
+
   isLoadingAdminData = true;
-  
-  // Step 3: Load initial data
+
   try {
-    console.log('📊 Loading initial admin data...');
-    
-    // Load essential data first
     await loadDashboardStats();
-    
-    // Mark data as loaded
     adminDataLoaded = true;
     isLoadingAdminData = false;
-    
-    console.log('✓ Admin data loaded successfully');
-    
   } catch (error) {
     console.error('❌ Failed to load admin data:', error);
     isLoadingAdminData = false;
     adminDataLoaded = false;
-    
-    window.showToast?.(
-      'Some data failed to load. Some features may be unavailable.',
-      'warning',
-      6000
-    );
+    window.showToast?.('Some data failed to load.', 'warning', 6000);
   }
-  
-  // Step 4: Show dashboard
+
   showSection('dashboard');
-  
-  // Step 5: Initialize class hierarchy
+
   try {
     await window.classHierarchy.initializeClassHierarchy();
-    console.log('✓ Class hierarchy initialized');
   } catch (error) {
     console.error('⚠️ Class hierarchy init failed:', error);
   }
-  
-  console.log('✅ Admin portal initialized successfully');
+
+  console.log('✅ Admin portal initialized');
 }
 
 // ============================================
@@ -667,9 +638,8 @@ let isLoadingAdminData = false;
 // ============================================
 
 function setupSidebarNavigation() {
-  console.log('🔧 Setting up admin sidebar navigation...');
-
-  if (window.adminSidebarInitialized) {
+  // Hard guard: one-time initialization only
+  if (window.adminSidebarInitialized === true) {
     console.log('⚠️ Sidebar already initialized, skipping');
     return;
   }
@@ -678,146 +648,126 @@ function setupSidebarNavigation() {
   const sidebar = document.getElementById('admin-sidebar');
 
   if (!hamburger || !sidebar) {
-    console.error('❌ Hamburger or sidebar not found!', {
-      hamburger: !!hamburger,
-      sidebar: !!sidebar
-    });
-    console.log('⏳ Retrying hamburger setup in 200ms...');
-    setTimeout(() => {
-      window.adminSidebarInitialized = false;
-      setupSidebarNavigation();
-    }, 200);
+    console.error('❌ Hamburger or sidebar not found!');
     return;
   }
 
-  console.log('✓ Found hamburger and sidebar elements');
+  console.log('✓ Setting up sidebar navigation...');
 
-  // ── Hamburger toggle ────────────────────────────────────────────
-  // Guard against double-binding without cloning (cloning causes race conditions)
-  if (hamburger.dataset.hamburgerBound !== 'true') {
+  // ── Hamburger toggle ─────────────────────────────────────────────────────
+  // Remove ALL existing listeners by replacing the element
+  const newHamburger = hamburger.cloneNode(true);
+  hamburger.parentNode.replaceChild(newHamburger, hamburger);
+  const freshHamburger = document.getElementById('hamburger');
 
-    hamburger.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  freshHamburger.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-      console.log('🔘 Hamburger clicked!');
+    const isNowOpen = sidebar.classList.toggle('active');
+    freshHamburger.classList.toggle('active', isNowOpen);
+    freshHamburger.setAttribute('aria-expanded', String(isNowOpen));
+    document.body.style.overflow = isNowOpen ? 'hidden' : '';
 
-      const isActive = sidebar.classList.toggle('active');
-      hamburger.classList.toggle('active', isActive);
-      hamburger.setAttribute('aria-expanded', isActive);
-      document.body.style.overflow = isActive ? 'hidden' : '';
+    console.log('🔘 Hamburger toggled. Sidebar open:', isNowOpen);
+  });
 
-      console.log(`Sidebar is now: ${isActive ? 'OPEN' : 'CLOSED'}`);
-    });
+  // ── Outside click closes sidebar ─────────────────────────────────────────
+  document.addEventListener('click', function(e) {
+    if (!sidebar.classList.contains('active')) return;
 
-    // Close sidebar when clicking outside
-    document.addEventListener('click', (e) => {
-      if (sidebar.classList.contains('active') &&
-          !sidebar.contains(e.target) &&
-          !hamburger.contains(e.target)) {
-        sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
-        console.log('📍 Sidebar closed (clicked outside)');
+    const h = document.getElementById('hamburger');
+    if (sidebar.contains(e.target)) return;
+    if (h && h.contains(e.target)) return;
+
+    sidebar.classList.remove('active');
+    if (h) {
+      h.classList.remove('active');
+      h.setAttribute('aria-expanded', 'false');
+    }
+    document.body.style.overflow = '';
+    console.log('📍 Sidebar closed (outside click)');
+  });
+
+  // ── Escape key ───────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+      const h = document.getElementById('hamburger');
+      sidebar.classList.remove('active');
+      if (h) {
+        h.classList.remove('active');
+        h.setAttribute('aria-expanded', 'false');
       }
-    });
+      document.body.style.overflow = '';
+      console.log('⌨️ Sidebar closed (Escape)');
+    }
+  });
 
-    // Close on escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && sidebar.classList.contains('active')) {
-        sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
-        document.body.style.overflow = '';
-        console.log('⌨️ Sidebar closed (Escape key)');
-      }
-    });
-
-    hamburger.dataset.hamburgerBound = 'true';
-    console.log('✓ Hamburger click handler bound');
-  } else {
-    console.log('✓ Hamburger already bound, skipping re-bind');
-  }
-
-  // ── Sidebar navigation links ────────────────────────────────────
+  // ── Sidebar nav links ────────────────────────────────────────────────────
   sidebar.querySelectorAll('a[data-section]').forEach(link => {
-    link.addEventListener('click', (e) => {
+    link.addEventListener('click', function(e) {
       e.preventDefault();
-      const sectionId = link.dataset.section;
-
+      const sectionId = this.dataset.section;
       if (!sectionId) return;
 
-      console.log(`📍 Navigating to: ${sectionId}`);
-
       document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
+      this.classList.add('active');
 
       showSection(sectionId);
 
+      // Close sidebar on mobile
       if (window.innerWidth <= 1024) {
+        const h = document.getElementById('hamburger');
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        if (h) {
+          h.classList.remove('active');
+          h.setAttribute('aria-expanded', 'false');
+        }
         document.body.style.overflow = '';
       }
     });
   });
 
-  // ── Group toggle buttons ────────────────────────────────────────
-  console.log('🎯 Setting up group toggle buttons...');
-  const groupToggles = sidebar.querySelectorAll('.sidebar-group-toggle-modern');
-  console.log(`Found ${groupToggles.length} group toggle buttons`);
-
-  groupToggles.forEach((toggle, index) => {
-    // Use flag guard instead of cloning
-    if (toggle.dataset.toggleBound === 'true') return;
-
-    toggle.addEventListener('click', (e) => {
+  // ── Group toggles ────────────────────────────────────────────────────────
+  sidebar.querySelectorAll('.sidebar-group-toggle-modern').forEach(toggle => {
+    toggle.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
 
-      const groupName = toggle.dataset.group;
-      console.log(`🔽 Group toggle clicked: ${groupName}`);
+      const content = this.nextElementSibling;
+      if (!content) return;
 
-      const content = toggle.nextElementSibling;
-      if (!content) {
-        console.error('❌ No content element found for toggle');
-        return;
-      }
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', String(!isExpanded));
+      content.classList.toggle('active', !isExpanded);
 
-      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-
-      const chevron = toggle.querySelector('.toggle-icon');
+      const chevron = this.querySelector('.toggle-icon');
       if (chevron) {
         chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
       }
-
-      console.log(`Group ${groupName} is now: ${!isExpanded ? 'EXPANDED' : 'COLLAPSED'}`);
     });
-
-    toggle.dataset.toggleBound = 'true';
-    console.log(`✓ Group toggle #${index + 1} initialized`);
   });
 
-  // ── Window resize ────────────────────────────────────────────────
+  // ── Resize handler ───────────────────────────────────────────────────────
   let resizeTimer;
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', function() {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
+    resizeTimer = setTimeout(function() {
       if (window.innerWidth > 1024 && sidebar.classList.contains('active')) {
+        const h = document.getElementById('hamburger');
         sidebar.classList.remove('active');
-        hamburger.classList.remove('active');
-        hamburger.setAttribute('aria-expanded', 'false');
+        if (h) {
+          h.classList.remove('active');
+          h.setAttribute('aria-expanded', 'false');
+        }
         document.body.style.overflow = '';
       }
     }, 250);
   });
 
+  // Set flag LAST — only after everything is fully wired up
   window.adminSidebarInitialized = true;
-  console.log('✅ Admin sidebar navigation initialized successfully');
+  console.log('✅ Sidebar navigation initialized');
 }
 
 // ============================================
