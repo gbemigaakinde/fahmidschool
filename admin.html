@@ -1965,7 +1965,7 @@ Example 3: Free education
     <h1>School Settings</h1>
     <p class="section-description">Manage academic session, term, and system settings</p>
 
-    <!-- Session Status Card -->
+    <!-- ── 1. SESSION STATUS CARD (read-only display) ── -->
     <div class="session-status-card" id="session-status-card">
         <div class="status-header">
             <h3>📅 Current Academic Session</h3>
@@ -1999,7 +1999,7 @@ Example 3: Free education
         </div>
     </div>
 
-    <!-- Edit Session Form -->
+    <!-- ── 2. EDIT SESSION SETTINGS FORM ── -->
     <div class="form-section" style="margin-top: var(--space-xl);">
         <h3>📝 Update Session Settings</h3>
         <form id="settings-form" class="admin-form">
@@ -2032,6 +2032,9 @@ Example 3: Free education
                     <option value="Second Term">Second Term</option>
                     <option value="Third Term">Third Term</option>
                 </select>
+                <small style="color: var(--color-gray-600); margin-top: var(--space-xs); display: block;">
+                    ℹ️ Changing the term automatically creates payment records for the new term with arrears carried forward.
+                </small>
             </div>
 
             <div class="form-group">
@@ -2046,15 +2049,15 @@ Example 3: Free education
         </form>
     </div>
 
-    <!-- Start New Session Section -->
+    <!-- ── 3. START NEW SESSION ── -->
     <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
         <h3 style="color: var(--color-primary);">🎓 Start New Academic Session</h3>
         <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-            Use this when the current session ends. This will archive the current session and create a new one.
+            Use this when the current session ends. This will archive the current session and prepare a new one.
         </p>
-        
+
         <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
-            <strong>⚠️ Important:</strong> Starting a new session will:
+            <strong>⚠️ This will:</strong>
             <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
                 <li>Archive the current session</li>
                 <li>Create a new session (next year)</li>
@@ -2068,7 +2071,43 @@ Example 3: Free education
         </button>
     </div>
 
-    <!-- Session History -->
+    <!-- ── 4. ARREARS MANAGEMENT ── -->
+    <!--
+        Placed directly after "Start New Session" because this is
+        the logical next step after starting a new session.
+        Previously this was buried inside the session history div.
+    -->
+    <div class="admin-card" style="margin-top: var(--space-xl); border-left: 4px solid #f59e0b;">
+        <h3 style="margin-top: 0;">💸 Arrears Management</h3>
+        <p style="color: var(--color-gray-700); margin-bottom: var(--space-md);">
+            After starting a new session, run this to carry forward any unpaid balances from the previous session 
+            into the current session's payment records.
+        </p>
+
+        <button
+            id="migrate-arrears-btn"
+            class="btn btn-warning"
+            onclick="migrateArrearsToNewSession()">
+            🔄 Migrate Arrears from Previous Session
+        </button>
+
+        <div class="alert alert-info" style="margin-top: var(--space-md);">
+            <strong>ℹ️ When to use this:</strong>
+            <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
+                <li>Run <strong>once</strong> at the start of each new academic session</li>
+                <li>Finds all pupils with unpaid balances from the previous session</li>
+                <li>Updates their current session payment records with the correct arrears amount</li>
+                <li>Use this if payment records exist but arrears are showing as ₦0</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ── 5. SESSION HISTORY ── -->
+    <!--
+        session-history-container now ONLY contains the table.
+        The migration tools that were incorrectly nested inside
+        this div have been moved out.
+    -->
     <div class="form-section" style="margin-top: var(--space-2xl);">
         <h3>📚 Session History</h3>
         <div id="session-history-container" class="table-container">
@@ -2088,83 +2127,9 @@ Example 3: Free education
                 </tbody>
             </table>
         </div>
-        
-        <!-- Add this in the Settings section, after the session management area -->
-<div class="admin-card" style="margin-top: var(--space-2xl); border-left: 4px solid #ff9800;">
-  <h3 style="margin-top: 0; color: #f57c00;">⚠️ Data Migration Tools</h3>
-  
-  <div style="background: #fff3cd; padding: var(--space-lg); border-radius: var(--radius-md); margin-bottom: var(--space-lg);">
-    <p style="margin: 0 0 var(--space-sm); font-weight: 600;">Payment Records Migration</p>
-    <p style="margin: 0; font-size: var(--text-sm);">
-      If payment records were created before the adjusted fees system was implemented, 
-      they may contain incorrect amounts. Run this migration to recalculate all balances.
-    </p>
-  </div>
-  
-  <button 
-    id="migrate-payments-btn" 
-    class="btn btn-warning" 
-    onclick="migratePaymentRecordsToAdjustedFees()">
-    🔄 Migrate Payment Records to Adjusted Fees
-  </button>
-  
-  <p style="margin-top: var(--space-md); font-size: var(--text-sm); color: var(--color-gray-600);">
-    <strong>Note:</strong> This is a one-time operation. It will recalculate all payment records 
-    with correct adjusted fees and arrears. Payment history will be preserved.
-  </p>
-</div>
-
-        <!-- Add inside Settings section, after session history -->
-<div class="admin-card" style="margin-top: var(--space-xl);">
-  <h3>Arrears Management</h3>
-  <p>When starting a new academic session, run this migration to carry forward unpaid balances from the previous session.</p>
-  
-  <button 
-    id="migrate-arrears-btn" 
-    class="btn btn-warning" 
-    onclick="migrateArrearsToNewSession()">
-    🔄 Migrate Arrears from Previous Session
-  </button>
-  
-  <div class="alert alert-info" style="margin-top: var(--space-md);">
-    <strong>ℹ️ When to use this:</strong>
-    <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
-      <li>At the start of each new academic session</li>
-      <li>Only run ONCE per session</li>
-      <li>Checks all pupils for unpaid balances from previous session</li>
-    </ul>
-  </div>
-</div>
-        <!-- Data Migration Section -->
-<div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-    <h3 style="color: #f59e0b;">⚙️ Data Migration Tools</h3>
-    <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-        <strong>One-time operation:</strong> Update existing results to include session information.
-    </p>
-    
-    <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
-        <strong>⚠️ Important Instructions:</strong>
-        <ul style="margin: var(--space-sm) 0 0 var(--space-lg); line-height: 1.8;">
-            <li>This operation will add session context to all existing results that don't have it</li>
-            <li>All existing results will be assigned to the <strong>current session</strong></li>
-            <li>This is safe and will NOT delete or overwrite any existing data</li>
-            <li>The operation may take a few minutes if you have many results</li>
-            <li>Only run this ONCE when you first enable the session system</li>
-        </ul>
-    </div>
-    
-    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
-        <button type="button" class="btn btn-warning" onclick="backfillSessionData()" id="backfill-btn">
-            🔄 Migrate Existing Results
-        </button>
-        <div id="migration-status" style="flex: 1; min-width: 300px; padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
-            <p style="margin: 0; font-size: 0.875rem;"></p>
-        </div>
-    </div>
-</div>
     </div>
 
-    <!-- Class Hierarchy Management -->
+    <!-- ── 6. CLASS PROGRESSION ORDER ── -->
     <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
         <h3>📊 Class Progression Order</h3>
         <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
@@ -2183,12 +2148,121 @@ Example 3: Free education
         </div>
 
         <div class="class-hierarchy-editor">
-            <!-- This single container will hold ALL classes -->
             <div id="hierarchy-container">
                 <!-- Classes will be loaded here dynamically -->
             </div>
         </div>
     </div>
+
+    <!-- ── 7. ADVANCED / DATA MAINTENANCE ── -->
+    <!--
+        Both "Data Migration Tools" sections previously had identical headings.
+        They are now grouped under a single collapsible "Advanced" section
+        with distinct, descriptive labels for each tool.
+        Neither button ID nor onclick has changed.
+    -->
+    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
+
+        <details>
+            <summary style="
+                cursor: pointer;
+                list-style: none;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: var(--space-md) var(--space-lg);
+                background: #fef3c7;
+                border: 2px solid #f59e0b;
+                border-radius: var(--radius-md);
+                font-weight: 700;
+                font-size: var(--text-base);
+                color: #78350f;
+                user-select: none;
+            ">
+                <span>🛠️ Advanced — Data Maintenance Tools</span>
+                <span style="font-size: var(--text-sm); font-weight: 400; opacity: 0.8;">
+                    Click to expand
+                </span>
+            </summary>
+
+            <div style="
+                margin-top: var(--space-md);
+                padding: var(--space-xl);
+                background: #fffbeb;
+                border: 1px solid #f59e0b;
+                border-radius: 0 0 var(--radius-md) var(--radius-md);
+            ">
+                <p style="color: #78350f; margin: 0 0 var(--space-xl); font-size: var(--text-sm);">
+                    These are <strong>one-time repair tools</strong> for fixing historical data issues. 
+                    They are safe to run — they never delete data — but under normal operation 
+                    you should not need them regularly.
+                </p>
+
+                <!-- Tool A: Fix incorrect payment amounts -->
+                <div style="
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: var(--radius-md);
+                    padding: var(--space-xl);
+                    margin-bottom: var(--space-xl);
+                ">
+                    <h4 style="margin: 0 0 var(--space-sm); color: #0f172a;">
+                        🔧 Fix Payment Record Amounts
+                    </h4>
+                    <p style="color: var(--color-gray-600); font-size: var(--text-sm); margin: 0 0 var(--space-md);">
+                        If payment records were created before the adjusted fees system was set up, 
+                        they may show incorrect amounts (not reflecting scholarships or discounts). 
+                        This recalculates all records with the correct adjusted fees.
+                        <strong>Payment history is preserved.</strong>
+                    </p>
+                    <button
+                        id="migrate-payments-btn"
+                        class="btn btn-warning"
+                        onclick="migratePaymentRecordsToAdjustedFees()">
+                        🔄 Recalculate Payment Records to Adjusted Fees
+                    </button>
+                </div>
+
+                <!-- Tool B: Add session info to old results -->
+                <div style="
+                    background: white;
+                    border: 1px solid #e2e8f0;
+                    border-radius: var(--radius-md);
+                    padding: var(--space-xl);
+                ">
+                    <h4 style="margin: 0 0 var(--space-sm); color: #0f172a;">
+                        🔧 Add Session Info to Old Results
+                    </h4>
+                    <p style="color: var(--color-gray-600); font-size: var(--text-sm); margin: 0 0 var(--space-md);">
+                        Results entered before session tracking was introduced have no session field.
+                        This assigns the current session to all such results based on when they were created.
+                        <strong>No existing data is deleted or overwritten.</strong>
+                        Only run this once when you first enable the session system.
+                    </p>
+
+                    <div class="alert alert-warning" style="margin-bottom: var(--space-md);">
+                        <strong>⚠️ Instructions:</strong>
+                        <ul style="margin: var(--space-sm) 0 0 var(--space-lg); line-height: 1.8;">
+                            <li>All results without a session will be assigned to the <strong>current session</strong></li>
+                            <li>This operation may take a few minutes if you have many results</li>
+                            <li>Only run <strong>once</strong></li>
+                        </ul>
+                    </div>
+
+                    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-warning" onclick="backfillSessionData()" id="backfill-btn">
+                            🔄 Add Session Info to Old Results
+                        </button>
+                        <div id="migration-status" style="flex: 1; min-width: 300px; padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
+                            <p style="margin: 0; font-size: 0.875rem;"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </details>
+    </div>
+
 </div>
 </div> <!-- Close content-wrapper -->
     </main>
