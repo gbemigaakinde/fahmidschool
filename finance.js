@@ -163,54 +163,51 @@ const finance = {
    * ═══════════════════════════════════════════════════════════
    */
   calculateAdjustedFee(pupilData, baseFee, currentTerm) {
-    if (!pupilData || typeof baseFee !== 'number') {
-      console.warn('[FINANCE] Invalid input to calculateAdjustedFee');
-      return baseFee || 0;
-    }
-    
-    // Step 1: Check enrollment period (admissionTerm / exitTerm)
-    const termOrder = {
-      'First Term': 1,
-      'Second Term': 2,
-      'Third Term': 3
-    };
-    
-    const currentTermNum = termOrder[currentTerm] || 1;
-    const admissionTermNum = termOrder[pupilData.admissionTerm || 'First Term'] || 1;
-    const exitTermNum = termOrder[pupilData.exitTerm || 'Third Term'] || 3;
-    
-    // Not yet admitted or already exited
-    if (currentTermNum < admissionTermNum || currentTermNum > exitTermNum) {
-      console.log(`   [FINANCE] Pupil not enrolled for ${currentTerm} (admission: ${pupilData.admissionTerm}, exit: ${pupilData.exitTerm})`);
-      return 0;
-    }
-    
-    // Step 2: Start with base fee
-    let adjustedFee = baseFee;
-    
-    // Step 3: Apply percentage adjustment (e.g., 50% scholarship = -50%)
-    const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
-    if (percentAdjustment !== 0) {
-      adjustedFee = adjustedFee * (1 + percentAdjustment / 100);
-      console.log(`   [FINANCE] Applied ${percentAdjustment}% adjustment: ₦${baseFee.toLocaleString()} → ₦${adjustedFee.toLocaleString()}`);
-    }
-    
-    // Step 4: Apply fixed amount adjustment (e.g., ₦5000 discount = -5000)
-    const amountAdjustment = Number(pupilData.feeAdjustmentAmount) || 0;
-    if (amountAdjustment !== 0) {
-      adjustedFee = adjustedFee + amountAdjustment;
-      console.log(`   [FINANCE] Applied ₦${amountAdjustment.toLocaleString()} adjustment → ₦${adjustedFee.toLocaleString()}`);
-    }
-    
-    // Step 5: Ensure non-negative
-    const finalFee = Math.max(0, adjustedFee);
-    
-    if (finalFee === 0 && baseFee > 0) {
-      console.log(`   [FINANCE] ✓ Free education applied for ${pupilData.name}`);
-    }
-    
-    return finalFee;
-  },
+  if (!pupilData || typeof baseFee !== 'number') {
+    console.warn('[FINANCE] Invalid input to calculateAdjustedFee');
+    return baseFee || 0;
+  }
+
+  const termOrder = {
+    'First Term': 1,
+    'Second Term': 2,
+    'Third Term': 3
+  };
+
+  const currentTermNum = termOrder[currentTerm] || 1;
+  const admissionTermNum = termOrder[pupilData.admissionTerm || 'First Term'] || 1;
+  const exitTermNum = termOrder[pupilData.exitTerm || 'Third Term'] || 3;
+
+  if (currentTermNum < admissionTermNum || currentTermNum > exitTermNum) {
+    console.log(`   [FINANCE] Pupil not enrolled for ${currentTerm} (admission: ${pupilData.admissionTerm}, exit: ${pupilData.exitTerm})`);
+    return 0;
+  }
+
+  // ✅ Round base fee on entry — guards against legacy unrounded values in Firestore
+  let adjustedFee = Math.round(Number(baseFee) || 0);
+
+  const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
+  if (percentAdjustment !== 0) {
+    // ✅ Round after percentage — prevents float drift (e.g. 50000 * 1.15 = 57499.9999...)
+    adjustedFee = Math.round(adjustedFee * (1 + percentAdjustment / 100));
+    console.log(`   [FINANCE] Applied ${percentAdjustment}% adjustment: ₦${baseFee.toLocaleString()} → ₦${adjustedFee.toLocaleString()}`);
+  }
+
+  const amountAdjustment = Number(pupilData.feeAdjustmentAmount) || 0;
+  if (amountAdjustment !== 0) {
+    // ✅ Round after fixed adjustment
+    adjustedFee = Math.round(adjustedFee + amountAdjustment);
+    console.log(`   [FINANCE] Applied ₦${amountAdjustment.toLocaleString()} adjustment → ₦${adjustedFee.toLocaleString()}`);
+  }
+
+  const finalFee = Math.max(0, adjustedFee);
+
+  if (finalFee === 0 && baseFee > 0) {
+    console.log(`   [FINANCE] ✓ Free education applied for ${pupilData.name}`);
+  }
+
+  return finalFee;
+},
 
   /**
    * ═══════════════════════════════════════════════════════════
@@ -407,7 +404,8 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
       throw new Error(`Fee structure not configured for class: ${className}`);
     }
 
-    const baseFee = Number(feeDoc.data().total) || 0;
+    // ─── STEP 2 (existing code, one line changed) ───
+    const baseFee = Math.round(Number(feeDoc.data().total) || 0);
     console.log(`   ✓ Base fee: ₦${baseFee.toLocaleString()}`);
 
     // ═══════════════════════════════════════════════════════════
