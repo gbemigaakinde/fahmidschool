@@ -280,7 +280,7 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
    SECTION NAVIGATION WITH SAFETY CHECKS
 ======================================== */
 
-const sectionLoaders = {
+const sectionLoaders = window.sectionLoaders = {
   dashboard: loadTeacherDashboard,
   'my-classes': loadMyClassesSection,
   'enter-results': loadResultsSection,
