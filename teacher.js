@@ -37,49 +37,35 @@ let isLoadingData = false;
 window.checkRole('teacher')
   .then(async user => {
     currentUser = user;
+    window.currentUser = user; // ← EXPOSE TO OTHER SCRIPTS
     const info = document.getElementById('teacher-info');
     if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
     
-    // CRITICAL FIX: Sequential loading with error handling
     try {
       console.log('Starting teacher data load...');
-      
-      // Step 1: Load classes and pupils
       isLoadingData = true;
       await loadAssignedClasses();
       console.log('✓ Classes loaded:', assignedClasses.length);
-      
-      // Step 2: Load subjects (depends on classes)
       await loadSubjects();
       console.log('✓ Subjects loaded:', allSubjects.length);
-      
-      // Step 3: Mark data as loaded
       dataLoaded = true;
       isLoadingData = false;
       console.log('✓ All teacher data loaded successfully');
-      
-      // Step 4: Now safe to initialize portal
       initTeacherPortal();
-      
     } catch (error) {
       console.error('❌ Failed to load teacher data:', error);
       isLoadingData = false;
       dataLoaded = false;
-      
-      // Show error to user
       window.showToast?.(
         'Failed to load your teaching data. Please refresh the page.',
         'danger',
         10000
       );
-      
-      // Still try to show dashboard with empty data
       showSection('dashboard');
     }
   })
   .catch(err => {
     console.error('Authentication check failed:', err);
-    // Will redirect to login
   });
   
 document.getElementById('teacher-logout')?.addEventListener('click', e => {
@@ -506,7 +492,6 @@ function initTeacherPortal() {
 }
 
 function setupAllEventListeners() {
-  // FIXED: Add existence checks for all elements
   const saveResultsBtn = document.getElementById('save-results-btn');
   const saveAttendanceBtn = document.getElementById('save-attendance-btn');
   const saveTraitsBtn = document.getElementById('save-traits-btn');
@@ -517,24 +502,19 @@ function setupAllEventListeners() {
   if (saveTraitsBtn) saveTraitsBtn.addEventListener('click', saveTraitsAndSkills);
   if (saveRemarksBtn) saveRemarksBtn.addEventListener('click', saveRemarks);
   
-  // Results
   const resultTerm = document.getElementById('result-term');
   const resultSubject = document.getElementById('result-subject');
   if (resultTerm) resultTerm.addEventListener('change', loadResultsTable);
   if (resultSubject) resultSubject.addEventListener('change', loadResultsTable);
   
-  // Traits - now using bulk entry system
-const traitsTerm = document.getElementById('traits-term');
-if (traitsTerm) traitsTerm.addEventListener('change', loadBulkTraitsTable);
+  const traitsTerm = document.getElementById('traits-term');
+  if (traitsTerm) traitsTerm.addEventListener('change', loadBulkTraitsTable);
 
-// Remove the pupil selector listener since we no longer use individual entry
-const traitsPupil = document.getElementById('traits-pupil');
-if (traitsPupil) {
-  // Hide or remove the pupil selector if it exists in your HTML
-  traitsPupil.closest('.form-group')?.remove();
-}
+  const traitsPupil = document.getElementById('traits-pupil');
+  if (traitsPupil) {
+    traitsPupil.closest('.form-group')?.remove();
+  }
   
-  // Remarks
   const remarksPupil = document.getElementById('remarks-pupil');
   const remarksTerm = document.getElementById('remarks-term');
   if (remarksPupil) remarksPupil.addEventListener('change', loadRemarksData);
@@ -542,9 +522,13 @@ if (traitsPupil) {
     if (remarksPupil?.value) loadRemarksData();
   });
   
-  // Attendance
+  // FIXED: Always use the patched sectionLoaders version so enhanced UI is called
   const attendanceTerm = document.getElementById('attendance-term');
-  if (attendanceTerm) attendanceTerm.addEventListener('change', loadAttendanceSection);
+  if (attendanceTerm) attendanceTerm.addEventListener('change', () => {
+    const loader = window.sectionLoaders?.['attendance'];
+    if (typeof loader === 'function') loader();
+    else loadAttendanceSection();
+  });
   
   console.log('✓ All event listeners connected with safety checks');
 }
@@ -2554,6 +2538,7 @@ window.saveAllAttendance = saveAllAttendance;
 window.loadRemarksData = loadRemarksData;
 window.saveRemarks = saveRemarks;
 window.loadAttendanceSection = loadAttendanceSection;
+window.paginateTable = paginateTable; // ← EXPOSE FOR ATTENDANCE UI
 
 // Helper for manual attendance save (used by attendance-teacher-ui.js)
 window._saveAttendanceFromInputs = async function(inputs, term) {
