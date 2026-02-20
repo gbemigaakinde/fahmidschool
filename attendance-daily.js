@@ -149,31 +149,58 @@ async function deleteDailyAttendance(classId, date, term, session, teacherId, pu
 /**
  * CORE: Recalculate cumulative attendance from ALL daily records.
  * Updates the existing attendance/{pupilId}_{term} documents.
- * This is the SINGLE SOURCE OF TRUTH calculation.
  *
- * SAFETY: Never produces negative numbers.
+ * timesOpened is derived from the school_calendar collection:
+ *   = number of days that have a daily_attendance record
+ *     AND are NOT marked as public_holiday / mid_term_break / special_break
+ *
+ * SAFETY: Never produces negative numbers. Falls back to raw day count
+ *         if school_calendar is unavailable (preserves existing behaviour).
+ *
+ * @version 1.1.0 — calendar-aware timesOpened
  */
 async function recalculateCumulativeTotals(classId, term, session, teacherId, pupils) {
     console.log(`Recalculating cumulative attendance: class=${classId}, term=${term}`);
 
-    // Fetch all daily records for this class + term + session
+    // ── 1. Fetch all daily records for this class + term + session ───────────
     const snap = await db.collection('daily_attendance')
         .where('classId', '==', classId)
         .where('term', '==', term)
         .where('session', '==', session)
         .get();
 
-    // Count per pupil
+    // ── 2. Get non-school days from admin calendar ───────────────────────────
+    //    Falls back to empty Set if calendar module unavailable (safe default:
+    //    all days count, same as previous behaviour).
+    let nonSchoolDays = new Set();
+    try {
+        if (window.schoolCalendar?.getNonSchoolDays) {
+            nonSchoolDays = await window.schoolCalendar.getNonSchoolDays(session, term);
+            console.log(`📅 Calendar: ${nonSchoolDays.size} non-school day(s) excluded for ${session} ${term}`);
+        }
+    } catch (calErr) {
+        console.warn('⚠️ Could not load school calendar — falling back to raw day count:', calErr);
+    }
+
+    // ── 3. Count per pupil, excluding non-school days ────────────────────────
     const pupilCounts = {};
     pupils.forEach(p => {
         pupilCounts[p.id] = { timesPresent: 0, timesAbsent: 0 };
     });
 
-    let totalDays = 0;   // unique school days = number of daily_attendance docs
+    let totalSchoolDays = 0;  // days that count towards timesOpened
 
     snap.forEach(doc => {
         const data = doc.data();
-        totalDays++;
+        const date = data.date; // "YYYY-MM-DD"
+
+        // Skip if the calendar marks this as a non-school day
+        if (nonSchoolDays.has(date)) {
+            console.log(`📅 Skipping non-school day in attendance calc: ${date}`);
+            return;
+        }
+
+        totalSchoolDays++;
 
         if (data.records && typeof data.records === 'object') {
             Object.entries(data.records).forEach(([pupilId, status]) => {
@@ -189,14 +216,13 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
         }
     });
 
-    // Batch write to existing attendance collection
+    // ── 4. Batch-write cumulative totals to attendance collection ────────────
     const settings = await window.getCurrentSettings?.() || { session };
     const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear = settings.currentSession?.endYear;
-    const sessionTerm = `${session}_${term}`;
+    const sessionEndYear   = settings.currentSession?.endYear;
+    const sessionTerm      = `${session}_${term}`;
 
-    // Write in batches of 500 (Firestore limit)
-    const batchSize = 400;
+    const batchSize    = 400;
     const pupilEntries = Object.entries(pupilCounts);
 
     for (let i = 0; i < pupilEntries.length; i += batchSize) {
@@ -205,12 +231,11 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
 
         chunk.forEach(([pupilId, counts]) => {
             const docId = `${pupilId}_${term}`;
-            const ref = db.collection('attendance').doc(docId);
+            const ref   = db.collection('attendance').doc(docId);
 
-            // Clamp to zero to prevent negative numbers
             const timesPresent = Math.max(0, counts.timesPresent);
-            const timesAbsent = Math.max(0, counts.timesAbsent);
-            const timesOpened = totalDays;
+            const timesAbsent  = Math.max(0, counts.timesAbsent);
+            const timesOpened  = totalSchoolDays; // ← calendar-aware
 
             batch.set(ref, {
                 pupilId,
@@ -218,22 +243,21 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
                 teacherId,
                 session,
                 sessionStartYear: sessionStartYear || null,
-                sessionEndYear: sessionEndYear || null,
+                sessionEndYear:   sessionEndYear   || null,
                 sessionTerm,
                 timesOpened,
                 timesPresent,
                 timesAbsent,
-                // Flag so system knows these are derived values
                 derivedFromDailyRecords: true,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });  // merge:true preserves any extra fields
+            }, { merge: true });
         });
 
         await batch.commit();
     }
 
-    console.log(`✓ Recalculated cumulative for ${pupilEntries.length} pupils. Days: ${totalDays}`);
-    return { totalDays, pupilCounts };
+    console.log(`✓ Recalculated cumulative for ${pupilEntries.length} pupils. School days: ${totalSchoolDays} (${snap.size - totalSchoolDays} non-school day(s) excluded)`);
+    return { totalDays: totalSchoolDays, pupilCounts };
 }
 
 /**
