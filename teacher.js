@@ -99,8 +99,8 @@ async function loadAssignedClasses() {
   
   try {
     const snap = await db.collection('classes')
-     .where('teacherId', '==', currentUser.uid)
-     .get();
+      .where('teacherId', '==', currentUser.uid)
+      .get();
     
     assignedClasses = snap.docs.map(doc => ({
       id: doc.id,
@@ -120,31 +120,27 @@ async function loadAssignedClasses() {
     // Collect all unique subjects from assigned classes
     const subjectSet = new Set();
     assignedClasses.forEach(cls => {
-      if (cls.subjects && Array.isArray(cls.subjects)) {
+      if (Array.isArray(cls.subjects)) {
         cls.subjects.forEach(subject => subjectSet.add(subject));
       }
     });
     allSubjects = Array.from(subjectSet).sort();
     
-    // ✅ CRITICAL FIX: Load pupils with explicit alumni exclusion
+    // Load pupils with explicit alumni exclusion
     const classIds = assignedClasses.map(c => c.id);
     allPupils = [];
 
     for (let i = 0; i < classIds.length; i += 10) {
       const batch = classIds.slice(i, i + 10);
+
       const pupilsSnap = await db.collection('pupils')
-         .where('class.id', 'in', batch)
-         .get();
+        .where('class.id', 'in', batch)
+        .get();
 
       const batchPupils = pupilsSnap.docs
-         .map(doc => ({ id: doc.id, ...doc.data() }))
-         .filter(p => p.status !== 'alumni');  // filter in JS, handles missing field safely
-      
-      const batchPupils = pupilsSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(p => p.status !== 'alumni'); // safely excludes alumni
+
       allPupils = allPupils.concat(batchPupils);
     }
     
