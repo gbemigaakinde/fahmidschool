@@ -1367,6 +1367,9 @@ function loadSectionData(sectionId) {
       case 'financial-reports':
         loadFinancialReports();
         break;
+      case 'school-calendar':
+         loadSchoolCalendarSection();
+         break;
       default:
         console.log(`ℹ️ No data loader for: ${sectionId}`);
     }
