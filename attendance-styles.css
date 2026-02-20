@@ -1,0 +1,145 @@
+/* ============================================
+   ATTENDANCE TABS & DAILY REGISTER STYLES
+   Add to styles.css (or attendance-styles.css)
+   ============================================ */
+
+/* ── Attendance Tab Buttons ── */
+.attendance-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #bfdbfe;
+    margin-bottom: var(--space-lg, 1.5rem);
+}
+
+.attendance-tab {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f8fafc;
+    border: 1px solid #bfdbfe;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 4px;
+}
+
+.attendance-tab:hover {
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.attendance-tab.active {
+    color: #1d4ed8;
+    background: white;
+    border-color: #bfdbfe;
+    border-bottom: 2px solid white;
+    margin-bottom: -2px;
+}
+
+/* ── Register Table ── */
+.attendance-register-table {
+    border: 2px solid #1565c0;
+    font-size: 0.875rem;
+}
+
+.attendance-register-table thead tr th {
+    background: #1565c0;
+    color: white;
+    font-weight: 600;
+    padding: 8px 6px;
+    white-space: nowrap;
+}
+
+.attendance-register-table tbody tr:nth-child(even) {
+    background: #f8faff;
+}
+
+.attendance-register-table tbody tr:hover {
+    background: #eff6ff;
+}
+
+/* Sticky name column on mobile */
+@media (max-width: 768px) {
+    .attendance-register-table td:first-child,
+    .attendance-register-table th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: inherit;
+        min-width: 120px;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+    }
+
+    .attendance-register-table thead th:first-child {
+        background: #1565c0;
+        z-index: 3;
+    }
+}
+
+/* ── Week Navigator ── */
+.week-navigator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* ── Mark Day Modal ── */
+#mark-day-modal {
+    backdrop-filter: blur(4px);
+}
+
+#mark-day-modal > div {
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Radio button attendance cells */
+#mark-modal-body table tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+#mark-modal-body input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1d4ed8;
+}
+
+/* ── Weekly Summary Panel ── */
+#weekly-summary-panel {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+/* ── Print-specific (browser print of register) ── */
+@media print {
+    .attendance-tabs,
+    .week-navigator,
+    #mark-day-modal,
+    .btn,
+    button {
+        display: none !important;
+    }
+
+    .attendance-register-table {
+        font-size: 8pt;
+    }
+
+    .attendance-register-table td,
+    .attendance-register-table th {
+        padding: 3px 4px;
+    }
+}
