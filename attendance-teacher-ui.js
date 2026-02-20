@@ -955,8 +955,7 @@ function generatePrintRegisterHTML(className, term, session, pupils, allDates, d
    INSTALL ENHANCED SECTION
 ══════════════════════════════════════════ */
 
-// Override the existing loadAttendanceSection with the enhanced version
-// Run this AFTER teacher.js is loaded
+// Make all functions globally available
 window.loadAttendanceSectionEnhanced = loadAttendanceSectionEnhanced;
 window.switchAttendanceTab = switchAttendanceTab;
 window.navigateWeek = navigateWeek;
@@ -969,19 +968,18 @@ window.togglePupilStatusInDay = togglePupilStatusInDay;
 window.printAttendanceRegister = printAttendanceRegister;
 window.saveAllAttendanceManual = saveAllAttendanceManual;
 
-// Override teacher.js's loadAttendanceSection
-// This REPLACES it once this file is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    // Patch after teacher.js has run
+// FIXED: Retry loop — keeps trying until teacher.js finishes its async init
+// and sectionLoaders is available on window
+function installEnhancedAttendance() {
     if (window.sectionLoaders) {
         window.sectionLoaders['attendance'] = loadAttendanceSectionEnhanced;
+        console.log('✓ Enhanced attendance UI installed into sectionLoaders');
+    } else {
+        console.log('⏳ Waiting for sectionLoaders...');
+        setTimeout(installEnhancedAttendance, 100);
     }
-    console.log('✓ Enhanced attendance UI installed');
-});
-
-// Also patch immediately in case DOMContentLoaded already fired
-if (window.sectionLoaders) {
-    window.sectionLoaders['attendance'] = loadAttendanceSectionEnhanced;
 }
+
+installEnhancedAttendance();
 
 console.log('✓ attendance-teacher-ui.js loaded (v1.0.0)');
