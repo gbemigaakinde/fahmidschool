@@ -131,8 +131,13 @@ async function loadAssignedClasses() {
     }
     
     allPupils.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    
-    console.log(`✓ Loaded ${assignedClasses.length} class(es), ${allPupils.length} pupil(s), ${allSubjects.length} subject(s)`);
+
+// EXPOSE TO WINDOW so attendance-teacher-ui.js and other modules can access
+window.assignedClasses = assignedClasses;
+window.allPupils = allPupils;
+window.allSubjects = allSubjects;
+
+console.log(`✓ Loaded ${assignedClasses.length} class(es), ${allPupils.length} pupil(s), ${allSubjects.length} subject(s)`);
     
   } catch (err) {
     console.error('Error loading assigned classes:', err);
@@ -140,6 +145,9 @@ async function loadAssignedClasses() {
     assignedClasses = [];
     allPupils = [];
     allSubjects = [];
+    window.assignedClasses = [];
+    window.allPupils = [];
+    window.allSubjects = [];
     throw err;
   }
 }
