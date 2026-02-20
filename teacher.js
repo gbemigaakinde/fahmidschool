@@ -2556,4 +2556,62 @@ window.loadRemarksData = loadRemarksData;
 window.saveRemarks = saveRemarks;
 window.loadAttendanceSection = loadAttendanceSection;
 
+// Helper for manual attendance save (used by attendance-teacher-ui.js)
+window._saveAttendanceFromInputs = async function(inputs, term) {
+    if (!inputs.length || !term) {
+        window.showToast?.('No data to save', 'warning');
+        return;
+    }
+
+    const pupilData = {};
+    const validationErrors = [];
+
+    inputs.forEach(input => {
+        const pupilId = input.dataset.pupil;
+        const field = input.dataset.field;
+        const value = parseInt(input.value) || 0;
+        if (value < 0) {
+            validationErrors.push(`Negative value for ${field}`);
+            return;
+        }
+        if (!pupilData[pupilId]) pupilData[pupilId] = {};
+        pupilData[pupilId][field] = value;
+    });
+
+    for (const [pupilId, data] of Object.entries(pupilData)) {
+        const { timesOpened = 0, timesPresent = 0, timesAbsent = 0 } = data;
+        if (timesPresent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present > Opened`);
+        if (timesAbsent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Absent > Opened`);
+        if (timesPresent + timesAbsent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present+Absent > Opened`);
+    }
+
+    if (validationErrors.length > 0) {
+        window.showToast?.(`Validation errors: ${validationErrors[0]}`, 'danger', 6000);
+        return;
+    }
+
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session || 'Unknown';
+    const batch = db.batch();
+
+    for (const [pupilId, data] of Object.entries(pupilData)) {
+        const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
+        batch.set(ref, {
+            pupilId, term,
+            teacherId: currentUser.uid,
+            session: currentSession,
+            sessionTerm: `${currentSession}_${term}`,
+            ...data,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+
+    try {
+        await batch.commit();
+        window.showToast?.('✓ Manual attendance totals saved', 'success');
+    } catch (err) {
+        window.handleError?.(err, 'Failed to save attendance');
+    }
+};
+
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
