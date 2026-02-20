@@ -133,9 +133,12 @@ async function loadAssignedClasses() {
     for (let i = 0; i < classIds.length; i += 10) {
       const batch = classIds.slice(i, i + 10);
       const pupilsSnap = await db.collection('pupils')
-        .where('class.id', 'in', batch)
-        .where('status', '!=', 'alumni')  // ✅ EXPLICIT ALUMNI EXCLUSION
-        .get();
+         .where('class.id', 'in', batch)
+         .get();
+
+      const batchPupils = pupilsSnap.docs
+         .map(doc => ({ id: doc.id, ...doc.data() }))
+         .filter(p => p.status !== 'alumni');  // filter in JS, handles missing field safely
       
       const batchPupils = pupilsSnap.docs.map(doc => ({
         id: doc.id,
