@@ -29,8 +29,11 @@ async function loadAttendanceSectionEnhanced() {
     if (!container) return;
 
     // Guard: need classes and pupils
-    if (!window.assignedClasses || window.assignedClasses.length === 0 ||
-        !window.allPupils || window.allPupils.length === 0) {
+    // Use window.* (set by teacher.js after data loads) with fallback to empty array
+    const assignedClasses = window.assignedClasses || [];
+    const allPupils = window.allPupils || [];
+
+    if (assignedClasses.length === 0 || allPupils.length === 0) {
         container.innerHTML = '<p style="text-align:center;color:var(--color-gray-600);">No pupils in assigned classes</p>';
         if (saveBtn) saveBtn.hidden = true;
         return;
