@@ -145,7 +145,7 @@ async function updatePupilAttendanceForDay(classId, date, term, session, teacher
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Recalculate cumulative
+    // FIXED: removed erroneous 'date' argument — correct parameter order is (classId, term, session, teacherId, pupils)
     await recalculateCumulativeTotals(classId, term, session, teacherId, pupils);
     console.log(`✓ Updated ${pupilId} to '${newStatus}' on ${date}`);
 }
