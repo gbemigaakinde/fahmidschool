@@ -275,13 +275,14 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
 ======================================== */
 
 const sectionLoaders = window.sectionLoaders = {
-  dashboard: loadTeacherDashboard,
-  'my-classes': loadMyClassesSection,
+  dashboard:       loadTeacherDashboard,
+  'my-classes':    loadMyClassesSection,
   'enter-results': loadResultsSection,
-  attendance: loadAttendanceSection,
+  attendance:      loadAttendanceSection,
   'traits-skills': loadTraitsSection,
-  remarks: loadRemarksSection,
-  promotions: loadPromotionSection
+  remarks:         loadRemarksSection,
+  promotions:      loadPromotionSection,
+  'lesson-notes':  () => window.loadLessonNotesSection?.()   // ← NEW
 };
 
 function showSection(sectionId) {
