@@ -620,30 +620,81 @@ function loadMyClassesSection() {
    RESULTS 
 ======================================== */
 
-async function loadResultsSection() {
-  const container = document.getElementById('results-entry-table-container');
-  const saveBtn = document.getElementById('save-results-btn');
-  
-  if (!container || !saveBtn) return;
-  
-  if (assignedClasses.length === 0 || allPupils.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in your classes</p>';
-    saveBtn.hidden = true;
-    return;
-  }
-  
+function loadResultsSection() {
+  if (!ensureDataLoaded('loadResultsSection')) return;
+
   const subjectSelect = document.getElementById('result-subject');
-  if (subjectSelect) {
-    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-    allSubjects.forEach(sub => {
+  const classSelect = document.getElementById('result-class');
+  const classGroupEl = document.getElementById('result-class-group');
+
+  // Populate class selector
+  if (classSelect) {
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+
+    const classes = getValidClasses();
+
+    classes.forEach(cls => {
       const opt = document.createElement('option');
-      opt.value = sub;
-      opt.textContent = sub;
+      opt.value = cls.id;
+      opt.textContent = cls.name;
+      classSelect.appendChild(opt);
+    });
+
+    if (classes.length === 1) {
+      // Single-class teacher
+      classSelect.value = classes[0].id;
+      if (classGroupEl) classGroupEl.style.display = 'none';
+    } else {
+      // Multi-class teacher
+      if (classGroupEl) classGroupEl.style.display = '';
+    }
+
+    // Remove old listeners safely
+    const freshClassSelect = classSelect.cloneNode(true);
+    classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
+
+    // Re-wire change event
+    freshClassSelect.addEventListener('change', function () {
+      populateSubjectsForClass(this.value);
+      checkResultLockStatus();
+      loadResultsTable();
+    });
+
+    // Initial subject population
+    populateSubjectsForClass(freshClassSelect.value);
+  }
+
+  loadResultsTable();
+}
+
+function populateSubjectsForClass(classId) {
+  const subjectSelect = document.getElementById('result-subject');
+  if (!subjectSelect) return;
+
+  subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+
+  if (!classId) return;
+
+  const cls = getValidClasses().find(c => c.id === classId);
+  const subjects = cls?.subjects || [];
+
+  if (subjects.length === 0) {
+    // Fallback to all subjects
+    getValidSubjects().forEach(subject => {
+      const opt = document.createElement('option');
+      opt.value = subject;
+      opt.textContent = subject;
       subjectSelect.appendChild(opt);
     });
+    return;
   }
-  
-  await loadResultsTable();
+
+  subjects.forEach(subject => {
+    const opt = document.createElement('option');
+    opt.value = subject;
+    opt.textContent = subject;
+    subjectSelect.appendChild(opt);
+  });
 }
 
 async function loadResultsTable() {
@@ -861,8 +912,10 @@ async function checkResultLockStatus() {
         return;
     }
     
-    const classId = assignedClasses[0].id;
-    const className = assignedClasses[0].name;
+    const classSelect = document.getElementById('result-class');
+    const classId = classSelect?.value || assignedClasses[0]?.id;
+    const selectedClassObj = assignedClasses.find(c => c.id === classId);
+    const className = selectedClassObj?.name || assignedClasses[0]?.name || 'your class';
     
     try {
         const settings = await window.getCurrentSettings();
@@ -1173,8 +1226,23 @@ async function submitResultsForApproval() {
         return;
     }
 
-    const classId = assignedClasses[0].id;
-    const className = assignedClasses[0].name;
+    // Read from result-class selector
+const classSelect = document.getElementById('result-class');
+const selectedClassId = classSelect?.value;
+
+if (!selectedClassId) {
+  window.showToast?.('Please select a class before submitting for approval.', 'warning');
+  return;
+}
+
+const selectedClass = assignedClasses.find(c => c.id === selectedClassId);
+if (!selectedClass) {
+  window.showToast?.('Selected class not found. Please refresh and try again.', 'danger');
+  return;
+}
+
+const classId = selectedClass.id;
+const className = selectedClass.name;
     
     const confirmed = confirm(
         `Submit results for approval?\n\n` +
