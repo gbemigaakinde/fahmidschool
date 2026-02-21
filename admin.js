@@ -1349,10 +1349,7 @@ function loadSectionData(sectionId) {
         loadViewResultsSection();
         break;
       case 'settings':
-        loadCurrentSettings();
-        setTimeout(async () => {
-          await loadClassHierarchyUI();
-        }, 200);
+        loadCurrentSettings(); // This already handles hierarchy loading internally
         loadSessionHistory();
         break;
       case 'fee-management':
@@ -1656,10 +1653,11 @@ async function viewPromotionDetails(promotionId) {
 }
 
 function closePromotionDetailsModal() {
-  const modal = document.getElementById('promotion-details-modal');
-  if (modal) modal.style.display = 'none';
-  currentPromotionId = null;
-  currentPromotionData = null;
+    const modal = document.getElementById('promotion-details-modal');
+    if (modal) modal.style.display = 'none';
+    currentPromotionId = null;
+    currentPromotionData = null;
+    manualOverrides = []; // ← ADD THIS LINE
 }
 
 async function populateOverrideDropdowns() {
@@ -1878,250 +1876,246 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
-  // CRITICAL FIX: Proper batch size limit
-  const BATCH_SIZE = 400; // Safe limit under Firestore's 500
-  let currentBatch = db.batch();
-  let operationCount = 0;
-  let batchNumber = 1;
-  let totalOperations = 0;
+ // CRITICAL FIX: Proper batch size limit
+const BATCH_SIZE = 400; // Safe limit under Firestore's 500
+let currentBatch = db.batch();
+let operationCount = 0;
+let batchNumber = 1;
+let totalOperations = 0;
 
-  // Helper function to commit current batch safely
-  async function commitCurrentBatch() {
-    if (operationCount > 0) {
-      console.log(`📦 Committing batch ${batchNumber} with ${operationCount} operations...`);
+// Helper function to commit current batch safely
+async function commitCurrentBatch() {
+  if (operationCount > 0) {
+    console.log(`📦 Committing batch ${batchNumber} with ${operationCount} operations...`);
+    
+    try {
+      await currentBatch.commit();
+      console.log(`✅ Batch ${batchNumber} committed successfully`);
       
-      try {
-        await currentBatch.commit();
-        console.log(`✅ Batch ${batchNumber} committed successfully`);
-        
-        batchNumber++;
-        currentBatch = db.batch();
-        operationCount = 0;
-        
-        // Small delay between batches to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-      } catch (error) {
-        console.error(`❌ Batch ${batchNumber} failed:`, error);
-        throw new Error(`Promotion failed at batch ${batchNumber}. Error: ${error.message}`);
-      }
+      batchNumber++;
+      currentBatch = db.batch();
+      operationCount = 0;
+      
+      // Small delay between batches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (error) {
+      console.error(`❌ Batch ${batchNumber} failed:`, error);
+      throw new Error(`Promotion failed at batch ${batchNumber}. Error: ${error.message}`);
     }
   }
-
-  // Get class details if not terminal
-  let toClassDetails = null;
-  if (!data.isTerminalClass) {
-    const toClassDoc = await db.collection('classes').doc(data.toClass.id).get();
-    if (toClassDoc.exists) {
-      toClassDetails = toClassDoc.data();
-    }
-  }
-
-  // Process promoted pupils
-  console.log(`📝 Processing ${promotedPupils.length} promoted pupils...`);
-  
-  for (const pupilId of promotedPupils) {
-    const pupilRef = db.collection('pupils').doc(pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
-      continue;
-    }
-    
-    const pupilData = pupilDoc.data();
-
-// ═══════════════════════════════════════════════════════════
-// FIXED: Complete Alumni Transition (Removes from Active Workflows)
-// ═══════════════════════════════════════════════════════════
-
-if (data.isTerminalClass) {
-  // ✓ Store final class for historical record
-  const finalClassName = pupilData.class?.name || data.fromClass.name;
-  const finalTeacherName = pupilData.assignedTeacher?.name || 'Unknown';
-  
-  // ✓ Update pupil to alumni state
-  currentBatch.update(pupilRef, {
-    // ─── Active State (Clear All) ───
-    status: 'alumni',
-    isActive: false,
-    
-    // ✓ CRITICAL FIX: Remove from active class
-    'class.id': null,
-    'class.name': null,
-    
-    // ✓ CRITICAL FIX: Clear active subjects
-    subjects: [],
-    
-    // ✓ CRITICAL FIX: Clear teacher assignment
-    'assignedTeacher.id': null,
-    'assignedTeacher.name': null,
-    
-    // ─── Historical State (Preserve) ───
-    finalClass: finalClassName,
-    finalTeacher: finalTeacherName,
-    graduationSession: data.fromSession,
-    graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-    promotionDate: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  operationCount++;
-  totalOperations++;
-  
-  // ✓ Create alumni index entry
-  const alumniRef = db.collection('alumni').doc(pupilId);
-  currentBatch.set(alumniRef, {
-    pupilId: pupilId,
-    name: pupilData.name || 'Unknown',
-    finalClass: finalClassName,
-    finalTeacher: finalTeacherName,
-    graduationSession: data.fromSession,
-    graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-    gender: pupilData.gender || null,
-    admissionNo: pupilData.admissionNo || null,
-  });
-  operationCount++;
-  totalOperations++;
-} else {
-  // ─── Regular promotion (unchanged) ───
-  currentBatch.update(pupilRef, {
-    'class.id': data.toClass.id,
-    'class.name': data.toClass.name,
-    subjects: toClassDetails?.subjects || [],
-    promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-      session: data.fromSession,
-      fromClass: data.fromClass.name,
-      toClass: data.toClass.name,
-      promoted: true,
-      date: firebase.firestore.FieldValue.serverTimestamp()
-    }),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  operationCount++;
-  totalOperations++;
 }
-    
-    // Commit if batch is full
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
-  }
 
-  // Process held back pupils
-  console.log(`📝 Processing ${heldBackPupils.length} held back pupils...`);
+// Get class details if not terminal
+let toClassDetails = null;
+if (!data.isTerminalClass) {
+  const toClassDoc = await db.collection('classes').doc(data.toClass.id).get();
+  if (toClassDoc.exists) {
+    toClassDetails = toClassDoc.data();
+  }
+}
+
+// Process promoted pupils
+console.log(`📝 Processing ${promotedPupils.length} promoted pupils...`);
+
+for (const pupilId of promotedPupils) {
+  const pupilRef = db.collection('pupils').doc(pupilId);
+  const pupilDoc = await pupilRef.get();
   
-  for (const pupilId of heldBackPupils) {
-    const pupilRef = db.collection('pupils').doc(pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
-      continue;
-    }
+  if (!pupilDoc.exists) {
+    console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
+    continue;
+  }
+  
+  const pupilData = pupilDoc.data();
+
+  if (data.isTerminalClass) {
+    const finalClassName = pupilData.class?.name || data.fromClass.name;
+    const finalTeacherName = pupilData.assignedTeacher?.name || 'Unknown';
     
     currentBatch.update(pupilRef, {
+      status: 'alumni',
+      isActive: false,
+      'class.id': null,
+      'class.name': null,
+      subjects: [],
+      'assignedTeacher.id': null,
+      'assignedTeacher.name': null,
+      finalClass: finalClassName,
+      finalTeacher: finalTeacherName,
+      graduationSession: data.fromSession,
+      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+      promotionDate: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    operationCount++;
+    totalOperations++;
+    
+    const alumniRef = db.collection('alumni').doc(pupilId);
+    currentBatch.set(alumniRef, {
+      pupilId: pupilId,
+      name: pupilData.name || 'Unknown',
+      finalClass: finalClassName,
+      finalTeacher: finalTeacherName,
+      graduationSession: data.fromSession,
+      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+      gender: pupilData.gender || null,
+      admissionNo: pupilData.admissionNo || null
+    });
+    operationCount++;
+    totalOperations++;
+    
+  } else {
+    currentBatch.update(pupilRef, {
+      'class.id': data.toClass.id,
+      'class.name': data.toClass.name,
+      subjects: toClassDetails?.subjects || [],
       promotionHistory: firebase.firestore.FieldValue.arrayUnion({
         session: data.fromSession,
         fromClass: data.fromClass.name,
-        toClass: data.fromClass.name,
-        promoted: false,
-        reason: 'Held back by admin/teacher decision',
+        toClass: data.toClass.name,
+        promoted: true,
         date: firebase.firestore.FieldValue.serverTimestamp()
       }),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     operationCount++;
     totalOperations++;
-    
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
   }
-
-  // Process manual overrides
-  console.log(`📝 Processing ${manualOverrides.length} manual overrides...`);
   
-  for (const override of manualOverrides) {
-    const pupilRef = db.collection('pupils').doc(override.pupilId);
-    const pupilDoc = await pupilRef.get();
-    
-    if (!pupilDoc.exists) {
-      console.warn(`⚠️ Pupil ${override.pupilId} not found, skipping`);
-      continue;
-    }
-    
-    const pupilData = pupilDoc.data();
-
-    if (override.classId === 'alumni') {
-      // Move to alumni (2 operations)
-      const alumniRef = db.collection('alumni').doc(override.pupilId);
-      
-      currentBatch.set(alumniRef, {
-        ...pupilData,
-        graduationSession: data.fromSession,
-        graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
-        finalClass: data.fromClass.name,
-        manualOverride: true,
-        promotionDate: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      operationCount++;
-      totalOperations++;
-      
-      currentBatch.delete(pupilRef);
-      operationCount++;
-      totalOperations++;
-      
-    } else {
-      // Move to specific class
-      const overrideClassDoc = await db.collection('classes').doc(override.classId).get();
-      
-      if (overrideClassDoc.exists) {
-        const overrideClassData = overrideClassDoc.data();
-        
-        currentBatch.update(pupilRef, {
-          'class.id': override.classId,
-          'class.name': overrideClassData.name,
-          subjects: overrideClassData.subjects || [],
-          promotionHistory: firebase.firestore.FieldValue.arrayUnion({
-            session: data.fromSession,
-            fromClass: data.fromClass.name,
-            toClass: overrideClassData.name,
-            promoted: true,
-            manualOverride: true,
-            date: firebase.firestore.FieldValue.serverTimestamp()
-          }),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        operationCount++;
-        totalOperations++;
-      }
-    }
-    
-    if (operationCount >= BATCH_SIZE) {
-      await commitCurrentBatch();
-    }
+  if (operationCount >= BATCH_SIZE) {
+    await commitCurrentBatch();
   }
+}
 
-  // Mark promotion as completed (1 operation)
-  currentBatch.update(promotionDoc.ref, {
-    status: 'completed',
-    approvedBy: auth.currentUser.uid,
-    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    executedAt: firebase.firestore.FieldValue.serverTimestamp()
+// Process held back pupils
+console.log(`📝 Processing ${heldBackPupils.length} held back pupils...`);
+
+for (const pupilId of heldBackPupils) {
+  const pupilRef = db.collection('pupils').doc(pupilId);
+  const pupilDoc = await pupilRef.get();
+  
+  if (!pupilDoc.exists) {
+    console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
+    continue;
+  }
+  
+  currentBatch.update(pupilRef, {
+    promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+      session: data.fromSession,
+      fromClass: data.fromClass.name,
+      toClass: data.fromClass.name,
+      promoted: false,
+      reason: 'Held back by admin/teacher decision',
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    }),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   operationCount++;
   totalOperations++;
-
-  // Commit final batch
-  await commitCurrentBatch();
   
-  console.log(`✅ Promotion completed successfully!`);
-  console.log(`   - ${promotedPupils.length} pupils promoted`);
-  console.log(`   - ${heldBackPupils.length} pupils held back`);
-  console.log(`   - ${manualOverrides.length} manual overrides`);
-  console.log(`   - Total batches: ${batchNumber - 1}`);
-  console.log(`   - Total operations: ${totalOperations}`);
+  if (operationCount >= BATCH_SIZE) {
+    await commitCurrentBatch();
+  }
 }
+
+// Process manual overrides
+console.log(`📝 Processing ${manualOverrides.length} manual overrides...`);
+
+for (const override of manualOverrides) {
+  const pupilRef = db.collection('pupils').doc(override.pupilId);
+  const pupilDoc = await pupilRef.get();
+  
+  if (!pupilDoc.exists) {
+    console.warn(`⚠️ Pupil ${override.pupilId} not found, skipping`);
+    continue;
+  }
+  
+  const pupilData = pupilDoc.data();
+
+  if (override.classId === 'alumni') {
+    const finalClassName = pupilData.class?.name || data.fromClass?.name || 'Unknown';
+    
+    currentBatch.update(pupilRef, {
+      status: 'alumni',
+      isActive: false,
+      'class.id': null,
+      'class.name': null,
+      subjects: [],
+      'assignedTeacher.id': null,
+      'assignedTeacher.name': null,
+      finalClass: finalClassName,
+      graduationSession: data.fromSession,
+      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+      promotionDate: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    operationCount++;
+    totalOperations++;
+    
+    const alumniRef = db.collection('alumni').doc(override.pupilId);
+    currentBatch.set(alumniRef, {
+      pupilId: override.pupilId,
+      name: pupilData.name || 'Unknown',
+      finalClass: finalClassName,
+      graduationSession: data.fromSession,
+      graduationDate: firebase.firestore.FieldValue.serverTimestamp(),
+      gender: pupilData.gender || null,
+      admissionNo: pupilData.admissionNo || null,
+      manualOverride: true
+    });
+    operationCount++;
+    totalOperations++;
+      
+  } else {
+    const overrideClassDoc = await db.collection('classes').doc(override.classId).get();
+      
+    if (overrideClassDoc.exists) {
+      const overrideClassData = overrideClassDoc.data();
+        
+      currentBatch.update(pupilRef, {
+        'class.id': override.classId,
+        'class.name': overrideClassData.name,
+        subjects: overrideClassData.subjects || [],
+        promotionHistory: firebase.firestore.FieldValue.arrayUnion({
+          session: data.fromSession,
+          fromClass: data.fromClass.name,
+          toClass: overrideClassData.name,
+          promoted: true,
+          manualOverride: true,
+          date: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      operationCount++;
+      totalOperations++;
+    }
+  }
+  
+  if (operationCount >= BATCH_SIZE) {
+    await commitCurrentBatch();
+  }
+}
+
+// Mark promotion as completed
+currentBatch.update(promotionDoc.ref, {
+  status: 'completed',
+  approvedBy: auth.currentUser.uid,
+  approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  executedAt: firebase.firestore.FieldValue.serverTimestamp()
+});
+operationCount++;
+totalOperations++;
+
+// Commit final batch
+await commitCurrentBatch();
+
+console.log(`✅ Promotion completed successfully!`);
+console.log(`   - ${promotedPupils.length} pupils promoted`);
+console.log(`   - ${heldBackPupils.length} pupils held back`);
+console.log(`   - ${manualOverrides.length} manual overrides`);
+console.log(`   - Total batches: ${batchNumber - 1}`);
+console.log(`   - Total operations: ${totalOperations}`);
 
 async function rejectPromotion() {
   if (!currentPromotionId) {
@@ -5071,7 +5065,7 @@ window.exportFinancialReport = exportFinancialReport;
 window.exportFinancialCSV = exportFinancialCSV;
 window.exportFinancialPDF = exportFinancialPDF;
 window.getPreviousSessionName = getPreviousSessionName;
-window.calculateSessionBalance = calculateSessionBalance;
+window.calculateSessionBalanceSafe = calculateSessionBalanceSafe;
 window.updateFinancialDisplays = updateFinancialDisplays;
 window.updateSummaryDisplay = updateSummaryDisplay;
 
@@ -5643,20 +5637,6 @@ async function ensureAllPupilsHavePaymentRecords() {
 }
 
 window.ensureAllPupilsHavePaymentRecords = ensureAllPupilsHavePaymentRecords;
-/**
- * Helper: Get previous session name
- */
-function getPreviousSessionName(currentSession) {
-  // Extract years from "2025/2026"
-  const match = currentSession.match(/(\d{4})\/(\d{4})/);
-  if (!match) return null;
-  
-  const startYear = parseInt(match[1]);
-  const endYear = parseInt(match[2]);
-  
-  // Previous session is one year back
-  return `${startYear - 1}/${endYear - 1}`;
-}
 
 /**
  * Helper: Calculate total unpaid balance for entire session
@@ -5902,8 +5882,6 @@ async function migrateArrearsToNewSession() {
 
 // Make functions globally available
 window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
-window.getPreviousSessionName = getPreviousSessionName;
-window.calculateSessionBalance = calculateSessionBalance;
 window.recordPayment = recordPayment;
 window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 window.migrateArrearsToNewSession = migrateArrearsToNewSession;
@@ -10987,42 +10965,6 @@ window.exportResultsData = exportResultsData;
 console.log('✓ Data export functions loaded');
 
 /* =====================================================
-   HELPER FUNCTIONS (keep existing ones)
-===================================================== */
-
-function getPreviousSessionName(currentSession) {
-    const match = currentSession.match(/(\d{4})\/(\d{4})/);
-    if (!match) return null;
-    
-    const startYear = parseInt(match[1]);
-    const endYear = parseInt(match[2]);
-    
-    return `${startYear - 1}/${endYear - 1}`;
-}
-
-async function calculateSessionBalance(pupilId, session) {
-    try {
-        const paymentsSnap = await db.collection('payments')
-            .where('pupilId', '==', pupilId)
-            .where('session', '==', session)
-            .get();
-        
-        let totalBalance = 0;
-        
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            totalBalance += Number(data.balance) || 0;
-        });
-        
-        return totalBalance;
-        
-    } catch (error) {
-        console.error('Error calculating session balance:', error);
-        return 0;
-    }
-}
-
-/* =====================================================
    DEBUG CONSOLE - SHOWS WHAT'S HAPPENING
 ===================================================== */
 
@@ -11100,28 +11042,6 @@ window.getPreviousSessionName = function(currentSession) {
     const endYear = parseInt(match[2]);
     
     return `${startYear - 1}/${endYear - 1}`;
-};
-
-window.calculateSessionBalance = async function(pupilId, session) {
-    try {
-        const paymentsSnap = await db.collection('payments')
-            .where('pupilId', '==', pupilId)
-            .where('session', '==', session)
-            .get();
-        
-        let totalBalance = 0;
-        
-        paymentsSnap.forEach(doc => {
-            const data = doc.data();
-            totalBalance += Number(data.balance) || 0;
-        });
-        
-        return totalBalance;
-        
-    } catch (error) {
-        console.error('Error calculating session balance:', error);
-        return 0;
-    }
 };
 
 /* ========================================
