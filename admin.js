@@ -77,7 +77,7 @@ console.log('✅ calculateAdjustedFee() loaded for admin portal');
  * ALSO FIXED: Falls back to fee-structure recalculation when previous term
  * payment doc doesn't exist (e.g. pupil never paid, doc was never created).
  */
-window.calculateCompleteArrears = async function(pupilId, currentSession, currentTerm) {
+window.calculateCompleteArrears = async function (pupilId, currentSession, currentTerm) {
   try {
     let totalArrears = 0;
     const encodedSession = currentSession.replace(/\//g, '-');
@@ -131,8 +131,11 @@ window.calculateCompleteArrears = async function(pupilId, currentSession, curren
                 `  ⚠️ Previous term balance field is not a valid number (value: "${rawBalance}"). ` +
                 `Recalculating from fee structure.`
               );
-              // FIXED: Recalculate rather than defaulting to 0
-              totalArrears = await _recalculateTermBalance(pupilId, currentSession, previousTermName);
+              totalArrears = await _recalculateTermBalance(
+                pupilId,
+                currentSession,
+                previousTermName
+              );
             } else {
               totalArrears = Math.max(0, Math.round(parsed));
               if (totalArrears > 0) {
@@ -142,47 +145,70 @@ window.calculateCompleteArrears = async function(pupilId, currentSession, curren
               }
             }
 
-         } else {
-  // Payment doc missing — check if pupil is new this term before assuming arrears.
-  const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
-  const pupilCreatedAt = pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
-    ? pupilDocForCheck.data().createdAt.toDate()
-    : null;
+          } else {
+            // Payment doc missing — check if pupil is new this term before assuming arrears.
+            const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
+            const pupilCreatedAt =
+              pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
+                ? pupilDocForCheck.data().createdAt.toDate()
+                : null;
 
-  const settings = await window.getCurrentSettings();
-  const termOrder = { 'First Term': 1, 'Second Term': 2, 'Third Term': 3 };
-  const sessionMatch = currentSession.match(/(\d{4})\/(\d{4})/);
+            const sessionMatch = currentSession.match(/(\d{4})\/(\d{4})/);
 
-  // Build approximate start of the current term within the current session.
-  // First Term starts Sep 1, Second Term ~Jan 1, Third Term ~Apr 1.
-  const termStartMonths = { 'First Term': 8, 'Second Term': 0, 'Third Term': 3 };
-  let termStartYear = sessionMatch ? parseInt(sessionMatch[1]) : new Date().getFullYear();
-  if (currentTerm === 'Second Term' || currentTerm === 'Third Term') {
-    termStartYear = sessionMatch ? parseInt(sessionMatch[2]) : termStartYear;
-  }
-  const currentTermStart = new Date(termStartYear, termStartMonths[currentTerm] || 0, 1);
+            // Approximate term start dates.
+            const termStartMonths = {
+              'First Term': 8,   // September
+              'Second Term': 0,  // January
+              'Third Term': 3    // April
+            };
 
-  const isNewThisTerm = pupilCreatedAt && pupilCreatedAt >= currentTermStart;
+            let termStartYear = sessionMatch
+              ? parseInt(sessionMatch[1])
+              : new Date().getFullYear();
 
-  if (isNewThisTerm) {
-    console.log(
-      `  ⏭️ Pupil was created this term (${currentTerm}). No arrears from ${previousTermName}.`
-    );
-    totalArrears = 0;
-  } else {
-    console.warn(
-      `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
-      `Calculating balance from fee structure...`
-    );
-    totalArrears = await _recalculateTermBalance(pupilId, currentSession, previousTermName);
+            if (currentTerm === 'Second Term' || currentTerm === 'Third Term') {
+              termStartYear = sessionMatch
+                ? parseInt(sessionMatch[2])
+                : termStartYear;
+            }
 
-    if (totalArrears > 0) {
-      console.log(`  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`);
-    } else {
-      console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
-    }
-  }
-} catch (readError) {
+            const currentTermStart = new Date(
+              termStartYear,
+              termStartMonths[currentTerm] || 0,
+              1
+            );
+
+            const isNewThisTerm =
+              pupilCreatedAt && pupilCreatedAt >= currentTermStart;
+
+            if (isNewThisTerm) {
+              console.log(
+                `  ⏭️ Pupil was created this term (${currentTerm}). No arrears from ${previousTermName}.`
+              );
+              totalArrears = 0;
+            } else {
+              console.warn(
+                `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
+                `Calculating balance from fee structure...`
+              );
+
+              totalArrears = await _recalculateTermBalance(
+                pupilId,
+                currentSession,
+                previousTermName
+              );
+
+              if (totalArrears > 0) {
+                console.log(
+                  `  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`
+                );
+              } else {
+                console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
+              }
+            }
+          }
+
+        } catch (readError) {
           console.error(`  ❌ Failed to read ${previousTermName}:`, readError.message);
           totalArrears = 0;
         }
