@@ -11029,7 +11029,6 @@ window.adminDebug = {
     }
   }
 };
-}
 
 /**
  * ✅ Helper functions for financial calculations
