@@ -174,7 +174,7 @@ async function deleteDailyAttendance(classId, date, term, session, teacherId, pu
  * @version 1.1.0 — calendar-aware timesOpened
  */
 async function recalculateCumulativeTotals(classId, term, session, teacherId, pupils) {
-    console.log(`Recalculating cumulative attendance: class=${classId}, term=${term}, session=${session}`);
+    console.trace('recalculateCumulativeTotals called with:', { classId, term, session });
 
     if (!classId || !term || !session) {
         console.error('recalculateCumulativeTotals: missing required parameters', { classId, term, session });
