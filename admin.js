@@ -248,7 +248,7 @@ async function calculateSessionBalanceSafe(pupilId, session) {
             `  ⚠️ Third Term balance field is not a valid number for ${session}. ` +
             `Recalculating from fee structure.`
           );
-          // Fall through to recalculation below
+          // Recalculate from fee structure
           sessionBalance = await _recalculateTermBalance(pupilId, session, 'Third Term');
         } else {
           sessionBalance = Math.max(0, Math.round(balance));
@@ -259,34 +259,36 @@ async function calculateSessionBalanceSafe(pupilId, session) {
           }
         }
       } else {
-  // No Third Term doc — check if pupil was created during or after this session
-  // before assuming they owe the full Third Term fee.
-  const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
-  const pupilCreatedAt = pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
-    ? pupilDocForCheck.data().createdAt.toDate()
-    : null;
+        // No Third Term doc — check if pupil was created after this session
+        const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
+        const pupilCreatedAt =
+          pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
+            ? pupilDocForCheck.data().createdAt.toDate()
+            : null;
 
-  const sessionMatch = session.match(/(\d{4})\/(\d{4})/);
-  const sessionEndYear = sessionMatch ? parseInt(sessionMatch[2]) : null;
-  // Sep 1 of the session's end year = start of the NEXT session.
-  // If pupil was created on or after that date, they weren't in this session.
-  const sessionEndCutoff = sessionEndYear ? new Date(sessionEndYear, 8, 1) : null;
+        const sessionMatch = session.match(/(\d{4})\/(\d{4})/);
+        const sessionEndYear = sessionMatch ? parseInt(sessionMatch[2]) : null;
+        // Sep 1 of session end year = start of next session
+        const sessionEndCutoff = sessionEndYear ? new Date(sessionEndYear, 8, 1) : null;
 
-  const isNewAfterSession = pupilCreatedAt && sessionEndCutoff && pupilCreatedAt >= sessionEndCutoff;
+        const isNewAfterSession =
+          pupilCreatedAt && sessionEndCutoff && pupilCreatedAt >= sessionEndCutoff;
 
-  if (isNewAfterSession) {
-    console.log(
-      `  ⏭️ Pupil created after session ${session} ended. No arrears from this session.`
-    );
-    sessionBalance = 0;
-  } else {
-    console.warn(
-      `  ⚠️ No Third Term payment record found for pupil ${pupilId} in ${session}. ` +
-      `Calculating from fee structure...`
-    );
-    sessionBalance = await _recalculateTermBalance(pupilId, session, 'Third Term');
-  }
-} catch (readError) {
+        if (isNewAfterSession) {
+          console.log(
+            `  ⏭️ Pupil created after session ${session} ended. No arrears from this session.`
+          );
+          sessionBalance = 0;
+        } else {
+          console.warn(
+            `  ⚠️ No Third Term payment record found for pupil ${pupilId} in ${session}. ` +
+            `Calculating from fee structure...`
+          );
+          sessionBalance = await _recalculateTermBalance(pupilId, session, 'Third Term');
+        }
+      }
+
+    } catch (readError) {
       console.error(`  ❌ Failed to read Third Term for ${session}:`, readError.message);
       sessionBalance = 0;
     }
