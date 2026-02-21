@@ -1370,6 +1370,9 @@ function loadSectionData(sectionId) {
       case 'school-calendar':
          loadSchoolCalendarSection();
          break;
+      case 'lesson-notes':
+        loadLessonNotesAdminSection();
+        break;
       default:
         console.log(`ℹ️ No data loader for: ${sectionId}`);
     }
