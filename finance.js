@@ -218,113 +218,123 @@ const finance = {
    * - Second/Third Term: Add ONLY previous term balance (already cascaded)
    */
   async calculateCompleteArrears(pupilId, currentSession, currentTerm) {
-    try {
-      let totalArrears = 0;
-      const encodedSession = currentSession.replace(/\//g, '-');
+  try {
+    let totalArrears = 0;
+    const encodedSession = currentSession.replace(/\//g, '-');
+    
+    const termOrder = {
+      'First Term': 1,
+      'Second Term': 2,
+      'Third Term': 3
+    };
+    
+    const currentTermNum = termOrder[currentTerm] || 1;
+    
+    console.log(`   [FINANCE] Calculating arrears for ${currentTerm} in ${currentSession}...`);
+    
+    if (currentTermNum === 1) {
+      // ─── FIRST TERM: Add entire previous SESSION ───
+      const previousSession = this.getPreviousSessionName(currentSession);
       
-      const termOrder = {
-        'First Term': 1,
-        'Second Term': 2,
-        'Third Term': 3
-      };
-      
-      const currentTermNum = termOrder[currentTerm] || 1;
-      
-      console.log(`   [FINANCE] Calculating arrears for ${currentTerm} in ${currentSession}...`);
-      
-      if (currentTermNum === 1) {
-        // ─── FIRST TERM: Add entire previous SESSION ───
-        const previousSession = this.getPreviousSessionName(currentSession);
+      if (previousSession) {
+        console.log(`     Checking previous session: ${previousSession}`);
         
-        if (previousSession) {
-          console.log(`     Checking previous session: ${previousSession}`);
+        try {
+          const sessionArrears = await this.calculateSessionBalanceSafe(pupilId, previousSession);
+          totalArrears = sessionArrears;
           
-          try {
-            const sessionArrears = await this.calculateSessionBalanceSafe(pupilId, previousSession);
-            totalArrears = sessionArrears;
-            
-            if (sessionArrears > 0) {
-              console.log(`     ✓ Previous session arrears: ₦${sessionArrears.toLocaleString()}`);
-            } else {
-              console.log(`     ✓ No arrears from previous session`);
-            }
-          } catch (error) {
-            console.error(`     ⚠️ Error fetching previous session balance:`, error);
+          if (sessionArrears > 0) {
+            console.log(`     ✓ Previous session arrears: ₦${sessionArrears.toLocaleString()}`);
+          } else {
+            console.log(`     ✓ No arrears from previous session`);
           }
-        } else {
-          console.log(`     ℹ️ No previous session (this is the first session ever)`);
+        } catch (error) {
+          console.error(`     ⚠️ Error fetching previous session balance:`, error);
         }
-        
       } else {
-        // ─── SECOND/THIRD TERM: Add ONLY previous TERM balance ───
-        const previousTermName = Object.keys(termOrder).find(
-          key => termOrder[key] === currentTermNum - 1
-        );
+        console.log(`     ℹ️ No previous session (this is the first session ever)`);
+      }
+      
+    } else {
+      // ─── SECOND/THIRD TERM: Add ONLY previous TERM balance ───
+      const previousTermName = Object.keys(termOrder).find(
+        key => termOrder[key] === currentTermNum - 1
+      );
+      
+      if (previousTermName) {
+        console.log(`     Checking previous term: ${previousTermName}`);
         
-        if (previousTermName) {
-          console.log(`     Checking previous term: ${previousTermName}`);
+        const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
+        
+        try {
+          const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
           
-          const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
-          
-          try {
-            const prevTermDoc = await db.collection('payments').doc(prevTermDocId).get();
+          if (prevTermDoc.exists) {
+            const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
+            totalArrears = prevTermBalance;
             
-            if (prevTermDoc.exists) {
-              const prevTermBalance = Number(prevTermDoc.data().balance) || 0;
-              totalArrears = prevTermBalance;
-              
-              if (prevTermBalance > 0) {
-                console.log(`     ✓ Previous term balance: ₦${prevTermBalance.toLocaleString()}`);
-              } else {
-                console.log(`     ✓ Previous term fully paid`);
-              }
+            if (prevTermBalance > 0) {
+              console.log(`     ✓ Previous term balance: ₦${prevTermBalance.toLocaleString()}`);
             } else {
-              // ─── NO PAYMENT DOC: Recalculate what that term cost ───
-              // Pupil existed but never had a payment recorded (e.g. joined mid-year,
-              // or payment doc was never created). We cannot assume ₦0 — that would
-              // silently erase a full term's debt. Recalculate from fee structure.
-              console.log(`     ℹ️ No payment record for ${previousTermName} — recalculating from fee structure`);
-              
-              try {
-                const pupilDoc = await db.collection('pupils').doc(pupilId).get();
-                
-                if (pupilDoc.exists) {
-                  const pupilData = pupilDoc.data();
-                  const classId = this.getClassIdSafely(pupilData);
-                  
-                  if (classId) {
-                    const feeDoc = await db.collection('fee_structures').doc(`fee_${classId}`).get();
-                    
-                    if (feeDoc.exists) {
-                      const baseFee = Math.round(Number(feeDoc.data().total) || 0);
-                      const termFee = this.calculateAdjustedFee(pupilData, baseFee, previousTermName);
-                      totalArrears = termFee;
-                      console.log(`     ✓ Recalculated ${previousTermName} fee as arrears: ₦${termFee.toLocaleString()}`);
-                    } else {
-                      console.warn(`     ⚠️ No fee structure found — treating previous term as ₦0`);
-                    }
-                  } else {
-                    console.warn(`     ⚠️ No valid classId for pupil — treating previous term as ₦0`);
+              console.log(`     ✓ Previous term fully paid`);
+            }
+          } else {
+            // ─── NO PAYMENT DOC: Check if pupil is newly enrolled this term ───
+            // If the pupil's record was created during the current term, they
+            // weren't here last term — so no arrears from it.
+            console.log(`     ℹ️ No payment record for ${previousTermName} — checking enrollment date`);
+
+            let isNewThisTerm = false;
+
+            try {
+              const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+              if (pupilDoc.exists) {
+                const pupilCreatedAt = pupilDoc.data().createdAt?.toDate?.() || null;
+                if (pupilCreatedAt) {
+                  // Approximate term start: Jan = T2, May = T3, Sep = T1
+                  const now = new Date();
+                  const year = parseInt(currentSession.split('/')[0]);
+                  const termStartDates = {
+                    'First Term':  new Date(year,      8, 1),  // Sep 1
+                    'Second Term': new Date(year + 1,  0, 1),  // Jan 1
+                    'Third Term':  new Date(year + 1,  4, 1),  // May 1
+                  };
+                  const termStart = termStartDates[currentTerm];
+                  if (termStart && pupilCreatedAt >= termStart) {
+                    isNewThisTerm = true;
+                    console.log(`     ✓ Pupil enrolled ${pupilCreatedAt.toDateString()} — new this term, no arrears`);
                   }
                 }
+              }
+            } catch (enrollmentCheckError) {
+              console.warn(`     ⚠️ Could not check enrollment date:`, enrollmentCheckError.message);
+            }
+
+            if (!isNewThisTerm) {
+              // Pupil existed last term but has no payment doc — recalculate what they owed
+              console.log(`     ℹ️ Pupil was enrolled last term — recalculating ${previousTermName} from fee structure`);
+              try {
+                totalArrears = await this._recalculateTermBalance(pupilId, currentSession, previousTermName);
+                console.log(`     ✓ Recalculated ${previousTermName} arrears: ₦${totalArrears.toLocaleString()}`);
               } catch (fallbackError) {
                 console.error(`     ⚠️ Fallback recalculation failed:`, fallbackError);
               }
             }
-          } catch (error) {
-            console.error(`     ⚠️ Error fetching previous term balance:`, error);
           }
+        } catch (error) {
+          console.error(`     ⚠️ Error fetching previous term balance:`, error);
         }
       }
-      
-      console.log(`   [FINANCE] Total arrears: ₦${totalArrears.toLocaleString()}`);
-      return totalArrears;
-      
-    } catch (error) {
-      console.error('❌ [FINANCE] Error in calculateCompleteArrears:', error);
-      return 0; // Safe fallback
     }
-  },
+    
+    console.log(`   [FINANCE] Total arrears: ₦${totalArrears.toLocaleString()}`);
+    return totalArrears;
+    
+  } catch (error) {
+    console.error('❌ [FINANCE] Error in calculateCompleteArrears:', error);
+    return 0;
+  }
+},
 
   /**
    * ═══════════════════════════════════════════════════════════
@@ -334,13 +344,7 @@ const finance = {
   async calculateSessionBalanceSafe(pupilId, session) {
   try {
     const encodedSession = session.replace(/\//g, '-');
-
     console.log(`     Checking session balance for ${session}...`);
-
-    // BUG 7 FIX: Check terms in reverse order — Third, then Second, then First.
-    // A pupil's session-end balance lives in whichever term was their last.
-    // Pupils with exitTerm = 'Second Term' have no Third Term document.
-    // The first document found is returned — do not sum them (that would double-count).
 
     const termsToCheck = ['Third Term', 'Second Term', 'First Term'];
 
@@ -351,7 +355,16 @@ const finance = {
         const termDoc = await db.collection('payments').doc(docId).get();
 
         if (termDoc.exists) {
-          const balance = Number(termDoc.data().balance) || 0;
+          const rawBalance = termDoc.data().balance;
+          const balance = Number(rawBalance);
+
+          // If balance field is missing or corrupt, recalculate rather than returning 0
+          if (rawBalance === undefined || rawBalance === null || isNaN(balance)) {
+            console.warn(`     ⚠️ Invalid balance field in ${termName} doc — recalculating`);
+            const recalculated = await this._recalculateTermBalance(pupilId, session, termName);
+            console.log(`     ✓ Recalculated ${termName} balance: ₦${recalculated.toLocaleString()}`);
+            return recalculated;
+          }
 
           if (balance > 0) {
             console.log(`     ✓ Found balance in ${termName}: ₦${balance.toLocaleString()}`);
@@ -359,9 +372,6 @@ const finance = {
             console.log(`     ✓ ${termName} document found — session fully paid`);
           }
 
-          // Return the balance from the most recent term that has a document.
-          // Do not continue checking earlier terms — they are already included
-          // in the cascade balance of this term.
           return balance;
         } else {
           console.log(`     ℹ️ No ${termName} document for ${session} — checking earlier term`);
@@ -369,16 +379,100 @@ const finance = {
 
       } catch (error) {
         console.warn(`     ⚠️ Could not fetch ${termName} for ${session}:`, error.message);
-        // Continue to next term
       }
     }
 
-    // No payment documents found for this session at all
-    console.log(`     ℹ️ No payment records found for ${session} — assuming ₦0`);
+    // ─── NO DOCS AT ALL: Check if pupil was created after this session ended ───
+    // If yes — they weren't enrolled during this session, so no arrears.
+    // If no  — they existed but never paid; recalculate from fee structure.
+    console.log(`     ℹ️ No payment records for ${session} — checking enrollment date`);
+
+    try {
+      const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+      if (pupilDoc.exists) {
+        const pupilCreatedAt = pupilDoc.data().createdAt?.toDate?.() || null;
+        if (pupilCreatedAt) {
+          const sessionEndYear = parseInt(session.split('/')[1]);
+          const sessionEndDate = new Date(sessionEndYear, 7, 31); // ~Aug 31 = end of session
+          if (pupilCreatedAt > sessionEndDate) {
+            console.log(`     ✓ Pupil created ${pupilCreatedAt.toDateString()} — after session ended, no arrears`);
+            return 0;
+          }
+        }
+      }
+    } catch (enrollmentCheckError) {
+      console.warn(`     ⚠️ Could not check enrollment date:`, enrollmentCheckError.message);
+    }
+
+    // Pupil existed during this session but has no docs — recalculate Third Term as proxy
+    console.log(`     ℹ️ Pupil existed during ${session} — recalculating Third Term balance as fallback`);
+    try {
+      const fallback = await this._recalculateTermBalance(pupilId, session, 'Third Term');
+      console.log(`     ✓ Fallback recalculated: ₦${fallback.toLocaleString()}`);
+      return fallback;
+    } catch (fallbackError) {
+      console.error(`     ⚠️ Final fallback failed:`, fallbackError);
+    }
+
     return 0;
 
   } catch (error) {
     console.error('❌ [FINANCE] Error in calculateSessionBalanceSafe:', error);
+    return 0;
+  }
+},
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ * HELPER: Recalculate a single term's balance from fee structure
+ * ═══════════════════════════════════════════════════════════
+ * Used when a payment doc is missing — reconstructs what the
+ * pupil actually owes for ONE term from source data.
+ * Does NOT cascade arrears — returns only that term's own balance.
+ */
+async _recalculateTermBalance(pupilId, session, term) {
+  try {
+    console.log(`     [_recalculateTermBalance] Reconstructing ${term} ${session} for ${pupilId}`);
+
+    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+    if (!pupilDoc.exists) return 0;
+
+    const pupilData = pupilDoc.data();
+    const classId = this.getClassIdSafely(pupilData);
+    if (!classId) {
+      console.warn('     ⚠️ No classId — returning 0');
+      return 0;
+    }
+
+    const feeDoc = await db.collection('fee_structures').doc(`fee_${classId}`).get();
+    if (!feeDoc.exists) {
+      console.warn('     ⚠️ No fee structure — returning 0');
+      return 0;
+    }
+
+    const baseFee = Math.round(Number(feeDoc.data().total) || 0);
+    const amountDue = this.calculateAdjustedFee(pupilData, baseFee, term);
+
+    // Check if there are any payments against this term even without a summary doc
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+    let totalPaid = 0;
+
+    try {
+      const paymentDoc = await db.collection('payments').doc(paymentDocId).get();
+      if (paymentDoc.exists) {
+        totalPaid = Number(paymentDoc.data().totalPaid) || 0;
+      }
+    } catch (e) {
+      // No payment doc — totalPaid stays 0
+    }
+
+    const balance = Math.max(0, amountDue - totalPaid);
+    console.log(`     ✓ Reconstructed balance: ₦${amountDue.toLocaleString()} - ₦${totalPaid.toLocaleString()} = ₦${balance.toLocaleString()}`);
+    return balance;
+
+  } catch (error) {
+    console.error('     ⚠️ _recalculateTermBalance failed:', error.message);
     return 0;
   }
 },
@@ -967,14 +1061,12 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
 
 };
 
-// Expose to window for global access
 window.finance = finance;
-
-// Also expose individual functions for backward compatibility
 window.calculateCurrentOutstanding = finance.calculateCurrentOutstanding.bind(finance);
 window.calculateAdjustedFee = finance.calculateAdjustedFee.bind(finance);
 window.calculateCompleteArrears = finance.calculateCompleteArrears.bind(finance);
 window.calculateSessionBalanceSafe = finance.calculateSessionBalanceSafe.bind(finance);
+window._recalculateTermBalance = finance._recalculateTermBalance.bind(finance);
 window.getClassIdSafely = finance.getClassIdSafely.bind(finance);
 window.getPreviousSessionName = finance.getPreviousSessionName.bind(finance);
 
