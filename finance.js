@@ -279,7 +279,37 @@ const finance = {
                 console.log(`     ✓ Previous term fully paid`);
               }
             } else {
-              console.log(`     ℹ️ No payment record for ${previousTermName} (assuming ₦0)`);
+              // ─── NO PAYMENT DOC: Recalculate what that term cost ───
+              // Pupil existed but never had a payment recorded (e.g. joined mid-year,
+              // or payment doc was never created). We cannot assume ₦0 — that would
+              // silently erase a full term's debt. Recalculate from fee structure.
+              console.log(`     ℹ️ No payment record for ${previousTermName} — recalculating from fee structure`);
+              
+              try {
+                const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+                
+                if (pupilDoc.exists) {
+                  const pupilData = pupilDoc.data();
+                  const classId = this.getClassIdSafely(pupilData);
+                  
+                  if (classId) {
+                    const feeDoc = await db.collection('fee_structures').doc(`fee_${classId}`).get();
+                    
+                    if (feeDoc.exists) {
+                      const baseFee = Math.round(Number(feeDoc.data().total) || 0);
+                      const termFee = this.calculateAdjustedFee(pupilData, baseFee, previousTermName);
+                      totalArrears = termFee;
+                      console.log(`     ✓ Recalculated ${previousTermName} fee as arrears: ₦${termFee.toLocaleString()}`);
+                    } else {
+                      console.warn(`     ⚠️ No fee structure found — treating previous term as ₦0`);
+                    }
+                  } else {
+                    console.warn(`     ⚠️ No valid classId for pupil — treating previous term as ₦0`);
+                  }
+                }
+              } catch (fallbackError) {
+                console.error(`     ⚠️ Fallback recalculation failed:`, fallbackError);
+              }
             }
           } catch (error) {
             console.error(`     ⚠️ Error fetching previous term balance:`, error);
