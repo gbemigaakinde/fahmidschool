@@ -142,22 +142,47 @@ window.calculateCompleteArrears = async function(pupilId, currentSession, curren
               }
             }
 
-          } else {
-            // FIXED: Payment doc missing means pupil was active but payment was never recorded.
-            // Calculate what they actually owe for that term from fee structure.
-            console.warn(
-              `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
-              `Calculating balance from fee structure...`
-            );
-            totalArrears = await _recalculateTermBalance(pupilId, currentSession, previousTermName);
-            
-            if (totalArrears > 0) {
-              console.log(`  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`);
-            } else {
-              console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
-            }
-          }
-        } catch (readError) {
+         } else {
+  // Payment doc missing — check if pupil is new this term before assuming arrears.
+  const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
+  const pupilCreatedAt = pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
+    ? pupilDocForCheck.data().createdAt.toDate()
+    : null;
+
+  const settings = await window.getCurrentSettings();
+  const termOrder = { 'First Term': 1, 'Second Term': 2, 'Third Term': 3 };
+  const sessionMatch = currentSession.match(/(\d{4})\/(\d{4})/);
+
+  // Build approximate start of the current term within the current session.
+  // First Term starts Sep 1, Second Term ~Jan 1, Third Term ~Apr 1.
+  const termStartMonths = { 'First Term': 8, 'Second Term': 0, 'Third Term': 3 };
+  let termStartYear = sessionMatch ? parseInt(sessionMatch[1]) : new Date().getFullYear();
+  if (currentTerm === 'Second Term' || currentTerm === 'Third Term') {
+    termStartYear = sessionMatch ? parseInt(sessionMatch[2]) : termStartYear;
+  }
+  const currentTermStart = new Date(termStartYear, termStartMonths[currentTerm] || 0, 1);
+
+  const isNewThisTerm = pupilCreatedAt && pupilCreatedAt >= currentTermStart;
+
+  if (isNewThisTerm) {
+    console.log(
+      `  ⏭️ Pupil was created this term (${currentTerm}). No arrears from ${previousTermName}.`
+    );
+    totalArrears = 0;
+  } else {
+    console.warn(
+      `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
+      `Calculating balance from fee structure...`
+    );
+    totalArrears = await _recalculateTermBalance(pupilId, currentSession, previousTermName);
+
+    if (totalArrears > 0) {
+      console.log(`  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`);
+    } else {
+      console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
+    }
+  }
+} catch (readError) {
           console.error(`  ❌ Failed to read ${previousTermName}:`, readError.message);
           totalArrears = 0;
         }
@@ -208,15 +233,34 @@ async function calculateSessionBalanceSafe(pupilId, session) {
           }
         }
       } else {
-        // Payment doc doesn't exist — pupil may have been enrolled but never had
-        // a payment recorded. Calculate what they owe from fee structure.
-        console.warn(
-          `  ⚠️ No Third Term payment record found for pupil ${pupilId} in ${session}. ` +
-          `Calculating from fee structure...`
-        );
-        sessionBalance = await _recalculateTermBalance(pupilId, session, 'Third Term');
-      }
-    } catch (readError) {
+  // No Third Term doc — check if pupil was created during or after this session
+  // before assuming they owe the full Third Term fee.
+  const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
+  const pupilCreatedAt = pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
+    ? pupilDocForCheck.data().createdAt.toDate()
+    : null;
+
+  const sessionMatch = session.match(/(\d{4})\/(\d{4})/);
+  const sessionEndYear = sessionMatch ? parseInt(sessionMatch[2]) : null;
+  // Sep 1 of the session's end year = start of the NEXT session.
+  // If pupil was created on or after that date, they weren't in this session.
+  const sessionEndCutoff = sessionEndYear ? new Date(sessionEndYear, 8, 1) : null;
+
+  const isNewAfterSession = pupilCreatedAt && sessionEndCutoff && pupilCreatedAt >= sessionEndCutoff;
+
+  if (isNewAfterSession) {
+    console.log(
+      `  ⏭️ Pupil created after session ${session} ended. No arrears from this session.`
+    );
+    sessionBalance = 0;
+  } else {
+    console.warn(
+      `  ⚠️ No Third Term payment record found for pupil ${pupilId} in ${session}. ` +
+      `Calculating from fee structure...`
+    );
+    sessionBalance = await _recalculateTermBalance(pupilId, session, 'Third Term');
+  }
+} catch (readError) {
       console.error(`  ❌ Failed to read Third Term for ${session}:`, readError.message);
       sessionBalance = 0;
     }
