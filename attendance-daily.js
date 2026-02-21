@@ -250,6 +250,13 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
         }
     });
 
+console.log('DEBUG recalculate:', {
+    snapSize: snap.size,
+    nonSchoolDaysCount: nonSchoolDays.size,
+    nonSchoolDaysList: Array.from(nonSchoolDays),
+    totalSchoolDays,
+    pupilCountsSample: Object.entries(pupilCounts).slice(0, 2)
+});
     // ── 4. Batch-write cumulative totals to attendance collection ────────────
     let settings = { session };
     let sessionStartYear = null;
