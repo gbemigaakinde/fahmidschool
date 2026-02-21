@@ -341,15 +341,35 @@ async function lnOpenEditForm(docId) {
   }
 }
 
+/**
+ * Fetch subjects assigned to a class.
+ * Reads the subjects array from the class document.
+ */
+async function _lnGetClassSubjects(classId) {
+  if (!classId) return [];
+  try {
+    const classDoc = await db.collection('classes').doc(classId).get();
+    if (!classDoc.exists) return [];
+    return Array.isArray(classDoc.data().subjects) ? classDoc.data().subjects : [];
+  } catch (error) {
+    console.error('Error fetching class subjects:', error);
+    return [];
+  }
+}
+
 /* ============================================================
    FORM RENDERER
    Renders the create/edit form. `existingData` is null for new notes.
 ============================================================ */
 
-function _lnRenderForm(container, existingData, defaultTerm) {
+async function _lnRenderForm(container, existingData, defaultTerm) {
   const isEdit    = !!existingData;
   const isNew     = !isEdit;
   const classes   = window.assignedClasses || [];
+
+  const isDisabled = isEdit &&
+    existingData?.status !== 'draft' &&
+    existingData?.status !== 'rejected';
 
   // Build class options
   const classOptions = classes.map(c =>
@@ -372,7 +392,7 @@ function _lnRenderForm(container, existingData, defaultTerm) {
 
   // Build content field textareas
   const contentFields = LN_CONTENT_FIELDS.map(f => {
-    const fieldKey = f.id.replace('ln-', ''); // e.g. 'ln-topic' → 'topic'
+    const fieldKey = f.id.replace('ln-', '');
     const value    = existingData?.[fieldKey] || '';
     const req      = f.required ? '<span class="required">*</span>' : '';
     return `
@@ -384,7 +404,6 @@ function _lnRenderForm(container, existingData, defaultTerm) {
       </div>`;
   }).join('');
 
-  // Version & status badge for existing notes
   const metaBar = isEdit ? `
     <div style="display:flex; gap:var(--space-md); align-items:center; flex-wrap:wrap;
                 padding:var(--space-md) var(--space-lg); background:var(--color-gray-50);
@@ -395,7 +414,6 @@ function _lnRenderForm(container, existingData, defaultTerm) {
       <span>Status: ${_lnStatusBadge(existingData.status)}</span>
     </div>` : '';
 
-  // Rejection feedback banner
   const rejectionBanner = (existingData?.status === 'rejected' && existingData?.adminFeedback) ? `
     <div style="padding:var(--space-lg); background:#fef2f2; border:1px solid #fca5a5;
                 border-radius:var(--radius-md); margin-bottom:var(--space-xl);">
@@ -412,7 +430,6 @@ function _lnRenderForm(container, existingData, defaultTerm) {
                 border-radius:var(--radius-lg); padding:var(--space-xl);
                 box-shadow:0 2px 8px rgba(0,0,0,0.06);">
 
-      <!-- Form Header -->
       <div style="display:flex; justify-content:space-between; align-items:center; 
                   margin-bottom:var(--space-xl); flex-wrap:wrap; gap:var(--space-md);">
         <h2 style="margin:0; font-size:var(--text-xl);">
@@ -426,7 +443,6 @@ function _lnRenderForm(container, existingData, defaultTerm) {
       ${metaBar}
       ${rejectionBanner}
 
-      <!-- Identity Fields -->
       <div class="form-row form-row-2" style="margin-bottom:var(--space-md);">
         <div class="form-group">
           <label for="ln-class">Class <span class="required">*</span></label>
@@ -438,10 +454,9 @@ function _lnRenderForm(container, existingData, defaultTerm) {
         </div>
         <div class="form-group">
           <label for="ln-subject">Subject <span class="required">*</span></label>
-          <input type="text" id="ln-subject" 
-                 placeholder="e.g. Mathematics, English Language..." 
-                 value="${_lnEscape(existingData?.subject || '')}"
-                 ${isEdit && existingData?.status !== 'draft' && existingData?.status !== 'rejected' ? 'disabled' : ''}>
+          <select id="ln-subject" ${isDisabled ? 'disabled' : ''}>
+            <option value="">-- Select Subject --</option>
+          </select>
         </div>
       </div>
 
@@ -465,10 +480,8 @@ function _lnRenderForm(container, existingData, defaultTerm) {
 
       <hr style="border:none; border-top:1px solid var(--color-gray-200); margin:var(--space-xl) 0;">
 
-      <!-- Content Fields -->
       ${contentFields}
 
-      <!-- Action Buttons -->
       <div style="display:flex; gap:var(--space-md); flex-wrap:wrap; margin-top:var(--space-xl); 
                   padding-top:var(--space-xl); border-top:1px solid var(--color-gray-200);">
         <button class="btn btn-primary" id="ln-save-btn" onclick="lnSaveNote()">
@@ -481,6 +494,36 @@ function _lnRenderForm(container, existingData, defaultTerm) {
       </div>
     </div>
   `;
+
+  const classSelect = document.getElementById('ln-class');
+  const subjectSelect = document.getElementById('ln-subject');
+
+  if (classSelect && subjectSelect) {
+    const populateSubjects = async (classId, selectedSubject) => {
+      const subjects = await _lnGetClassSubjects(classId);
+      subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+
+      subjects.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === selectedSubject) opt.selected = true;
+        subjectSelect.appendChild(opt);
+      });
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = '<option value="">No subjects assigned to this class</option>';
+      }
+    };
+
+    if (classSelect.value) {
+      await populateSubjects(classSelect.value, existingData?.subject || '');
+    }
+
+    classSelect.addEventListener('change', function () {
+      populateSubjects(this.value, '');
+    });
+  }
 }
 
 /* ============================================================
