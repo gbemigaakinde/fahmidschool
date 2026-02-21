@@ -2763,16 +2763,18 @@ async function populateSessionFilter() {
   }
 }
 
+/**
+ * FIXED: Load classes for result viewing - includes alumni option
+ */
 async function loadFilteredClasses() {
   const sessionSelect = document.getElementById('filter-session');
-  let classSelect = document.getElementById('filter-class'); // Remove const
-  let pupilSelect = document.getElementById('filter-pupil'); // Remove const
+  let classSelect = document.getElementById('filter-class');
+  let pupilSelect = document.getElementById('filter-pupil');
   
   if (!sessionSelect || !classSelect || !pupilSelect) return;
   
   const selectedSession = sessionSelect.value;
   
-  // Reset dependent filters
   classSelect.innerHTML = '<option value="">-- Select Class --</option>';
   classSelect.disabled = true;
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
@@ -2784,7 +2786,6 @@ async function loadFilteredClasses() {
   if (!selectedSession) return;
   
   try {
-    // Get actual session name
     let actualSession;
     if (selectedSession === 'current') {
       const settings = await window.getCurrentSettings();
@@ -2795,34 +2796,91 @@ async function loadFilteredClasses() {
     
     currentResultsSession = actualSession;
     
-    // Get all results for this session to find which classes have data
-    const resultsSnap = await db.collection('results')
-      .where('session', '==', actualSession)
-      .get();
-    
     // Get all classes
-    const classesSnap = await db.collection('classes')
-      .orderBy('name')
-      .get();
+    const classesSnap = await db.collection('classes').orderBy('name').get();
     
     const classOptions = [];
     
+    // Add active classes that have pupils with results in this session
     for (const classDoc of classesSnap.docs) {
       const className = classDoc.data().name;
       const classId = classDoc.id;
       
-      // Check if this class has pupils with results in this session
-      const pupilsInClassSnap = await db.collection('pupils')
-        .where('class.id', '==', classId)
+      // Check if any results exist for this class in this session
+      const resultsSnap = await db.collection('results')
+        .where('classId', '==', classId)
+        .where('session', '==', actualSession)
         .limit(1)
         .get();
       
-      if (!pupilsInClassSnap.empty) {
-        classOptions.push({
-          id: classId,
-          name: className
-        });
+      // Also check by className in results (some results may store className)
+      let hasResults = !resultsSnap.empty;
+      
+      if (!hasResults) {
+        // Fallback: check if any active pupils in this class have results
+        const pupilsSnap = await db.collection('pupils')
+          .where('class.id', '==', classId)
+          .limit(1)
+          .get();
+        
+        if (!pupilsSnap.empty) {
+          const pupilId = pupilsSnap.docs[0].id;
+          const pupilResultsSnap = await db.collection('results')
+            .where('pupilId', '==', pupilId)
+            .where('session', '==', actualSession)
+            .limit(1)
+            .get();
+          hasResults = !pupilResultsSnap.empty;
+        }
       }
+      
+      if (hasResults) {
+        classOptions.push({ id: classId, name: className });
+      }
+    }
+    
+    // ✅ FIXED: Also check if any alumni have results for this session
+    // Alumni have class.id = null, so we check the results collection directly
+    const alumniResultsSnap = await db.collection('results')
+      .where('session', '==', actualSession)
+      .limit(1)
+      .get();
+    
+    // Check if any alumni (status === 'alumni') have results this session
+    let hasAlumniResults = false;
+    if (!alumniResultsSnap.empty) {
+      // Sample check - look for pupils with alumni status who have results
+      const samplePupilId = alumniResultsSnap.docs[0].data().pupilId;
+      if (samplePupilId) {
+        const pupilDoc = await db.collection('pupils').doc(samplePupilId).get();
+        if (pupilDoc.exists && pupilDoc.data().status === 'alumni') {
+          hasAlumniResults = true;
+        }
+      }
+      
+      // More thorough check: look for any alumni with results this session
+      if (!hasAlumniResults) {
+        const alumniSnap = await db.collection('pupils')
+          .where('status', '==', 'alumni')
+          .get();
+        
+        for (const alumDoc of alumniSnap.docs) {
+          const alumResultsSnap = await db.collection('results')
+            .where('pupilId', '==', alumDoc.id)
+            .where('session', '==', actualSession)
+            .limit(1)
+            .get();
+          
+          if (!alumResultsSnap.empty) {
+            hasAlumniResults = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (hasAlumniResults) {
+      classOptions.push({ id: '__alumni__', name: '🎓 Alumni (Graduated Pupils)' });
     }
     
     if (classOptions.length === 0) {
@@ -2831,7 +2889,13 @@ async function loadFilteredClasses() {
       return;
     }
     
-    // Populate class dropdown
+    // Sort: regular classes alphabetically, alumni at end
+    classOptions.sort((a, b) => {
+      if (a.id === '__alumni__') return 1;
+      if (b.id === '__alumni__') return -1;
+      return a.name.localeCompare(b.name);
+    });
+    
     classOptions.forEach(cls => {
       const opt = document.createElement('option');
       opt.value = cls.id;
@@ -2841,20 +2905,13 @@ async function loadFilteredClasses() {
     
     classSelect.disabled = false;
     
-    // CRITICAL FIX: Re-get the element and attach listener safely
-    classSelect = document.getElementById('filter-class'); // Fresh reference
+    classSelect = document.getElementById('filter-class');
     
     if (classSelect && classSelect.parentNode) {
-      // Clone to remove any existing listeners
       const newClassSelect = classSelect.cloneNode(true);
       classSelect.parentNode.replaceChild(newClassSelect, classSelect);
-      
-      // Attach fresh listener
       newClassSelect.addEventListener('change', loadFilteredPupils);
-      
-      console.log(`✓ Loaded ${classOptions.length} classes for session: ${actualSession}`);
-    } else {
-      console.warn('⚠️ Class select not found after population');
+      console.log(`✓ Loaded ${classOptions.length} class options for session: ${actualSession}`);
     }
     
   } catch (error) {
@@ -2863,15 +2920,17 @@ async function loadFilteredClasses() {
   }
 }
 
+/**
+ * FIXED: Load pupils for result viewing - includes alumni
+ */
 async function loadFilteredPupils() {
-  let classSelect = document.getElementById('filter-class'); // Remove const
-  let pupilSelect = document.getElementById('filter-pupil'); // Remove const
+  let classSelect = document.getElementById('filter-class');
+  let pupilSelect = document.getElementById('filter-pupil');
   
   if (!classSelect || !pupilSelect) return;
   
   const selectedClass = classSelect.value;
   
-  // Reset pupil filter
   pupilSelect.innerHTML = '<option value="">-- Select Pupil --</option>';
   pupilSelect.disabled = true;
   
@@ -2881,50 +2940,132 @@ async function loadFilteredPupils() {
   if (!selectedClass || !currentResultsSession) return;
   
   try {
-    // Get all pupils in this class
-    const pupilsSnap = await db.collection('pupils')
-      .where('class.id', '==', selectedClass)
-      .get();
+    let pupilsWithResults = [];
     
-    if (pupilsSnap.empty) {
-      pupilSelect.innerHTML = '<option value="">No pupils in this class</option>';
-      window.showToast?.('No pupils found in this class', 'warning', 3000);
-      return;
-    }
-    
-    // Check which pupils have results in the selected session
-    const pupilsWithResults = [];
-    
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
-      const pupilData = pupilDoc.data();
-      
-      // Check if pupil has results in this session
-      const resultsSnap = await db.collection('results')
-        .where('pupilId', '==', pupilId)
-        .where('session', '==', currentResultsSession)
-        .limit(1)
+    if (selectedClass === '__alumni__') {
+      // ✅ FIXED: Load alumni who have results in this session
+      const alumniSnap = await db.collection('pupils')
+        .where('status', '==', 'alumni')
         .get();
       
-      if (!resultsSnap.empty) {
-        pupilsWithResults.push({
-          id: pupilId,
-          name: pupilData.name || 'Unknown',
-          data: pupilData
-        });
+      for (const alumDoc of alumniSnap.docs) {
+        const alumData = alumDoc.data();
+        const alumId = alumDoc.id;
+        
+        const resultsSnap = await db.collection('results')
+          .where('pupilId', '==', alumId)
+          .where('session', '==', currentResultsSession)
+          .limit(1)
+          .get();
+        
+        if (!resultsSnap.empty) {
+          pupilsWithResults.push({
+            id: alumId,
+            name: alumData.name || 'Unknown',
+            data: alumData
+          });
+        }
+      }
+    } else {
+      // Regular class: load active pupils with results in this session
+      const pupilsSnap = await db.collection('pupils')
+        .where('class.id', '==', selectedClass)
+        .get();
+      
+      if (pupilsSnap.empty) {
+        // ✅ FIXED: Also check alumni who were in this class
+        // Alumni have class.id = null, but their finalClass may match
+        const classDoc = await db.collection('classes').doc(selectedClass).get();
+        const className = classDoc.exists ? classDoc.data().name : null;
+        
+        if (className) {
+          const alumniInClassSnap = await db.collection('pupils')
+            .where('status', '==', 'alumni')
+            .where('finalClass', '==', className)
+            .get();
+          
+          for (const alumDoc of alumniInClassSnap.docs) {
+            const alumData = alumDoc.data();
+            
+            const resultsSnap = await db.collection('results')
+              .where('pupilId', '==', alumDoc.id)
+              .where('session', '==', currentResultsSession)
+              .limit(1)
+              .get();
+            
+            if (!resultsSnap.empty) {
+              pupilsWithResults.push({
+                id: alumDoc.id,
+                name: `${alumData.name || 'Unknown'} (Alumni)`,
+                data: alumData
+              });
+            }
+          }
+        }
+      } else {
+        // Check active pupils in this class for results
+        for (const pupilDoc of pupilsSnap.docs) {
+          const pupilId = pupilDoc.id;
+          const pupilData = pupilDoc.data();
+          
+          const resultsSnap = await db.collection('results')
+            .where('pupilId', '==', pupilId)
+            .where('session', '==', currentResultsSession)
+            .limit(1)
+            .get();
+          
+          if (!resultsSnap.empty) {
+            pupilsWithResults.push({
+              id: pupilId,
+              name: pupilData.name || 'Unknown',
+              data: pupilData
+            });
+          }
+        }
+        
+        // ✅ FIXED: Also include alumni who were in this class and have results
+        const classDoc = await db.collection('classes').doc(selectedClass).get();
+        const className = classDoc.exists ? classDoc.data().name : null;
+        
+        if (className) {
+          const alumniInClassSnap = await db.collection('pupils')
+            .where('status', '==', 'alumni')
+            .where('finalClass', '==', className)
+            .get();
+          
+          for (const alumDoc of alumniInClassSnap.docs) {
+            // Avoid duplicates
+            if (pupilsWithResults.find(p => p.id === alumDoc.id)) continue;
+            
+            const alumData = alumDoc.data();
+            
+            const resultsSnap = await db.collection('results')
+              .where('pupilId', '==', alumDoc.id)
+              .where('session', '==', currentResultsSession)
+              .limit(1)
+              .get();
+            
+            if (!resultsSnap.empty) {
+              pupilsWithResults.push({
+                id: alumDoc.id,
+                name: `${alumData.name || 'Unknown'} (Alumni)`,
+                data: alumData
+              });
+            }
+          }
+        }
       }
     }
     
     if (pupilsWithResults.length === 0) {
-      pupilSelect.innerHTML = '<option value="">No results found for pupils in this class</option>';
-      window.showToast?.('No results found for this class in selected session', 'warning', 4000);
+      pupilSelect.innerHTML = '<option value="">No results found for pupils in this selection</option>';
+      window.showToast?.('No results found for this selection in the chosen session', 'warning', 4000);
       return;
     }
     
     // Sort by name
     pupilsWithResults.sort((a, b) => a.name.localeCompare(b.name));
     
-    // Populate pupil dropdown
     pupilsWithResults.forEach(pupil => {
       const opt = document.createElement('option');
       opt.value = pupil.id;
@@ -2935,25 +3076,18 @@ async function loadFilteredPupils() {
     
     pupilSelect.disabled = false;
     
-    // CRITICAL FIX: Re-get the element and attach listener safely
-    pupilSelect = document.getElementById('filter-pupil'); // Fresh reference
+    pupilSelect = document.getElementById('filter-pupil');
     
     if (pupilSelect && pupilSelect.parentNode) {
-      // Clone to remove any existing listeners
       const newPupilSelect = pupilSelect.cloneNode(true);
       pupilSelect.parentNode.replaceChild(newPupilSelect, pupilSelect);
       
-      // Attach fresh listener
       newPupilSelect.addEventListener('change', function() {
         const viewBtn = document.getElementById('view-results-btn');
-        if (viewBtn) {
-          viewBtn.disabled = !this.value;
-        }
+        if (viewBtn) viewBtn.disabled = !this.value;
       });
       
-      console.log(`✓ Loaded ${pupilsWithResults.length} pupils with results`);
-    } else {
-      console.warn('⚠️ Pupil select not found after population');
+      console.log(`✓ Loaded ${pupilsWithResults.length} pupils/alumni with results`);
     }
     
   } catch (error) {
@@ -2961,6 +3095,10 @@ async function loadFilteredPupils() {
     window.showToast?.('Failed to load pupils', 'danger');
   }
 }
+
+// Re-expose globally
+window.loadFilteredClasses = loadFilteredClasses;
+window.loadFilteredPupils = loadFilteredPupils;
 
 async function loadPupilResults() {
     const pupilSelect = document.getElementById('filter-pupil');
