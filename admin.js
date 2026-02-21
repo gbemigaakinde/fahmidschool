@@ -2116,6 +2116,7 @@ console.log(`   - ${heldBackPupils.length} pupils held back`);
 console.log(`   - ${manualOverrides.length} manual overrides`);
 console.log(`   - Total batches: ${batchNumber - 1}`);
 console.log(`   - Total operations: ${totalOperations}`);
+}
 
 async function rejectPromotion() {
   if (!currentPromotionId) {
@@ -9932,6 +9933,7 @@ async function refreshHierarchyUI() {
 // Make functions globally available
 window.saveHierarchyOrder = saveHierarchyOrder;
 window.refreshHierarchyUI = refreshHierarchyUI;
+}
 
 /**
  * FIXED: Initialize Sidebar Navigation
