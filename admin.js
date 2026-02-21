@@ -10277,7 +10277,6 @@ window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
 
 // Export hierarchy functions globally
 window.loadClassHierarchyUI = loadClassHierarchyUI;
-window.refreshHierarchyUI = refreshHierarchyUI;
 window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
 window.renderHierarchyUI = renderHierarchyUI;
 window.showSection = showSection;
