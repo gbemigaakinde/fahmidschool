@@ -544,7 +544,7 @@ function renderResults(results, tbody) {
 
 async function loadAttendance() {
     try {
-        if (!currentPupilId || !currentSettings.term) {
+        if (!currentPupilId || !currentSettings.term || !currentSettings.session) {
             console.warn('Missing data for attendance');
             setText('times-opened', '-');
             setText('times-present', '-');
@@ -552,7 +552,9 @@ async function loadAttendance() {
             return;
         }
 
-        const docId = `${currentPupilId}_${currentSettings.term}`;
+        // FIX: Document ID now includes encoded session to match teacher.js write format
+        const encodedSession = currentSettings.session.replace(/\//g, '-');
+        const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
         console.log('Loading attendance for:', docId);
 
         const doc = await db.collection('attendance').doc(docId).get();
@@ -569,18 +571,6 @@ async function loadAttendance() {
 
         if (!d) {
             console.warn('Attendance document exists but has no data');
-            setText('times-opened', '-');
-            setText('times-present', '-');
-            setText('times-absent', '-');
-            return;
-        }
-
-        // Session guard: if document belongs to a different session, show '-'
-        // This prevents stale data from a prior year's same-named term appearing
-        if (currentSettings.session && d.session && d.session !== currentSettings.session) {
-            console.warn(
-                `Attendance session mismatch: doc.session="${d.session}" but currentSettings.session="${currentSettings.session}". Showing no data.`
-            );
             setText('times-opened', '-');
             setText('times-present', '-');
             setText('times-absent', '-');
@@ -619,23 +609,25 @@ async function loadKeyedCollection(collection, prefix) {
             console.error('loadKeyedCollection called with invalid parameters');
             return;
         }
-        
-        if (!currentPupilId || !currentSettings.term) {
-            console.warn(`Cannot load ${collection}: Missing pupil or term data`);
+
+        if (!currentPupilId || !currentSettings.term || !currentSettings.session) {
+            console.warn(`Cannot load ${collection}: Missing pupil, term, or session data`);
             return;
         }
-        
-        const docId = `${currentPupilId}_${currentSettings.term}`;
-        
+
+        // FIX: Document ID now includes encoded session to match teacher.js write format
+        const encodedSession = currentSettings.session.replace(/\//g, '-');
+        const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
+
         const doc = await db.collection(collection).doc(docId).get();
 
         if (!doc.exists) {
             console.log(`No ${collection} data for:`, docId);
             return;
         }
-        
+
         const data = doc.data();
-        
+
         if (!data) {
             console.warn(`${collection} document exists but has no data`);
             return;
@@ -643,16 +635,18 @@ async function loadKeyedCollection(collection, prefix) {
 
         Object.entries(data).forEach(([k, v]) => {
             // Skip metadata fields
-            if (k === 'pupilId' || k === 'term' || k === 'teacherId' || k === 'updatedAt') return;
-            
+            if (k === 'pupilId' || k === 'term' || k === 'teacherId' ||
+                k === 'updatedAt' || k === 'session' || k === 'sessionStartYear' ||
+                k === 'sessionEndYear' || k === 'sessionTerm') return;
+
             const fieldId = prefix + k.toLowerCase();
             const element = document.getElementById(fieldId);
-            
+
             if (element) {
                 setText(fieldId, v !== null && v !== undefined ? v : '-');
             }
         });
-        
+
     } catch (error) {
         console.error(`Error loading ${collection}:`, error);
     }
@@ -664,15 +658,17 @@ async function loadKeyedCollection(collection, prefix) {
 
 async function loadRemarks() {
     try {
-        if (!currentPupilId || !currentSettings.term) {
-            console.warn('Cannot load remarks: Missing pupil or term data');
+        if (!currentPupilId || !currentSettings.term || !currentSettings.session) {
+            console.warn('Cannot load remarks: Missing pupil, term, or session data');
             setText('teacher-remark', '-');
             setText('head-remark', '-');
             return;
         }
-        
-        const docId = `${currentPupilId}_${currentSettings.term}`;
-        
+
+        // FIX: Document ID now includes encoded session to match teacher.js write format
+        const encodedSession = currentSettings.session.replace(/\//g, '-');
+        const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
+
         const doc = await db.collection('remarks').doc(docId).get();
 
         if (!doc.exists) {
@@ -683,17 +679,17 @@ async function loadRemarks() {
         }
 
         const data = doc.data();
-        
+
         if (!data) {
             console.warn('Remarks document exists but has no data');
             setText('teacher-remark', '-');
             setText('head-remark', '-');
             return;
         }
-        
+
         setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
         setText('head-remark', typeof data.headRemark === 'string' ? data.headRemark : '-');
-        
+
     } catch (error) {
         console.error('Error loading remarks:', error);
         setText('teacher-remark', '-');
