@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Lesson Notes - Teacher Module
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @date 2026-02-21
  *
  * Collection: lesson_notes
@@ -343,12 +343,25 @@ async function lnOpenEditForm(docId) {
 
 /**
  * Fetch subjects assigned to a class.
- * Reads the subjects array from the class document.
+ *
+ * FIX: Uses window.assignedClasses (already loaded by teacher.js) as the
+ * primary source — exactly the same data the Results section uses via
+ * allSubjects.  Falls back to a Firestore read only if the class isn't
+ * found in the cache (e.g. edge case where the form is opened before
+ * assignedClasses is populated).
  */
 async function _lnGetClassSubjects(classId) {
   if (!classId) return [];
+
+  // Primary: use the already-loaded assignedClasses cache
+  const cached = (window.assignedClasses || []).find(c => c.id === classId);
+  if (cached && Array.isArray(cached.subjects) && cached.subjects.length > 0) {
+    return cached.subjects;
+  }
+
+  // Fallback: fetch directly from Firestore
   try {
-    const classDoc = await db.collection('classes').doc(classId).get();
+    const classDoc = await window.db.collection('classes').doc(classId).get();
     if (!classDoc.exists) return [];
     return Array.isArray(classDoc.data().subjects) ? classDoc.data().subjects : [];
   } catch (error) {
@@ -495,13 +508,23 @@ async function _lnRenderForm(container, existingData, defaultTerm) {
     </div>
   `;
 
-  const classSelect = document.getElementById('ln-class');
+  const classSelect   = document.getElementById('ln-class');
   const subjectSelect = document.getElementById('ln-subject');
 
   if (classSelect && subjectSelect) {
+    /**
+     * Populate the subject dropdown for a given classId.
+     * selectedSubject: pre-select this value if present (used when editing).
+     */
     const populateSubjects = async (classId, selectedSubject) => {
-      const subjects = await _lnGetClassSubjects(classId);
       subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+
+      const subjects = await _lnGetClassSubjects(classId);
+
+      if (subjects.length === 0) {
+        subjectSelect.innerHTML = '<option value="">No subjects assigned to this class</option>';
+        return;
+      }
 
       subjects.forEach(name => {
         const opt = document.createElement('option');
@@ -510,16 +533,19 @@ async function _lnRenderForm(container, existingData, defaultTerm) {
         if (name === selectedSubject) opt.selected = true;
         subjectSelect.appendChild(opt);
       });
-
-      if (subjects.length === 0) {
-        subjectSelect.innerHTML = '<option value="">No subjects assigned to this class</option>';
-      }
     };
 
+    // On new form: auto-populate if only one class is assigned (common case)
+    // On edit form: classSelect is disabled but its value is still set, so populate immediately
     if (classSelect.value) {
       await populateSubjects(classSelect.value, existingData?.subject || '');
+    } else if (classes.length === 1) {
+      // Auto-select the sole class and populate its subjects
+      classSelect.value = classes[0].id;
+      await populateSubjects(classes[0].id, '');
     }
 
+    // Re-populate whenever the teacher changes the class (new notes only)
     classSelect.addEventListener('change', function () {
       populateSubjects(this.value, '');
     });
@@ -1110,4 +1136,4 @@ window.lnSubmitNote           = lnSubmitNote;
 window.lnPrintNote            = lnPrintNote;
 window.lnApplyFilters         = lnApplyFilters;
 
-console.log('✓ lesson-notes-teacher.js v1.0.0 loaded');
+console.log('✓ lesson-notes-teacher.js v1.0.1 loaded');
