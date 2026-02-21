@@ -1119,7 +1119,9 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
             totalDue,
             totalPaid,
             balance: Math.max(0, balance), // Never negative
-            status: balance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'owing'
+            status: balance <= 0 ? 'paid' : 
+                     totalPaid > 0 ? 'partial' : 
+                     arrears > 0 ? 'owing_with_arrears' : 'owing'
         };
         
     } catch (error) {
