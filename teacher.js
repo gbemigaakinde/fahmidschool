@@ -298,7 +298,20 @@ function showSection(sectionId) {
   }
   
   document.querySelectorAll('.admin-card').forEach(card => card.style.display = 'none');
-  
+
+  // Reset result banners whenever navigating away from enter-results
+  if (sectionId !== 'enter-results') {
+    const bannersToReset = [
+      'result-submission-controls',
+      'result-locked-banner',
+      'result-submission-status'
+    ];
+    bannersToReset.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
   const section = document.getElementById(sectionId);
   if (section) {
     section.style.display = 'block';
