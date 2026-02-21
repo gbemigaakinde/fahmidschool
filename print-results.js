@@ -551,10 +551,10 @@ async function loadAttendance() {
             setText('times-absent', '-');
             return;
         }
-        
+
         const docId = `${currentPupilId}_${currentSettings.term}`;
         console.log('Loading attendance for:', docId);
-        
+
         const doc = await db.collection('attendance').doc(docId).get();
 
         if (!doc.exists) {
@@ -566,7 +566,7 @@ async function loadAttendance() {
         }
 
         const d = doc.data();
-        
+
         if (!d) {
             console.warn('Attendance document exists but has no data');
             setText('times-opened', '-');
@@ -574,13 +574,25 @@ async function loadAttendance() {
             setText('times-absent', '-');
             return;
         }
-        
+
+        // Session guard: if document belongs to a different session, show '-'
+        // This prevents stale data from a prior year's same-named term appearing
+        if (currentSettings.session && d.session && d.session !== currentSettings.session) {
+            console.warn(
+                `Attendance session mismatch: doc.session="${d.session}" but currentSettings.session="${currentSettings.session}". Showing no data.`
+            );
+            setText('times-opened', '-');
+            setText('times-present', '-');
+            setText('times-absent', '-');
+            return;
+        }
+
         console.log('Attendance data:', d);
-        
+
         setText('times-opened', typeof d.timesOpened === 'number' ? d.timesOpened : '-');
         setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
         setText('times-absent', typeof d.timesAbsent === 'number' ? d.timesAbsent : '-');
-        
+
     } catch (error) {
         console.error('Error loading attendance:', error);
         setText('times-opened', '-');
