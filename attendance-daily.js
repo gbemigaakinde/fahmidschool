@@ -160,18 +160,32 @@ async function deleteDailyAttendance(classId, date, term, session, teacherId, pu
  * @version 1.1.0 — calendar-aware timesOpened
  */
 async function recalculateCumulativeTotals(classId, term, session, teacherId, pupils) {
-    console.log(`Recalculating cumulative attendance: class=${classId}, term=${term}`);
+    console.log(`Recalculating cumulative attendance: class=${classId}, term=${term}, session=${session}`);
+
+    if (!classId || !term || !session) {
+        console.error('recalculateCumulativeTotals: missing required parameters', { classId, term, session });
+        throw new Error('recalculateCumulativeTotals: missing classId, term, or session');
+    }
+
+    if (!Array.isArray(pupils) || pupils.length === 0) {
+        console.warn('recalculateCumulativeTotals: empty pupils array, skipping write');
+        return { totalDays: 0, pupilCounts: {} };
+    }
 
     // ── 1. Fetch all daily records for this class + term + session ───────────
-    const snap = await db.collection('daily_attendance')
-        .where('classId', '==', classId)
-        .where('term', '==', term)
-        .where('session', '==', session)
-        .get();
+    let snap;
+    try {
+        snap = await db.collection('daily_attendance')
+            .where('classId', '==', classId)
+            .where('term', '==', term)
+            .where('session', '==', session)
+            .get();
+    } catch (queryErr) {
+        console.error('recalculateCumulativeTotals: Firestore query failed:', queryErr);
+        throw new Error(`Failed to fetch daily attendance records: ${queryErr.message}`);
+    }
 
     // ── 2. Get non-school days from admin calendar ───────────────────────────
-    //    Falls back to empty Set if calendar module unavailable (safe default:
-    //    all days count, same as previous behaviour).
     let nonSchoolDays = new Set();
     try {
         if (window.schoolCalendar?.getNonSchoolDays) {
@@ -185,16 +199,22 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
     // ── 3. Count per pupil, excluding non-school days ────────────────────────
     const pupilCounts = {};
     pupils.forEach(p => {
-        pupilCounts[p.id] = { timesPresent: 0, timesAbsent: 0 };
+        if (p && p.id) {
+            pupilCounts[p.id] = { timesPresent: 0, timesAbsent: 0 };
+        }
     });
 
-    let totalSchoolDays = 0;  // days that count towards timesOpened
+    let totalSchoolDays = 0;
 
     snap.forEach(doc => {
         const data = doc.data();
-        const date = data.date; // "YYYY-MM-DD"
+        const date = data.date;
 
-        // Skip if the calendar marks this as a non-school day
+        if (!date) {
+            console.warn('Daily attendance doc missing date field:', doc.id);
+            return;
+        }
+
         if (nonSchoolDays.has(date)) {
             console.log(`📅 Skipping non-school day in attendance calc: ${date}`);
             return;
@@ -217,11 +237,21 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
     });
 
     // ── 4. Batch-write cumulative totals to attendance collection ────────────
-    const settings = await window.getCurrentSettings?.() || { session };
-    const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear   = settings.currentSession?.endYear;
-    const sessionTerm      = `${session}_${term}`;
+    let settings = { session };
+    let sessionStartYear = null;
+    let sessionEndYear = null;
 
+    try {
+        const loadedSettings = await window.getCurrentSettings?.();
+        if (loadedSettings) {
+            sessionStartYear = loadedSettings.currentSession?.startYear || null;
+            sessionEndYear   = loadedSettings.currentSession?.endYear   || null;
+        }
+    } catch (settingsErr) {
+        console.warn('recalculateCumulativeTotals: could not load settings, using defaults:', settingsErr);
+    }
+
+    const sessionTerm  = `${session}_${term}`;
     const batchSize    = 400;
     const pupilEntries = Object.entries(pupilCounts);
 
@@ -235,15 +265,15 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
 
             const timesPresent = Math.max(0, counts.timesPresent);
             const timesAbsent  = Math.max(0, counts.timesAbsent);
-            const timesOpened  = totalSchoolDays; // ← calendar-aware
+            const timesOpened  = totalSchoolDays;
 
             batch.set(ref, {
                 pupilId,
                 term,
                 teacherId,
                 session,
-                sessionStartYear: sessionStartYear || null,
-                sessionEndYear:   sessionEndYear   || null,
+                sessionStartYear,
+                sessionEndYear,
                 sessionTerm,
                 timesOpened,
                 timesPresent,
@@ -253,7 +283,12 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
             }, { merge: true });
         });
 
-        await batch.commit();
+        try {
+            await batch.commit();
+        } catch (batchErr) {
+            console.error(`recalculateCumulativeTotals: batch commit failed (chunk ${i}):`, batchErr);
+            throw new Error(`Failed to write cumulative attendance: ${batchErr.message}`);
+        }
     }
 
     console.log(`✓ Recalculated cumulative for ${pupilEntries.length} pupils. School days: ${totalSchoolDays} (${snap.size - totalSchoolDays} non-school day(s) excluded)`);
