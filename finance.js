@@ -332,41 +332,56 @@ const finance = {
    * ═══════════════════════════════════════════════════════════
    */
   async calculateSessionBalanceSafe(pupilId, session) {
-    try {
-      const encodedSession = session.replace(/\//g, '-');
-      
-      // Only get Third Term balance (already contains First + Second Term arrears)
-      const thirdTermDocId = `${pupilId}_${encodedSession}_Third Term`;
-      
-      console.log(`     Checking session balance for ${session}...`);
-      
+  try {
+    const encodedSession = session.replace(/\//g, '-');
+
+    console.log(`     Checking session balance for ${session}...`);
+
+    // BUG 7 FIX: Check terms in reverse order — Third, then Second, then First.
+    // A pupil's session-end balance lives in whichever term was their last.
+    // Pupils with exitTerm = 'Second Term' have no Third Term document.
+    // The first document found is returned — do not sum them (that would double-count).
+
+    const termsToCheck = ['Third Term', 'Second Term', 'First Term'];
+
+    for (const termName of termsToCheck) {
+      const docId = `${pupilId}_${encodedSession}_${termName}`;
+
       try {
-        const thirdTermDoc = await db.collection('payments').doc(thirdTermDocId).get();
-        
-        if (thirdTermDoc.exists) {
-          const balance = Number(thirdTermDoc.data().balance) || 0;
-          
+        const termDoc = await db.collection('payments').doc(docId).get();
+
+        if (termDoc.exists) {
+          const balance = Number(termDoc.data().balance) || 0;
+
           if (balance > 0) {
-            console.log(`     ✓ Third Term balance: ₦${balance.toLocaleString()}`);
+            console.log(`     ✓ Found balance in ${termName}: ₦${balance.toLocaleString()}`);
           } else {
-            console.log(`     ✓ Session fully paid`);
+            console.log(`     ✓ ${termName} document found — session fully paid`);
           }
-          
+
+          // Return the balance from the most recent term that has a document.
+          // Do not continue checking earlier terms — they are already included
+          // in the cascade balance of this term.
           return balance;
         } else {
-          console.log(`     ℹ️ No Third Term payment record for ${session}`);
-          return 0;
+          console.log(`     ℹ️ No ${termName} document for ${session} — checking earlier term`);
         }
+
       } catch (error) {
-        console.warn(`     ⚠️ Could not fetch Third Term for ${session}:`, error.message);
-        return 0;
+        console.warn(`     ⚠️ Could not fetch ${termName} for ${session}:`, error.message);
+        // Continue to next term
       }
-      
-    } catch (error) {
-      console.error('❌ [FINANCE] Error in calculateSessionBalanceSafe:', error);
-      return 0;
     }
-  },
+
+    // No payment documents found for this session at all
+    console.log(`     ℹ️ No payment records found for ${session} — assuming ₦0`);
+    return 0;
+
+  } catch (error) {
+    console.error('❌ [FINANCE] Error in calculateSessionBalanceSafe:', error);
+    return 0;
+  }
+},
 
   /**
    * ═══════════════════════════════════════════════════════════
