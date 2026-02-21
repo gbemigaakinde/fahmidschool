@@ -35,15 +35,18 @@ async function markDailyAttendance(classId, date, term, session, teacherId, reco
         throw new Error('markDailyAttendance: missing required parameters');
     }
 
+    if (!records || typeof records !== 'object' || Object.keys(records).length === 0) {
+        throw new Error('markDailyAttendance: records object is empty or invalid');
+    }
+
     const docId = `${classId}_${date}`;
 
-    // Compute summary stats
     let totalPresent = 0, totalAbsent = 0;
     let boyPresent = 0, girlPresent = 0;
     let boyAbsent = 0, girlAbsent = 0;
 
     const pupilMap = {};
-    pupils.forEach(p => { pupilMap[p.id] = p; });
+    (pupils || []).forEach(p => { if (p && p.id) pupilMap[p.id] = p; });
 
     Object.entries(records).forEach(([pupilId, status]) => {
         const pupil = pupilMap[pupilId];
@@ -64,7 +67,7 @@ async function markDailyAttendance(classId, date, term, session, teacherId, reco
         term,
         session,
         teacherId,
-        records,            // { pupilId: 'present'|'absent' }
+        records,
         totalPresent,
         totalAbsent,
         totalPupils: Object.keys(records).length,
@@ -76,10 +79,21 @@ async function markDailyAttendance(classId, date, term, session, teacherId, reco
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    await db.collection('daily_attendance').doc(docId).set(docData, { merge: false });
+    try {
+        await db.collection('daily_attendance').doc(docId).set(docData, { merge: false });
+    } catch (writeErr) {
+        console.error('markDailyAttendance: failed to write daily record:', writeErr);
+        throw new Error(`Failed to save daily attendance: ${writeErr.message}`);
+    }
 
-    // After saving daily record, recalculate cumulative totals for all pupils
-    await recalculateCumulativeTotals(classId, term, session, teacherId, pupils);
+    // Recalculate cumulative totals — failure here is surfaced to caller
+    try {
+        await recalculateCumulativeTotals(classId, term, session, teacherId, pupils);
+    } catch (calcErr) {
+        console.error('markDailyAttendance: daily record saved but cumulative recalculation failed:', calcErr);
+        // Re-throw so the UI can inform the teacher
+        throw new Error(`Attendance marked for today but summary totals failed to update: ${calcErr.message}`);
+    }
 
     console.log(`✓ Daily attendance marked: ${docId} (${totalPresent} present, ${totalAbsent} absent)`);
 }
