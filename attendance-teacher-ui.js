@@ -552,9 +552,14 @@ async function loadManualAttendanceLegacy(term, outerContainer) {
     }
 
     try {
+        // FIX: Get current session to build the correct document ID
+        const settings = await window.getCurrentSettings();
+        const encodedSession = settings.session.replace(/\//g, '-');
+
         const attendanceMap = {};
         for (const pupil of pupils) {
-            const docId = `${pupil.id}_${term}`;
+            // FIX: Document ID now includes encodedSession to match the write format
+            const docId = `${pupil.id}_${encodedSession}_${term}`;
             const doc = await db.collection('attendance').doc(docId).get();
             if (doc.exists) attendanceMap[pupil.id] = doc.data();
         }
@@ -577,7 +582,6 @@ async function loadManualAttendanceLegacy(term, outerContainer) {
             💾 Save Manual Totals
         </button>`;
 
-        // Use the existing paginateTable if available
         if (typeof window.paginateTable === 'function') {
             window.paginateTable(pupils, 'manual-attendance-table', 25, (pupil, tbody) => {
                 const existing = attendanceMap[pupil.id] || {};
