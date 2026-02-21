@@ -671,6 +671,7 @@ button[onclick="exportPupilResults()"]:hover {
 <script src="pupils-export.js"></script>
 <script src="result-locking.js"></script>
 <script src="admin.js"></script>
+<script src="lesson-notes-admin.js"></script>
 <script src="school-calendar-admin.js"></script>
 <script src="script.js"></script>
 </head>
@@ -754,6 +755,10 @@ button[onclick="exportPupilResults()"]:hover {
                     <i data-lucide="user-plus"></i>
                     <span>Assign Teachers</span>
                 </a>
+                <a href="#lesson-notes" data-section="lesson-notes" class="sidebar-link">
+                     <i data-lucide="book-open"></i>
+                     <span>Lesson Notes</span>
+                 </a>
             </div>
         </div>
 
@@ -2271,6 +2276,18 @@ Example 3: Free education
 
 </div>
 </div> <!-- Close content-wrapper -->
+<section id="lesson-notes" class="admin-card" hidden tabindex="-1">
+    <h1>Lesson Notes Management</h1>
+    <p class="section-description">
+        Review and approve lesson notes submitted by teachers.
+        Filter by status, term, class, or teacher.
+    </p>
+    <div id="lesson-notes-admin-container">
+        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+            Loading lesson notes...
+        </div>
+    </div>
+</section>
     </main>
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
