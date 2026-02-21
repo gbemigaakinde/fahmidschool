@@ -92,12 +92,64 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
 
     console.log(`📊 Calculating arrears for pupil ${pupilId} — ${currentTerm}, ${currentSession}`);
 
+    // ─── Helper: was this pupil enrolled in a given session + term? ───────────
+    // Returns false if pupil's admissionSession/admissionTerm is AFTER that period.
+    async function wasEnrolledIn(pupilData, checkSession, checkTerm) {
+      const admissionSession = pupilData.admissionSession || null;
+      const admissionTerm    = pupilData.admissionTerm    || 'First Term';
+
+      if (!admissionSession) {
+        // No admissionSession recorded — assume always enrolled (legacy data)
+        return true;
+      }
+
+      // Compare sessions by start year
+      const sessionStartYear = (s) => {
+        const m = (s || '').match(/(\d{4})\//);
+        return m ? parseInt(m[1]) : 0;
+      };
+
+      const admissionYear = sessionStartYear(admissionSession);
+      const checkYear     = sessionStartYear(checkSession);
+
+      if (checkYear < admissionYear) return false; // session is before admission
+      if (checkYear > admissionYear) return true;  // session is after admission — enrolled
+
+      // Same session: compare terms
+      if (termOrder[admissionTerm] > (termOrder[checkTerm] || 1)) return false;
+
+      return true;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Fetch pupil data once — used for enrollment checks below
+    let pupilDataCache = null;
+    async function getPupilData() {
+      if (pupilDataCache) return pupilDataCache;
+      const doc = await db.collection('pupils').doc(pupilId).get();
+      pupilDataCache = doc.exists ? doc.data() : null;
+      return pupilDataCache;
+    }
+
     if (currentTermNum === 1) {
       // First Term: carry previous session's consolidated balance.
       const previousSession = getPreviousSessionName(currentSession);
 
       if (previousSession) {
         console.log(`  Checking previous session Third Term: ${previousSession}`);
+
+        // ✅ ENROLLMENT CHECK: was the pupil active in any part of the previous session?
+        const pupilData = await getPupilData();
+        if (pupilData) {
+          const enrolled = await wasEnrolledIn(pupilData, previousSession, 'Third Term');
+          if (!enrolled) {
+            console.log(
+              `  ⏭️ Pupil was not enrolled in ${previousSession}. No arrears to carry forward.`
+            );
+            return 0;
+          }
+        }
+
         try {
           const sessionArrears = await calculateSessionBalanceSafe(pupilId, previousSession);
           totalArrears = sessionArrears;
@@ -116,6 +168,18 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
       );
 
       if (previousTermName) {
+        // ✅ ENROLLMENT CHECK: was the pupil enrolled in the previous term of this session?
+        const pupilData = await getPupilData();
+        if (pupilData) {
+          const enrolled = await wasEnrolledIn(pupilData, currentSession, previousTermName);
+          if (!enrolled) {
+            console.log(
+              `  ⏭️ Pupil was not enrolled in ${previousTermName} of ${currentSession}. No arrears.`
+            );
+            return 0;
+          }
+        }
+
         const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
         console.log(`  Checking previous term: ${previousTermName} (doc: ${prevTermDocId})`);
 
@@ -146,65 +210,25 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
             }
 
           } else {
-            // Payment doc missing — check if pupil is new this term before assuming arrears.
-            const pupilDocForCheck = await db.collection('pupils').doc(pupilId).get();
-            const pupilCreatedAt =
-              pupilDocForCheck.exists && pupilDocForCheck.data().createdAt
-                ? pupilDocForCheck.data().createdAt.toDate()
-                : null;
-
-            const sessionMatch = currentSession.match(/(\d{4})\/(\d{4})/);
-
-            // Approximate term start dates.
-            const termStartMonths = {
-              'First Term': 8,   // September
-              'Second Term': 0,  // January
-              'Third Term': 3    // April
-            };
-
-            let termStartYear = sessionMatch
-              ? parseInt(sessionMatch[1])
-              : new Date().getFullYear();
-
-            if (currentTerm === 'Second Term' || currentTerm === 'Third Term') {
-              termStartYear = sessionMatch
-                ? parseInt(sessionMatch[2])
-                : termStartYear;
-            }
-
-            const currentTermStart = new Date(
-              termStartYear,
-              termStartMonths[currentTerm] || 0,
-              1
+            // Payment doc missing — pupil was enrolled (we checked above) but has no record.
+            // This means they never paid and no doc was auto-created; recalculate from fee structure.
+            console.warn(
+              `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
+              `Calculating balance from fee structure...`
             );
 
-            const isNewThisTerm =
-              pupilCreatedAt && pupilCreatedAt >= currentTermStart;
+            totalArrears = await _recalculateTermBalance(
+              pupilId,
+              currentSession,
+              previousTermName
+            );
 
-            if (isNewThisTerm) {
+            if (totalArrears > 0) {
               console.log(
-                `  ⏭️ Pupil was created this term (${currentTerm}). No arrears from ${previousTermName}.`
+                `  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`
               );
-              totalArrears = 0;
             } else {
-              console.warn(
-                `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
-                `Calculating balance from fee structure...`
-              );
-
-              totalArrears = await _recalculateTermBalance(
-                pupilId,
-                currentSession,
-                previousTermName
-              );
-
-              if (totalArrears > 0) {
-                console.log(
-                  `  📊 Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`
-                );
-              } else {
-                console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
-              }
+              console.log(`  ✓ ${previousTermName}: no fee configured or not enrolled`);
             }
           }
 
@@ -7440,8 +7464,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      // Get class details
-      const classDoc = await db.collection('classes').doc(classId).get();
+      // Get current session settings (needed for admissionTerm/admissionSession defaults)
+    const settings = await window.getCurrentSettings();
+
+    // Get class details
+    const classDoc = await db.collection('classes').doc(classId).get();
       
       if (!classDoc.exists) {
         throw new Error('Selected class not found');
@@ -7481,7 +7508,8 @@ const pupilData = {
     },
 
     // ✅ New Optional Fields
-    admissionTerm: document.getElementById('pupil-admission-term')?.value || 'First Term',
+    admissionTerm: document.getElementById('pupil-admission-term')?.value || settings.term || 'First Term',
+    admissionSession: settings.session || null,
     exitTerm: document.getElementById('pupil-exit-term')?.value || 'Third Term',
     feeAdjustmentPercent: parseFloat(document.getElementById('pupil-fee-adjustment-percent')?.value) || 0,
     feeAdjustmentAmount: parseFloat(document.getElementById('pupil-fee-adjustment-amount')?.value) || 0,
