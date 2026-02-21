@@ -250,15 +250,19 @@ async function recalculateCumulativeTotals(classId, term, session, teacherId, pu
         }
     });
 
-console.log('DEBUG recalculate:', {
-    snapSize: snap.size,
-    nonSchoolDaysCount: nonSchoolDays.size,
-    totalSchoolDays,
-    pupilCountsKeys: Object.keys(pupilCounts),
-    writingDocIds: Object.keys(pupilCounts).map(id => `${id}_${term}`)
-});
+    console.log('DEBUG recalculate:', {
+        snapSize: snap.size,
+        nonSchoolDaysCount: nonSchoolDays.size,
+        totalSchoolDays,
+        pupilCountsKeys: Object.keys(pupilCounts),
+        // FIX: Log the new document ID format for verification
+        writingDocIds: Object.keys(pupilCounts).map(id => {
+            const encodedSession = session.replace(/\//g, '-');
+            return `${id}_${encodedSession}_${term}`;
+        })
+    });
+
     // ── 4. Batch-write cumulative totals to attendance collection ────────────
-    let settings = { session };
     let sessionStartYear = null;
     let sessionEndYear = null;
 
@@ -272,16 +276,21 @@ console.log('DEBUG recalculate:', {
         console.warn('recalculateCumulativeTotals: could not load settings, using defaults:', settingsErr);
     }
 
-    const sessionTerm  = `${session}_${term}`;
-    const batchSize    = 400;
-    const pupilEntries = Object.entries(pupilCounts);
+    // FIX: Encode session for document ID — matches the format used by
+    // saveAllAttendance() in teacher.js and all read functions in
+    // loadAttendanceSection(), loadManualAttendanceLegacy(), and print-results.js
+    const encodedSession = session.replace(/\//g, '-');
+    const sessionTerm    = `${session}_${term}`;
+    const batchSize      = 400;
+    const pupilEntries   = Object.entries(pupilCounts);
 
     for (let i = 0; i < pupilEntries.length; i += batchSize) {
         const batch = db.batch();
         const chunk = pupilEntries.slice(i, i + batchSize);
 
         chunk.forEach(([pupilId, counts]) => {
-            const docId = `${pupilId}_${term}`;
+            // FIX: Document ID now includes encodedSession
+            const docId = `${pupilId}_${encodedSession}_${term}`;
             const ref   = db.collection('attendance').doc(docId);
 
             const timesPresent = Math.max(0, counts.timesPresent);
