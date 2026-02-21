@@ -1300,181 +1300,177 @@ window.submitResultsForApproval = submitResultsForApproval;
 let isSavingResults = false;
 
 async function saveAllResults() {
-    // ✅ CLICK GUARD: Prevent simultaneous executions
-    if (isSavingResults) {
-        console.log('Save already in progress, ignoring click');
-        return;
+  // CLICK GUARD: Prevent simultaneous executions
+  if (isSavingResults) {
+    console.log('Save already in progress, ignoring click');
+    return;
+  }
+
+  const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+  const term = document.getElementById('result-term')?.value;
+  const subject = document.getElementById('result-subject')?.value;
+
+  if (!term || !subject) {
+    window.showToast?.('Select term and subject first', 'warning');
+    return;
+  }
+
+  // VALIDATION STEP 1: Check for invalid scores
+  let hasInvalidScores = false;
+  inputs.forEach(input => {
+    const field = input.dataset.field;
+    const value = parseFloat(input.value) || 0;
+    const max = field === 'ca' ? 40 : 60;
+
+    if (value > max) {
+      hasInvalidScores = true;
+      input.style.borderColor = '#f44336';
+      input.value = max;
     }
-
-    const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
-    const term = document.getElementById('result-term')?.value;
-    const subject = document.getElementById('result-subject')?.value;
-
-    if (!term || !subject) {
-        window.showToast?.('Select term and subject first', 'warning');
-        return;
+    if (value < 0) {
+      hasInvalidScores = true;
+      input.style.borderColor = '#f44336';
+      input.value = 0;
     }
+  });
 
-    // ✅ VALIDATION STEP 1: Check for invalid scores
-    let hasInvalidScores = false;
-    inputs.forEach(input => {
-        const field = input.dataset.field;
-        const value = parseFloat(input.value) || 0;
-        const max = field === 'ca' ? 40 : 60;
+  if (hasInvalidScores) {
+    window.showToast?.(
+      'Invalid scores corrected. Please review and try saving again.',
+      'warning',
+      5000
+    );
+    return;
+  }
 
-        if (value > max) {
-            hasInvalidScores = true;
-            input.style.borderColor = '#f44336';
-            input.value = max;
-        }
-        if (value < 0) {
-            hasInvalidScores = true;
-            input.style.borderColor = '#f44336';
-            input.value = 0;
-        }
-    });
+  // VALIDATION STEP 2: Check if any scores entered
+  let hasChanges = false;
+  inputs.forEach(input => {
+    const value = parseFloat(input.value) || 0;
+    if (value > 0) hasChanges = true;
+  });
 
-    if (hasInvalidScores) {
-        window.showToast?.(
-            'Invalid scores corrected. Please review and try saving again.',
-            'warning',
-            5000
-        );
-        return;
-    }
+  if (!hasChanges) {
+    window.showToast?.('No scores have been entered', 'warning');
+    return;
+  }
 
-    // ✅ VALIDATION STEP 2: Check if any scores entered
-    let hasChanges = false;
-    inputs.forEach(input => {
-        const value = parseFloat(input.value) || 0;
-        if (value > 0) hasChanges = true;
-    });
+  // SET LOCK FLAG
+  isSavingResults = true;
 
-    if (!hasChanges) {
-        window.showToast?.('No scores have been entered', 'warning');
-        return;
-    }
+  const saveBtn = document.getElementById('save-results-btn');
 
-    // ✅ SET LOCK FLAG
-    isSavingResults = true;
+  if (!saveBtn) {
+    console.error('Save button not found');
+    isSavingResults = false;
+    return;
+  }
 
-    // ✅ ALL VALIDATIONS PASSED - NOW SET LOADING STATE
-    const saveBtn = document.getElementById('save-results-btn');
-    
-    if (!saveBtn) {
-        console.error('Save button not found');
-        isSavingResults = false;
-        return;
-    }
+  const originalHTML = saveBtn.innerHTML;
+  const originalDisabled = saveBtn.disabled;
 
-    // Store original state
-    const originalHTML = saveBtn.innerHTML;
-    const originalDisabled = saveBtn.disabled;
-    
-    // Set loading state
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `
-        <span style="display:inline-flex; align-items:center; gap:0.5rem;">
-            <span style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span>
-            Saving...
-        </span>
-    `;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = `
+    <span style="display:inline-flex; align-items:center; gap:0.5rem;">
+      <span style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span>
+      Saving...
+    </span>
+  `;
+
+  try {
+    let currentSession = 'Unknown';
+    let sessionStartYear = null;
+    let sessionEndYear = null;
 
     try {
-        // Get session settings
-        let currentSession = 'Unknown';
-        let sessionStartYear = null;
-        let sessionEndYear = null;
-
-        try {
-            const settings = await window.getCurrentSettings();
-            currentSession = settings.session || 'Unknown';
-            sessionStartYear = settings.currentSession?.startYear;
-            sessionEndYear = settings.currentSession?.endYear;
-        } catch (settingsError) {
-            console.error('Failed to get session settings:', settingsError);
-        }
-
-        const batch = db.batch();
-
-        // Group inputs by pupil
-        const pupilResults = {};
-        inputs.forEach(input => {
-            const pupilId = input.dataset.pupil;
-            const field = input.dataset.field;
-            const value = parseFloat(input.value) || 0;
-
-            if (!pupilResults[pupilId]) {
-                pupilResults[pupilId] = {};
-            }
-            pupilResults[pupilId][field] = value;
-        });
-
-        // Get class info
-        const classId = assignedClasses.length > 0 ? assignedClasses[0].id : null;
-        const className = assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown';
-
-        // Save to DRAFT collection
-        for (const [pupilId, scores] of Object.entries(pupilResults)) {
-            const pupil = allPupils.find(p => p.id === pupilId);
-            const pupilName = pupil?.name || 'Unknown';
-            
-            const docId = `${pupilId}_${term}_${subject}`;
-            const ref = db.collection('results_draft').doc(docId);
-            
-            const sessionTerm = `${currentSession}_${term}`;
-            
-            const baseData = {
-                pupilId,
-                pupilName,
-                classId,
-                className,
-                term,
-                subject,
-                session: currentSession,
-                sessionStartYear,
-                sessionEndYear,
-                sessionTerm,
-                caScore: scores.ca !== undefined ? scores.ca : 0,
-                examScore: scores.exam !== undefined ? scores.exam : 0,
-                teacherId: currentUser.uid,
-                status: 'draft',
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedBy: currentUser.uid
-            };
-            
-            batch.set(ref, baseData, { merge: true });
-        }
-
-        await batch.commit();
-        
-        window.showToast?.(
-            '✓ Results saved to your workspace\n\n' +
-            'ℹ️ Not visible to pupils yet - submit for approval when ready.',
-            'success',
-            6000
-        );
-        
-    } catch (err) {
-        console.error('Error saving results:', err);
-        window.showToast?.(
-            `Failed to save results: ${err.message || 'Unknown error'}`,
-            'danger',
-            6000
-        );
-    } finally {
-        // ✅ GUARANTEED CLEANUP
-        const finalSaveBtn = document.getElementById('save-results-btn');
-        if (finalSaveBtn) {
-            finalSaveBtn.disabled = originalDisabled;
-            finalSaveBtn.innerHTML = originalHTML;
-            finalSaveBtn.style.opacity = '';
-            finalSaveBtn.style.cursor = '';
-        }
-        
-        // ✅ RELEASE LOCK FLAG
-        isSavingResults = false;
+      const settings = await window.getCurrentSettings();
+      currentSession = settings.session || 'Unknown';
+      sessionStartYear = settings.currentSession?.startYear;
+      sessionEndYear = settings.currentSession?.endYear;
+    } catch (settingsError) {
+      console.error('Failed to get session settings:', settingsError);
     }
+
+    const batch = db.batch();
+
+    // Group inputs by pupil
+    const pupilResults = {};
+    inputs.forEach(input => {
+      const pupilId = input.dataset.pupil;
+      const field = input.dataset.field;
+      const value = parseFloat(input.value) || 0;
+
+      if (!pupilResults[pupilId]) {
+        pupilResults[pupilId] = {};
+      }
+      pupilResults[pupilId][field] = value;
+    });
+
+    // Save to DRAFT collection
+    for (const [pupilId, scores] of Object.entries(pupilResults)) {
+      const pupil = allPupils.find(p => p.id === pupilId);
+      const pupilName = pupil?.name || 'Unknown';
+
+      // BUG 2 FIX: Read classId and className from the individual pupil's own data,
+      // not from assignedClasses[0]. Each pupil carries their class info from Firestore.
+      const classId = pupil?.class?.id || (assignedClasses.length > 0 ? assignedClasses[0].id : null);
+      const className = pupil?.class?.name || (assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown');
+
+      const docId = `${pupilId}_${term}_${subject}`;
+      const ref = db.collection('results_draft').doc(docId);
+
+      const sessionTerm = `${currentSession}_${term}`;
+
+      const baseData = {
+        pupilId,
+        pupilName,
+        classId,
+        className,
+        term,
+        subject,
+        session: currentSession,
+        sessionStartYear,
+        sessionEndYear,
+        sessionTerm,
+        caScore: scores.ca !== undefined ? scores.ca : 0,
+        examScore: scores.exam !== undefined ? scores.exam : 0,
+        teacherId: currentUser.uid,
+        status: 'draft',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: currentUser.uid
+      };
+
+      batch.set(ref, baseData, { merge: true });
+    }
+
+    await batch.commit();
+
+    window.showToast?.(
+      '✓ Results saved to your workspace\n\n' +
+      'ℹ️ Not visible to pupils yet - submit for approval when ready.',
+      'success',
+      6000
+    );
+
+  } catch (err) {
+    console.error('Error saving results:', err);
+    window.showToast?.(
+      `Failed to save results: ${err.message || 'Unknown error'}`,
+      'danger',
+      6000
+    );
+  } finally {
+    const finalSaveBtn = document.getElementById('save-results-btn');
+    if (finalSaveBtn) {
+      finalSaveBtn.disabled = originalDisabled;
+      finalSaveBtn.innerHTML = originalHTML;
+      finalSaveBtn.style.opacity = '';
+      finalSaveBtn.style.cursor = '';
+    }
+
+    // RELEASE LOCK FLAG
+    isSavingResults = false;
+  }
 }
 
 /* ======================================== 
@@ -1485,22 +1481,25 @@ async function loadAttendanceSection() {
   const container = document.getElementById('attendance-form-container');
   const saveBtn = document.getElementById('save-attendance-btn');
   const term = document.getElementById('attendance-term')?.value || 'First Term';
-  
+
   if (!container || !saveBtn) return;
-  
+
   if (assignedClasses.length === 0 || allPupils.length === 0) {
     container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils in assigned classes</p>';
     saveBtn.hidden = true;
     return;
   }
-  
+
   try {
+    const settings = await window.getCurrentSettings();
+    const encodedSession = settings.session.replace(/\//g, '-');
+
     const attendanceMap = {};
-    
+
     for (const pupil of allPupils) {
-      const docId = `${pupil.id}_${term}`;
+      const docId = `${pupil.id}_${encodedSession}_${term}`;
       const attendDoc = await db.collection('attendance').doc(docId).get();
-      
+
       if (attendDoc.exists) {
         const data = attendDoc.data();
         attendanceMap[pupil.id] = {
@@ -1510,7 +1509,7 @@ async function loadAttendanceSection() {
         };
       }
     }
-    
+
     container.innerHTML = `
       <div class="table-container">
         <table class="responsive-table" id="attendance-table">
@@ -1526,35 +1525,35 @@ async function loadAttendanceSection() {
         </table>
       </div>
     `;
-    
+
     paginateTable(allPupils, 'attendance-table', 25, (pupil, tbody) => {
       const existing = attendanceMap[pupil.id] || { timesOpened: 0, timesPresent: 0, timesAbsent: 0 };
-      
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Pupil Name">${pupil.name}</td>
         <td data-label="Times School Opened">
-          <input type="number" min="0" value="${existing.timesOpened || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesOpened" 
+          <input type="number" min="0" value="${existing.timesOpened || ''}"
+                 data-pupil="${pupil.id}" data-field="timesOpened"
                  style="width:100%; max-width:100px;"
                  placeholder="0">
         </td>
         <td data-label="Times Present">
-          <input type="number" min="0" value="${existing.timesPresent || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesPresent" 
+          <input type="number" min="0" value="${existing.timesPresent || ''}"
+                 data-pupil="${pupil.id}" data-field="timesPresent"
                  style="width:100%; max-width:100px;"
                  placeholder="0">
         </td>
         <td data-label="Times Absent">
-          <input type="number" min="0" value="${existing.timesAbsent || ''}" 
-                 data-pupil="${pupil.id}" data-field="timesAbsent" 
+          <input type="number" min="0" value="${existing.timesAbsent || ''}"
+                 data-pupil="${pupil.id}" data-field="timesAbsent"
                  style="width:100%; max-width:100px;"
                  placeholder="0">
         </td>
       `;
       tbody.appendChild(tr);
     });
-    
+
     saveBtn.hidden = false;
   } catch (err) {
     console.error('Error loading attendance:', err);
@@ -1574,65 +1573,57 @@ async function loadAttendanceSection() {
 async function saveAllAttendance() {
   const inputs = document.querySelectorAll('#attendance-form-container input[type="number"]');
   const term = document.getElementById('attendance-term')?.value;
-  
+
   if (!inputs.length || !term) {
     window.showToast?.('No data to save', 'warning');
     return;
   }
-  
+
   // VALIDATION STEP 1: Collect and validate data
   const pupilData = {};
   const validationErrors = [];
-  
+
   inputs.forEach(input => {
     const pupilId = input.dataset.pupil;
     const field = input.dataset.field;
     const value = parseInt(input.value) || 0;
-    
-    // Prevent negative numbers
+
     if (value < 0) {
       const pupilName = input.closest('tr')?.querySelector('td:first-child')?.textContent || 'Unknown';
       validationErrors.push(`${pupilName}: ${field} cannot be negative`);
       input.style.borderColor = '#dc3545';
       return;
     }
-    
+
     if (!pupilData[pupilId]) pupilData[pupilId] = {};
     pupilData[pupilId][field] = value;
   });
-  
+
   // VALIDATION STEP 2: Check logical consistency
   for (const [pupilId, data] of Object.entries(pupilData)) {
     const timesOpened = data.timesOpened || 0;
     const timesPresent = data.timesPresent || 0;
     const timesAbsent = data.timesAbsent || 0;
-    
-    // Get pupil name for error messages
+
     const pupilRow = document.querySelector(`input[data-pupil="${pupilId}"]`)?.closest('tr');
     const pupilName = pupilRow?.querySelector('td:first-child')?.textContent || 'Unknown';
-    
-    // Validate: timesPresent cannot exceed timesOpened
+
     if (timesPresent > timesOpened) {
       validationErrors.push(
         `${pupilName}: Times present (${timesPresent}) cannot exceed times school opened (${timesOpened})`
       );
-      
-      // Highlight the invalid fields
       const presentInput = document.querySelector(`input[data-pupil="${pupilId}"][data-field="timesPresent"]`);
       if (presentInput) presentInput.style.borderColor = '#dc3545';
     }
-    
-    // Validate: timesAbsent cannot exceed timesOpened
+
     if (timesAbsent > timesOpened) {
       validationErrors.push(
         `${pupilName}: Times absent (${timesAbsent}) cannot exceed times school opened (${timesOpened})`
       );
-      
       const absentInput = document.querySelector(`input[data-pupil="${pupilId}"][data-field="timesAbsent"]`);
       if (absentInput) absentInput.style.borderColor = '#dc3545';
     }
-    
-    // Validate: present + absent cannot exceed opened
+
     if (timesPresent + timesAbsent > timesOpened) {
       validationErrors.push(
         `${pupilName}: Total attendance (${timesPresent} present + ${timesAbsent} absent = ${timesPresent + timesAbsent}) ` +
@@ -1640,41 +1631,38 @@ async function saveAllAttendance() {
       );
     }
   }
-  
-  // VALIDATION STEP 3: Show errors and block save if validation fails
+
   if (validationErrors.length > 0) {
-    const errorMessage = 
+    const errorMessage =
       `⚠️ ATTENDANCE VALIDATION ERRORS (${validationErrors.length}):\n\n` +
       validationErrors.slice(0, 5).join('\n') +
       (validationErrors.length > 5 ? `\n... and ${validationErrors.length - 5} more errors` : '');
-    
+
     alert(errorMessage);
-    
     window.showToast?.(
       `Cannot save: ${validationErrors.length} validation error(s) found. Please fix highlighted fields.`,
       'danger',
       8000
     );
-    
-    return; // Block save
+    return;
   }
-  
+
   // Clear any previous error highlighting
-  inputs.forEach(input => {
-    input.style.borderColor = '';
-  });
-  
-  // SAVE: Get current session
+  inputs.forEach(input => { input.style.borderColor = ''; });
+
+  // SAVE: Get current session — encode it for the document ID
   const settings = await window.getCurrentSettings();
   const currentSession = settings.session || 'Unknown';
+  const encodedSession = currentSession.replace(/\//g, '-');
   const sessionStartYear = settings.currentSession?.startYear;
   const sessionEndYear = settings.currentSession?.endYear;
   const sessionTerm = `${currentSession}_${term}`;
-  
+
   const batch = db.batch();
-  
+
   for (const [pupilId, data] of Object.entries(pupilData)) {
-    const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
+    // FIX: Document ID now includes encodedSession so each year is a separate record
+    const ref = db.collection('attendance').doc(`${pupilId}_${encodedSession}_${term}`);
     batch.set(ref, {
       pupilId,
       term,
@@ -1687,7 +1675,7 @@ async function saveAllAttendance() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
   }
-  
+
   try {
     await batch.commit();
     window.showToast?.('✓ Attendance saved successfully', 'success');
@@ -1717,270 +1705,260 @@ function loadTraitsSection() {
  * Load bulk traits entry table for all pupils
  */
 async function loadBulkTraitsTable() {
-    const container = document.getElementById('traits-form-container');
-    const term = document.getElementById('traits-term')?.value;
-    
-    if (!container || !term) return;
-    
-    if (allPupils.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">No pupils in your assigned classes</p>';
-        return;
+  const container = document.getElementById('traits-form-container');
+  const term = document.getElementById('traits-term')?.value;
+
+  if (!container || !term) return;
+
+  if (allPupils.length === 0) {
+    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600); padding: var(--space-2xl);">No pupils in your assigned classes</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="text-align:center; padding: var(--space-2xl);">
+      <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
+      <p style="color: var(--color-gray-600);">Loading traits data...</p>
+    </div>
+  `;
+
+  try {
+    const settings = await window.getCurrentSettings();
+    const encodedSession = settings.session.replace(/\//g, '-');
+
+    const traitsData = {};
+    const skillsData = {};
+
+    for (const pupil of allPupils) {
+      // FIX: Document ID now includes encodedSession
+      const traitsDocId = `${pupil.id}_${encodedSession}_${term}`;
+
+      const traitsDoc = await db.collection('behavioral_traits').doc(traitsDocId).get();
+      if (traitsDoc.exists) {
+        traitsData[pupil.id] = traitsDoc.data();
+      }
+
+      const skillsDoc = await db.collection('psychomotor_skills').doc(traitsDocId).get();
+      if (skillsDoc.exists) {
+        skillsData[pupil.id] = skillsDoc.data();
+      }
     }
-    
-    // Show loading state
+
     container.innerHTML = `
-        <div style="text-align:center; padding: var(--space-2xl);">
-            <div class="spinner" style="margin: 0 auto var(--space-md);"></div>
-            <p style="color: var(--color-gray-600);">Loading traits data...</p>
+      <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: #e0f2fe; border: 1px solid #0284c7; border-radius: var(--radius-md);">
+        <strong style="color: #0c4a6e;">📊 Bulk Entry Mode</strong>
+        <p style="margin: 0.5rem 0 0; color: #075985; font-size: var(--text-sm);">
+          Rate each trait/skill from 1 (Poor) to 5 (Excellent). Leave blank if not assessed.
+        </p>
+      </div>
+
+      <!-- Behavioral Traits Table -->
+      <div style="margin-bottom: var(--space-2xl);">
+        <h3 style="margin-bottom: var(--space-md);">Behavioral Traits</h3>
+        <div class="table-container">
+          <table class="responsive-table" id="bulk-traits-table">
+            <thead>
+              <tr>
+                <th style="min-width: 150px;">Pupil Name</th>
+                <th>Punctuality</th>
+                <th>Neatness</th>
+                <th>Politeness</th>
+                <th>Honesty</th>
+                <th>Obedience</th>
+                <th>Cooperation</th>
+                <th>Attentiveness</th>
+                <th>Leadership</th>
+                <th>Self Control</th>
+                <th>Creativity</th>
+              </tr>
+            </thead>
+            <tbody id="bulk-traits-tbody"></tbody>
+          </table>
         </div>
+      </div>
+
+      <!-- Psychomotor Skills Table -->
+      <div style="margin-bottom: var(--space-xl);">
+        <h3 style="margin-bottom: var(--space-md);">Psychomotor Skills</h3>
+        <div class="table-container">
+          <table class="responsive-table" id="bulk-skills-table">
+            <thead>
+              <tr>
+                <th style="min-width: 150px;">Pupil Name</th>
+                <th>Handwriting</th>
+                <th>Drawing/Painting</th>
+                <th>Sports</th>
+                <th>Craft</th>
+                <th>Verbal Fluency</th>
+                <th>Coordination</th>
+              </tr>
+            </thead>
+            <tbody id="bulk-skills-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="saveBulkTraitsAndSkills()" style="width: 100%;">
+        💾 Save All Traits & Skills
+      </button>
     `;
-    
-    try {
-        // Load existing traits data for all pupils
-        const traitsData = {};
-        const skillsData = {};
-        
-        for (const pupil of allPupils) {
-            const traitsDocId = `${pupil.id}_${term}`;
-            
-            // Load behavioral traits
-            const traitsDoc = await db.collection('behavioral_traits').doc(traitsDocId).get();
-            if (traitsDoc.exists) {
-                traitsData[pupil.id] = traitsDoc.data();
-            }
-            
-            // Load psychomotor skills
-            const skillsDoc = await db.collection('psychomotor_skills').doc(traitsDocId).get();
-            if (skillsDoc.exists) {
-                skillsData[pupil.id] = skillsDoc.data();
-            }
-        }
-        
-        // Render bulk entry table
-        container.innerHTML = `
-            <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: #e0f2fe; border: 1px solid #0284c7; border-radius: var(--radius-md);">
-                <strong style="color: #0c4a6e;">📊 Bulk Entry Mode</strong>
-                <p style="margin: 0.5rem 0 0; color: #075985; font-size: var(--text-sm);">
-                    Rate each trait/skill from 1 (Poor) to 5 (Excellent). Leave blank if not assessed.
-                </p>
-            </div>
-            
-            <!-- Behavioral Traits Table -->
-            <div style="margin-bottom: var(--space-2xl);">
-                <h3 style="margin-bottom: var(--space-md);">Behavioral Traits</h3>
-                <div class="table-container">
-                    <table class="responsive-table" id="bulk-traits-table">
-                        <thead>
-                            <tr>
-                                <th style="min-width: 150px;">Pupil Name</th>
-                                <th>Punctuality</th>
-                                <th>Neatness</th>
-                                <th>Politeness</th>
-                                <th>Honesty</th>
-                                <th>Obedience</th>
-                                <th>Cooperation</th>
-                                <th>Attentiveness</th>
-                                <th>Leadership</th>
-                                <th>Self Control</th>
-                                <th>Creativity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bulk-traits-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Psychomotor Skills Table -->
-            <div style="margin-bottom: var(--space-xl);">
-                <h3 style="margin-bottom: var(--space-md);">Psychomotor Skills</h3>
-                <div class="table-container">
-                    <table class="responsive-table" id="bulk-skills-table">
-                        <thead>
-                            <tr>
-                                <th style="min-width: 150px;">Pupil Name</th>
-                                <th>Handwriting</th>
-                                <th>Drawing/Painting</th>
-                                <th>Sports</th>
-                                <th>Craft</th>
-                                <th>Verbal Fluency</th>
-                                <th>Coordination</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bulk-skills-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" onclick="saveBulkTraitsAndSkills()" style="width: 100%;">
-                💾 Save All Traits & Skills
-            </button>
+
+    const traitsFields = ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 'attentiveness', 'leadership', 'selfcontrol', 'creativity'];
+    const traitsTbody = document.getElementById('bulk-traits-tbody');
+
+    allPupils.forEach(pupil => {
+      const existing = traitsData[pupil.id] || {};
+      const tr = document.createElement('tr');
+
+      let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
+
+      traitsFields.forEach(field => {
+        const value = existing[field] || '';
+        cellsHTML += `
+          <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
+            <select data-pupil="${pupil.id}" data-field="${field}" data-type="trait" style="width: 100%; max-width: 80px;">
+              <option value="">-</option>
+              ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+          </td>
         `;
-        
-        // Populate traits table
-        const traitsFields = ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 'attentiveness', 'leadership', 'selfcontrol', 'creativity'];
-        const traitsTbody = document.getElementById('bulk-traits-tbody');
-        
-        allPupils.forEach(pupil => {
-            const existing = traitsData[pupil.id] || {};
-            const tr = document.createElement('tr');
-            
-            let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
-            
-            traitsFields.forEach(field => {
-                const value = existing[field] || '';
-                cellsHTML += `
-                    <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
-                        <select data-pupil="${pupil.id}" data-field="${field}" data-type="trait" style="width: 100%; max-width: 80px;">
-                            <option value="">-</option>
-                            ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
-                        </select>
-                    </td>
-                `;
-            });
-            
-            tr.innerHTML = cellsHTML;
-            traitsTbody.appendChild(tr);
-        });
-        
-        // Populate skills table
-        const skillsFields = ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'];
-        const skillsTbody = document.getElementById('bulk-skills-tbody');
-        
-        allPupils.forEach(pupil => {
-            const existing = skillsData[pupil.id] || {};
-            const tr = document.createElement('tr');
-            
-            let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
-            
-            skillsFields.forEach(field => {
-                const value = existing[field] || '';
-                cellsHTML += `
-                    <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
-                        <select data-pupil="${pupil.id}" data-field="${field}" data-type="skill" style="width: 100%; max-width: 80px;">
-                            <option value="">-</option>
-                            ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
-                        </select>
-                    </td>
-                `;
-            });
-            
-            tr.innerHTML = cellsHTML;
-            skillsTbody.appendChild(tr);
-        });
-        
-        console.log(`✓ Bulk traits table loaded for ${allPupils.length} pupils`);
-        
-    } catch (error) {
-        console.error('Error loading bulk traits table:', error);
-        container.innerHTML = '<p style="text-align:center; color:var(--color-danger); padding: var(--space-2xl);">Error loading traits data</p>';
-    }
+      });
+
+      tr.innerHTML = cellsHTML;
+      traitsTbody.appendChild(tr);
+    });
+
+    const skillsFields = ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'];
+    const skillsTbody = document.getElementById('bulk-skills-tbody');
+
+    allPupils.forEach(pupil => {
+      const existing = skillsData[pupil.id] || {};
+      const tr = document.createElement('tr');
+
+      let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
+
+      skillsFields.forEach(field => {
+        const value = existing[field] || '';
+        cellsHTML += `
+          <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
+            <select data-pupil="${pupil.id}" data-field="${field}" data-type="skill" style="width: 100%; max-width: 80px;">
+              <option value="">-</option>
+              ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+          </td>
+        `;
+      });
+
+      tr.innerHTML = cellsHTML;
+      skillsTbody.appendChild(tr);
+    });
+
+    console.log(`✓ Bulk traits table loaded for ${allPupils.length} pupils`);
+
+  } catch (error) {
+    console.error('Error loading bulk traits table:', error);
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger); padding: var(--space-2xl);">Error loading traits data</p>';
+  }
 }
 
 /**
  * Save all traits and skills in bulk
  */
 async function saveBulkTraitsAndSkills() {
-    const term = document.getElementById('traits-term')?.value;
-    
-    if (!term) {
-        window.showToast?.('Select a term first', 'warning');
-        return;
+  const term = document.getElementById('traits-term')?.value;
+
+  if (!term) {
+    window.showToast?.('Select a term first', 'warning');
+    return;
+  }
+
+  const selects = document.querySelectorAll('#traits-form-container select');
+
+  if (selects.length === 0) {
+    window.showToast?.('No data to save', 'warning');
+    return;
+  }
+
+  const traitsByPupil = {};
+  const skillsByPupil = {};
+
+  selects.forEach(select => {
+    const pupilId = select.dataset.pupil;
+    const field = select.dataset.field;
+    const type = select.dataset.type;
+    const value = select.value;
+
+    // BUG 5 FIX: Skip blank values entirely — do not overwrite a saved score with ""
+    if (value === '') return;
+
+    if (type === 'trait') {
+      if (!traitsByPupil[pupilId]) {
+        traitsByPupil[pupilId] = { pupilId, term, teacherId: currentUser.uid };
+      }
+      traitsByPupil[pupilId][field] = value;
+    } else if (type === 'skill') {
+      if (!skillsByPupil[pupilId]) {
+        skillsByPupil[pupilId] = { pupilId, term, teacherId: currentUser.uid };
+      }
+      skillsByPupil[pupilId][field] = value;
     }
-    
-    const selects = document.querySelectorAll('#traits-form-container select');
-    
-    if (selects.length === 0) {
-        window.showToast?.('No data to save', 'warning');
-        return;
-    }
-    
-    // Organize data by pupil
-    const traitsByPupil = {};
-    const skillsByPupil = {};
-    
-    selects.forEach(select => {
-        const pupilId = select.dataset.pupil;
-        const field = select.dataset.field;
-        const type = select.dataset.type;
-        const value = select.value;
-        
-        if (type === 'trait') {
-            if (!traitsByPupil[pupilId]) {
-                traitsByPupil[pupilId] = {
-                    pupilId,
-                    term,
-                    teacherId: currentUser.uid
-                };
-            }
-            traitsByPupil[pupilId][field] = value;
-        } else if (type === 'skill') {
-            if (!skillsByPupil[pupilId]) {
-                skillsByPupil[pupilId] = {
-                    pupilId,
-                    term,
-                    teacherId: currentUser.uid
-                };
-            }
-            skillsByPupil[pupilId][field] = value;
-        }
-    });
-    
-    // Get session context
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
-    const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear = settings.currentSession?.endYear;
-    const sessionTerm = `${session}_${term}`;
-    
-    // Save in batches
-    const batch = db.batch();
-    let operationCount = 0;
-    
-    // Save behavioral traits
-    for (const [pupilId, data] of Object.entries(traitsByPupil)) {
-        const ref = db.collection('behavioral_traits').doc(`${pupilId}_${term}`);
-        batch.set(ref, {
-            ...data,
-            session,
-            sessionStartYear,
-            sessionEndYear,
-            sessionTerm,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        operationCount++;
-    }
-    
-    // Save psychomotor skills
-    for (const [pupilId, data] of Object.entries(skillsByPupil)) {
-        const ref = db.collection('psychomotor_skills').doc(`${pupilId}_${term}`);
-        batch.set(ref, {
-            ...data,
-            session,
-            sessionStartYear,
-            sessionEndYear,
-            sessionTerm,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        operationCount++;
-    }
-    
-    if (operationCount === 0) {
-        window.showToast?.('No changes to save', 'info');
-        return;
-    }
-    
-    try {
-        await batch.commit();
-        
-        window.showToast?.(
-            `✓ Saved traits & skills for ${Object.keys(traitsByPupil).length} pupil(s)`,
-            'success'
-        );
-        
-    } catch (error) {
-        console.error('Error saving bulk traits:', error);
-        window.handleError(error, 'Failed to save traits & skills');
-    }
+  });
+
+  // Get session context
+  const settings = await window.getCurrentSettings();
+  const session = settings.session;
+  // BUG 1 FIX: Encode session for document ID
+  const encodedSession = session.replace(/\//g, '-');
+  const sessionStartYear = settings.currentSession?.startYear;
+  const sessionEndYear = settings.currentSession?.endYear;
+  const sessionTerm = `${session}_${term}`;
+
+  const batch = db.batch();
+  let operationCount = 0;
+
+  for (const [pupilId, data] of Object.entries(traitsByPupil)) {
+    // BUG 1 FIX: Document ID now includes encodedSession
+    const ref = db.collection('behavioral_traits').doc(`${pupilId}_${encodedSession}_${term}`);
+    batch.set(ref, {
+      ...data,
+      session,
+      sessionStartYear,
+      sessionEndYear,
+      sessionTerm,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    operationCount++;
+  }
+
+  for (const [pupilId, data] of Object.entries(skillsByPupil)) {
+    // BUG 1 FIX: Document ID now includes encodedSession
+    const ref = db.collection('psychomotor_skills').doc(`${pupilId}_${encodedSession}_${term}`);
+    batch.set(ref, {
+      ...data,
+      session,
+      sessionStartYear,
+      sessionEndYear,
+      sessionTerm,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    operationCount++;
+  }
+
+  if (operationCount === 0) {
+    window.showToast?.('No changes to save', 'info');
+    return;
+  }
+
+  try {
+    await batch.commit();
+    window.showToast?.(
+      `✓ Saved traits & skills for ${Object.keys(traitsByPupil).length} pupil(s)`,
+      'success'
+    );
+  } catch (error) {
+    console.error('Error saving bulk traits:', error);
+    window.handleError(error, 'Failed to save traits & skills');
+  }
 }
 
 // Make functions globally available
@@ -2018,26 +1996,30 @@ async function loadRemarksData() {
   const pupilId = document.getElementById('remarks-pupil')?.value;
   const term = document.getElementById('remarks-term')?.value;
   const container = document.getElementById('remarks-form-container');
-  
+
   if (!container || !pupilId || !term) {
     container.hidden = true;
     return;
   }
-  
+
   try {
-    const docSnap = await db.collection('remarks').doc(`${pupilId}_${term}`).get();
+    const settings = await window.getCurrentSettings();
+    // BUG 1 FIX: Encode session for document ID
+    const encodedSession = settings.session.replace(/\//g, '-');
+
+    const docSnap = await db.collection('remarks').doc(`${pupilId}_${encodedSession}_${term}`).get();
     const data = docSnap.exists ? docSnap.data() : {};
-    
+
     document.getElementById('teacher-remark').value = data.teacherRemark || '';
     document.getElementById('head-remark').value = data.headRemark || '';
-    
+
     container.hidden = false;
   } catch (err) {
     window.handleError(err, 'Failed to load remarks');
     container.hidden = true;
   }
-  // Auto-load remark suggestions
-    await loadRemarkSuggestions();
+
+  await loadRemarkSuggestions();
 }
 
 /**
@@ -2138,40 +2120,41 @@ async function saveRemarks() {
   const term = document.getElementById('remarks-term')?.value;
   const teacherRemark = document.getElementById('teacher-remark')?.value.trim();
   const headRemark = document.getElementById('head-remark')?.value.trim();
-  
+
   if (!pupilId || !term) {
     window.showToast?.('Select pupil and term', 'warning');
     return;
   }
-  
+
   if (!teacherRemark && !headRemark) {
     window.showToast?.('Enter at least one remark', 'warning');
     return;
   }
-  
-  // FIXED: Get current session
+
   const settings = await window.getCurrentSettings();
   const currentSession = settings.session || 'Unknown';
+  // BUG 1 FIX: Encode session for document ID
+  const encodedSession = currentSession.replace(/\//g, '-');
   const sessionStartYear = settings.currentSession?.startYear;
   const sessionEndYear = settings.currentSession?.endYear;
   const sessionTerm = `${currentSession}_${term}`;
-  
+
   const data = {
     pupilId,
     term,
     teacherId: currentUser.uid,
     teacherRemark,
     headRemark,
-    // FIXED: Add session context
     session: currentSession,
     sessionStartYear: sessionStartYear,
     sessionEndYear: sessionEndYear,
     sessionTerm: sessionTerm,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
-  
+
   try {
-    await db.collection('remarks').doc(`${pupilId}_${term}`).set(data, { merge: true });
+    // BUG 1 FIX: Document ID now includes encodedSession
+    await db.collection('remarks').doc(`${pupilId}_${encodedSession}_${term}`).set(data, { merge: true });
     window.showToast?.('✓ Remarks saved successfully', 'success');
   } catch (err) {
     console.error('Error saving remarks:', err);
@@ -2269,18 +2252,19 @@ async function loadPromotionPupils() {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No pupils in your class</td></tr>';
     return;
   }
-  
+
   tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading pupils and calculating averages...</td></tr>';
-  
+
   try {
-    // Get current term
     const settings = await window.getCurrentSettings();
     const currentTerm = settings.term;
-    
-    // Calculate average for each pupil
+    // BUG 4 FIX: Also capture the current session to pass to calculatePupilAverage
+    const currentSession = settings.session;
+
     const pupilsWithScores = await Promise.all(
       allPupils.map(async pupil => {
-        const average = await calculatePupilAverage(pupil.id, currentTerm);
+        // BUG 4 FIX: Pass currentSession so only this year's results are used
+        const average = await calculatePupilAverage(pupil.id, currentTerm, currentSession);
         return {
           ...pupil,
           average: average.average,
@@ -2288,22 +2272,21 @@ async function loadPromotionPupils() {
         };
       })
     );
-    
-    // Sort by average (highest first)
+
     pupilsWithScores.sort((a, b) => b.average - a.average);
-    
+
     tbody.innerHTML = '';
-    
+
     pupilsWithScores.forEach(pupil => {
       const tr = document.createElement('tr');
       const avgDisplay = pupil.average > 0 ? `${pupil.average.toFixed(1)}%` : 'No results';
       const gradeClass = pupil.grade ? `grade-${pupil.grade}` : '';
-      
+
       tr.innerHTML = `
         <td style="text-align:center;">
-          <input type="checkbox" 
-                 class="pupil-promote-checkbox" 
-                 data-pupil-id="${pupil.id}" 
+          <input type="checkbox"
+                 class="pupil-promote-checkbox"
+                 data-pupil-id="${pupil.id}"
                  data-pupil-name="${pupil.name}"
                  ${pupil.average >= 40 ? 'checked' : ''}>
         </td>
@@ -2318,47 +2301,57 @@ async function loadPromotionPupils() {
       `;
       tbody.appendChild(tr);
     });
-    
-    // Update select all checkbox state
+
     updateSelectAllCheckbox();
-    
+
   } catch (error) {
     console.error('Error loading promotion pupils:', error);
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading pupils</td></tr>';
   }
 }
 
-async function calculatePupilAverage(pupilId, term) {
+// BUG 4 FIX: Added `session` parameter — only returns results from the current school year
+async function calculatePupilAverage(pupilId, term, session) {
   try {
-    const resultsSnap = await db.collection('results')
-      .where('pupilId', '==', pupilId)
-      .where('term', '==', term)
-      .get();
-    
+    let resultsSnap;
+
+    if (session) {
+      // With session: only this year's approved results for this term
+      resultsSnap = await db.collection('results')
+        .where('pupilId', '==', pupilId)
+        .where('term', '==', term)
+        .where('session', '==', session)
+        .get();
+    } else {
+      // Fallback if session not provided (original behaviour — kept for safety)
+      resultsSnap = await db.collection('results')
+        .where('pupilId', '==', pupilId)
+        .where('term', '==', term)
+        .get();
+    }
+
     if (resultsSnap.empty) {
       return { average: 0, grade: null };
     }
-    
+
     let totalScore = 0;
     let subjectCount = 0;
-    
+
     resultsSnap.forEach(doc => {
       const data = doc.data();
-      // FIXED: Parse as float to support decimal scores
       const ca = parseFloat(data.caScore) || 0;
       const exam = parseFloat(data.examScore) || 0;
       const score = ca + exam;
-      
+
       totalScore += score;
       subjectCount++;
     });
-    
-    // FIXED: Calculate average with proper rounding
+
     const average = subjectCount > 0 ? Math.round((totalScore / subjectCount) * 10) / 10 : 0;
     const grade = getGradeFromScore(average);
-    
+
     return { average, grade };
-    
+
   } catch (error) {
     console.error('Error calculating average for pupil:', pupilId, error);
     return { average: 0, grade: null };
@@ -2417,26 +2410,22 @@ document.addEventListener('change', (e) => {
 });
 
 async function submitPromotionRequest() {
-  // ✅ FIXED: Allow null nextClassName for terminal classes
   if (!promotionData.currentClassName) {
     window.showToast?.('Promotion data not loaded. Please refresh the page.', 'danger');
     return;
   }
-  
-  // ✅ FIXED: For non-terminal classes, require valid next class
+
   if (!promotionData.isTerminalClass && !promotionData.nextClassName) {
     window.showToast?.('Next class not found in hierarchy. Contact admin.', 'danger');
     return;
   }
-  
-  // Get selected pupils
+
   const checkboxes = document.querySelectorAll('.pupil-promote-checkbox:checked');
   const promotedPupils = Array.from(checkboxes).map(cb => ({
     id: cb.dataset.pupilId,
     name: cb.dataset.pupilName
   }));
-  
-  // Get unselected pupils (held back)
+
   const allCheckboxes = document.querySelectorAll('.pupil-promote-checkbox');
   const heldBackPupils = Array.from(allCheckboxes)
     .filter(cb => !cb.checked)
@@ -2444,46 +2433,43 @@ async function submitPromotionRequest() {
       id: cb.dataset.pupilId,
       name: cb.dataset.pupilName
     }));
-  
+
   if (promotedPupils.length === 0) {
     if (!confirm('No pupils selected for promotion. This means all pupils will be held back. Continue?')) {
       return;
     }
   }
-  
-  // ✅ FIXED: Show appropriate destination in confirmation
-  const destinationText = promotionData.isTerminalClass 
-    ? 'Alumni (Graduation)' 
+
+  const destinationText = promotionData.isTerminalClass
+    ? 'Alumni (Graduation)'
     : promotionData.nextClassName;
-  
+
   const confirmation = confirm(
     `Submit Promotion Request?\n\n` +
     `✓ Promote: ${promotedPupils.length} pupil(s) to ${destinationText}\n` +
     `✗ Hold back: ${heldBackPupils.length} pupil(s) in ${promotionData.currentClassName}\n\n` +
     `This request will be sent to the admin for approval.`
   );
-  
+
   if (!confirmation) return;
-  
+
   const submitBtn = document.getElementById('submit-promotion-btn');
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="btn-loading">Submitting...</span>';
   }
-  
+
   try {
-    // Get current session
     const settings = await window.getCurrentSettings();
     const currentSession = settings.session;
-    
-    // ✅ FIXED: Only look up next class ID for non-terminal classes
+
     let toClassId = null;
     if (!promotionData.isTerminalClass) {
       const classesSnap = await db.collection('classes')
         .where('name', '==', promotionData.nextClassName)
         .limit(1)
         .get();
-      
+
       if (!classesSnap.empty) {
         toClassId = classesSnap.docs[0].id;
       } else {
@@ -2495,15 +2481,14 @@ async function submitPromotionRequest() {
         return;
       }
     }
-    
-    // ✅ FIXED: Proper structure for both terminal and non-terminal
+
     const promotionRequest = {
       fromSession: currentSession,
       fromClass: {
         id: assignedClasses[0].id,
         name: promotionData.currentClassName
       },
-      toClass: promotionData.isTerminalClass 
+      toClass: promotionData.isTerminalClass
         ? { id: 'alumni', name: 'Alumni' }
         : { id: toClassId, name: promotionData.nextClassName },
       isTerminalClass: promotionData.isTerminalClass,
@@ -2513,12 +2498,29 @@ async function submitPromotionRequest() {
       heldBackPupilsDetails: heldBackPupils,
       initiatedBy: currentUser.uid,
       status: 'pending',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    
-    // Create promotion request
-    await db.collection('promotions').add(promotionRequest);
-    
+
+    // BUG 6 FIX: Check if a promotion request already exists for this class and session.
+    // If one exists, update it. If not, create a new one.
+    const existingSnap = await db.collection('promotions')
+      .where('fromClass.id', '==', assignedClasses[0].id)
+      .where('fromSession', '==', currentSession)
+      .where('status', '==', 'pending')
+      .limit(1)
+      .get();
+
+    if (!existingSnap.empty) {
+      // Update the existing pending request instead of creating a duplicate
+      await db.collection('promotions').doc(existingSnap.docs[0].id).set(promotionRequest, { merge: true });
+      console.log('✅ Existing promotion request updated:', existingSnap.docs[0].id);
+    } else {
+      // No existing request — create a new one
+      promotionRequest.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('promotions').add(promotionRequest);
+      console.log('✅ New promotion request created');
+    }
+
     console.log('✅ Promotion request submitted:', {
       type: promotionData.isTerminalClass ? 'Terminal → Alumni' : 'Regular',
       from: promotionData.currentClassName,
@@ -2526,16 +2528,15 @@ async function submitPromotionRequest() {
       promoted: promotedPupils.length,
       heldBack: heldBackPupils.length
     });
-    
+
     window.showToast?.(
       '✓ Promotion request submitted successfully!\nAdmin will review and approve your recommendations.',
       'success',
       8000
     );
-    
-    // Reload section
+
     await loadPromotionSection();
-    
+
   } catch (error) {
     console.error('Error submitting promotion request:', error);
     window.handleError(error, 'Failed to submit promotion request');
