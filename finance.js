@@ -605,31 +605,35 @@ async recordPayment(pupilId, pupilName, classId, className, session, term, payme
     console.log('   📋 Transaction data prepared');
 
     await db.runTransaction(async (transaction) => {
-      // Write transaction record (frozen snapshot)
-      transaction.set(transactionRef, transactionData);
+  // Write transaction record (frozen snapshot — unchanged)
+  transaction.set(transactionRef, transactionData);
 
-      // ✅ FIX: Update payment summary with RECALCULATED values
-      transaction.set(paymentRef, {
-        pupilId,
-        pupilName,
-        classId,
-        className,
-        session,
-        term,
-        baseFee,
-        adjustedFee: amountDue,
-        amountDue,
-        arrears: remainingArrears,  // ✅ Use calculated remaining arrears
-        totalDue: amountDue + remainingArrears,  // ✅ Recalculate with remaining arrears
-        totalPaid: newTotalPaid,
-        balance: balanceAfter,
-        status: paymentStatus,
-        lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
-        lastPaymentAmount: amountPaid,
-        lastReceiptNo: receiptNo,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    });
+  // ═══════════════════════════════════════════════════════════
+  // FIX: Payment summary stores ORIGINAL arrears and ORIGINAL totalDue.
+  // Only totalPaid and balance change when payments are made.
+  // This ensures downstream arrears calculations read the correct balance.
+  // ═══════════════════════════════════════════════════════════
+  transaction.set(paymentRef, {
+    pupilId,
+    pupilName,
+    classId,
+    className,
+    session,
+    term,
+    baseFee,
+    adjustedFee: amountDue,
+    amountDue,
+    arrears: arrears,           // ✅ FIXED: Always original arrears, never reduced
+    totalDue: totalDue,         // ✅ FIXED: Always amountDue + original arrears
+    totalPaid: newTotalPaid,    // ✅ Cumulative payments
+    balance: balanceAfter,      // ✅ totalDue - totalPaid (correct outstanding)
+    status: paymentStatus,
+    lastPaymentDate: firebase.firestore.FieldValue.serverTimestamp(),
+    lastPaymentAmount: amountPaid,
+    lastReceiptNo: receiptNo,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+});
 
     console.log('   ✅ Firestore transaction completed successfully');
     console.log(`   🎫 Receipt: ${receiptNo}`);
