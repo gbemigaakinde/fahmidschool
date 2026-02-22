@@ -638,29 +638,26 @@ function loadResultsSection() {
 
   // Auto-select single class OR show selector for multi-class
   if (classes.length === 1) {
-    classSelect.value = classes[0].id;   // set on ORIGINAL before cloning
+    classSelect.value = classes[0].id;
     if (classGroupEl) classGroupEl.style.display = 'none';
-  } else {
+} else {
+    classSelect.value = classes[0].id;  // ← auto-select first class
     if (classGroupEl) classGroupEl.style.display = '';
-  }
+}
 
-  // Clone to remove old listeners — but carry the current value across
-  const currentValue = classSelect.value;  // ← capture BEFORE cloning
-  const freshClassSelect = classSelect.cloneNode(true);
-  classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
-  freshClassSelect.value = currentValue;   // ← restore on the clone
+const currentValue = classSelect.value;  // will be classes[0].id in both cases
+const freshClassSelect = classSelect.cloneNode(true);
+classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
+freshClassSelect.value = currentValue;   // restore on clone
 
-  // Wire up change event
-  freshClassSelect.addEventListener('change', function () {
+freshClassSelect.addEventListener('change', function () {
     populateSubjectsForClass(this.value);
     checkResultLockStatus();
     loadResultsTable();
-  });
+});
 
-  // ✅ KEY FIX: Now freshClassSelect.value is correct (not empty string)
-  populateSubjectsForClass(freshClassSelect.value);
-
-  loadResultsTable();
+populateSubjectsForClass(freshClassSelect.value);  // now always has a valid value
+loadResultsTable();
 }
 
 function populateSubjectsForClass(classId) {
