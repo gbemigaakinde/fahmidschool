@@ -4865,8 +4865,8 @@ async function loadOutstandingFeesReport() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading outstanding fees...</td></tr>';
 
   try {
-    const settings = await window.getCurrentSettings();
-    const session = settings.session;
+    const settings    = await window.getCurrentSettings();
+    const session     = settings.session;
     const currentTerm = settings.term;
 
     const pupilsSnap = await db.collection('pupils').get();
@@ -4878,22 +4878,42 @@ async function loadOutstandingFeesReport() {
     }
 
     const outstandingPupils = [];
-    let totalOutstanding = 0;
-    let errorCount = 0;
+    const alumniWithBalance = [];   // FIX 5: track alumni separately
+    let totalOutstanding    = 0;
+    let errorCount          = 0;
 
     for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
+      const pupilId   = pupilDoc.id;
       const pupilData = pupilDoc.data();
 
-      if (pupilData.status === 'alumni' || pupilData.isActive === false) continue;
+      const isAlumni = pupilData.status === 'alumni' || pupilData.isActive === false;
 
-      // ✅ Per-pupil isolation — report continues even if one pupil fails
+      if (isAlumni) {
+        // FIX 5: Still check alumni for outstanding balances instead of silently skipping.
+        try {
+          const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
+          if (!result.reason && result.balance > 0) {
+            console.warn(
+              `⚠️ Alumni ${pupilData.name} has outstanding balance: ₦${result.balance.toLocaleString()}`
+            );
+            alumniWithBalance.push({ ...result, isAlumni: true });
+          }
+        } catch (e) {
+          // Silent — don't let alumni errors abort active pupil loop
+        }
+        continue;
+      }
+
       try {
         const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
         if (result.reason) continue;
         if (result.balance > 0) {
           outstandingPupils.push(result);
           totalOutstanding += result.balance;
+        }
+        // FIX 3 integration: surface overpaid pupils in console for admin awareness
+        if (result.status === 'overpaid') {
+          console.log(`ℹ️ ${result.pupilName} has credit of ₦${result.credit.toLocaleString()}`);
         }
       } catch (error) {
         console.error(`❌ Error calculating for pupil ${pupilId}:`, error.message);
@@ -4903,9 +4923,8 @@ async function loadOutstandingFeesReport() {
 
     tbody.innerHTML = '';
 
-    if (outstandingPupils.length === 0) {
+    if (outstandingPupils.length === 0 && alumniWithBalance.length === 0) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--color-success); padding:var(--space-2xl);">✓ All fees collected for ${currentTerm}!</td></tr>`;
-      // ✅ Summary always updated — even on empty result
       updateSummaryDisplay(0, 0);
       if (errorCount > 0) {
         window.showToast?.(`Report complete with ${errorCount} error(s). Check console.`, 'warning', 6000);
@@ -4917,6 +4936,7 @@ async function loadOutstandingFeesReport() {
 
     const fragment = document.createDocumentFragment();
 
+    // Active pupils with outstanding balance
     outstandingPupils.forEach(pupil => {
       const tr = document.createElement('tr');
 
@@ -4942,9 +4962,9 @@ async function loadOutstandingFeesReport() {
         <td data-label="Balance" class="text-bold text-danger">₦${pupil.balance.toLocaleString()}</td>
         <td data-label="Status">
           <span class="status-badge" style="background:${
-            pupil.status === 'partial' ? '#ff9800' :
-            pupil.arrears > 0 ? '#dc3545' :
-            '#f44336'};">
+            pupil.status === 'partial'      ? '#ff9800' :
+            pupil.arrears > 0              ? '#dc3545' :
+                                             '#f44336'};">
             ${pupil.status === 'partial' ? 'Partial' : pupil.arrears > 0 ? 'With Arrears' : 'Owing'}
           </span>
         </td>
@@ -4953,13 +4973,56 @@ async function loadOutstandingFeesReport() {
       fragment.appendChild(tr);
     });
 
+    // FIX 5: Alumni with outstanding balances shown in a separate section
+    if (alumniWithBalance.length > 0) {
+      const alumniHeaderTr = document.createElement('tr');
+      alumniHeaderTr.innerHTML = `
+        <td colspan="7" style="
+          background:#fff3cd;
+          color:#856404;
+          font-weight:700;
+          padding:var(--space-sm) var(--space-md);
+          border-top:2px solid #ffc107;
+        ">
+          ⚠️ Alumni with Outstanding Balances (${alumniWithBalance.length}) — 
+          Resolve before finalising graduation records
+        </td>
+      `;
+      fragment.appendChild(alumniHeaderTr);
+
+      alumniWithBalance.sort((a, b) => b.balance - a.balance);
+
+      alumniWithBalance.forEach(pupil => {
+        const tr = document.createElement('tr');
+        tr.style.background = '#fffdf0';
+        tr.innerHTML = `
+          <td data-label="Pupil Name">${pupil.pupilName} <em style="color:#856404;">(Alumni)</em></td>
+          <td data-label="Class">${pupil.className || '—'}</td>
+          <td data-label="Amount Due">₦${pupil.amountDue.toLocaleString()}</td>
+          <td data-label="Total Paid">₦${pupil.totalPaid.toLocaleString()}</td>
+          <td data-label="Balance" style="font-weight:700; color:#856404;">₦${pupil.balance.toLocaleString()}</td>
+          <td data-label="Status">
+            <span class="status-badge" style="background:#856404;">Alumni - Owing</span>
+          </td>
+          <td data-label="Term">${currentTerm}</td>
+        `;
+        fragment.appendChild(tr);
+        totalOutstanding += pupil.balance;
+      });
+    }
+
     tbody.appendChild(fragment);
 
-    // ✅ Summary always updated regardless of error count
-    updateSummaryDisplay(outstandingPupils.length, totalOutstanding);
+    updateSummaryDisplay(
+      outstandingPupils.length + alumniWithBalance.length,
+      totalOutstanding
+    );
 
     if (errorCount > 0) {
-      window.showToast?.(`Report loaded with ${errorCount} error(s). Some pupils may be missing.`, 'warning', 6000);
+      window.showToast?.(
+        `Report loaded with ${errorCount} error(s). Some pupils may be missing.`,
+        'warning', 6000
+      );
     }
 
   } catch (error) {
@@ -4970,6 +5033,7 @@ async function loadOutstandingFeesReport() {
 }
 
 window.loadOutstandingFeesReport = loadOutstandingFeesReport;
+console.log('✅ loadOutstandingFeesReport() FIX 5 loaded');
 
 /**
  * Show detailed fee breakdown in modal
