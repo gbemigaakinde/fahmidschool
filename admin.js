@@ -9704,78 +9704,300 @@ async function startNewSession() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-// ═══════════════════════════════════════════════════════════
-// ✅ FIXED: Trigger arrears migration for new session
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// FIXED: New-session arrears migration
+// 1. Ensures old session Third Term docs exist with valid balances
+// 2. Creates new session First Term payment docs with correct arrears
+// 3. Preserves any docs already created (re-run safe)
+// ════════════════════════════════════════════════════════════════
+
 console.log('🔄 Migrating arrears from old session to new session...');
 
-const oldSessionName = `${currentSession.startYear}/${currentSession.endYear}`;
+const oldSessionName  = `${currentSession.startYear}/${currentSession.endYear}`;
+const encodedOldSess  = oldSessionName.replace(/\//g, '-');
+const encodedNewSess  = newSessionName.replace(/\//g, '-');
 
-// Get all pupils
 const pupilsSnap = await db.collection('pupils').get();
 
-let pupilsWithArrears = 0;
-let totalArrearsAmount = 0;
+// Pre-load all fee structures once
+const feeStructuresSnap = await db.collection('fee_structures').get();
+const feeStructureMap   = {};
+feeStructuresSnap.forEach(doc => {
+  const d = doc.data();
+  feeStructureMap[d.classId] = Math.round(Number(d.total) || 0);
+});
 
-// Process in batches
-const BATCH_SIZE = 400;
-let batch = db.batch();
-let batchCount = 0;
+let prevTermRepaired   = 0;
+let newDocsCreated     = 0;
+let newDocsUpdated     = 0;
+let pupilsWithArrears  = 0;
+let totalArrearsAmount = 0;
+let skippedCount       = 0;
+
+// ── Step 1: Ensure old session Third Term docs exist ─────────────
+// calculateCompleteArrears (called in Step 2) reads Third Term's
+// `balance` field. If the doc is missing or corrupted we repair it
+// first so the cascade is correct.
 
 for (const pupilDoc of pupilsSnap.docs) {
-  const pupilId = pupilDoc.id;
+  const pupilId   = pupilDoc.id;
   const pupilData = pupilDoc.data();
-  const classId = pupilData.class?.id;
-  
+  const classId   = pupilData.class?.id;
+
+  if (pupilData.status === 'alumni' || pupilData.isActive === false) continue;
   if (!classId) continue;
-  
-  // ─── Calculate arrears from ENTIRE previous session ───
-  const arrears = await calculateSessionBalanceSafe(pupilId, oldSessionName);
-  
-  if (arrears > 0) {
-    pupilsWithArrears++;
-    totalArrearsAmount += arrears;
-    
-    console.log(`  💰 ${pupilData.name}: ₦${arrears.toLocaleString()} from ${oldSessionName}`);
-    
-    // Log arrears for audit trail
-    const arrearsLogRef = db.collection('arrears_log').doc();
-    batch.set(arrearsLogRef, {
-      pupilId: pupilId,
-      pupilName: pupilData.name || 'Unknown',
-      oldSession: oldSessionName,
-      newSession: newSessionName,
-      arrearsAmount: arrears,
-      migratedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      migratedBy: auth.currentUser.uid,
-      migrationReason: 'New session started'
-    });
-    
-    batchCount++;
-    
-    if (batchCount >= BATCH_SIZE) {
-      await batch.commit();
-      batch = db.batch();
-      batchCount = 0;
+
+  const baseFee = feeStructureMap[classId] || 0;
+  if (baseFee === 0) continue;
+
+  const thirdTermAmountDue = window.calculateAdjustedFee
+    ? window.calculateAdjustedFee(pupilData, baseFee, 'Third Term')
+    : baseFee;
+
+  // Not enrolled for Third Term — nothing to carry forward
+  if (thirdTermAmountDue === 0 && baseFee > 0) continue;
+
+  const thirdTermDocId = `${pupilId}_${encodedOldSess}_Third Term`;
+  const thirdTermRef   = db.collection('payments').doc(thirdTermDocId);
+
+  try {
+    const thirdTermDoc = await thirdTermRef.get();
+
+    if (!thirdTermDoc.exists) {
+      // Recalculate full balance for Third Term of old session.
+      // We need to include Third Term's own inherited arrears, so
+      // we call calculateCompleteArrears for (oldSession, Third Term).
+      let thirdTermArrears = 0;
+      try {
+        thirdTermArrears = await window.calculateCompleteArrears(
+          pupilId, oldSessionName, 'Third Term'
+        );
+      } catch (e) {
+        console.warn(`  ⚠️ Could not get Third Term arrears for ${pupilData.name}:`, e.message);
+      }
+
+      // Sum actual payments made for Third Term
+      let thirdTermPaid = 0;
+      try {
+        const txSnap = await db.collection('payment_transactions')
+          .where('pupilId', '==', pupilId)
+          .where('session', '==', oldSessionName)
+          .where('term',    '==', 'Third Term')
+          .get();
+        txSnap.forEach(tx => {
+          thirdTermPaid += Math.round(Number(tx.data().amountPaid) || 0);
+        });
+      } catch (e) {
+        console.warn(`  ⚠️ Could not sum Third Term transactions for ${pupilData.name}:`, e.message);
+      }
+
+      const thirdTermTotalDue = thirdTermAmountDue + thirdTermArrears;
+      const thirdTermBalance  = Math.max(0, thirdTermTotalDue - thirdTermPaid);
+
+      await thirdTermRef.set({
+        pupilId,
+        pupilName:   pupilData.name || 'Unknown',
+        classId,
+        className:   pupilData.class?.name || 'Unknown',
+        session:     oldSessionName,
+        term:        'Third Term',
+        baseFee,
+        adjustedFee: thirdTermAmountDue,
+        amountDue:   thirdTermAmountDue,
+        arrears:     thirdTermArrears,
+        totalDue:    thirdTermTotalDue,
+        totalPaid:   thirdTermPaid,
+        balance:     thirdTermBalance,
+        status:      thirdTermBalance <= 0   ? 'paid'
+                   : thirdTermPaid   >  0    ? 'partial'
+                   : thirdTermArrears > 0    ? 'owing_with_arrears'
+                   :                           'owing',
+        lastPaymentDate: null,
+        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        autoCreatedBySessionMigration: true
+      });
+
+      prevTermRepaired++;
+      console.log(
+        `  🔧 Created missing Third Term doc for ${pupilData.name}: ` +
+        `balance=₦${thirdTermBalance.toLocaleString()}`
+      );
+
+    } else {
+      // Doc exists — repair corrupted balance if needed
+      const storedBalance = thirdTermDoc.data().balance;
+      if (isNaN(Number(storedBalance))) {
+        console.warn(`  ⚠️ Corrupted Third Term balance for ${pupilData.name}, repairing...`);
+        const repairedBalance = await window._recalculateTermBalance(
+          pupilId, oldSessionName, 'Third Term'
+        );
+        await thirdTermRef.update({
+          balance:    repairedBalance,
+          updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+          repairedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        prevTermRepaired++;
+      }
     }
+  } catch (repairError) {
+    console.error(
+      `  ❌ Failed to repair Third Term doc for ${pupilData.name}:`,
+      repairError.message
+    );
   }
 }
 
-// Commit remaining arrears logs
+console.log(`  ✓ Old session Third Term repair complete: ${prevTermRepaired} created/repaired`);
+
+// ── Step 2: Create new session First Term payment docs ───────────
+// Now that Third Term docs are guaranteed valid, calculateCompleteArrears
+// for (newSession, First Term) will read them correctly.
+
+let batch      = db.batch();
+let batchCount = 0;
+
+for (const pupilDoc of pupilsSnap.docs) {
+  const pupilId   = pupilDoc.id;
+  const pupilData = pupilDoc.data();
+  const classId   = pupilData.class?.id;
+
+  if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+    skippedCount++;
+    continue;
+  }
+
+  if (!classId) {
+    skippedCount++;
+    continue;
+  }
+
+  const baseFee = feeStructureMap[classId] || 0;
+  if (baseFee === 0) {
+    skippedCount++;
+    continue;
+  }
+
+  const amountDue = window.calculateAdjustedFee
+    ? window.calculateAdjustedFee(pupilData, baseFee, 'First Term')
+    : baseFee;
+
+  if (amountDue === 0 && baseFee > 0) {
+    skippedCount++;
+    continue;
+  }
+
+  try {
+    // calculateCompleteArrears for First Term of newSession reads
+    // Third Term of oldSession — which we just ensured exists above.
+    const arrears = await window.calculateCompleteArrears(
+      pupilId, newSessionName, 'First Term'
+    );
+
+    if (arrears > 0) {
+      pupilsWithArrears++;
+      totalArrearsAmount += arrears;
+      console.log(`  💰 ${pupilData.name}: carrying ₦${arrears.toLocaleString()} into ${newSessionName}`);
+    }
+
+    const newFirstTermDocId = `${pupilId}_${encodedNewSess}_First Term`;
+    const newFirstTermRef   = db.collection('payments').doc(newFirstTermDocId);
+    const existingDoc       = await newFirstTermRef.get();
+
+    const payload = {
+      pupilId,
+      pupilName:   pupilData.name || 'Unknown',
+      classId,
+      className:   pupilData.class?.name || 'Unknown',
+      session:     newSessionName,
+      term:        'First Term',
+      baseFee,
+      adjustedFee: amountDue,
+      amountDue,
+      arrears,
+      totalDue:    amountDue + arrears,
+      totalPaid:   0,
+      balance:     amountDue + arrears,
+      status:      arrears > 0 ? 'owing_with_arrears' : 'owing',
+      lastPaymentDate: null,
+      updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      migratedFromSession: oldSessionName
+    };
+
+    if (!existingDoc.exists) {
+      payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      batch.set(newFirstTermRef, payload);
+      newDocsCreated++;
+    } else {
+      // Doc already exists — update arrears/balance but preserve
+      // any payments already recorded against it
+      const existingPaid = Math.round(Number(existingDoc.data().totalPaid) || 0);
+      const newTotalDue  = amountDue + arrears;
+      const newBalance   = Math.max(0, newTotalDue - existingPaid);
+
+      batch.update(newFirstTermRef, {
+        arrears,
+        amountDue,
+        adjustedFee: amountDue,
+        totalDue:    newTotalDue,
+        balance:     newBalance,
+        status:      newBalance   <= 0    ? 'paid'
+                   : existingPaid >  0    ? 'partial'
+                   : arrears      >  0    ? 'owing_with_arrears'
+                   :                        'owing',
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        migratedFromSession: oldSessionName
+      });
+      newDocsUpdated++;
+    }
+
+    batchCount++;
+
+    if (batchCount >= 400) {
+      await batch.commit();
+      batch      = db.batch();
+      batchCount = 0;
+    }
+
+    // Log to arrears_log for audit trail (only if there are arrears)
+    if (arrears > 0) {
+      await db.collection('arrears_log').add({
+        pupilId,
+        pupilName:     pupilData.name || 'Unknown',
+        oldSession:    oldSessionName,
+        newSession:    newSessionName,
+        arrearsAmount: arrears,
+        migratedAt:    firebase.firestore.FieldValue.serverTimestamp(),
+        migratedBy:    auth.currentUser.uid,
+        migrationReason: 'New session started'
+      });
+    }
+
+  } catch (pupilError) {
+    console.error(`  ⚠️ Error processing ${pupilData.name}:`, pupilError.message);
+    skippedCount++;
+  }
+}
+
 if (batchCount > 0) {
   await batch.commit();
 }
 
-console.log(`✅ Arrears migration summary:`);
-console.log(`   - ${pupilsWithArrears} pupils with outstanding balances`);
-console.log(`   - Total arrears: ₦${totalArrearsAmount.toLocaleString()}`);
+console.log(`\n✅ New session arrears migration summary:`);
+console.log(`   Old session Third Term docs repaired: ${prevTermRepaired}`);
+console.log(`   New First Term docs created:          ${newDocsCreated}`);
+console.log(`   New First Term docs updated:          ${newDocsUpdated}`);
+console.log(`   Pupils with arrears:                  ${pupilsWithArrears}`);
+console.log(`   Total arrears carried forward:        ₦${totalArrearsAmount.toLocaleString()}`);
+console.log(`   Skipped (alumni/no class/no fee):     ${skippedCount}`);
 
-// ─── Show success message with arrears info ───
+// ── Update the success toast to include migration results ────────
 window.showToast?.(
-  `✓ New session ${newSessionName} started successfully!\n\n` +
+  `✓ New session ${newSessionName} started!\n\n` +
   `Arrears Migration:\n` +
   `• ${pupilsWithArrears} pupils with outstanding balances\n` +
-  `• Total arrears: ₦${totalArrearsAmount.toLocaleString()}\n\n` +
+  `• Total carried forward: ₦${totalArrearsAmount.toLocaleString()}\n` +
+  `• ${newDocsCreated} new payment records created\n\n` +
   `Promotion period is now ACTIVE for teachers.`,
   'success',
   12000
