@@ -514,45 +514,42 @@ function initTeacherPortal() {
 }
 
 function setupAllEventListeners() {
-  const saveResultsBtn = document.getElementById('save-results-btn');
+  const saveResultsBtn   = document.getElementById('save-results-btn');
   const saveAttendanceBtn = document.getElementById('save-attendance-btn');
-  const saveTraitsBtn = document.getElementById('save-traits-btn');
-  const saveRemarksBtn = document.getElementById('save-remarks-btn');
-  
-  if (saveResultsBtn) saveResultsBtn.addEventListener('click', saveAllResults);
+  const saveTraitsBtn    = document.getElementById('save-traits-btn');
+  const saveRemarksBtn   = document.getElementById('save-remarks-btn');
+
+  if (saveResultsBtn)    saveResultsBtn.addEventListener('click', saveAllResults);
   if (saveAttendanceBtn) saveAttendanceBtn.addEventListener('click', saveAllAttendance);
-  if (saveTraitsBtn) saveTraitsBtn.addEventListener('click', saveTraitsAndSkills);
-  if (saveRemarksBtn) saveRemarksBtn.addEventListener('click', saveRemarks);
-  
-  const resultTerm = document.getElementById('result-term');
+  if (saveTraitsBtn)     saveTraitsBtn.addEventListener('click', saveBulkTraitsAndSkills); // ✅ FIXED name
+  if (saveRemarksBtn)    saveRemarksBtn.addEventListener('click', saveRemarks);
+
+  const resultTerm    = document.getElementById('result-term');
   const resultSubject = document.getElementById('result-subject');
-  if (resultTerm) resultTerm.addEventListener('change', loadResultsTable);
+  if (resultTerm)    resultTerm.addEventListener('change', loadResultsTable);
   if (resultSubject) resultSubject.addEventListener('change', loadResultsTable);
-  
+
   const traitsTerm = document.getElementById('traits-term');
   if (traitsTerm) traitsTerm.addEventListener('change', loadBulkTraitsTable);
 
   const traitsPupil = document.getElementById('traits-pupil');
-  if (traitsPupil) {
-    traitsPupil.closest('.form-group')?.remove();
-  }
-  
+  if (traitsPupil) traitsPupil.closest('.form-group')?.remove();
+
   const remarksPupil = document.getElementById('remarks-pupil');
-  const remarksTerm = document.getElementById('remarks-term');
+  const remarksTerm  = document.getElementById('remarks-term');
   if (remarksPupil) remarksPupil.addEventListener('change', loadRemarksData);
-  if (remarksTerm) remarksTerm.addEventListener('change', () => {
+  if (remarksTerm)  remarksTerm.addEventListener('change', () => {
     if (remarksPupil?.value) loadRemarksData();
   });
-  
-  // FIXED: Always use the patched sectionLoaders version so enhanced UI is called
+
   const attendanceTerm = document.getElementById('attendance-term');
   if (attendanceTerm) attendanceTerm.addEventListener('change', () => {
     const loader = window.sectionLoaders?.['attendance'];
     if (typeof loader === 'function') loader();
     else loadAttendanceSection();
   });
-  
-  console.log('✓ All event listeners connected with safety checks');
+
+  console.log('✓ All event listeners connected');
 }
 
 /* ======================================== 
@@ -641,15 +638,17 @@ function loadResultsSection() {
 
   // Auto-select single class OR show selector for multi-class
   if (classes.length === 1) {
-    classSelect.value = classes[0].id;
+    classSelect.value = classes[0].id;   // set on ORIGINAL before cloning
     if (classGroupEl) classGroupEl.style.display = 'none';
   } else {
     if (classGroupEl) classGroupEl.style.display = '';
   }
 
-  // Remove old listeners safely by cloning
+  // Clone to remove old listeners — but carry the current value across
+  const currentValue = classSelect.value;  // ← capture BEFORE cloning
   const freshClassSelect = classSelect.cloneNode(true);
   classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
+  freshClassSelect.value = currentValue;   // ← restore on the clone
 
   // Wire up change event
   freshClassSelect.addEventListener('change', function () {
@@ -658,7 +657,7 @@ function loadResultsSection() {
     loadResultsTable();
   });
 
-  // ✅ KEY FIX: Populate subjects using the ALREADY SELECTED value (not empty string)
+  // ✅ KEY FIX: Now freshClassSelect.value is correct (not empty string)
   populateSubjectsForClass(freshClassSelect.value);
 
   loadResultsTable();
@@ -1365,7 +1364,6 @@ window.submitResultsForApproval = submitResultsForApproval;
 let isSavingResults = false;
 
 async function saveAllResults() {
-  // CLICK GUARD: Prevent simultaneous executions
   if (isSavingResults) {
     console.log('Save already in progress, ignoring click');
     return;
@@ -1375,118 +1373,86 @@ async function saveAllResults() {
   const term = document.getElementById('result-term')?.value;
   const subject = document.getElementById('result-subject')?.value;
 
+  // ✅ FIX: Read from class selector (consistent with submitResultsForApproval)
+  const classSelect = document.getElementById('result-class');
+  const selectedClassId = classSelect?.value;
+
   if (!term || !subject) {
     window.showToast?.('Select term and subject first', 'warning');
     return;
   }
 
-  // VALIDATION STEP 1: Check for invalid scores
+  if (!selectedClassId) {
+    window.showToast?.('Please select a class first', 'warning');
+    return;
+  }
+
+  const selectedClass = assignedClasses.find(c => c.id === selectedClassId);
+  if (!selectedClass) {
+    window.showToast?.('Selected class not found. Please refresh.', 'danger');
+    return;
+  }
+
   let hasInvalidScores = false;
   inputs.forEach(input => {
     const field = input.dataset.field;
     const value = parseFloat(input.value) || 0;
     const max = field === 'ca' ? 40 : 60;
-
-    if (value > max) {
-      hasInvalidScores = true;
-      input.style.borderColor = '#f44336';
-      input.value = max;
-    }
-    if (value < 0) {
-      hasInvalidScores = true;
-      input.style.borderColor = '#f44336';
-      input.value = 0;
-    }
+    if (value > max) { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = max; }
+    if (value < 0)  { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = 0; }
   });
 
   if (hasInvalidScores) {
-    window.showToast?.(
-      'Invalid scores corrected. Please review and try saving again.',
-      'warning',
-      5000
-    );
+    window.showToast?.('Invalid scores corrected. Please review and save again.', 'warning', 5000);
     return;
   }
 
-  // VALIDATION STEP 2: Check if any scores entered
   let hasChanges = false;
-  inputs.forEach(input => {
-    const value = parseFloat(input.value) || 0;
-    if (value > 0) hasChanges = true;
-  });
+  inputs.forEach(input => { if (parseFloat(input.value) || 0) hasChanges = true; });
+  if (!hasChanges) { window.showToast?.('No scores have been entered', 'warning'); return; }
 
-  if (!hasChanges) {
-    window.showToast?.('No scores have been entered', 'warning');
-    return;
-  }
-
-  // SET LOCK FLAG
   isSavingResults = true;
 
   const saveBtn = document.getElementById('save-results-btn');
+  const originalHTML = saveBtn?.innerHTML;
+  const originalDisabled = saveBtn?.disabled;
 
-  if (!saveBtn) {
-    console.error('Save button not found');
-    isSavingResults = false;
-    return;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.5rem;">
+      <span style="width:14px;height:14px;border:2px solid transparent;border-top-color:currentColor;border-radius:50%;display:inline-block;animation:spin .8s linear infinite;"></span>
+      Saving...</span>`;
   }
 
-  const originalHTML = saveBtn.innerHTML;
-  const originalDisabled = saveBtn.disabled;
-
-  saveBtn.disabled = true;
-  saveBtn.innerHTML = `
-    <span style="display:inline-flex; align-items:center; gap:0.5rem;">
-      <span style="width:14px; height:14px; border:2px solid transparent; border-top-color:currentColor; border-radius:50%; display:inline-block; animation:spin 0.8s linear infinite;"></span>
-      Saving...
-    </span>
-  `;
-
   try {
-    let currentSession = 'Unknown';
-    let sessionStartYear = null;
-    let sessionEndYear = null;
-
-    try {
-      const settings = await window.getCurrentSettings();
-      currentSession = settings.session || 'Unknown';
-      sessionStartYear = settings.currentSession?.startYear;
-      sessionEndYear = settings.currentSession?.endYear;
-    } catch (settingsError) {
-      console.error('Failed to get session settings:', settingsError);
-    }
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session || 'Unknown';
+    const sessionStartYear = settings.currentSession?.startYear;
+    const sessionEndYear = settings.currentSession?.endYear;
 
     const batch = db.batch();
 
-    // Group inputs by pupil
     const pupilResults = {};
     inputs.forEach(input => {
       const pupilId = input.dataset.pupil;
       const field = input.dataset.field;
       const value = parseFloat(input.value) || 0;
-
-      if (!pupilResults[pupilId]) {
-        pupilResults[pupilId] = {};
-      }
+      if (!pupilResults[pupilId]) pupilResults[pupilId] = {};
       pupilResults[pupilId][field] = value;
     });
 
-    // Save to DRAFT collection
     for (const [pupilId, scores] of Object.entries(pupilResults)) {
       const pupil = allPupils.find(p => p.id === pupilId);
       const pupilName = pupil?.name || 'Unknown';
 
-      // BUG 2 FIX: Read classId and className from the individual pupil's own data,
-      // not from assignedClasses[0]. Each pupil carries their class info from Firestore.
-      const classId = pupil?.class?.id || (assignedClasses.length > 0 ? assignedClasses[0].id : null);
-      const className = pupil?.class?.name || (assignedClasses.length > 0 ? assignedClasses[0].name : 'Unknown');
+      // ✅ FIX: Use the selector's value for classId/className, not assignedClasses[0]
+      const classId = selectedClass.id;
+      const className = selectedClass.name;
 
       const docId = `${pupilId}_${term}_${subject}`;
       const ref = db.collection('results_draft').doc(docId);
 
-      const sessionTerm = `${currentSession}_${term}`;
-
-      const baseData = {
+      batch.set(ref, {
         pupilId,
         pupilName,
         classId,
@@ -1496,34 +1462,26 @@ async function saveAllResults() {
         session: currentSession,
         sessionStartYear,
         sessionEndYear,
-        sessionTerm,
-        caScore: scores.ca !== undefined ? scores.ca : 0,
+        sessionTerm: `${currentSession}_${term}`,
+        caScore:   scores.ca   !== undefined ? scores.ca   : 0,
         examScore: scores.exam !== undefined ? scores.exam : 0,
         teacherId: currentUser.uid,
         status: 'draft',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: currentUser.uid
-      };
-
-      batch.set(ref, baseData, { merge: true });
+      }, { merge: true });
     }
 
     await batch.commit();
 
     window.showToast?.(
-      '✓ Results saved to your workspace\n\n' +
-      'ℹ️ Not visible to pupils yet - submit for approval when ready.',
-      'success',
-      6000
+      '✓ Results saved to your workspace\n\nℹ️ Not visible to pupils yet — submit for approval when ready.',
+      'success', 6000
     );
 
   } catch (err) {
     console.error('Error saving results:', err);
-    window.showToast?.(
-      `Failed to save results: ${err.message || 'Unknown error'}`,
-      'danger',
-      6000
-    );
+    window.showToast?.(`Failed to save results: ${err.message || 'Unknown error'}`, 'danger', 6000);
   } finally {
     const finalSaveBtn = document.getElementById('save-results-btn');
     if (finalSaveBtn) {
@@ -1532,11 +1490,10 @@ async function saveAllResults() {
       finalSaveBtn.style.opacity = '';
       finalSaveBtn.style.cursor = '';
     }
-
-    // RELEASE LOCK FLAG
     isSavingResults = false;
   }
 }
+
 
 /* ======================================== 
    ATTENDANCE 
@@ -2630,60 +2587,59 @@ window.paginateTable = paginateTable; // ← EXPOSE FOR ATTENDANCE UI
 
 // Helper for manual attendance save (used by attendance-teacher-ui.js)
 window._saveAttendanceFromInputs = async function(inputs, term) {
-    if (!inputs.length || !term) {
-        window.showToast?.('No data to save', 'warning');
-        return;
-    }
+  if (!inputs.length || !term) {
+    window.showToast?.('No data to save', 'warning');
+    return;
+  }
 
-    const pupilData = {};
-    const validationErrors = [];
+  const pupilData = {};
+  const validationErrors = [];
 
-    inputs.forEach(input => {
-        const pupilId = input.dataset.pupil;
-        const field = input.dataset.field;
-        const value = parseInt(input.value) || 0;
-        if (value < 0) {
-            validationErrors.push(`Negative value for ${field}`);
-            return;
-        }
-        if (!pupilData[pupilId]) pupilData[pupilId] = {};
-        pupilData[pupilId][field] = value;
-    });
+  inputs.forEach(input => {
+    const pupilId = input.dataset.pupil;
+    const field   = input.dataset.field;
+    const value   = parseInt(input.value) || 0;
+    if (value < 0) { validationErrors.push(`Negative value for ${field}`); return; }
+    if (!pupilData[pupilId]) pupilData[pupilId] = {};
+    pupilData[pupilId][field] = value;
+  });
 
-    for (const [pupilId, data] of Object.entries(pupilData)) {
-        const { timesOpened = 0, timesPresent = 0, timesAbsent = 0 } = data;
-        if (timesPresent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present > Opened`);
-        if (timesAbsent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Absent > Opened`);
-        if (timesPresent + timesAbsent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present+Absent > Opened`);
-    }
+  for (const [pupilId, data] of Object.entries(pupilData)) {
+    const { timesOpened = 0, timesPresent = 0, timesAbsent = 0 } = data;
+    if (timesPresent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present > Opened`);
+    if (timesAbsent  > timesOpened) validationErrors.push(`Pupil ${pupilId}: Absent > Opened`);
+    if (timesPresent + timesAbsent > timesOpened) validationErrors.push(`Pupil ${pupilId}: Present+Absent > Opened`);
+  }
 
-    if (validationErrors.length > 0) {
-        window.showToast?.(`Validation errors: ${validationErrors[0]}`, 'danger', 6000);
-        return;
-    }
+  if (validationErrors.length > 0) {
+    window.showToast?.(`Validation errors: ${validationErrors[0]}`, 'danger', 6000);
+    return;
+  }
 
-    const settings = await window.getCurrentSettings();
-    const currentSession = settings.session || 'Unknown';
-    const batch = db.batch();
+  const settings = await window.getCurrentSettings();
+  const currentSession = settings.session || 'Unknown';
+  const encodedSession = currentSession.replace(/\//g, '-'); // ✅ FIXED: was missing this
+  const batch = db.batch();
 
-    for (const [pupilId, data] of Object.entries(pupilData)) {
-        const ref = db.collection('attendance').doc(`${pupilId}_${term}`);
-        batch.set(ref, {
-            pupilId, term,
-            teacherId: currentUser.uid,
-            session: currentSession,
-            sessionTerm: `${currentSession}_${term}`,
-            ...data,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-    }
+  for (const [pupilId, data] of Object.entries(pupilData)) {
+    // ✅ FIX: doc ID now includes encodedSession (consistent with saveAllAttendance)
+    const ref = db.collection('attendance').doc(`${pupilId}_${encodedSession}_${term}`);
+    batch.set(ref, {
+      pupilId, term,
+      teacherId: currentUser.uid,
+      session: currentSession,
+      sessionTerm: `${currentSession}_${term}`,
+      ...data,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
 
-    try {
-        await batch.commit();
-        window.showToast?.('✓ Manual attendance totals saved', 'success');
-    } catch (err) {
-        window.handleError?.(err, 'Failed to save attendance');
-    }
+  try {
+    await batch.commit();
+    window.showToast?.('✓ Manual attendance totals saved', 'success');
+  } catch (err) {
+    window.handleError?.(err, 'Failed to save attendance');
+  }
 };
 
 console.log('✓ Teacher portal v8.1.0 loaded - RACE CONDITIONS FIXED');
