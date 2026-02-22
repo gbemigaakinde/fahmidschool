@@ -3633,8 +3633,6 @@ async function exportPupilResults() {
 
 // Make functions globally available
 window.loadViewResultsSection = loadViewResultsSection;
-window.loadFilteredClasses = loadFilteredClasses;
-window.loadFilteredPupils = loadFilteredPupils;
 window.loadPupilResults = loadPupilResults;
 window.clearResultsFilter = clearResultsFilter;
 window.exportPupilResults = exportPupilResults;
@@ -3902,7 +3900,6 @@ window.toggleSessionComparison = toggleSessionComparison;
 // Make functions globally available
 window.loadPromotionRequests = loadPromotionRequests;
 window.loadPromotionPeriodStatus = loadPromotionPeriodStatus;
-window.loadViewResultsSection = loadViewResultsSection;
 window.populateSessionFilter = populateSessionFilter;
 
 console.log('✓ Missing section loaders restored');
@@ -3910,33 +3907,6 @@ console.log('✓ Missing section loaders restored');
 /* ========================================
    FINANCIAL MANAGEMENT SECTION LOADERS
 ======================================== */
-
-/**
- * FIXED: Safely extract class ID with fallback for old format
- */
-function getClassIdSafely(pupilData) {
-  if (!pupilData || !pupilData.class) {
-    console.error('❌ No class data found for pupil');
-    return null;
-  }
-  
-  // New format: {id: "xyz", name: "Primary 3"}
-  if (typeof pupilData.class === 'object' && pupilData.class.id) {
-    return pupilData.class.id;
-  }
-  
-  // Old format: just "Primary 3" as string
-  // We need to look it up in the classes collection
-  if (typeof pupilData.class === 'string') {
-    console.warn('⚠️ Old class format detected, returning null (admin should update pupil record)');
-    return null;
-  }
-  
-  return null;
-}
-
-// Make globally available
-window.getClassIdSafely = getClassIdSafely;
 
 /**
  * Load Fee Management Section
@@ -4220,8 +4190,6 @@ async function fixDuplicateFees(classId) {
 }
 
 // Make functions globally available
-window.saveFeeStructure = saveFeeStructure;
-window.loadFeeStructures = loadFeeStructures;
 window.fixDuplicateFees = fixDuplicateFees;
 
 console.log('✅ Fee structure duplicate prevention fix loaded');
@@ -4915,8 +4883,6 @@ function showFeeBreakdown(pupilName, termBreakdown) {
 }
 
 // Make functions globally available
-window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-window.updateSummaryDisplay = updateSummaryDisplay;
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
@@ -5032,83 +4998,6 @@ async function loadFinancialReports() {
 
 window.loadFinancialReports = loadFinancialReports;
 
-/**
- * ✅ NEW: Generate term-by-term breakdown chart
- */
-async function generateTermBreakdownChart(session, feeStructureMap, paymentMap) {
-    const chartContainer = document.getElementById('term-breakdown-chart');
-    if (!chartContainer) return;
-
-    const termOrder = ['First Term', 'Second Term', 'Third Term'];
-    const termData = {};
-
-    // Initialize term data
-    termOrder.forEach(term => {
-        termData[term] = {
-            expected: 0,
-            collected: 0,
-            outstanding: 0
-        };
-    });
-
-    // Calculate expected fees per term from feeStructureMap
-    Object.values(feeStructureMap).forEach(classFees => {
-        termOrder.forEach(term => {
-            termData[term].expected += classFees[term] || 0;
-        });
-    });
-
-    // Allocate collected payments proportionally across terms
-    Object.values(paymentMap).forEach(pupilPayments => {
-        pupilPayments.terms.forEach(term => {
-            if (termData[term]) {
-                const portion = pupilPayments.totalPaid / pupilPayments.terms.length;
-                termData[term].collected += portion;
-            }
-        });
-    });
-
-    // Compute outstanding fees per term
-    Object.keys(termData).forEach(term => {
-        termData[term].outstanding = termData[term].expected - termData[term].collected;
-    });
-
-    // Render chart
-    const chartHTML = `
-        <div style="background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid #e2e8f0; margin-top: var(--space-xl);">
-            <h3 style="margin: 0 0 var(--space-lg);">📊 Term-by-Term Breakdown</h3>
-            <div style="display: grid; gap: var(--space-lg);">
-                ${termOrder.map(term => {
-                    const data = termData[term];
-                    if (data.expected === 0) return '';
-
-                    const collectionRate = data.expected > 0
-                        ? Math.round((data.collected / data.expected) * 100)
-                        : 0;
-
-                    return `
-                        <div style="padding: var(--space-md); background: #f8fafc; border-radius: var(--radius-md);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                                <strong style="color: #0f172a;">${term}</strong>
-                                <span style="font-weight: 700;">
-                                    ${collectionRate}% collected
-                                </span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
-                                <span>Expected: ₦${Math.round(data.expected).toLocaleString()}</span>
-                                <span>Collected: ₦${Math.round(data.collected).toLocaleString()}</span>
-                                <span>Outstanding: ₦${Math.round(data.outstanding).toLocaleString()}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        </div>
-    `;
-
-    chartContainer.innerHTML = chartHTML;
-}
-
 // Helper function (keep existing one)
 function updateFinancialDisplays(
     totalExpected,
@@ -5156,8 +5045,6 @@ function updateSummaryDisplay(count, total) {
 }
 
 // ✅ Make all functions globally available
-window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-window.loadFinancialReports = loadFinancialReports;
 window.exportFinancialReport = exportFinancialReport;
 window.exportFinancialCSV = exportFinancialCSV;
 window.exportFinancialPDF = exportFinancialPDF;
@@ -5174,8 +5061,6 @@ console.log('   - PDF export: Pupil-based with class fee matching');
 
 
 // Make functions globally available
-window.loadFinancialReports = loadFinancialReports;
-window.generateTermBreakdownChart = generateTermBreakdownChart;
 window.updateFinancialDisplays = updateFinancialDisplays;
 
 /**
@@ -5979,8 +5864,6 @@ async function migrateArrearsToNewSession() {
 
 // Make functions globally available
 window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
-window.recordPayment = recordPayment;
-window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 window.migrateArrearsToNewSession = migrateArrearsToNewSession;
 
 console.log('✓ Cross-session debt tracking system loaded');
@@ -6271,21 +6154,13 @@ async function exportFinancialPDF(session, term) {
 window.exportFinancialReport = exportFinancialReport;
 window.printReceipt = printReceipt;
 
-// Payment actions and records
-window.recordPayment = recordPayment;
-window.loadPaymentHistory = loadPaymentHistory;
-window.loadPupilPaymentStatus = loadPupilPaymentStatus;
-
 // Fee management
-window.saveFeeStructure = saveFeeStructure;
 window.deleteFeeStructure = deleteFeeStructure;
 
 // Section and data loaders
 window.loadFeeManagementSection = loadFeeManagementSection;
 window.loadPaymentRecordingSection = loadPaymentRecordingSection;
 window.loadPupilsForPayment = loadPupilsForPayment;
-window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-window.loadFinancialReports = loadFinancialReports;
 
 // Initialization logs
 console.log('✓ Financial management functions loaded');
@@ -9191,51 +9066,6 @@ async function loadAdminAnnouncements() {
   }
 }
 
-/* ========================================
-CHECK SESSION STATUS
-======================================== */
-
-async function checkSessionStatus() {
-  try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
-    if (!settingsDoc.exists) return;
-
-    const data = settingsDoc.data();
-    const currentSession = data.currentSession;
-
-    if (
-      !currentSession ||
-      typeof currentSession !== 'object' ||
-      !currentSession.endDate
-    ) {
-      return;
-    }
-
-    const endDate = currentSession.endDate.toDate();
-    const today = new Date();
-    const daysUntilEnd = Math.ceil(
-      (endDate - today) / (1000 * 60 * 60 * 24)
-    );
-
-    if (daysUntilEnd < 0) {
-      window.showToast?.(
-        '🚨 Academic session has ended! Please start a new session in School Settings.',
-        'warning',
-        10000
-      );
-    } else if (daysUntilEnd <= 30) {
-      window.showToast?.(
-        `⚠️ Academic session ending in ${daysUntilEnd} days. Prepare for new session and promotions.`,
-        'info',
-        8000
-      );
-    }
-
-  } catch (error) {
-    console.error('Error checking session status:', error);
-  }
-}
-
 /* ======================================== 
    LOAD CURRENT SETTINGS INTO FORM
 ======================================== */
@@ -10036,207 +9866,6 @@ window.refreshHierarchyUI = refreshHierarchyUI;
 }
 
 /**
- * FIXED: Initialize Sidebar Navigation
- * Handles all sidebar link clicks and group toggles
- */
-function initializeSidebarNavigation() {
-  console.log('🔗 Initializing sidebar navigation...');
-  
-  // ============================================
-  // SECTION NAVIGATION LINKS
-  // ============================================
-  const sectionLinks = document.querySelectorAll('.sidebar-link[data-section]');
-  
-  sectionLinks.forEach(link => {
-    // Remove any existing listeners by cloning
-    const newLink = link.cloneNode(true);
-    link.parentNode.replaceChild(newLink, link);
-    
-    // Add single click handler
-    newLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const sectionId = this.dataset.section;
-      
-      if (!sectionId) {
-        console.warn('No section ID found for link:', this);
-        return;
-      }
-      
-      console.log(`📍 Navigating to section: ${sectionId}`);
-      
-      // Update active state
-      document.querySelectorAll('.sidebar-link').forEach(l => {
-        l.classList.remove('active');
-      });
-      this.classList.add('active');
-      
-      // Show the section
-      if (typeof window.showSection === 'function') {
-        window.showSection(sectionId);
-      } else {
-        console.error('showSection function not found!');
-      }
-    });
-  });
-  
-  console.log(`✓ Registered ${sectionLinks.length} section navigation links`);
-  
-  // ============================================
-  // GROUP TOGGLES
-  // ============================================
-  const groupToggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-  
-  groupToggles.forEach(toggle => {
-    // Remove any existing listeners by cloning
-    const newToggle = toggle.cloneNode(true);
-    toggle.parentNode.replaceChild(newToggle, toggle);
-    
-    // Add single click handler
-    newToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const content = this.nextElementSibling;
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      
-      // Toggle state
-      this.setAttribute('aria-expanded', !isExpanded);
-      content.classList.toggle('active');
-      
-      // Rotate chevron icon
-      const chevron = this.querySelector('.toggle-icon');
-      if (chevron) {
-        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-      
-      console.log(`🔽 Toggled group: ${this.dataset.group} (expanded: ${!isExpanded})`);
-    });
-  });
-  
-  console.log(`✓ Registered ${groupToggles.length} group toggle buttons`);
-  
-  // ============================================
-  // LOGOUT BUTTON
-  // ============================================
-  const logoutBtn = document.getElementById('admin-logout');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      console.log('🚪 Logout clicked');
-      if (typeof window.logout === 'function') {
-        window.logout();
-      } else {
-        console.error('logout function not found!');
-      }
-    });
-    console.log('✓ Logout button registered');
-  }
-  
-  console.log('✅ Sidebar navigation initialization complete');
-}
-
-// Make function globally available
-window.initializeSidebarNavigation = initializeSidebarNavigation;
-
-/* ======================================== 
-   CLASS HIERARCHY MANAGEMENT
-======================================== */
-
-// Settings form submit handler - ARREARS AUTO-MIGRATION FIXED
-document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const startYear = parseInt(document.getElementById('session-start-year').value);
-  const endYear = parseInt(document.getElementById('session-end-year').value);
-  const startDate = document.getElementById('session-start-date').value;
-  const endDate = document.getElementById('session-end-date').value;
-  const newTerm = document.getElementById('current-term').value;
-  const resumptionDate = document.getElementById('resumption-date').value;
-  
-  if (!startYear || !endYear || !startDate || !endDate || !newTerm || !resumptionDate) {
-    window.showToast?.('Please fill all required fields', 'warning');
-    return;
-  }
-  
-  if (endYear <= startYear) {
-    window.showToast?.('End year must be after start year', 'warning');
-    return;
-  }
-  
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
-  
-  try {
-    // CRITICAL FIX: Get OLD settings to detect changes
-    const oldSettings = await window.getCurrentSettings();
-    const oldTerm = oldSettings.term;
-    const oldSession = oldSettings.session;
-    const session = `${startYear}/${endYear}`;
-    
-    // Save new settings
-    await db.collection('settings').doc('current').set({
-      currentSession: {
-        name: session,
-        startYear: startYear,
-        endYear: endYear,
-        startDate: firebase.firestore.Timestamp.fromDate(new Date(startDate)),
-        endDate: firebase.firestore.Timestamp.fromDate(new Date(endDate))
-      },
-      term: newTerm,
-      session: session,
-      resumptionDate: firebase.firestore.Timestamp.fromDate(new Date(resumptionDate)),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    
-    // CRITICAL FIX: AUTOMATIC arrears migration on term change
-    if (oldTerm && oldTerm !== newTerm && oldSession === session) {
-      console.log(`⚠️ Term changed: ${oldTerm} → ${newTerm}`);
-      console.log('🔄 Automatically migrating arrears...');
-      
-      window.showToast?.(
-        'Migrating outstanding balances to new term...',
-        'info',
-        3000
-      );
-      
-      const result = await migrateArrearsOnTermChange(
-        oldTerm,
-        newTerm,
-        session
-      );
-      
-      if (result.success && result.count > 0) {
-        window.showToast?.(
-          `✓ Settings saved & arrears migrated!\n\n` +
-          `${result.count} pupil(s) with outstanding balances moved to ${newTerm}\n` +
-          `Total arrears: ₦${result.totalArrears.toLocaleString()}`,
-          'success',
-          10000
-        );
-      } else if (result.success && result.count === 0) {
-        window.showToast?.('✓ Settings saved! No outstanding arrears to migrate.', 'success');
-      } else {
-        window.showToast?.('✓ Settings saved successfully!', 'success');
-      }
-    } else {
-      window.showToast?.('✓ Settings saved successfully!', 'success');
-    }
-    
-    await loadCurrentSettings();
-    
-  } catch (error) {
-    console.error('Error saving settings:', error);
-    window.handleError(error, 'Failed to save settings');
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '💾 Save Settings';
-  }
-});
-
-/**
  * ✅ FIXED: Automatic arrears migration when term changes
  * 
  * This runs when admin changes the term in School Settings.
@@ -10383,8 +10012,6 @@ window.showSection = showSection;
 
 // Make functions globally available
 window.editFeeStructure = editFeeStructure;
-window.saveFeeStructure = saveFeeStructure;
-window.loadFeeStructures = loadFeeStructures;
 window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
 
 
@@ -10871,7 +10498,6 @@ window.showAnnounceForm = showAnnounceForm;
 window.addAnnouncement = addAnnouncement;
 window.loadCurrentSettings = loadCurrentSettings;
 window.loadAlumni = loadAlumni;
-window.loadViewResultsSection = loadViewResultsSection;
 
 /* ======================================== 
    SESSION VALIDATION ON LOAD
