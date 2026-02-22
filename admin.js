@@ -9229,6 +9229,197 @@ async function loadCurrentSettings() {
 }
 
 /* ======================================== 
+   UPDATE SESSION SETTINGS
+======================================== */
+
+/**
+ * Update session settings from the settings form
+ */
+async function updateSessionSettings() {
+  const startYear       = parseInt(document.getElementById('session-start-year')?.value);
+  const endYear         = parseInt(document.getElementById('session-end-year')?.value);
+  const startDateVal    = document.getElementById('session-start-date')?.value;
+  const endDateVal      = document.getElementById('session-end-date')?.value;
+  const currentTerm     = document.getElementById('current-term')?.value;
+  const resumptionVal   = document.getElementById('resumption-date')?.value;
+
+  // ── Validation ────────────────────────────────────────────────────────────
+  if (!startYear || !endYear) {
+    window.showToast?.('Please enter both start and end years for the session', 'warning');
+    return;
+  }
+
+  if (endYear !== startYear + 1) {
+    window.showToast?.('End year must be exactly one year after start year (e.g. 2025/2026)', 'warning');
+    return;
+  }
+
+  if (!currentTerm) {
+    window.showToast?.('Please select the current term', 'warning');
+    return;
+  }
+
+  if (!startDateVal || !endDateVal) {
+    window.showToast?.('Please set both session start and end dates', 'warning');
+    return;
+  }
+
+  const startDate   = new Date(startDateVal);
+  const endDate     = new Date(endDateVal);
+
+  if (endDate <= startDate) {
+    window.showToast?.('Session end date must be after the start date', 'warning');
+    return;
+  }
+
+  // ── Detect term change for arrears migration ───────────────────────────────
+  let previousTerm = null;
+  try {
+    const existingDoc = await db.collection('settings').doc('current').get();
+    if (existingDoc.exists) {
+      previousTerm = existingDoc.data().term || null;
+    }
+  } catch (e) {
+    console.warn('Could not read existing term for comparison:', e.message);
+  }
+
+  const termChanged   = previousTerm && previousTerm !== currentTerm;
+  const sessionName   = `${startYear}/${endYear}`;
+
+  // ── Confirm if term is changing ────────────────────────────────────────────
+  if (termChanged) {
+    const confirmed = confirm(
+      `⚠️ TERM CHANGE DETECTED\n\n` +
+      `Changing from: ${previousTerm}\n` +
+      `Changing to:   ${currentTerm}\n\n` +
+      `This will automatically create payment records for all pupils\n` +
+      `in the new term with correct arrears carried forward.\n\n` +
+      `Continue?`
+    );
+    if (!confirmed) return;
+  }
+
+  // ── Save button state ──────────────────────────────────────────────────────
+  const saveBtn = document.getElementById('save-settings-btn');
+  if (saveBtn) {
+    saveBtn.disabled  = true;
+    saveBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
+  }
+
+  try {
+    const updateData = {
+      session: sessionName,
+      term:    currentTerm,
+      currentSession: {
+        name:      sessionName,
+        startYear: startYear,
+        endYear:   endYear,
+        startDate: firebase.firestore.Timestamp.fromDate(startDate),
+        endDate:   firebase.firestore.Timestamp.fromDate(endDate)
+      },
+      updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy:   auth.currentUser.uid
+    };
+
+    // Resumption date (optional)
+    if (resumptionVal) {
+      updateData.resumptionDate = firebase.firestore.Timestamp.fromDate(new Date(resumptionVal));
+    }
+
+    await db.collection('settings').doc('current').set(updateData, { merge: true });
+
+    // ── Audit log ────────────────────────────────────────────────────────────
+    await db.collection('audit_log').add({
+      action:           'update_settings',
+      collection:       'settings',
+      documentId:       'current',
+      changes: {
+        session:      sessionName,
+        term:         currentTerm,
+        startYear,
+        endYear,
+        termChanged,
+        previousTerm: previousTerm || null
+      },
+      performedBy:      auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp:        firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent:        navigator.userAgent
+    });
+
+    console.log('✅ Session settings saved successfully');
+
+    // ── Run arrears migration if term changed ─────────────────────────────────
+    if (termChanged && typeof window.migrateArrearsOnTermChange === 'function') {
+      window.showToast?.('Settings saved! Running arrears migration for new term...', 'info', 4000);
+
+      try {
+        const migrationResult = await window.migrateArrearsOnTermChange(
+          previousTerm,
+          currentTerm,
+          sessionName
+        );
+
+        window.showToast?.(
+          `✅ Settings updated!\n\n` +
+          `Session: ${sessionName}\n` +
+          `Term: ${currentTerm}\n\n` +
+          `Arrears migration:\n` +
+          `• ${migrationResult.count} payment records created\n` +
+          `• ${migrationResult.arrearsCount} pupils have arrears\n` +
+          `• Total arrears: ₦${(migrationResult.totalArrears || 0).toLocaleString()}`,
+          'success',
+          10000
+        );
+      } catch (migrationError) {
+        console.error('⚠️ Arrears migration failed:', migrationError);
+        window.showToast?.(
+          `Settings saved, but arrears migration failed:\n${migrationError.message}\n\n` +
+          `You can run it manually from the Fee Management section.`,
+          'warning',
+          8000
+        );
+      }
+
+    } else {
+      window.showToast?.(
+        `✅ Settings updated!\n\nSession: ${sessionName}\nTerm: ${currentTerm}`,
+        'success',
+        5000
+      );
+    }
+
+    // Reload display
+    await loadCurrentSettings();
+    await loadSessionHistory();
+
+  } catch (error) {
+    console.error('❌ Error saving session settings:', error);
+    window.showToast?.(`Failed to save settings: ${error.message}`, 'danger', 6000);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled  = false;
+      saveBtn.innerHTML = '💾 Save Settings';
+    }
+  }
+}
+
+// Expose globally
+window.updateSessionSettings = updateSessionSettings;
+
+// ── Wire up the save button via DOMContentLoaded ───────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const saveBtn = document.getElementById('save-settings-btn');
+  if (saveBtn) {
+    // Clone to remove any stale listeners
+    const freshBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(freshBtn, saveBtn);
+    document.getElementById('save-settings-btn').addEventListener('click', updateSessionSettings);
+    console.log('✅ Session settings save button wired up');
+  }
+});
+
+/* ======================================== 
    START NEW ACADEMIC SESSION
 ======================================== */
 /**
