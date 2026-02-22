@@ -698,9 +698,20 @@ async function loadResultsTable() {
   const saveBtn = document.getElementById('save-results-btn');
   const term = document.getElementById('result-term')?.value;
   const subject = document.getElementById('result-subject')?.value;
+  const classSelect = document.getElementById('result-class');
+  const selectedClassId = classSelect?.value;
   
-  if (!container || !term || !subject) {
-    container.innerHTML = '';
+  if (!container || !term || !subject || !selectedClassId) {
+    if (container) container.innerHTML = '';
+    if (saveBtn) saveBtn.hidden = true;
+    return;
+  }
+
+  // ✅ FIX: Filter pupils to only those in the selected class
+  const classFilteredPupils = allPupils.filter(p => p.class?.id === selectedClassId);
+
+  if (classFilteredPupils.length === 0) {
+    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils found in this class.</p>';
     if (saveBtn) saveBtn.hidden = true;
     return;
   }
@@ -711,15 +722,13 @@ async function loadResultsTable() {
     
     const resultsMap = {};
     
-    // Query from DRAFT collection
-    for (const pupil of allPupils) {
+    // Query from DRAFT collection (filtered pupils only)
+    for (const pupil of classFilteredPupils) {
       const docId = `${pupil.id}_${term}_${subject}`;
       const draftDoc = await db.collection('results_draft').doc(docId).get();
       
       if (draftDoc.exists) {
         const data = draftDoc.data();
-        
-        // Only use if it matches current session
         if (data.session === currentSession) {
           resultsMap[pupil.id] = {
             ca: data.caScore || 0,
@@ -729,55 +738,50 @@ async function loadResultsTable() {
       }
     }
     
-    // ✅ NEW: Check for rejection reason and display banner
+    // ✅ Check for rejection reason
     let rejectionBanner = '';
     
-    if (assignedClasses.length > 0) {
-      const classId = assignedClasses[0].id;
-      const encodedSession = currentSession.replace(/\//g, '-');
-      const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+    const encodedSession = currentSession.replace(/\//g, '-');
+    const submissionId = `${selectedClassId}_${encodedSession}_${term}_${subject}`;
       
-      try {
-        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+    try {
+      const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
+      
+      if (submissionDoc.exists) {
+        const submissionData = submissionDoc.data();
         
-        if (submissionDoc.exists) {
-          const submissionData = submissionDoc.data();
-          
-          // If rejected, show rejection reason
-          if (submissionData.status === 'rejected' && submissionData.rejectionReason) {
-            rejectionBanner = `
-              <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
-                          color: white; 
-                          padding: var(--space-lg); 
-                          border-radius: var(--radius-md); 
-                          margin-bottom: var(--space-lg);
-                          box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);">
-                <h3 style="margin: 0 0 var(--space-md) 0; font-size: var(--text-lg);">
-                  ⚠️ Results Rejected by Admin
-                </h3>
-                <div style="background: rgba(255,255,255,0.15); 
-                            padding: var(--space-md); 
-                            border-radius: var(--radius-sm);
-                            border-left: 4px solid #fff;">
-                  <strong>Reason for rejection:</strong>
-                  <p style="margin: var(--space-sm) 0 0 0; font-size: var(--text-base);">
-                    ${submissionData.rejectionReason}
-                  </p>
-                </div>
-                <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); opacity: 0.9;">
-                  ℹ️ Your results are now editable. Please make the necessary corrections and resubmit.
+        if (submissionData.status === 'rejected' && submissionData.rejectionReason) {
+          rejectionBanner = `
+            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
+                        color: white; 
+                        padding: var(--space-lg); 
+                        border-radius: var(--radius-md); 
+                        margin-bottom: var(--space-lg);
+                        box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);">
+              <h3 style="margin: 0 0 var(--space-md) 0; font-size: var(--text-lg);">
+                ⚠️ Results Rejected by Admin
+              </h3>
+              <div style="background: rgba(255,255,255,0.15); 
+                          padding: var(--space-md); 
+                          border-radius: var(--radius-sm);
+                          border-left: 4px solid #fff;">
+                <strong>Reason for rejection:</strong>
+                <p style="margin: var(--space-sm) 0 0 0; font-size: var(--text-base);">
+                  ${submissionData.rejectionReason}
                 </p>
               </div>
-            `;
-          }
+              <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); opacity: 0.9;">
+                ℹ️ Your results are now editable. Please make the necessary corrections and resubmit.
+              </p>
+            </div>
+          `;
         }
-      } catch (submissionError) {
-        // Silently handle - submission doc might not exist
-        console.log('No submission found or error checking submission:', submissionError.code);
       }
+    } catch (submissionError) {
+      console.log('No submission found or error checking submission:', submissionError.code);
     }
     
-    // Render table with rejection banner (if exists)
+    // Render table
     container.innerHTML = `
       ${rejectionBanner}
       <div class="table-container">
@@ -795,7 +799,7 @@ async function loadResultsTable() {
       </div>
     `;
     
-    paginateTable(allPupils, 'results-table', 20, (pupil, tbody) => {
+    paginateTable(classFilteredPupils, 'results-table', 20, (pupil, tbody) => {
       const existing = resultsMap[pupil.id] || { ca: 0, exam: 0 };
       const total = existing.ca + existing.exam;
       
@@ -821,7 +825,6 @@ async function loadResultsTable() {
     
     if (saveBtn) saveBtn.hidden = false;
     
-    // Add input validation
     container.querySelectorAll('input[type="number"]').forEach(input => {
       input.addEventListener('input', (e) => {
         const field = e.target.dataset.field;
@@ -867,20 +870,6 @@ async function loadResultsTable() {
             totalCell.style.color = 'inherit';
             totalCell.style.fontWeight = 'normal';
           }
-        }
-      });
-      
-      input.addEventListener('blur', (e) => {
-        const field = e.target.dataset.field;
-        const max = field === 'ca' ? 40 : 60;
-        let value = parseFloat(e.target.value);
-        
-        if (value > max) {
-          e.target.value = max;
-          e.target.style.borderColor = '#f44336';
-          setTimeout(() => {
-            e.target.style.borderColor = '';
-          }, 2000);
         }
       });
     });
