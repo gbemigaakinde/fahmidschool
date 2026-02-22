@@ -661,33 +661,36 @@ loadResultsTable();
 }
 
 function populateSubjectsForClass(classId) {
-  const subjectSelect = document.getElementById('result-subject');
-  if (!subjectSelect) return;
+    const subjectSelect = document.getElementById('result-subject');
+    if (!subjectSelect) return;
 
-  subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
-  if (!classId) return;
+    if (!classId) return;
 
-  const cls = getValidClasses().find(c => c.id === classId);
-  const subjects = cls?.subjects || [];
+    const cls = assignedClasses.find(c => c.id === classId);
 
-  if (subjects.length === 0) {
-    // Fallback to all subjects
-    getValidSubjects().forEach(subject => {
-      const opt = document.createElement('option');
-      opt.value = subject;
-      opt.textContent = subject;
-      subjectSelect.appendChild(opt);
+    if (!cls) {
+        console.warn('populateSubjectsForClass: class not found for id:', classId);
+        return;
+    }
+
+    const subjects = Array.isArray(cls.subjects) ? cls.subjects : [];
+
+    if (subjects.length === 0) {
+        console.warn('populateSubjectsForClass: class has no subjects:', cls.name);
+        window.showToast?.(`No subjects assigned to ${cls.name}. Contact admin.`, 'warning', 5000);
+        return;
+    }
+
+    subjects.forEach(subject => {
+        const opt = document.createElement('option');
+        opt.value = subject;
+        opt.textContent = subject;
+        subjectSelect.appendChild(opt);
     });
-    return;
-  }
 
-  subjects.forEach(subject => {
-    const opt = document.createElement('option');
-    opt.value = subject;
-    opt.textContent = subject;
-    subjectSelect.appendChild(opt);
-  });
+    console.log(`✓ Populated ${subjects.length} subject(s) for ${cls.name}`);
 }
 
 async function loadResultsTable() {
