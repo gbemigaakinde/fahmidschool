@@ -162,52 +162,58 @@ const finance = {
    * CORE CALCULATION: Adjusted Fee with Enrollment Period
    * ═══════════════════════════════════════════════════════════
    */
+
   calculateAdjustedFee(pupilData, baseFee, currentTerm) {
-  if (!pupilData || typeof baseFee !== 'number') {
-    console.warn('[FINANCE] Invalid input to calculateAdjustedFee');
-    return baseFee || 0;
-  }
+    if (!pupilData || typeof baseFee !== 'number') {
+      console.warn('[FINANCE] Invalid input to calculateAdjustedFee');
+      return baseFee || 0;
+    }
 
-  const termOrder = {
-    'First Term': 1,
-    'Second Term': 2,
-    'Third Term': 3
-  };
+    const termOrder = {
+      'First Term':  1,
+      'Second Term': 2,
+      'Third Term':  3
+    };
 
-  const currentTermNum = termOrder[currentTerm] || 1;
-  const admissionTermNum = termOrder[pupilData.admissionTerm || 'First Term'] || 1;
-  const exitTermNum = termOrder[pupilData.exitTerm || 'Third Term'] || 3;
+    const currentTermNum   = termOrder[currentTerm] || 1;
+    const admissionTermNum = termOrder[pupilData.admissionTerm || 'First Term'] || 1;
+    const exitTermNum      = termOrder[pupilData.exitTerm      || 'Third Term'] || 3;
 
-  if (currentTermNum < admissionTermNum || currentTermNum > exitTermNum) {
-    console.log(`   [FINANCE] Pupil not enrolled for ${currentTerm} (admission: ${pupilData.admissionTerm}, exit: ${pupilData.exitTerm})`);
-    return 0;
-  }
+    if (currentTermNum < admissionTermNum || currentTermNum > exitTermNum) {
+      console.log(`   [FINANCE] Pupil not enrolled for ${currentTerm} (admission: ${pupilData.admissionTerm}, exit: ${pupilData.exitTerm})`);
+      return 0;
+    }
 
-  // ✅ Round base fee on entry — guards against legacy unrounded values in Firestore
-  let adjustedFee = Math.round(Number(baseFee) || 0);
+    // Round base fee on entry — guards against unrounded legacy values in Firestore
+    const base = Math.round(Number(baseFee) || 0);
 
-  const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
-  if (percentAdjustment !== 0) {
-    // ✅ Round after percentage — prevents float drift (e.g. 50000 * 1.15 = 57499.9999...)
-    adjustedFee = Math.round(adjustedFee * (1 + percentAdjustment / 100));
-    console.log(`   [FINANCE] Applied ${percentAdjustment}% adjustment: ₦${baseFee.toLocaleString()} → ₦${adjustedFee.toLocaleString()}`);
-  }
+    const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
+    const amountAdjustment  = Number(pupilData.feeAdjustmentAmount)  || 0;
 
-  const amountAdjustment = Number(pupilData.feeAdjustmentAmount) || 0;
-  if (amountAdjustment !== 0) {
-    // ✅ Round after fixed adjustment
-    adjustedFee = Math.round(adjustedFee + amountAdjustment);
-    console.log(`   [FINANCE] Applied ₦${amountAdjustment.toLocaleString()} adjustment → ₦${adjustedFee.toLocaleString()}`);
-  }
+    // FIXED: Both adjustments apply to baseFee independently, then combine.
+    // Previously: percent was applied first, then amount was applied to the
+    // already-discounted result — causing unintended compounding between the two.
+    const percentDiscount = Math.round(base * (percentAdjustment / 100));
+    const adjustedFee     = Math.round(base + percentDiscount + amountAdjustment);
 
-  const finalFee = Math.max(0, adjustedFee);
+    if (percentAdjustment !== 0) {
+      console.log(`   [FINANCE] Applied ${percentAdjustment}% adjustment: ₦${base.toLocaleString()} → discount ₦${percentDiscount.toLocaleString()}`);
+    }
+    if (amountAdjustment !== 0) {
+      console.log(`   [FINANCE] Applied ₦${amountAdjustment.toLocaleString()} fixed adjustment`);
+    }
 
-  if (finalFee === 0 && baseFee > 0) {
-    console.log(`   [FINANCE] ✓ Free education applied for ${pupilData.name}`);
-  }
+    const finalFee = Math.max(0, adjustedFee);
 
-  return finalFee;
-},
+    if (finalFee !== base) {
+      console.log(`   [FINANCE] Final adjusted fee: ₦${finalFee.toLocaleString()} (was ₦${base.toLocaleString()})`);
+    }
+    if (finalFee === 0 && base > 0) {
+      console.log(`   [FINANCE] ✓ Free education applied for ${pupilData.name}`);
+    }
+
+    return finalFee;
+  },
 
   /**
    * ═══════════════════════════════════════════════════════════
