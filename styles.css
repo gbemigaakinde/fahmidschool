@@ -1216,20 +1216,6 @@ etc.
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
-/* No longer using form-row-3 since class selectors are removed */
-.form-row-3 {
-    display: none; /* fallback if any remain */
-}
-
-/* Hide all old class selectors (safety net) */
-#result-class,
-#attendance-class,
-#traits-class,
-#remarks-class,
-#class-selector {
-    display: none !important;
-}
-
 /* Table Empty/Loading State */
 .table-empty,
 .table-loading {
