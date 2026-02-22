@@ -1830,6 +1830,7 @@ Example 3: Free education
           <th>Paid</th>
           <th>Balance</th>
           <th>Status</th>
+          <th>Term</th>
         </tr>
       </thead>
       <tbody>
@@ -1878,7 +1879,19 @@ Example 3: Free education
     <div class="stat-card" style="background:linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
       <div class="stat-icon">📊</div>
       <div class="stat-value" id="report-collection-rate">0%</div>
-      <div class="stat-label">Collection Rate</div>
+      <div class="stat-label">Overall Collection Rate</div>
+      <div style="font-size:var(--text-xs); opacity:0.85; margin-top:4px;">
+        (fees + arrears)
+      </div>
+    </div>
+
+    <div class="stat-card" style="background:linear-gradient(135deg, #00897B 0%, #00695C 100%);">
+      <div class="stat-icon">🎯</div>
+      <div class="stat-value" id="report-current-term-collection-rate">0%</div>
+      <div class="stat-label">Current Term Rate</div>
+      <div style="font-size:var(--text-xs); opacity:0.85; margin-top:4px;">
+        (this term's fees only)
+      </div>
     </div>
   </div>
   
