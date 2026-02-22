@@ -297,28 +297,29 @@
             <p class="section-description">Enter CA and Exam scores for your pupils</p>
 
             <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="result-term">Term <span class="required">*</span></label>
-                    <select id="result-term" onchange="loadResultsTable()">
-                        <option value="First Term">First Term</option>
-                        <option value="Second Term">Second Term</option>
-                        <option value="Third Term">Third Term</option>
-                    </select>
-                </div>
-                <div class="form-group" id="result-class-group">
-  <label for="result-class">Class</label>
-  <select id="result-class">
-    <option value="">-- Select Class --</option>
-  </select>
-</div>
-                <div class="form-group">
-                    <label for="result-subject">Subject <span class="required">*</span></label>
-                    <select id="result-subject" onchange="loadResultsTable()">
-                        <option value="">-- Select Subject --</option>
-                    </select>
-                </div>
-            </div>
+    <div class="form-group">
+        <label for="result-term">Term <span class="required">*</span></label>
+        <select id="result-term" onchange="loadResultsTable()">
+            <option value="First Term">First Term</option>
+            <option value="Second Term">Second Term</option>
+            <option value="Third Term">Third Term</option>
+        </select>
+    </div>
 
+    <div class="form-group" id="result-class-group">
+        <label for="result-class">Class</label>
+        <select id="result-class">
+            <option value="">-- Select Class --</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="result-subject">Subject <span class="required">*</span></label>
+        <select id="result-subject" onchange="loadResultsTable()">
+            <option value="">-- Select Subject --</option>
+        </select>
+    </div>
+</div>
             <div id="results-entry-table-container"></div>
 
             <button class="btn" id="save-results-btn" onclick="saveAllResults()" hidden>
