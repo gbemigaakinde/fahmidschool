@@ -623,46 +623,43 @@ function loadMyClassesSection() {
 function loadResultsSection() {
   if (!ensureDataLoaded('loadResultsSection')) return;
 
-  const subjectSelect = document.getElementById('result-subject');
   const classSelect = document.getElementById('result-class');
   const classGroupEl = document.getElementById('result-class-group');
 
-  // Populate class selector
-  if (classSelect) {
-    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+  if (!classSelect) return;
 
-    const classes = getValidClasses();
+  const classes = getValidClasses();
 
-    classes.forEach(cls => {
-      const opt = document.createElement('option');
-      opt.value = cls.id;
-      opt.textContent = cls.name;
-      classSelect.appendChild(opt);
-    });
+  // Rebuild options
+  classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+  classes.forEach(cls => {
+    const opt = document.createElement('option');
+    opt.value = cls.id;
+    opt.textContent = cls.name;
+    classSelect.appendChild(opt);
+  });
 
-    if (classes.length === 1) {
-      // Single-class teacher
-      classSelect.value = classes[0].id;
-      if (classGroupEl) classGroupEl.style.display = 'none';
-    } else {
-      // Multi-class teacher
-      if (classGroupEl) classGroupEl.style.display = '';
-    }
-
-    // Remove old listeners safely
-    const freshClassSelect = classSelect.cloneNode(true);
-    classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
-
-    // Re-wire change event
-    freshClassSelect.addEventListener('change', function () {
-      populateSubjectsForClass(this.value);
-      checkResultLockStatus();
-      loadResultsTable();
-    });
-
-    // Initial subject population
-    populateSubjectsForClass(freshClassSelect.value);
+  // Auto-select single class OR show selector for multi-class
+  if (classes.length === 1) {
+    classSelect.value = classes[0].id;
+    if (classGroupEl) classGroupEl.style.display = 'none';
+  } else {
+    if (classGroupEl) classGroupEl.style.display = '';
   }
+
+  // Remove old listeners safely by cloning
+  const freshClassSelect = classSelect.cloneNode(true);
+  classSelect.parentNode.replaceChild(freshClassSelect, classSelect);
+
+  // Wire up change event
+  freshClassSelect.addEventListener('change', function () {
+    populateSubjectsForClass(this.value);
+    checkResultLockStatus();
+    loadResultsTable();
+  });
+
+  // ✅ KEY FIX: Populate subjects using the ALREADY SELECTED value (not empty string)
+  populateSubjectsForClass(freshClassSelect.value);
 
   loadResultsTable();
 }
