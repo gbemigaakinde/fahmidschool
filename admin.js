@@ -10180,6 +10180,12 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
   try {
     const encodedSession = session.replace(/\//g, '-');
 
+    // ─── Step 1: Ensure previous term payment docs exist ──────────────────
+    // calculateCompleteArrears relies on the previous term's payment doc
+    // having a correct `balance` field. If those docs are missing, create
+    // them now so arrears cascade correctly.
+    console.log(`  📋 Ensuring ${oldTerm} payment docs exist before migrating...`);
+
     const pupilsSnap = await db.collection('pupils').get();
 
     if (pupilsSnap.empty) {
@@ -10193,19 +10199,138 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
       feeStructureMap[data.classId] = Math.round(Number(data.total) || 0);
     });
 
-    let createdCount = 0;
-    let arrearsCount = 0;
-    let totalArrearsAmount = 0;
-    let skippedCount = 0;
+    // ─── Step 2: Build/repair previous term docs ──────────────────────────
+    // We must do this BEFORE calculating new-term arrears, because
+    // calculateCompleteArrears reads the previous term doc's `balance` field.
+    let prevTermRepaired = 0;
 
-    // ✅ Use let — batch must be renewable
-    let batch = db.batch();
+    for (const pupilDoc of pupilsSnap.docs) {
+      const pupilId   = pupilDoc.id;
+      const pupilData = pupilDoc.data();
+      const classId   = pupilData.class?.id;
+
+      if (pupilData.status === 'alumni' || pupilData.isActive === false) continue;
+      if (!classId) continue;
+
+      const baseFee = feeStructureMap[classId] || 0;
+      if (baseFee === 0) continue;
+
+      const oldTermAmountDue = window.calculateAdjustedFee
+        ? window.calculateAdjustedFee(pupilData, baseFee, oldTerm)
+        : baseFee;
+
+      // Not enrolled for old term — skip
+      if (oldTermAmountDue === 0 && baseFee > 0) continue;
+
+      const oldTermDocId  = `${pupilId}_${encodedSession}_${oldTerm}`;
+      const oldTermRef    = db.collection('payments').doc(oldTermDocId);
+      const oldTermDoc    = await oldTermRef.get();
+
+      if (!oldTermDoc.exists) {
+        // Doc is missing — calculate what the balance should be.
+        // We use calculateCompleteArrears for the OLD term to get ITS
+        // arrears (e.g. from previous session), then compute balance.
+        let oldTermArrears = 0;
+        try {
+          oldTermArrears = await window.calculateCompleteArrears(pupilId, session, oldTerm);
+        } catch (e) {
+          console.warn(`  ⚠️ Could not calculate arrears for ${oldTerm}:`, e.message);
+        }
+
+        const oldTermTotalDue = oldTermAmountDue + oldTermArrears;
+
+        // Check how much was actually paid for old term
+        let oldTermPaid = 0;
+        try {
+          const txSnap = await db.collection('payment_transactions')
+            .where('pupilId', '==', pupilId)
+            .where('session', '==', session)
+            .where('term',    '==', oldTerm)
+            .get();
+          txSnap.forEach(tx => {
+            oldTermPaid += Math.round(Number(tx.data().amountPaid) || 0);
+          });
+        } catch (e) {
+          console.warn(`  ⚠️ Could not sum transactions for ${oldTerm}:`, e.message);
+        }
+
+        const oldTermBalance = Math.max(0, oldTermTotalDue - oldTermPaid);
+
+        await oldTermRef.set({
+          pupilId,
+          pupilName:   pupilData.name || 'Unknown',
+          classId,
+          className:   pupilData.class?.name || 'Unknown',
+          session,
+          term:        oldTerm,
+          baseFee,
+          adjustedFee: oldTermAmountDue,
+          amountDue:   oldTermAmountDue,
+          arrears:     oldTermArrears,
+          totalDue:    oldTermTotalDue,
+          totalPaid:   oldTermPaid,
+          balance:     oldTermBalance,
+          status:      oldTermBalance <= 0 ? 'paid'
+                     : oldTermPaid  >  0   ? 'partial'
+                     : oldTermArrears > 0  ? 'owing_with_arrears'
+                     :                       'owing',
+          lastPaymentDate: null,
+          createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+          autoCreatedByMigration: true
+        });
+
+        prevTermRepaired++;
+        console.log(
+          `  🔧 Created missing ${oldTerm} doc for ${pupilData.name}: ` +
+          `due=₦${oldTermTotalDue.toLocaleString()}, paid=₦${oldTermPaid.toLocaleString()}, ` +
+          `balance=₦${oldTermBalance.toLocaleString()}`
+        );
+
+      } else {
+        // Doc exists — verify balance field is a valid number.
+        // If corrupted, recalculate and repair it.
+        const storedBalance = oldTermDoc.data().balance;
+        const storedPaid    = oldTermDoc.data().totalPaid;
+
+        if (isNaN(Number(storedBalance))) {
+          console.warn(`  ⚠️ Corrupted balance field for ${pupilData.name} ${oldTerm}, repairing...`);
+
+          const repairedBalance = await window._recalculateTermBalance(pupilId, session, oldTerm);
+
+          await oldTermRef.update({
+            balance:   repairedBalance,
+            status:    repairedBalance <= 0  ? 'paid'
+                     : Number(storedPaid) > 0 ? 'partial'
+                     :                          'owing',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            repairedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          prevTermRepaired++;
+        }
+      }
+    }
+
+    console.log(`  ✓ Previous term doc repair complete: ${prevTermRepaired} created/repaired`);
+
+    // ─── Step 3: Now create new-term payment docs ─────────────────────────
+    // Previous term docs are now guaranteed to exist with valid balance fields,
+    // so calculateCompleteArrears will read them correctly.
+
+    let createdCount      = 0;
+    let updatedCount      = 0;
+    let arrearsCount      = 0;
+    let totalArrearsAmount = 0;
+    let skippedCount      = 0;
+
+    let batch      = db.batch();
     let batchCount = 0;
 
     for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId = pupilDoc.id;
+      const pupilId   = pupilDoc.id;
       const pupilData = pupilDoc.data();
-      const classId = pupilData.class?.id;
+      const classId   = pupilData.class?.id;
 
       if (pupilData.status === 'alumni' || pupilData.isActive === false) {
         skippedCount++;
@@ -10232,14 +10357,8 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
         continue;
       }
 
-      const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
-
       try {
-        const existingPayment = await db.collection('payments').doc(newPaymentDocId).get();
-        if (existingPayment.exists) { skippedCount++; continue; }
-
-        // Arrears for the new term = previous term's balance within same session
-        // calculateCompleteArrears handles this correctly
+        // Now that previous term docs exist, this will cascade correctly
         const arrears = await window.calculateCompleteArrears(pupilId, session, newTerm);
 
         if (arrears > 0) {
@@ -10247,37 +10366,65 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
           totalArrearsAmount += arrears;
         }
 
-        const newPaymentRef = db.collection('payments').doc(newPaymentDocId);
+        const newPaymentDocId = `${pupilId}_${encodedSession}_${newTerm}`;
+        const newPaymentRef   = db.collection('payments').doc(newPaymentDocId);
+        const existingDoc     = await newPaymentRef.get();
 
-        batch.set(newPaymentRef, {
+        const paymentPayload = {
           pupilId,
-          pupilName: pupilData.name || 'Unknown',
+          pupilName:   pupilData.name || 'Unknown',
           classId,
-          className: pupilData.class?.name || 'Unknown',
+          className:   pupilData.class?.name || 'Unknown',
           session,
-          term: newTerm,
+          term:        newTerm,
           baseFee,
           adjustedFee: amountDue,
           amountDue,
           arrears,
-          totalDue: amountDue + arrears,
-          totalPaid: 0,
-          balance: amountDue + arrears,
-          status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+          totalDue:    amountDue + arrears,
+          totalPaid:   0,
+          balance:     amountDue + arrears,
+          status:      arrears > 0 ? 'owing_with_arrears' : 'owing',
           lastPaymentDate: null,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
           migratedFrom: oldTerm,
           autoCreated: true
-        });
+        };
 
-        createdCount++;
+        if (!existingDoc.exists) {
+          // Fresh create
+          paymentPayload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          batch.set(newPaymentRef, paymentPayload);
+          createdCount++;
+        } else {
+          // Doc already exists (e.g. from a previous partial migration attempt).
+          // Only update the arrears/balance fields — preserve any payments already recorded.
+          const existingData  = existingDoc.data();
+          const existingPaid  = Math.round(Number(existingData.totalPaid) || 0);
+          const newTotalDue   = amountDue + arrears;
+          const newBalance    = Math.max(0, newTotalDue - existingPaid);
+
+          batch.update(newPaymentRef, {
+            arrears,
+            amountDue,
+            adjustedFee: amountDue,
+            totalDue:    newTotalDue,
+            balance:     newBalance,
+            status:      newBalance <= 0    ? 'paid'
+                       : existingPaid > 0   ? 'partial'
+                       : arrears > 0        ? 'owing_with_arrears'
+                       :                      'owing',
+            updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+            migratedFrom: oldTerm
+          });
+          updatedCount++;
+        }
+
         batchCount++;
 
         if (batchCount >= 400) {
           await batch.commit();
-          // ✅ Renew batch
-          batch = db.batch();
+          batch      = db.batch();
           batchCount = 0;
         }
 
@@ -10291,9 +10438,17 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
       await batch.commit();
     }
 
+    console.log(`\n✅ Term change migration complete:`);
+    console.log(`   Previous term docs repaired: ${prevTermRepaired}`);
+    console.log(`   New term docs created:       ${createdCount}`);
+    console.log(`   New term docs updated:       ${updatedCount}`);
+    console.log(`   Pupils with arrears:         ${arrearsCount}`);
+    console.log(`   Total arrears migrated:      ₦${totalArrearsAmount.toLocaleString()}`);
+    console.log(`   Skipped:                     ${skippedCount}`);
+
     return {
-      success: true,
-      count: createdCount,
+      success:      true,
+      count:        createdCount + updatedCount,
       arrearsCount,
       totalArrears: totalArrearsAmount
     };
@@ -10304,9 +10459,7 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
   }
 }
 
-// Make globally available
 window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
-
 // Export hierarchy functions globally
 window.loadClassHierarchyUI = loadClassHierarchyUI;
 window.renderEmptyHierarchyUI = renderEmptyHierarchyUI;
