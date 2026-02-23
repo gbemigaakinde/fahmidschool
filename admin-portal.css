@@ -4492,9 +4492,9 @@ body > div[style*="position:fixed"][style*="z-index"] {
   }
 }
 
-/* ── DATE INPUT OVERFLOW — COMPLETE FIX — append to admin-portal.css ── */
+/* ── DATE INPUT OVERFLOW — CORRECT FIX — append to admin-portal.css ── */
 
-/* Fix the grid cell constraint — use overflow:visible so right border isn't clipped */
+/* Fix the grid cell constraint */
 .admin-main .form-row > .form-group,
 .admin-main .form-row-2 > .form-group,
 .admin-main .form-row-3 > .form-group,
@@ -4502,7 +4502,8 @@ body > div[style*="position:fixed"][style*="z-index"] {
 .admin-main .form-row-2 > div,
 .admin-main .form-row-3 > div {
   min-width: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  padding-right: 2px !important; /* gives the input's right border room to render */
 }
 
 /* Also fix direct grid children that aren't .form-group */
@@ -4510,7 +4511,6 @@ body > div[style*="position:fixed"][style*="z-index"] {
 .admin-main .form-row-2,
 .admin-main .form-row-3 {
   min-width: 0 !important;
-  overflow: visible !important;
 }
 
 /* Ensure the input itself cannot exceed its cell */
