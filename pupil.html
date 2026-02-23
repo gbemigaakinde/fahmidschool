@@ -190,8 +190,14 @@
   background: #f8faff;
 }
 
+/* ── DESKTOP TABLE ───────────────────────────────────────────── */
+/* thead */
+.results-table thead tr {
+  background: #f8faff;
+}
+
 .results-table thead th {
-  padding: 10px 14px !important;  /* tighter than styles.css 16px 24px */
+  padding: 10px 14px !important;
   font-size: 10.5px !important;
   font-weight: 700 !important;
   letter-spacing: 0.07em !important;
@@ -200,6 +206,16 @@
   border-bottom: 2px solid #e0e7ff !important;
   background: #f8faff !important;
   white-space: nowrap;
+  /* Default: left-aligned to match subject column */
+  text-align: left !important;
+}
+
+/* Score column headers: center-aligned to match score cells */
+.results-table thead th:nth-child(2),
+.results-table thead th:nth-child(3),
+.results-table thead th:nth-child(4),
+.results-table thead th:nth-child(5) {
+  text-align: center !important;
 }
 
 .results-table thead th:first-child {
@@ -208,7 +224,6 @@
 }
 .results-table thead th:last-child {
   border-radius: 0 10px 0 0;
-  text-align: center !important;
 }
 
 /* Data rows */
@@ -317,23 +332,15 @@
 
 
 /* ── MOBILE TABLE — card-per-row layout ──────────────────────── */
-/*
-  KEY INSIGHT: summary-row tds use colspan="3" and colspan="2".
-  colspan does NOT create new <td> elements; it just stretches the 
-  existing td. So:
-    - Data rows have 5 <td>s → nth-child(1..5) works
-    - Summary rows have 2 <td>s → nth-child(1) and nth-child(2) only
-
-  GRID LAYOUT for data rows (tr:not(.summary-row)):
-  Named grid areas so each td maps cleanly:
-  
-    ┌─────────────────────────┬───────┐
-    │ SUBJECT (name)          │       │
-    ├────────┬────────┬───────┤ GRADE │
-    │   CA   │  EXAM  │ TOTAL │       │
-    └────────┴────────┴───────┴───────┘
-*/
+/* ── MOBILE TABLE — card-per-row layout ──────────────────────── */
 @media (max-width: 640px) {
+
+  /* CRITICAL: Override styles.css min-width: 600px on table */
+  .results-table,
+  table.results-table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
 
   /* Reset global table/cell rules that fight us */
   .results-table,
@@ -346,6 +353,7 @@
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    white-space: normal !important;
   }
 
   /* Hide desktop header row */
@@ -355,63 +363,63 @@
   .results-table {
     display: flex !important;
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 8px !important;
     overflow: visible !important;
     background: transparent !important;
+    box-shadow: none !important;
   }
 
   .results-table tbody {
     display: flex !important;
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 8px !important;
+    width: 100% !important;
   }
 
-  /* ── DATA ROW: grid layout ── */
+  /* ── DATA ROW: grid layout — FULL WIDTH ── */
   .results-table tbody tr:not(.summary-row) {
     display: grid !important;
     grid-template-areas:
       "subject  subject  subject  grade"
       "ca       exam     total    grade" !important;
-    grid-template-columns: 1fr 1fr 1fr 52px !important;
+    grid-template-columns: 1fr 1fr 1fr 44px !important;
     grid-template-rows: auto auto !important;
     gap: 0 !important;
+    width: 100% !important;           /* FULL WIDTH FIX */
     background: #ffffff !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
     border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.05) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
     overflow: hidden !important;
     padding: 0 !important;
-    transition: box-shadow 150ms ease !important;
+    margin: 0 !important;             /* No margin collapsing the width */
   }
 
   .results-table tbody tr:not(.summary-row):hover {
-    box-shadow: 0 4px 16px rgba(26,86,219,.12) !important;
+    box-shadow: 0 3px 12px rgba(26,86,219,.1) !important;
     border-color: #bfdbfe !important;
   }
 
   /* Subject name — top row, spans 3 of 4 columns */
   .results-table tbody tr:not(.summary-row) td:nth-child(1) {
     grid-area: subject !important;
-    padding: 13px 14px 10px !important;
-    font-size: 14px !important;
+    padding: 11px 12px 9px !important;
+    font-size: 13px !important;       /* Reduced from 14px */
     font-weight: 700 !important;
     color: #1e293b !important;
     border-bottom: 1px solid #f1f5f9 !important;
     text-align: left !important;
     background: #ffffff !important;
     display: block !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   /* Score cells — bottom row, left 3 columns */
-  .results-table tbody tr:not(.summary-row) td:nth-child(2) {
-    grid-area: ca !important;
-  }
-  .results-table tbody tr:not(.summary-row) td:nth-child(3) {
-    grid-area: exam !important;
-  }
-  .results-table tbody tr:not(.summary-row) td:nth-child(4) {
-    grid-area: total !important;
-  }
+  .results-table tbody tr:not(.summary-row) td:nth-child(2) { grid-area: ca !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(3) { grid-area: exam !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(4) { grid-area: total !important; }
 
   .results-table tbody tr:not(.summary-row) td:nth-child(2),
   .results-table tbody tr:not(.summary-row) td:nth-child(3),
@@ -420,14 +428,14 @@
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 10px 8px 12px !important;
+    padding: 8px 6px 10px !important; /* Tighter padding */
     background: #f8faff !important;
     text-align: center !important;
-    font-size: 18px !important;
+    font-size: 15px !important;       /* Reduced from 18px */
     font-weight: 700 !important;
     color: #1e293b !important;
     border-right: 1px solid #e2e8f0 !important;
-    min-height: 60px !important;
+    min-height: 52px !important;      /* Reduced from 60px */
   }
 
   /* Score labels via ::before */
@@ -435,12 +443,12 @@
   .results-table tbody tr:not(.summary-row) td:nth-child(3)::before,
   .results-table tbody tr:not(.summary-row) td:nth-child(4)::before {
     display: block !important;
-    font-size: 9px !important;
+    font-size: 8.5px !important;      /* Smaller label */
     font-weight: 700 !important;
     letter-spacing: 0.08em !important;
     text-transform: uppercase !important;
     color: #94a3b8 !important;
-    margin-bottom: 3px !important;
+    margin-bottom: 2px !important;
     font-family: 'DM Sans', sans-serif !important;
   }
   .results-table tbody tr:not(.summary-row) td:nth-child(2)::before { content: 'CA' !important; }
@@ -454,14 +462,14 @@
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
-    font-size: 15px !important;
+    font-size: 13px !important;       /* Reduced from 15px */
     font-weight: 900 !important;
     text-align: center !important;
     border-left: 1px solid #e2e8f0 !important;
+    border-right: none !important;
     border-bottom: none !important;
-    border-radius: 0 14px 14px 0 !important;
+    border-radius: 0 12px 12px 0 !important;
     min-height: 100% !important;
-    /* Grade colours are set by .grade-* rules below in mobile context */
   }
 
   /* ── SUMMARY ROWS ── */
@@ -469,12 +477,13 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 10px 16px !important;
+    padding: 9px 14px !important;
     background: #eef2ff !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     border: 1px solid #c7d2fe !important;
     box-shadow: none !important;
     gap: 8px !important;
+    width: 100% !important;
   }
 
   .results-table tbody tr.summary-row td {
@@ -482,9 +491,10 @@
     padding: 0 !important;
     background: transparent !important;
     border: none !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     color: #4338ca !important;
     text-align: left !important;
+    white-space: normal !important;
   }
 
   .results-table tbody tr.summary-row td:first-child {
@@ -499,7 +509,7 @@
     white-space: nowrap !important;
   }
 
-  /* Grade colours in mobile context — must match grid-area styling */
+  /* Grade colours in mobile context */
   .results-table td.grade-A1 { background: #dcfce7 !important; color: #14532d !important; }
   .results-table td.grade-B2,
   .results-table td.grade-B3 { background: #dbeafe !important; color: #1e3a8a !important; }
