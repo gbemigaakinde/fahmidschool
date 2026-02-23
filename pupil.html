@@ -3,816 +3,387 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pupil Portal - Fahmid Nursery & Primary School</title>
+<title>Pupil Portal — Fahmid Nursery & Primary School</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="pupil-profile.css">
-<!-- Lucide Icons CDN -->
+<link rel="stylesheet" href="pupil-portal.css">
+
 <script src="https://unpkg.com/lucide@latest"></script>
-<!-- Replace your current Firebase scripts with these -->
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
-<!-- PWA Manifest -->
+
 <link rel="manifest" href="/manifest.json">
-
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
+<meta name="theme-color" content="#1a56db">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
-
-<!-- iOS Meta Tags -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fahmid School">
 <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
-<style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body.pupil-portal {
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    min-height: 100vh;
-}
-
-/* ===============================
-   MODERN HEADER WITH GLASSMORPHISM
-   =============================== */
-.pupil-header {
-    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-    padding: 2rem 0;
-    box-shadow: 0 8px 32px rgba(0, 178, 255, 0.2);
-    position: relative;
-    overflow: hidden;
-}
-
-.pupil-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.03)"/></svg>');
-    opacity: 0.4;
-}
-
-.header-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    position: relative;
-    z-index: 1;
-}
-
-.header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.header-brand {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.school-logo {
-    width: 100px;
-    height: 100px;
-    background: transparent;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: none;
-}
-
-.school-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 10px;
-}
-
-.brand-text h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    margin: 0;
-    letter-spacing: -0.02em;
-}
-
-.brand-text .portal-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: white;
-    margin-top: 0.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.btn-logout {
-    padding: 0.625rem 1.5rem;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-    color: white;
-    border-radius: 50px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.875rem;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-logout:hover {
-    background: white;
-    color: #00B2FF;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.header-info {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 16px;
-    padding: 1.25rem 1.5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.info-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: 600;
-}
-
-.info-value {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: white;
-}
-
-/* ===============================
-   MAIN CONTENT WITH CARD SYSTEM
-   =============================== */
-.pupil-main {
-    max-width: 1200px;
-    margin: -2rem auto 0;
-    padding: 0 1.5rem 3rem;
-    position: relative;
-    z-index: 2;
-}
-
-/* Dashboard Cards Section */
-.dashboard-section {
-    margin-bottom: 2rem;
-}
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.25rem;
-}
-
-.dashboard-card {
-    background: white;
-    border-radius: 20px;
-    padding: 2rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.dashboard-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(180deg, #00B2FF 0%, #0090CC 100%);
-}
-
-.dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 178, 255, 0.15);
-}
-
-.dashboard-card h3 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 0.75rem;
-}
-
-.dashboard-card p {
-    font-size: 0.875rem;
-    color: #64748b;
-    line-height: 1.6;
-    margin: 0;
-}
-
-/* Profile Card - Compact Grid Layout */
-.profile-section {
-    background: white;
-    border-radius: 24px;
-    padding: 2.5rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    margin-bottom: 2rem;
-}
-
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid #f1f5f9;
-}
-
-.section-icon {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
-
-.section-title h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-}
-
-.section-title p {
-    font-size: 0.875rem;
-    color: #64748b;
-    margin: 0.25rem 0 0;
-}
-
-.profile-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1rem;
-}
-
-.profile-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem 1.25rem;
-    background: #f8fafc;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    transition: all 0.3s ease;
-}
-
-.profile-item:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-}
-
-.profile-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.profile-value {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #0f172a;
-    line-height: 1.5;
-}
-
-/* Results Table - Modern Card Style */
-.results-section {
-    background: white;
-    border-radius: 24px;
-    padding: 2.5rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-    margin-bottom: 2rem;
-}
-
-.results-table-wrapper {
-    overflow-x: auto;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-}
-
-.results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.results-table thead {
-    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-}
-
-.results-table th {
-    padding: 1rem;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: white;
-}
-
-.results-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f1f5f9;
-    color: #334155;
-    font-weight: 500;
-}
-
-.results-table tbody tr {
-    transition: background 0.2s ease;
-}
-
-.results-table tbody tr:hover {
-    background: #f8fafc;
-}
-
-.results-table td:first-child {
-    font-weight: 600;
-    color: #0f172a;
-}
-
-.summary-row td {
-    background: #f1f5f9;
-    font-weight: 700;
-    color: #00B2FF;
-    border-bottom: 2px solid #00B2FF;
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-    flex-wrap: wrap;
-}
-
-.btn-primary,
-.btn-secondary {
-    padding: 0.875rem 2rem;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9375rem;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: none;
-    cursor: pointer;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #00B2FF 0%, #0090CC 100%);
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 178, 255, 0.3);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 178, 255, 0.4);
-}
-
-.btn-secondary {
-    background: white;
-    color: #00B2FF;
-    border: 2px solid #00B2FF;
-}
-
-.btn-secondary:hover {
-    background: #00B2FF;
-    color: white;
-}
-
-/* Footer */
-.pupil-footer {
-    background: #0f172a;
-    padding: 2rem 0;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.875rem;
-    margin-top: 4rem;
-}
-
-/* Animations */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.reveal {
-    animation: fadeInUp 0.6s ease forwards;
-}
-
-.delay-1 { animation-delay: 0.1s; opacity: 0; }
-.delay-2 { animation-delay: 0.2s; opacity: 0; }
-.delay-3 { animation-delay: 0.3s; opacity: 0; }
-
-/* Icon Sizing */
-.section-icon svg,
-.profile-label svg,
-.btn-logout svg,
-.btn-primary svg,
-.btn-secondary svg {
-    width: 20px;
-    height: 20px;
-}
-
-.portal-badge svg {
-    width: 14px;
-    height: 14px;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .pupil-header {
-        padding: 1.5rem 0;
-    }
-
-    .header-top {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-
-    .header-brand {
-        flex-direction: column;
-    }
-
-    .header-info {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .pupil-main {
-        margin-top: 0;
-        padding: 1.5rem 1rem 2rem;
-    }
-
-    .dashboard-grid,
-    .profile-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .profile-section,
-    .results-section {
-        padding: 1.5rem;
-        border-radius: 16px;
-    }
-
-    .section-header {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .brand-text h2 {
-        font-size: 1.25rem;
-    }
-
-    .results-table {
-        font-size: 0.75rem;
-    }
-
-    .results-table th,
-    .results-table td {
-        padding: 0.75rem 0.5rem;
-    }
-}
-</style>
 </head>
 
-<body class="pupil-portal">
+<body class="pp-body">
 
-<header class="pupil-header">
-    <div class="header-content">
-        <div class="header-top">
-            <div class="header-brand">
-                <div class="school-logo">
-    <img src="IMG_4629.png" alt="Fahmid School logo">
-</div>
-                <div class="brand-text">
-                    <h2>Fahmid Nursery & Primary School</h2>
-                    <span class="portal-badge">
-                        <i data-lucide="graduation-cap"></i>
-                        Pupil Portal
-                    </span>
-                </div>
-            </div>
-            <button class="btn-logout" onclick="logout()">
-                <i data-lucide="log-out"></i>
-                Logout
-            </button>
-        </div>
+<!-- ═══════════════════════════════════════
+     TOP NAVIGATION STRIP
+═══════════════════════════════════════ -->
+<header class="pp-topbar">
+  <div class="pp-topbar__inner">
 
-        <div class="header-info">
-            <div class="info-item">
-                <span class="info-label">Welcome Back!</span>
-                <span class="info-value" id="pupil-welcome">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Class</span>
-                <span class="info-value" id="student-class">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Session</span>
-                <span class="info-value" id="student-session">Loading...</span>
-            </div>
-        </div>
+    <div class="pp-topbar__brand">
+      <div class="pp-brand-logo">
+        <img src="IMG_4629.png" alt="Fahmid School">
+      </div>
+      <div class="pp-brand-text">
+        <span class="pp-brand-name">Fahmid Nursery &amp; Primary School</span>
+        <span class="pp-brand-tag">
+          <i data-lucide="layout-dashboard"></i>
+          Pupil Portal
+        </span>
+      </div>
     </div>
+
+    <nav class="pp-topbar__nav">
+      <a href="#pp-profile" class="pp-nav-link" data-section="profile">
+        <i data-lucide="user"></i>
+        <span>Profile</span>
+      </a>
+      <a href="#pp-results" class="pp-nav-link" data-section="results">
+        <i data-lucide="bar-chart-2"></i>
+        <span>Results</span>
+      </a>
+      <a href="#pp-fees" class="pp-nav-link" data-section="fees">
+        <i data-lucide="credit-card"></i>
+        <span>Fees</span>
+      </a>
+    </nav>
+
+    <button class="pp-btn-logout" onclick="logout()">
+      <i data-lucide="log-out"></i>
+      <span>Logout</span>
+    </button>
+
+  </div>
 </header>
 
-<main class="pupil-main">
-      <!-- Profile Information -->
-    <section class="profile-section reveal">
-        <div class="section-header">
-            <div class="section-icon">
-                <i data-lucide="user"></i>
-            </div>
-            <div class="section-title">
-                <h2>Pupil Profile</h2>
-                <p>Your registered details and academic information</p>
-            </div>
-        </div>
 
-        <div class="profile-grid">
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="user"></i>
-                    Full Name
-                </span>
-                <span class="profile-value" id="pupil-name-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="calendar"></i>
-                    Date of Birth
-                </span>
-                <span class="profile-value" id="pupil-dob-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="hash"></i>
-                    Admission Number
-                </span>
-                <span class="profile-value" id="pupil-admission-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="users"></i>
-                    Gender
-                </span>
-                <span class="profile-value" id="pupil-gender-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="phone"></i>
-                    Contact Number
-                </span>
-                <span class="profile-value" id="pupil-contact-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="map-pin"></i>
-                    Address
-                </span>
-                <span class="profile-value" id="pupil-address-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="book-open"></i>
-                    Class
-                </span>
-                <span class="profile-value" id="pupil-class-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="user-check"></i>
-                    Assigned Teacher
-                </span>
-                <span class="profile-value" id="pupil-teacher-display">Loading...</span>
-            </div>
-            <div class="profile-item">
-                <span class="profile-label">
-                    <i data-lucide="library"></i>
-                    Subjects
-                </span>
-                <span class="profile-value" id="pupil-subjects-display">Loading...</span>
-            </div>
+<!-- ═══════════════════════════════════════
+     HERO / IDENTITY BANNER
+═══════════════════════════════════════ -->
+<section class="pp-hero">
+  <div class="pp-hero__inner">
+
+    <div class="pp-hero__identity">
+      <div class="pp-avatar" id="pp-avatar-initials">
+        <i data-lucide="user" class="pp-avatar__fallback"></i>
+      </div>
+      <div class="pp-hero__meta">
+        <h1 class="pp-hero__greeting" id="pupil-welcome">Welcome back</h1>
+        <div class="pp-hero__tags">
+          <span class="pp-tag pp-tag--class">
+            <i data-lucide="book-open"></i>
+            <span id="student-class">Loading…</span>
+          </span>
+          <span class="pp-tag pp-tag--session">
+            <i data-lucide="calendar"></i>
+            <span id="student-session">Loading…</span>
+          </span>
         </div>
-    </section>
-    
-    <!-- Fee Balance Card (NEW) -->
-<section class="profile-section reveal" id="fee-balance-section" style="display:none;">
-    <div class="section-header">
-        <div class="section-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-            <i data-lucide="credit-card"></i>
-        </div>
-        <div class="section-title">
-            <h2>Fee Status</h2>
-            <p>Your current fee balance and payment history</p>
-        </div>
+      </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
-        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);">
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Amount Due</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-amount-due">₦0</div>
-        </div>
-        
-        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Total Paid</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-total-paid">₦0</div>
-        </div>
-        
-        <div style="text-align: center; padding: var(--space-xl); background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);">
-            <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-xs);">Balance</div>
-            <div style="font-size: var(--text-3xl); font-weight: 700;" id="fee-balance">₦0</div>
-        </div>
+    <div class="pp-hero__actions">
+      <a href="print-results.html" class="pp-action-btn pp-action-btn--outline">
+        <i data-lucide="printer"></i>
+        Print Report
+      </a>
+      <button class="pp-action-btn pp-action-btn--solid" onclick="scrollToSection('pp-fees')">
+        <i data-lucide="credit-card"></i>
+        Fee Balance
+      </button>
     </div>
 
-    <!-- Payment History -->
-    <div>
-        <h3 style="margin-bottom: var(--space-md);">Payment History</h3>
-        <div id="payment-history-list" style="display: grid; gap: var(--space-sm);">
-            <!-- Payment history will be loaded here -->
-        </div>
-    </div>
+  </div>
+  <!-- decorative mesh -->
+  <div class="pp-hero__mesh" aria-hidden="true"></div>
 </section>
 
-    <!-- Dashboard Overview Cards -->
-    <section class="dashboard-section reveal">
-        <div class="dashboard-grid">
-            <div class="dashboard-card">
-                <h3>School Fees</h3>
-                <a href="#fee-balance-section" class="btn-primary" onclick="scrollToFees(); return false;">
-    <i data-lucide="credit-card"></i>
-    View Fee Balance
-</a>
-            </div>
-            <div class="dashboard-card">
-                <h3>Track Progress</h3>
-                <p>Monitor improvements and identify areas that need attention.</p>
-            </div>
-            <div class="dashboard-card">
-                <h3>Achievements</h3>
-                <p>Review milestones and personal academic highlights.</p>
-            </div>
-        </div>
-    </section>
 
-    <!-- Academic Results -->
-    <section class="results-section reveal">
-        <div class="section-header">
-            <div class="section-icon">
-                <i data-lucide="bar-chart-3"></i>
-            </div>
-            <div class="section-title">
-                <h2>Academic Results</h2>
-                <p>Your performance record for the current academic session</p>
-            </div>
-            <!-- Session Selector -->
-<div class="session-selector" style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: #f8fafc; border-radius: var(--radius-lg); border: 1px solid #e2e8f0;">
-    <div style="display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 250px;">
-            <label for="pupil-session-select" style="display: block; font-weight: 600; color: #334155; margin-bottom: var(--space-xs); font-size: 0.875rem;">
-                <i data-lucide="calendar" style="width: 16px; height: 16px; vertical-align: middle;"></i>
-                Select Academic Session:
-            </label>
-            <select id="pupil-session-select" onchange="loadSessionResults()" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-size: 0.9375rem; background: white;">
-                <option value="current">Current Session (Loading...)</option>
-            </select>
-        </div>
-        <div style="display: flex; align-items: flex-end; gap: var(--space-sm);">
-            <button onclick="loadSessionResults()" class="btn-secondary" style="padding: 0.75rem 1.5rem; white-space: nowrap;">
-                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
-                Refresh Results
-            </button>
-        </div>
+<!-- ═══════════════════════════════════════
+     MAIN CONTENT WRAPPER
+═══════════════════════════════════════ -->
+<main class="pp-main">
+
+  <!-- ─── PROFILE SECTION ─────────────────── -->
+  <section class="pp-card pp-card--profile" id="pp-profile">
+
+    <div class="pp-card__header">
+      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--blue">
+        <i data-lucide="user-circle-2"></i>
+      </div>
+      <div>
+        <h2 class="pp-card__title">Pupil Profile</h2>
+        <p class="pp-card__subtitle">Registered details and academic information</p>
+      </div>
     </div>
-    <div id="session-info" style="margin-top: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
-        <p style="margin: 0; font-size: 0.875rem; color: #64748b;">
-            <strong>Viewing:</strong> <span id="selected-session-name">Current Session</span>
-        </p>
+
+    <div class="pp-profile-grid">
+
+      <!-- Left column: key identity fields -->
+      <div class="pp-profile-col pp-profile-col--identity">
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="user"></i> Full Name
+          </span>
+          <span class="pp-field__value pp-field__value--name" id="pupil-name-display">Loading…</span>
+        </div>
+
+        <div class="pp-field-row">
+          <div class="pp-field">
+            <span class="pp-field__label">
+              <i data-lucide="hash"></i> Admission No.
+            </span>
+            <span class="pp-field__value" id="pupil-admission-display">Loading…</span>
+          </div>
+          <div class="pp-field">
+            <span class="pp-field__label">
+              <i data-lucide="users"></i> Gender
+            </span>
+            <span class="pp-field__value" id="pupil-gender-display">Loading…</span>
+          </div>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="calendar"></i> Date of Birth
+          </span>
+          <span class="pp-field__value" id="pupil-dob-display">Loading…</span>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="phone"></i> Contact Number
+          </span>
+          <span class="pp-field__value" id="pupil-contact-display">Loading…</span>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="map-pin"></i> Address
+          </span>
+          <span class="pp-field__value" id="pupil-address-display">Loading…</span>
+        </div>
+
+      </div>
+
+      <!-- Right column: academic fields -->
+      <div class="pp-profile-col pp-profile-col--academic">
+
+        <div class="pp-academic-banner">
+          <i data-lucide="graduation-cap" class="pp-academic-banner__icon"></i>
+          <span class="pp-academic-banner__label">Academic Details</span>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="book-open"></i> Class
+          </span>
+          <span class="pp-field__value pp-field__value--highlight" id="pupil-class-display">Loading…</span>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="user-check"></i> Assigned Teacher
+          </span>
+          <span class="pp-field__value" id="pupil-teacher-display">Loading…</span>
+        </div>
+
+        <div class="pp-field">
+          <span class="pp-field__label">
+            <i data-lucide="library"></i> Subjects
+          </span>
+          <span class="pp-field__value pp-field__value--subjects" id="pupil-subjects-display">Loading…</span>
+        </div>
+
+      </div>
+
     </div>
-</div>
-        </div>
 
-        <div class="results-table-wrapper" id="results-container">
-            <!-- pupil.js will populate results table -->
-        </div>
+  </section>
 
-        <div class="action-buttons">
-            <a href="print-results.html" class="btn-primary">
-                <i data-lucide="printer"></i>
-                View & Print Report Card
-            </a>
-            <a href="index.html" class="btn-secondary">
-                <i data-lucide="home"></i>
-                Back to School Website
-            </a>
+
+  <!-- ─── RESULTS SECTION ─────────────────── -->
+  <section class="pp-card" id="pp-results">
+
+    <div class="pp-card__header">
+      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--indigo">
+        <i data-lucide="bar-chart-2"></i>
+      </div>
+      <div>
+        <h2 class="pp-card__title">Academic Results</h2>
+        <p class="pp-card__subtitle">Your performance record by session and term</p>
+      </div>
+    </div>
+
+    <!-- Session selector control bar -->
+    <div class="pp-session-bar">
+      <div class="pp-session-bar__field">
+        <label for="pupil-session-select" class="pp-session-bar__label">
+          <i data-lucide="calendar-range"></i>
+          Academic Session
+        </label>
+        <div class="pp-select-wrap">
+          <select id="pupil-session-select" class="pp-select">
+            <option value="current">Current Session (Loading…)</option>
+          </select>
+          <i data-lucide="chevron-down" class="pp-select-chevron"></i>
         </div>
-    </section>
+      </div>
+      <button onclick="loadSessionResults()" class="pp-refresh-btn">
+        <i data-lucide="refresh-cw"></i>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Active session indicator -->
+    <div id="session-info" class="pp-session-pill" style="display:none;">
+      Viewing: <strong id="selected-session-name">Current Session</strong>
+    </div>
+
+    <!-- Results output area -->
+    <div id="results-container" class="pp-results-body">
+      <!-- JS populates this -->
+    </div>
+
+    <div class="pp-card__footer">
+      <a href="print-results.html" class="pp-btn pp-btn--primary">
+        <i data-lucide="printer"></i>
+        View &amp; Print Report Card
+      </a>
+      <a href="index.html" class="pp-btn pp-btn--ghost">
+        <i data-lucide="home"></i>
+        Back to Website
+      </a>
+    </div>
+
+  </section>
+
+
+  <!-- ─── FEE BALANCE SECTION ──────────────── -->
+  <section class="pp-card" id="pp-fees" style="display:none;">
+    <!-- JS (loadFeeBalance) fully replaces this section's innerHTML -->
+    <!-- The id="fee-balance-section" alias is set below for backward compatibility -->
+  </section>
+
+  <!-- Alias anchor so existing JS (getElementById('fee-balance-section')) still works -->
+  <div id="fee-balance-section" style="display:none;"></div>
+
 </main>
 
-<footer class="pupil-footer">
-    <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+
+<footer class="pp-footer">
+  <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
 </footer>
 
+
+<!-- Scripts -->
 <script src="firebase-init.js"></script>
 <script src="script.js"></script>
 <script src="finance.js"></script>
 <script src="pupil.js"></script>
 
 <script>
-// Initialize Lucide icons after page loads
+// Set copyright year
+document.getElementById('copyright-year').textContent = new Date().getFullYear();
+
+// Initialise Lucide icons
 document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
+  lucide.createIcons();
+
+  // Generate avatar initials once the name is populated
+  const nameEl = document.getElementById('pupil-name-display');
+  const avatarEl = document.getElementById('pp-avatar-initials');
+  const observer = new MutationObserver(() => {
+    const name = nameEl?.textContent?.trim();
+    if (name && name !== 'Loading…' && name !== '-') {
+      const initials = name.split(' ')
+        .slice(0, 2)
+        .map(w => w[0])
+        .join('')
+        .toUpperCase();
+      avatarEl.innerHTML = `<span>${initials}</span>`;
+      avatarEl.classList.add('pp-avatar--loaded');
+      observer.disconnect();
+    }
+  });
+  if (nameEl) observer.observe(nameEl, { childList: true, characterData: true, subtree: true });
+
+  // Active nav link on scroll
+  const sections = ['pp-profile', 'pp-results', 'pp-fees'];
+  const navLinks = document.querySelectorAll('.pp-nav-link');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
+        const match = document.querySelector(`.pp-nav-link[href="#${entry.target.id}"]`);
+        if (match) match.classList.add('pp-nav-link--active');
+      }
+    });
+  }, { threshold: 0.4 });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) io.observe(el);
+  });
 });
+
+// Smooth scroll helper (replaces scrollToFees)
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.showToast?.('📊 Viewing fee balance', 'info', 2000);
+  }
+}
+
+// Keep scrollToFees alias working
+window.scrollToFees = () => scrollToSection('fee-balance-section');
+window.scrollToSection = scrollToSection;
+
+// Redirect fee-balance-section writes to pp-fees
+// (loadFeeBalance uses getElementById('fee-balance-section'))
+// We proxy the display:none toggle by watching the alias div
+const feeAlias = document.getElementById('fee-balance-section');
+const feeSection = document.getElementById('pp-fees');
+
+if (feeAlias && feeSection) {
+  // Proxy innerHTML writes from JS to the real card
+  const originalDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  
+  // Simpler approach: override getElementById locally for this page
+  const _getElementById = document.getElementById.bind(document);
+  document.getElementById = function(id) {
+    if (id === 'fee-balance-section') return feeSection;
+    return _getElementById(id);
+  };
+}
 </script>
 
-<!-- Optimization Scripts -->
 <script src="session-cache.js"></script>
 <script src="button-loader.js"></script>
 
-<!-- PWA Service Worker Registration -->
 <script>
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
 }
 </script>
 </body>
