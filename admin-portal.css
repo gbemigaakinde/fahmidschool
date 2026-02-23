@@ -4491,3 +4491,32 @@ body > div[style*="position:fixed"][style*="z-index"] {
     padding: 1rem !important;
   }
 }
+
+/* ── DATE INPUT OVERFLOW FIX — append to admin-portal.css ── */
+
+.admin-main input[type="date"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important; /* allows shrinking inside flex/grid parents */
+}
+
+/* Also fix inside form-row grids where the grid cell itself can be narrow */
+.admin-main .form-row input[type="date"],
+.admin-main .form-row-2 input[type="date"],
+.admin-main .form-row-3 input[type="date"],
+.admin-main .form-group input[type="date"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Calendar-specific date inputs */
+#cal-date,
+#cal-date-end {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
