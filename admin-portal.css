@@ -3760,51 +3760,154 @@ body > div[style*="position:fixed"][style*="z-index"] {
   line-height: 1.6 !important;
 }
 
-/* ── DASHBOARD STAT COUNTS — append to admin-portal.css ── */
+/* ── DASHBOARD STAT CARD WHITE BACKGROUND FIX — append to admin-portal.css ── */
 
-/* Nuclear reset on the four count elements */
-#teacher-count,
-#pupil-count,
-#class-count,
-#announce-count {
-  /* Clear every possible background source */
+/* 
+  Root cause: styles.css sets .stat-card { background: white } 
+  and admin-portal.css rgba override is not specific enough to win.
+  We target #dashboard .stat-card directly with max specificity.
+*/
+#dashboard.admin-card .stat-card,
+#dashboard .stats-grid .stat-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+/* Kill the left-border strip from styles.css .stat-card::before */
+#dashboard.admin-card .stat-card::before,
+#dashboard .stats-grid .stat-card::before {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  width: 0 !important;
+}
+
+/* Kill any after pseudo too */
+#dashboard.admin-card .stat-card::after,
+#dashboard .stats-grid .stat-card::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* The count numbers — override styles.css blue color !important rules */
+#dashboard .stats-grid .stat-card #teacher-count,
+#dashboard .stats-grid .stat-card #pupil-count,
+#dashboard .stats-grid .stat-card #class-count,
+#dashboard .stats-grid .stat-card #announce-count,
+#dashboard .stat-number,
+#dashboard [id$="-count"] {
   background: none !important;
   background-color: transparent !important;
   background-image: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
-
-  /* Ensure white text on the dark dashboard card */
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
-
-  /* Typography */
   font-size: 2.5rem !important;
   font-weight: 800 !important;
   line-height: 1 !important;
   letter-spacing: -0.04em !important;
-
-  /* Kill any chip/badge look */
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   padding: 0 !important;
   display: block !important;
-  width: auto !important;
 }
 
-/* Ensure the stat-card-body holding the count also doesn't interfere */
-#dashboard .stat-card .stat-card-body {
-  background: none !important;
+/* Hover state — keep dark translucent */
+#dashboard.admin-card .stat-card:hover,
+#dashboard .stats-grid .stat-card:hover {
+  background: rgba(255, 255, 255, 0.13) !important;
+  background-color: rgba(255, 255, 255, 0.13) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: none !important;
 }
 
-/* stat-card-label colour fix (the small uppercase heading above the number) */
-#dashboard .stat-card .stat-card-label {
-  color: rgba(255, 255, 255, 0.55) !important;
-  background: none !important;
-  font-size: 0.6875rem !important;
+/* ── CALENDAR EMPTY STATE FIX — append to admin-portal.css ── */
+
+/* 
+  Root cause: The responsive table mobile rule in styles.css injects 
+  td::before { content: attr(data-label) } which adds an invisible 
+  but layout-breaking pseudo-element before the colspan cell content.
+  Also the inline var() tokens don't resolve inside JS-rendered HTML
+  in some browsers when the token isn't defined on :root.
+*/
+
+/* Reset the td that holds the empty state */
+#cal-table-body tr td[colspan="6"] {
+  text-align: center !important;
+  padding: 2.5rem 1.5rem !important;
+  vertical-align: middle !important;
+  border-bottom: none !important;
+}
+
+/* Kill the ::before pseudo from the responsive table mobile rule */
+#cal-table-body tr td[colspan="6"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* The wrapper div inside the empty state td */
+#cal-table-body tr td[colspan="6"] > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.625rem !important;
+  text-align: center !important;
+  max-width: 400px !important;
+  margin: 0 auto !important;
+  padding: 1rem !important;
+}
+
+/* Emoji icon */
+#cal-table-body tr td[colspan="6"] > div p:first-child,
+#cal-table-body tr td[colspan="6"] div[style*="font-size:2rem"],
+#cal-table-body tr td[colspan="6"] div[style*="font-size: 2rem"] {
+  font-size: 2.5rem !important;
+  line-height: 1 !important;
+  margin: 0 0 0.5rem !important;
+  display: block !important;
+}
+
+/* "No non-school days marked yet" heading */
+#cal-table-body tr td[colspan="6"] p[style*="font-size:var(--text-lg)"],
+#cal-table-body tr td[colspan="6"] p[style*="font-size: var(--text-lg)"],
+#cal-table-body tr td[colspan="6"] p:nth-child(2) {
+  font-size: 1rem !important;
   font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.07em !important;
-  margin-bottom: 0.375rem !important;
+  color: var(--admin-text-secondary) !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+/* Descriptive subtext */
+#cal-table-body tr td[colspan="6"] p[style*="font-size:var(--text-sm)"],
+#cal-table-body tr td[colspan="6"] p[style*="font-size: var(--text-sm)"],
+#cal-table-body tr td[colspan="6"] p:nth-child(3) {
+  font-size: 0.8125rem !important;
+  color: var(--admin-text-muted) !important;
+  margin: 0 !important;
+  line-height: 1.6 !important;
+  max-width: 340px !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+/* Prevent the responsive table from collapsing this row on mobile */
+@media (max-width: 768px) {
+  #cal-table-body tr td[colspan="6"] {
+    display: table-cell !important; /* override the block display from responsive table rules */
+    width: 100% !important;
+  }
+
+  #cal-table-body tr {
+    display: table-row !important; /* override the block display from responsive table rules */
+  }
 }
