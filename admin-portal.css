@@ -2367,3 +2367,329 @@ table thead {
 .stat-card--danger   { border-left: 3px solid var(--admin-danger)  !important; }
 .stat-card--purple   { border-left: 3px solid var(--admin-purple)  !important; }
 .stat-card--teal     { border-left: 3px solid var(--admin-teal)    !important; }
+
+/* ============================================================
+   BATCH 1 FIXES — Append to bottom of admin-portal.css
+   ============================================================ */
+
+/* ── FIX T6: table-loading spinner — override styles.css absolute positioning ── */
+.admin-main .table-loading {
+  position: relative !important;
+  padding: 3rem 1rem !important;
+  text-align: center !important;
+  color: var(--admin-text-muted) !important;
+  font-size: 0.875rem !important;
+}
+
+.admin-main .table-loading::after {
+  content: '' !important;
+  display: block !important;
+  position: relative !important; /* kills the absolute from styles.css */
+  left: auto !important;
+  top: auto !important;
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0.75rem auto 0 !important;
+  border: 2.5px solid var(--admin-border) !important;
+  border-top-color: var(--admin-primary) !important;
+  border-radius: 50% !important;
+  animation: admin-spin 0.8s linear infinite !important;
+  transform: none !important;
+}
+
+/* ── FIX T4: override styles.css min-width:600px on responsive-table in admin ── */
+.admin-main .responsive-table {
+  min-width: unset !important;
+  width: 100% !important;
+}
+
+/* Only force min-width when the table genuinely needs it (many columns) */
+.admin-main #pupils-table,
+.admin-main #result-approvals-table,
+.admin-main #promotion-requests-table {
+  min-width: 700px;
+}
+
+.admin-main #teachers-table,
+.admin-main #classes-table,
+.admin-main #subjects-table,
+.admin-main #assignments-table,
+.admin-main #alumni-table,
+.admin-main #outstanding-fees-table,
+.admin-main #session-history-table {
+  min-width: 480px;
+}
+
+/* ── FIX T5: Consistent table action button system ── */
+.tbl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.3125rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--admin-radius-sm);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all var(--admin-transition-fast);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.tbl-btn-edit {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  border-color: #c7d7fb;
+}
+
+.tbl-btn-edit:hover {
+  background: var(--admin-primary);
+  color: white;
+  border-color: var(--admin-primary);
+}
+
+.tbl-btn-delete {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  border-color: #fecaca;
+}
+
+.tbl-btn-delete:hover {
+  background: var(--admin-danger);
+  color: white;
+  border-color: var(--admin-danger);
+}
+
+.tbl-btn-view {
+  background: var(--admin-surface-2);
+  color: var(--admin-text-secondary);
+  border-color: var(--admin-border);
+}
+
+.tbl-btn-view:hover {
+  background: var(--admin-text-primary);
+  color: white;
+  border-color: var(--admin-text-primary);
+}
+
+.tbl-btn-approve {
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
+  border-color: #a7f3d0;
+}
+
+.tbl-btn-approve:hover {
+  background: var(--admin-success);
+  color: white;
+}
+
+.tbl-btn-reject {
+  background: var(--admin-warning-soft);
+  color: var(--admin-warning);
+  border-color: #fde68a;
+}
+
+.tbl-btn-reject:hover {
+  background: var(--admin-warning);
+  color: white;
+}
+
+.tbl-action-cell {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── FIX RP4: Consistent empty state component ── */
+.empty-state {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  color: var(--admin-text-muted);
+}
+
+.empty-state i[data-lucide] {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 1rem;
+  opacity: 0.35;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+  margin: 0 0 0.375rem;
+}
+
+.empty-state-desc {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--admin-text-muted);
+}
+
+/* ── FIX D3 / SC3: stat-card-primary conflict — dashboard vs finance ── */
+
+/* Dashboard dark stat cards: neutralise styles.css green/blue overrides */
+#dashboard .stat-card,
+#dashboard .stat-card h3,
+#dashboard .stat-card .stat-number {
+  background: rgba(255,255,255,.07) !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  background-clip: unset !important;
+  -webkit-background-clip: unset !important;
+}
+
+#dashboard .stat-card::before {
+  display: none !important; /* remove styles.css left-border strip */
+}
+
+/* Finance stat cards: light surface, coloured left border */
+#outstanding-fees .finance-stats .stat-card,
+#financial-reports .finance-stats .stat-card {
+  background: var(--admin-surface) !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--admin-border) !important;
+}
+
+#outstanding-fees .finance-stats .stat-card .stat-value,
+#financial-reports .finance-stats .stat-card .stat-value {
+  color: var(--admin-text-primary) !important;
+  -webkit-text-fill-color: var(--admin-text-primary) !important;
+  background: none !important;
+}
+
+/* ── FIX V3 / SC3: financial-reports inline gradient stat cards ── */
+/* These are rendered by JS with inline styles; override them here */
+#financial-reports [id^="report-"] {
+  /* stat values rendered inline — type overrides are in the elements above */
+}
+
+/* Payment status card inline styles conflict resolution */
+#payment-form-container .payment-status-card {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  padding: 1.5rem !important;
+}
+
+/* ── FIX T2: section-description — single source of truth ── */
+/* Override the styles.css definition with full specificity */
+.admin-main .section-description,
+.admin-main p.section-description,
+.admin-card .section-description,
+.admin-card p.section-description {
+  color: var(--admin-text-secondary) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.6 !important;
+  margin: 0 0 1.5rem !important;
+  font-weight: 400 !important;
+}
+
+.section-top-bar .section-description,
+.section-top-bar p.section-description {
+  margin-bottom: 0 !important;
+}
+
+/* ── FIX CA1/CA2: Destructive action visual weight ── */
+
+/* Danger buttons in critical contexts get extra weight */
+.admin-main .btn-danger {
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+}
+
+/* Promotion modal approve/reject — make them clearly distinct */
+#approve-promotion-btn {
+  flex: 2 !important; /* takes more space than reject */
+  font-size: 0.9375rem !important;
+  padding: 0.6875rem 1.5rem !important;
+}
+
+#reject-promotion-btn {
+  flex: 1 !important;
+}
+
+/* Bulk destructive operation emphasis */
+#bulk-actions .btn-danger,
+#apply-bulk-action-btn {
+  position: relative;
+}
+
+#apply-bulk-action-btn::before {
+  content: '⚠ ';
+  font-size: 0.75rem;
+}
+
+/* ── FIX CA3: Start New Session button — critical destructive action ── */
+#start-new-session-btn {
+  width: 100%;
+  padding: 0.75rem 1.5rem !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  border: 2px solid #b91c1c !important;
+  box-shadow: 0 4px 16px rgba(220,38,38,.25) !important;
+}
+
+#start-new-session-btn:hover {
+  box-shadow: 0 6px 24px rgba(220,38,38,.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── Mobile table action buttons fix (R2) ── */
+@media (max-width: 768px) {
+  .tbl-action-cell {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+
+  .tbl-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* For tables that need horizontal scroll, ensure touch works */
+  .admin-main .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ── Sidebar: ensure groups start collapsed visually (V1) ── */
+/* aria-expanded="false" already set in HTML — CSS just ensures max-height:0 is the default */
+.sidebar-group-content-modern:not(.active) {
+  max-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ── RP3: Repeated alert-info session displays — shared component ── */
+.session-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--admin-radius-md);
+  font-size: 0.875rem;
+  color: #1e40af;
+  margin-bottom: 1.25rem;
+}
+
+.session-info-bar strong {
+  font-weight: 700;
+}
+
+.session-info-bar .sep {
+  color: #93c5fd;
+  margin: 0 0.25rem;
+}
