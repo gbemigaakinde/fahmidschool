@@ -673,7 +673,7 @@
                     <!-- Enrollment Period -->
                     <div class="form-group">
                         <label>Enrollment Period</label>
-                        <div class="form-row form-row-2" style="margin-bottom:0;">
+                        <div class="form-row form-row-2">
                             <select id="pupil-admission-term">
                                 <option value="First Term">First Term (Admission)</option>
                                 <option value="Second Term">Second Term</option>
@@ -691,7 +691,7 @@
                     <details>
                         <summary>ℹ️ About Enrollment Period</summary>
                         <div>
-                            <ul style="margin:0;padding-left:1.25rem;font-size:0.8125rem;color:#1e40af;line-height:1.8;">
+                            <ul>
                                 <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
                                 <li><strong>Exit Term:</strong> Last term enrolled (fees stop after this)</li>
                                 <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
@@ -703,7 +703,7 @@
                     <!-- Fee Adjustment -->
                     <div class="form-group" style="margin-top:0.75rem;">
                         <label>Fee Adjustment <span style="font-weight:400;color:#94a3b8;">(Optional)</span></label>
-                        <div class="form-row form-row-2" style="margin-bottom:0;">
+                        <div class="form-row form-row-2">
                             <input type="number" id="pupil-fee-adjustment-percent"
                                    placeholder="Percentage (e.g. -50 for 50% discount)"
                                    step="0.1">
@@ -737,7 +737,7 @@
             </div>
 
             <!-- Bulk Actions Bar -->
-            <div id="bulk-actions-bar" style="display:none; align-items:center; gap:0.875rem; flex-wrap:wrap;">
+            <div id="bulk-actions-bar">
                 <input type="checkbox" id="select-all-pupils" style="cursor:pointer; width:16px; height:16px; accent-color:#1a56db;">
                 <label for="select-all-pupils" style="cursor:pointer; margin:0; font-size:0.875rem; font-weight:600;">Select All</label>
                 <span id="selected-count" style="margin-left:0.25rem; color:#94a3b8; font-size:0.8125rem;">0 selected</span>
@@ -1371,18 +1371,18 @@
                 </div>
             </div>
 
-            <div class="stats-grid" style="margin-bottom:1.5rem;">
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #dc2626; padding:1.25rem; border-radius:12px;">
-                    <div class="stat-icon" style="font-size:1.25rem; margin-bottom:0.5rem;">📋</div>
-                    <div class="stat-value" id="outstanding-count" style="font-size:2rem; font-weight:800; color:#0f172a;">0</div>
-                    <div class="stat-label" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.25rem;">Pupils Owing</div>
-                </div>
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #d97706; padding:1.25rem; border-radius:12px;">
-                    <div class="stat-icon" style="font-size:1.25rem; margin-bottom:0.5rem;">💰</div>
-                    <div class="stat-value" id="outstanding-total" style="font-size:2rem; font-weight:800; color:#0f172a;">₦0</div>
-                    <div class="stat-label" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.25rem;">Total Outstanding</div>
-                </div>
-            </div>
+            <div class="stats-grid finance-stats" style="margin-bottom:1.5rem;">
+    <div class="stat-card stat-card--danger">
+        <div class="stat-card-emoji">📋</div>
+        <div class="stat-value" id="outstanding-count">0</div>
+        <div class="stat-label">Pupils Owing</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+        <div class="stat-card-emoji">💰</div>
+        <div class="stat-value" id="outstanding-total">₦0</div>
+        <div class="stat-label">Total Outstanding</div>
+    </div>
+</div>
 
             <div class="table-container">
                 <table class="responsive-table" id="outstanding-fees-table">
@@ -1425,30 +1425,30 @@
             </div>
 
             <!-- Summary Stats -->
-            <div class="stats-grid">
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #1a56db; padding:1.25rem; border-radius:12px;">
-                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Total Expected</div>
-                    <div id="report-total-expected" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
-                </div>
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #0f9764; padding:1.25rem; border-radius:12px;">
-                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Total Collected</div>
-                    <div id="report-total-collected" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
-                </div>
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #d97706; padding:1.25rem; border-radius:12px;">
-                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Outstanding</div>
-                    <div id="report-total-outstanding" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
-                </div>
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #7c3aed; padding:1.25rem; border-radius:12px;">
-                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Overall Collection Rate</div>
-                    <div id="report-collection-rate" style="font-size:1.75rem;font-weight:800;color:#0f172a;">0%</div>
-                    <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">fees + arrears</div>
-                </div>
-                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #0891b2; padding:1.25rem; border-radius:12px;">
-                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Current Term Rate</div>
-                    <div id="report-current-term-collection-rate" style="font-size:1.75rem;font-weight:800;color:#0f172a;">0%</div>
-                    <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">this term's fees only</div>
-                </div>
-            </div>
+            <div class="stats-grid finance-stats">
+    <div class="stat-card stat-card--primary">
+        <div class="stat-label">Total Expected</div>
+        <div class="stat-value" id="report-total-expected">₦0</div>
+    </div>
+    <div class="stat-card stat-card--success">
+        <div class="stat-label">Total Collected</div>
+        <div class="stat-value" id="report-total-collected">₦0</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value" id="report-total-outstanding">₦0</div>
+    </div>
+    <div class="stat-card stat-card--purple">
+        <div class="stat-label">Overall Collection Rate</div>
+        <div class="stat-value" id="report-collection-rate">0%</div>
+        <div class="stat-sublabel">fees + arrears</div>
+    </div>
+    <div class="stat-card stat-card--teal">
+        <div class="stat-label">Current Term Rate</div>
+        <div class="stat-value" id="report-current-term-collection-rate">0%</div>
+        <div class="stat-sublabel">this term's fees only</div>
+    </div>
+</div>
 
             <!-- Payment Status Breakdown -->
             <div class="form-section" style="margin-top:1.5rem;">
