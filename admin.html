@@ -4,937 +4,547 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Portal - Fahmid Nursery & Primary School</title>
+
+    <!-- Google Fonts: DM Sans (professional, clean, distinct from Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="styles.css">
+    <!-- ★ NEW: Admin redesign — load AFTER styles.css to override cleanly -->
+    <link rel="stylesheet" href="admin-portal.css">
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-      <!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
 
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a56db">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Fahmid School">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Fahmid School">
+    <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+    <meta name="msapplication-TileColor" content="#1a56db">
+    <meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
 
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+    <style>
+        /* ── Inline styles that were in original <head> — kept exactly, visual-only improvements ── */
 
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
-          <style>
-        /* Modal Styles for Subject Assignment */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
             z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(15,23,42,.6);
+            backdrop-filter: blur(4px);
             overflow: auto;
         }
-
         .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: var(--space-2xl);
-            border-radius: var(--radius-lg);
+            background: #ffffff;
+            margin: 4% auto;
+            padding: 2rem;
+            border-radius: 20px;
             max-width: 800px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 24px 48px rgba(0,0,0,.15);
             position: relative;
+            animation: modal-slide-in 300ms cubic-bezier(.34,1.56,.64,1);
         }
-
+        @keyframes modal-slide-in {
+            from { opacity: 0; transform: translateY(-16px) scale(.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
         .modal-close {
             position: absolute;
-            right: var(--space-lg);
-            top: var(--space-lg);
-            font-size: 28px;
-            font-weight: bold;
-            color: var(--color-gray-600);
+            right: 1.25rem; top: 1.25rem;
+            width: 32px; height: 32px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #94a3b8;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 150ms ease;
+            line-height: 1;
         }
-
-        .modal-close:hover {
-            color: var(--color-danger);
-        }
+        .modal-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
 
         .subject-checkbox-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: var(--space-md);
-            max-height: 400px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.5rem;
+            max-height: 360px;
             overflow-y: auto;
-            padding: var(--space-md);
-            border: 1px solid var(--color-gray-300);
-            border-radius: var(--radius-md);
-            background: var(--color-gray-50);
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
         }
-
         .subject-checkbox-item {
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
-            padding: var(--space-sm);
+            gap: 0.5rem;
+            padding: 0.5rem 0.625rem;
             background: white;
-            border-radius: var(--radius-sm);
-            transition: background 0.2s;
-        }
-
-        .subject-checkbox-item:hover {
-            background: var(--color-gray-100);
-        }
-
-        .subject-checkbox-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            border: 1px solid #eef1f6;
+            border-radius: 6px;
+            transition: all 150ms ease;
             cursor: pointer;
         }
+        .subject-checkbox-item:hover { border-color: #1a56db; background: #eff3ff; }
+        .subject-checkbox-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1a56db; cursor: pointer; }
+        .subject-checkbox-item label { cursor: pointer; margin: 0; font-size: 0.8125rem; font-weight: 500; user-select: none; }
 
-        .subject-checkbox-item label {
-            cursor: pointer;
-            margin: 0;
-            font-size: var(--text-sm);
-            user-select: none;
-        }
-        
-        /* Session Status Card Styles */
+        /* Session Status Card */
         .session-status-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: var(--radius-lg);
-            padding: var(--space-xl);
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f2d5a 100%);
+            border-radius: 14px;
+            padding: 1.75rem;
             color: white;
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-            margin-bottom: var(--space-xl);
+            box-shadow: 0 8px 32px rgba(15,23,42,.15);
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
         }
-
-        .status-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--space-lg);
-            padding-bottom: var(--space-md);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        .session-status-card::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 180px; height: 180px;
+            background: radial-gradient(circle, rgba(96,165,250,.1) 0%, transparent 70%);
+            pointer-events: none;
         }
-
-        .status-header h3 {
-            margin: 0;
-            font-size: var(--text-xl);
-            color: white;
-        }
-
-        .status-badge {
-            padding: var(--space-xs) var(--space-md);
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            font-size: var(--text-sm);
-            font-weight: 600;
-            backdrop-filter: blur(10px);
-        }
-
-        .status-badge.ending-soon {
-            background: #ff9800;
-            color: white;
-        }
-
-        .status-badge.ended {
-            background: #f44336;
-            color: white;
-        }
-
-        .status-body {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: var(--space-md);
-            margin-bottom: var(--space-md);
-        }
-
-        .status-item {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-xs);
-        }
-
-        .status-label {
-            font-size: var(--text-xs);
-            opacity: 0.9;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .status-value {
-            font-size: var(--text-lg);
-            font-weight: 700;
-        }
-
-        .status-alert {
-            margin-top: var(--space-lg);
-            padding: var(--space-md);
-            background: rgba(255, 152, 0, 0.2);
-            border: 2px solid rgba(255, 152, 0, 0.5);
-            border-radius: var(--radius-md);
-            backdrop-filter: blur(10px);
-        }
-
-        .status-alert strong {
-            display: block;
-            margin-bottom: var(--space-xs);
-        }
-
-        .status-alert p {
-            margin: 0;
-            font-size: var(--text-sm);
-        }
-
-        .alert {
-            padding: var(--space-md);
-            border-radius: var(--radius-md);
-            margin: var(--space-md) 0;
-        }
-
-        .alert-warning {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            color: #856404;
-        }
-
-        .alert ul {
-            margin: var(--space-sm) 0 0 var(--space-lg);
-            padding: 0;
-        }
-
-        .alert li {
-            margin-bottom: var(--space-xs);
-        }
-        /* Class Hierarchy Editor Styles */
-        .class-hierarchy-editor {
-            background: var(--color-gray-50);
-            padding: var(--space-xl);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--color-gray-300);
-        }
-
-        .hierarchy-section {
-            background: white;
-            padding: var(--space-lg);
-            border-radius: var(--radius-md);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .hierarchy-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .hierarchy-item {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-            padding: var(--space-sm);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-sm);
-            transition: background 0.2s;
-        }
-
-        .hierarchy-item:hover {
-            background: var(--color-gray-100);
-        }
-
-        .hierarchy-number {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: var(--color-primary);
-            color: white;
-            border-radius: 50%;
-            font-weight: 700;
-            font-size: var(--text-sm);
-            flex-shrink: 0;
-        }
-
-        .hierarchy-input {
-            flex: 1;
-            padding: var(--space-sm) var(--space-md);
-            border: 1px solid var(--color-gray-300);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-base);
-            transition: border-color 0.2s;
-        }
-
-        .hierarchy-input:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
-        }
-
-        .btn-icon {
-            padding: var(--space-xs);
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-
-        .btn-icon.btn-danger {
-            background: var(--color-danger);
-            color: white;
-        }
-
-        .btn-icon.btn-danger:hover {
-            background: #d32f2f;
-            transform: scale(1.1);
-        }
-
-        .alert-info {
-            background: #e3f2fd;
-            border: 1px solid #2196F3;
-            color: #0d47a1;
-        }
-        /* Promotion Period Control */
-        .promotion-period-control {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--space-lg);
-            background: var(--color-gray-50);
-            border: 2px solid var(--color-gray-300);
-            border-radius: var(--radius-lg);
-            margin-bottom: var(--space-xl);
-            gap: var(--space-lg);
-            flex-wrap: wrap;
-        }
-
-        .control-info h3 {
-            margin: 0 0 var(--space-xs);
-            font-size: var(--text-lg);
-            color: var(--color-gray-900);
-        }
-
-        .control-info p {
-            margin: 0;
-            font-size: var(--text-sm);
-            color: var(--color-gray-600);
-        }
-
-        .control-info p.status-active {
-            color: var(--color-success);
-            font-weight: 600;
-        }
-
-        .control-info p.status-inactive {
-            color: var(--color-danger);
-            font-weight: 600;
-        }
-
-        .control-actions {
-            display: flex;
-            gap: var(--space-md);
-        }
-
-        /* Bulk Actions */
-        .bulk-actions {
-            display: flex;
-            gap: var(--space-md);
-            margin-bottom: var(--space-lg);
-            padding: var(--space-md);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
-        }
-
-        .btn-success {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #45a049;
-        }
-
-        /* Status Badges */
-        .status-pending {
-            background: #ff9800;
-            color: white;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-approved {
-            background: #4CAF50;
-            color: white;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-rejected {
-            background: #f44336;
-            color: white;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-completed {
-            background: #2196F3;
-            color: white;
-            padding: var(--space-xs) var(--space-sm);
-            border-radius: var(--radius-sm);
-            font-size: var(--text-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        /* Modal Actions */
-        .modal-actions {
-            display: flex;
-            gap: var(--space-md);
-            margin-top: var(--space-xl);
-            padding-top: var(--space-lg);
-            border-top: 1px solid var(--color-gray-300);
-        }
-
-        .modal-actions .btn {
-            flex: 1;
-        }
-
-        /* Promotion Details */
-        .promotion-details-section {
-            margin-bottom: var(--space-lg);
-            padding: var(--space-md);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
-        }
-
-        .promotion-details-section h3 {
-            margin: 0 0 var(--space-md);
-            font-size: var(--text-base);
-            color: var(--color-gray-700);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .pupil-list {
-            display: grid;
-            gap: var(--space-xs);
-        }
-
-        .pupil-list-item {
-            padding: var(--space-sm);
-            background: white;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-        }
-
-        .pupil-list-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Override Options */
-        .override-section {
-            padding: var(--space-lg);
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: var(--radius-md);
-            margin-top: var(--space-lg);
-        }
-
-        .override-section h3 {
-            margin: 0 0 var(--space-md);
-            color: #856404;
-        }
-
-        .override-controls {
-            display: flex;
-            gap: var(--space-md);
-            flex-wrap: wrap;
-        }
-
-        .override-controls .form-group {
-            flex: 1;
-            min-width: 200px;
-        }
-        /* Hierarchy Container and List */
-.hierarchy-instructions {
-    padding: var(--space-lg);
-    background: var(--color-gray-100);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--space-lg);
-}
-
-.hierarchy-instructions p {
-    margin: 0 0 var(--space-sm);
-    color: var(--color-gray-700);
-}
-
-.hierarchy-instructions p:last-child {
-    margin: 0;
-}
-
-.sortable-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-    padding: var(--space-md);
-    background: white;
-    border: 2px dashed var(--color-gray-300);
-    border-radius: var(--radius-md);
-    min-height: 200px;
-}
-
-.hierarchy-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    background: var(--color-gray-50);
-    border: 2px solid var(--color-gray-300);
-    border-radius: var(--radius-md);
-    cursor: grab;
-    transition: all 0.2s;
-    user-select: none;
-}
-
-.hierarchy-item:hover {
-    background: white;
-    border-color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
-}
-
-.hierarchy-item.dragging {
-    opacity: 0.5;
-    cursor: grabbing;
-}
-
-.drag-handle {
-    font-size: 24px;
-    color: var(--color-gray-500);
-    cursor: grab;
-}
-
-.hierarchy-item:active .drag-handle {
-    cursor: grabbing;
-}
-
-.hierarchy-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    background: var(--color-primary);
-    color: white;
-    border-radius: 50%;
-    font-weight: 700;
-    font-size: var(--text-base);
-    flex-shrink: 0;
-}
-
-.class-name {
-    flex: 1;
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--color-gray-900);
-}
-
-.terminal-badge {
-    padding: var(--space-xs) var(--space-md);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 20px;
-    font-size: var(--text-xs);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-}
-
-/* Results Viewing Styles */
-.form-row-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-md);
-}
-
-@media (max-width: 992px) {
-    .form-row-3 {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Grade color coding */
-.grade-A1 { color: #059669; font-weight: 700; }
-.grade-B2 { color: #10b981; font-weight: 700; }
-.grade-B3 { color: #34d399; font-weight: 700; }
-.grade-C4 { color: #3b82f6; font-weight: 700; }
-.grade-C5 { color: #60a5fa; font-weight: 700; }
-.grade-C6 { color: #93c5fd; font-weight: 700; }
-.grade-D7 { color: #f59e0b; font-weight: 700; }
-.grade-D8 { color: #fb923c; font-weight: 700; }
-.grade-F9 { color: #ef4444; font-weight: 700; }
-
-/* Spinner animation */
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f4f6;
-    border-top-color: #00B2FF;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Export button styling */
-button[onclick="exportPupilResults()"] {
-    transition: all 0.3s ease;
-}
-
-button[onclick="exportPupilResults()"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Comparison section animations */
-#session-comparison-section {
-    animation: slideDown 0.4s ease;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+        .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+        .status-header h3 { margin: 0; font-size: 1rem; color: #f1f5f9; font-weight: 700; }
+        .status-badge { padding: 0.25rem 0.75rem; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; font-size: 0.6875rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #bfdbfe; }
+        .status-badge.ending-soon { background: rgba(217,119,6,.2); border-color: rgba(217,119,6,.4); color: #fbbf24; }
+        .status-badge.ended { background: rgba(220,38,38,.2); border-color: rgba(220,38,38,.4); color: #fca5a5; }
+        .status-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 0.75rem; }
+        .status-item { display: flex; flex-direction: column; gap: 0.25rem; }
+        .status-label { font-size: 0.6875rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+        .status-value { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+        .status-alert { margin-top: 1rem; padding: 0.875rem 1rem; background: rgba(217,119,6,.15); border: 1px solid rgba(217,119,6,.3); border-radius: 10px; }
+        .status-alert strong { display: block; margin-bottom: 0.25rem; color: #fbbf24; font-size: 0.875rem; }
+        .status-alert p { margin: 0; font-size: 0.8125rem; color: rgba(255,255,255,.7); }
+
+        /* Alert */
+        .alert { padding: 0.875rem 1rem; border-radius: 10px; margin: 0.75rem 0; border: 1px solid transparent; font-size: 0.875rem; line-height: 1.5; }
+        .alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+        .alert-info    { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+        .alert ul { margin: 0.5rem 0 0 1.125rem; padding: 0; }
+        .alert li { margin-bottom: 0.25rem; }
+
+        /* Hierarchy */
+        .class-hierarchy-editor { background: #f8fafc; padding: 1.5rem; border-radius: 14px; border: 1px solid #e2e8f0; }
+        .hierarchy-section { background: white; padding: 1.25rem; border-radius: 10px; border: 1px solid #e2e8f0; }
+        .hierarchy-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .hierarchy-item { display: flex; align-items: center; gap: 0.875rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; cursor: grab; transition: all 150ms ease; user-select: none; }
+        .hierarchy-item:hover { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,.08); }
+        .hierarchy-item.dragging { opacity: .5; cursor: grabbing; }
+        .drag-handle { font-size: 1.125rem; color: #94a3b8; }
+        .hierarchy-number { width: 28px; height: 28px; background: #1a56db; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 700; flex-shrink: 0; }
+        .hierarchy-input { flex: 1; padding: 0.5rem 0.75rem; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 0.875rem; transition: border-color 150ms; }
+        .hierarchy-input:focus { outline: none; border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,.1); }
+        .btn-icon { padding: 0.375rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; transition: all 150ms; }
+        .btn-icon.btn-danger { background: #dc2626; color: white; }
+        .btn-icon.btn-danger:hover { background: #b91c1c; }
+
+        /* Promotion */
+        .promotion-period-control { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap; }
+        .control-info h3 { margin: 0 0 0.25rem; font-size: 0.9375rem; color: #0f172a; font-weight: 700; }
+        .control-info p { margin: 0; font-size: 0.8125rem; color: #94a3b8; }
+        .control-info p.status-active { color: #0f9764; font-weight: 600; }
+        .control-info p.status-inactive { color: #dc2626; font-weight: 600; }
+        .control-actions { display: flex; gap: 0.5rem; }
+        .bulk-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; padding: 0.875rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; flex-wrap: wrap; }
+
+        /* Status badges */
+        .status-pending  { background: #fffbeb; color: #d97706;  padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+        .status-approved { background: #ecfdf5; color: #0f9764;  padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+        .status-rejected { background: #fef2f2; color: #dc2626;  padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+        .status-completed{ background: #eff6ff; color: #1a56db;  padding: 0.25rem 0.625rem; border-radius: 999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+
+        /* Modal actions */
+        .modal-actions { display: flex; gap: 0.625rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0; flex-wrap: wrap; }
+        .modal-actions .btn { flex: 1; min-width: 120px; }
+
+        /* Promotion details */
+        .promotion-details-section { margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+        .promotion-details-section h3 { margin: 0 0 0.75rem; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+        .pupil-list { display: flex; flex-direction: column; gap: 0.375rem; }
+        .pupil-list-item { padding: 0.5rem 0.75rem; background: white; border: 1px solid #eef1f6; border-radius: 6px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+        .pupil-list-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #1a56db; }
+
+        /* Override */
+        .override-section { padding: 1.25rem; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; margin-top: 1rem; }
+        .override-section h3 { margin: 0 0 0.875rem; color: #92400e; font-size: 0.9375rem; }
+        .override-controls { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .override-controls .form-group { flex: 1; min-width: 180px; }
+
+        /* Hierarchy/sort */
+        .hierarchy-instructions { padding: 1rem 1.25rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; margin-bottom: 1rem; }
+        .hierarchy-instructions p { margin: 0 0 0.375rem; color: #1e40af; font-size: 0.8125rem; }
+        .hierarchy-instructions p:last-child { margin: 0; }
+        .sortable-list { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; background: white; border: 2px dashed #e2e8f0; border-radius: 10px; min-height: 160px; }
+        .class-name { flex: 1; font-size: 0.875rem; font-weight: 600; color: #0f172a; }
+        .terminal-badge { padding: 0.1875rem 0.625rem; background: #f5f3ff; color: #7c3aed; border-radius: 999px; font-size: 0.625rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+
+        /* Form rows */
+        .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        @media (max-width: 992px) { .form-row-3 { grid-template-columns: 1fr; } }
+
+        /* Grade colors */
+        .grade-A1 { color: #059669; font-weight: 700; }
+        .grade-B2 { color: #10b981; font-weight: 700; }
+        .grade-B3 { color: #34d399; font-weight: 700; }
+        .grade-C4 { color: #3b82f6; font-weight: 700; }
+        .grade-C5 { color: #60a5fa; font-weight: 700; }
+        .grade-C6 { color: #93c5fd; font-weight: 700; }
+        .grade-D7 { color: #f59e0b; font-weight: 700; }
+        .grade-D8 { color: #fb923c; font-weight: 700; }
+        .grade-F9 { color: #ef4444; font-weight: 700; }
+
+        /* Spinner */
+        .spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #1a56db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Export button */
+        button[onclick="exportPupilResults()"] { transition: all 250ms ease; }
+        button[onclick="exportPupilResults()"]:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+
+        /* Session comparison */
+        #session-comparison-section { animation: slideDown 350ms ease; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+
+        /* btn-success base */
+        .btn-success { background: #0f9764; color: white; border: none; }
+        .btn-success:hover { background: #0a7a51; }
     </style>
-<!-- Replace your current Firebase scripts with these -->
-<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
 
-<!-- Load Lucide Icons Library FIRST -->
-<script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
 
-<!-- Initialize Lucide Icons IMMEDIATELY After Loading -->
-<script>
-  // Early initialization to prevent race conditions
-  if (typeof lucide !== 'undefined') {
-    console.log('✓ Lucide library loaded');
-    
-    // Initialize on DOM ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-        console.log('✓ Lucide icons initialized (DOMContentLoaded)');
-      });
-    } else {
-      // DOM already ready
-      lucide.createIcons();
-      console.log('✓ Lucide icons initialized (immediate)');
-    }
-  } else {
-    console.error('❌ Lucide library failed to load');
-  }
-</script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        if (typeof lucide !== 'undefined') {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+            } else {
+                lucide.createIcons();
+            }
+        }
+    </script>
 
-<!-- THEN load Firebase and app scripts -->
-<script src="firebase-init.js"></script>
-<script src="finance.js"></script>
-<script src="class-hierarchy.js"></script>
-<script src="pupils-export.js"></script>
-<script src="result-locking.js"></script>
-<script src="admin.js"></script>
-<script src="lesson-notes-admin.js"></script>
-<script src="school-calendar-admin.js"></script>
-<script src="script.js"></script>
+    <!-- App scripts — UNCHANGED (pure business logic) -->
+    <script src="firebase-init.js"></script>
+    <script src="finance.js"></script>
+    <script src="class-hierarchy.js"></script>
+    <script src="pupils-export.js"></script>
+    <script src="result-locking.js"></script>
+    <script src="admin.js"></script>
+    <script src="lesson-notes-admin.js"></script>
+    <script src="school-calendar-admin.js"></script>
+    <script src="script.js"></script>
 </head>
 <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger hamburger-portal" id="hamburger" aria-label="Toggle admin menu" aria-expanded="false">
+    <!-- ═══════════════════════════════════════════════
+         HAMBURGER (mobile nav toggle — ID preserved)
+    ═══════════════════════════════════════════════ -->
+    <button class="hamburger hamburger-portal" id="hamburger"
+            aria-label="Toggle admin menu" aria-expanded="false">
         <span></span>
         <span></span>
         <span></span>
     </button>
 
-       <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
-    <!-- Sidebar Header -->
-    <div class="sidebar-header-modern">
-        <div class="sidebar-logo">
-            <i data-lucide="graduation-cap" class="sidebar-logo-icon"></i>
-            <span class="sidebar-logo-text">Fahmid Admin</span>
-        </div>
-    </div>
+    <!-- ═══════════════════════════════════════════════
+         SIDEBAR
+         ★ REPLACEMENT for original <nav class="admin-sidebar">
+         IDs and data-section/data-group attributes preserved.
+    ═══════════════════════════════════════════════ -->
+    <nav class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
 
-    <!-- Sidebar Navigation -->
-    <div class="sidebar-nav-modern">
-
-        <!-- Dashboard (always first & standalone) -->
-        <a href="#dashboard" class="sidebar-link active" data-section="dashboard">
-            <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
-        </a>
-
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
-
-        <!-- User Management -->
-        <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="user-management">
-                <div class="group-header-content">
-                    <i data-lucide="users"></i>
-                    <span>User Management</span>
-                </div>
-                <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </button>
-            <div class="sidebar-group-content-modern active">
-                <a href="#teachers" class="sidebar-link" data-section="teachers">
-                    <i data-lucide="user-check"></i>
-                    <span>Teachers</span>
-                </a>
-                <a href="#pupils" class="sidebar-link" data-section="pupils">
-                    <i data-lucide="users-2"></i>
-                    <span>Pupils</span>
-                </a>
-                <a href="#alumni" class="sidebar-link" data-section="alumni">
-                    <i data-lucide="award"></i>
-                    <span>Alumni</span>
-                </a>
+        <!-- Logo / Brand -->
+        <div class="sidebar-header-modern">
+            <div class="sidebar-logo">
+                <i data-lucide="graduation-cap" class="sidebar-logo-icon"></i>
+                <span class="sidebar-logo-text">Fahmid Admin</span>
             </div>
         </div>
 
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
+        <!-- Navigation -->
+        <div class="sidebar-nav-modern">
 
-        <!-- Academic Setup -->
-        <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="academic-setup">
-                <div class="group-header-content">
-                    <i data-lucide="book-open"></i>
-                    <span>Academic Setup</span>
+            <!-- Dashboard -->
+            <a href="#dashboard" class="sidebar-link active" data-section="dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- User Management -->
+            <div class="sidebar-group-modern">
+                <button type="button" class="sidebar-group-toggle-modern"
+                        aria-expanded="false" data-group="user-management">
+                    <div class="group-header-content">
+                        <i data-lucide="users"></i>
+                        <span>User Management</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern">
+                    <a href="#teachers" class="sidebar-link" data-section="teachers">
+                        <i data-lucide="user-check"></i><span>Teachers</span>
+                    </a>
+                    <a href="#pupils" class="sidebar-link" data-section="pupils">
+                        <i data-lucide="users-2"></i><span>Pupils</span>
+                    </a>
+                    <a href="#alumni" class="sidebar-link" data-section="alumni">
+                        <i data-lucide="award"></i><span>Alumni</span>
+                    </a>
                 </div>
-                <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </button>
-            <div class="sidebar-group-content-modern active">
-                <a href="#classes" class="sidebar-link" data-section="classes">
-                    <i data-lucide="school"></i>
-                    <span>Classes</span>
-                </a>
-                <a href="#subjects" class="sidebar-link" data-section="subjects">
-                    <i data-lucide="book"></i>
-                    <span>Subjects</span>
-                </a>
-                <a href="#assign-teachers" class="sidebar-link" data-section="assign-teachers">
-                    <i data-lucide="user-plus"></i>
-                    <span>Assign Teachers</span>
-                </a>
-                <a href="#lesson-notes" data-section="lesson-notes" class="sidebar-link">
-                     <i data-lucide="book-open"></i>
-                     <span>Lesson Notes</span>
-                 </a>
             </div>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- Academic Setup -->
+            <div class="sidebar-group-modern">
+                <button type="button" class="sidebar-group-toggle-modern"
+                        aria-expanded="false" data-group="academic-setup">
+                    <div class="group-header-content">
+                        <i data-lucide="book-open"></i>
+                        <span>Academic Setup</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern">
+                    <a href="#classes" class="sidebar-link" data-section="classes">
+                        <i data-lucide="school"></i><span>Classes</span>
+                    </a>
+                    <a href="#subjects" class="sidebar-link" data-section="subjects">
+                        <i data-lucide="book"></i><span>Subjects</span>
+                    </a>
+                    <a href="#assign-teachers" class="sidebar-link" data-section="assign-teachers">
+                        <i data-lucide="user-plus"></i><span>Assign Teachers</span>
+                    </a>
+                    <a href="#lesson-notes" class="sidebar-link" data-section="lesson-notes">
+                        <i data-lucide="file-text"></i><span>Lesson Notes</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- Results & Assessments -->
+            <div class="sidebar-group-modern">
+                <button type="button" class="sidebar-group-toggle-modern"
+                        aria-expanded="false" data-group="results">
+                    <div class="group-header-content">
+                        <i data-lucide="clipboard-check"></i>
+                        <span>Results & Assessments</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern">
+                    <a href="#result-approvals" class="sidebar-link" data-section="result-approvals">
+                        <i data-lucide="clipboard-check"></i><span>Approve Results</span>
+                    </a>
+                    <a href="#view-results" class="sidebar-link" data-section="view-results">
+                        <i data-lucide="bar-chart-3"></i><span>View Results</span>
+                    </a>
+                    <a href="#promotion-requests" class="sidebar-link" data-section="promotion-requests">
+                        <i data-lucide="trending-up"></i><span>Promotion Requests</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- Finance -->
+            <div class="sidebar-group-modern">
+                <button type="button" class="sidebar-group-toggle-modern"
+                        aria-expanded="false" data-group="finance">
+                    <div class="group-header-content">
+                        <i data-lucide="banknote"></i>
+                        <span>Finance</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern">
+                    <a href="#fee-management" class="sidebar-link" data-section="fee-management">
+                        <i data-lucide="settings-2"></i><span>Fee Management</span>
+                    </a>
+                    <a href="#record-payment" class="sidebar-link" data-section="record-payment">
+                        <i data-lucide="credit-card"></i><span>Record Payment</span>
+                    </a>
+                    <a href="#outstanding-fees" class="sidebar-link" data-section="outstanding-fees">
+                        <i data-lucide="alert-circle"></i><span>Outstanding Fees</span>
+                    </a>
+                    <a href="#financial-reports" class="sidebar-link" data-section="financial-reports">
+                        <i data-lucide="bar-chart-2"></i><span>Financial Reports</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- Standalone links -->
+            <a href="#announcements" class="sidebar-link" data-section="announcements">
+                <i data-lucide="megaphone"></i><span>Announcements</span>
+            </a>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- System & Security -->
+            <div class="sidebar-group-modern">
+                <button type="button" class="sidebar-group-toggle-modern"
+                        aria-expanded="false" data-group="system">
+                    <div class="group-header-content">
+                        <i data-lucide="shield"></i>
+                        <span>System & Security</span>
+                    </div>
+                    <i data-lucide="chevron-down" class="toggle-icon"></i>
+                </button>
+                <div class="sidebar-group-content-modern">
+                    <a href="#settings" class="sidebar-link" data-section="settings">
+                        <i data-lucide="settings"></i><span>School Settings</span>
+                    </a>
+                    <a href="#school-calendar" class="sidebar-link" data-section="school-calendar">
+                        <i data-lucide="calendar"></i><span>School Calendar</span>
+                    </a>
+                    <a href="#audit-log" class="sidebar-link" data-section="audit-log">
+                        <i data-lucide="shield-check"></i><span>Audit Log</span>
+                    </a>
+                </div>
+            </div>
+
+        </div><!-- /sidebar-nav-modern -->
+
+        <!-- Footer -->
+        <div class="sidebar-footer-modern">
+            <a href="index.html" class="sidebar-link sidebar-link-secondary">
+                <i data-lucide="arrow-left"></i><span>Back to Site</span>
+            </a>
+            <a href="#" id="admin-logout" class="sidebar-link sidebar-link-danger">
+                <i data-lucide="log-out"></i><span>Logout</span>
+            </a>
         </div>
 
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
+    </nav>
 
-        <!-- Results & Assessments -->
-        <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="true" data-group="results">
-                <div class="group-header-content">
-                    <i data-lucide="clipboard-check"></i>
-                    <span>Results & Assessments</span>
-                </div>
-                <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </button>
-            <div class="sidebar-group-content-modern active">
-                <a href="#result-approvals" class="sidebar-link" data-section="result-approvals">
-                    <i data-lucide="clipboard-check"></i>
-                    <span>Approve Results</span>
-                </a>
-                <a href="#view-results" class="sidebar-link" data-section="view-results">
-                    <i data-lucide="bar-chart-3"></i>
-                    <span>View Results</span>
-                </a>
-                <a href="#promotion-requests" class="sidebar-link" data-section="promotion-requests">
-                    <i data-lucide="trending-up"></i>
-                    <span>Promotion Requests</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
-
-        <!-- Finance -->
-        <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="false" data-group="finance">
-                <div class="group-header-content">
-                    <i data-lucide="dollar-sign"></i>
-                    <span>Finance</span>
-                </div>
-                <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </button>
-            <div class="sidebar-group-content-modern">
-                <a href="#fee-management" class="sidebar-link" data-section="fee-management">
-                    <i data-lucide="settings"></i>
-                    <span>Fee Management</span>
-                </a>
-                <a href="#record-payment" class="sidebar-link" data-section="record-payment">
-                    <i data-lucide="credit-card"></i>
-                    <span>Record Payment</span>
-                </a>
-                <a href="#outstanding-fees" class="sidebar-link" data-section="outstanding-fees">
-                    <i data-lucide="alert-circle"></i>
-                    <span>Outstanding Fees</span>
-                </a>
-                <a href="#financial-reports" class="sidebar-link" data-section="financial-reports">
-                    <i data-lucide="bar-chart-2"></i>
-                    <span>Financial Reports</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
-
-        <!-- Communications -->
-        <a href="#announcements" class="sidebar-link" data-section="announcements">
-            <i data-lucide="megaphone"></i>
-            <span>Announcements</span>
-        </a>
-
-        <!-- ─────────────── -->
-        <div class="sidebar-divider"></div>
-
-        <!-- System & Security -->
-        <div class="sidebar-group-modern">
-            <button type="button" class="sidebar-group-toggle-modern" aria-expanded="false" data-group="system">
-                <div class="group-header-content">
-                    <i data-lucide="shield"></i>
-                    <span>System & Security</span>
-                </div>
-                <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </button>
-            <div class="sidebar-group-content-modern">
-                <a href="#settings" class="sidebar-link" data-section="settings">
-                    <i data-lucide="settings"></i>
-                    <span>School Settings</span>
-                </a>
-                <a href="#school-calendar" class="sidebar-link" data-section="school-calendar">
-                    <i data-lucide="calendar"></i>
-                    <span>School Calendar</span>
-                 </a>
-                <a href="#audit-log" class="sidebar-link" data-section="audit-log">
-                    <i data-lucide="shield-check"></i>
-                    <span>Audit Log</span>
-                </a>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Sidebar Footer -->
-    <div class="sidebar-footer-modern">
-        <a href="index.html" class="sidebar-link sidebar-link-secondary">
-            <i data-lucide="arrow-left"></i>
-            <span>Back to Site</span>
-        </a>
-        <a href="#" id="admin-logout" class="sidebar-link sidebar-link-danger">
-            <i data-lucide="log-out"></i>
-            <span>Logout</span>
-        </a>
-    </div>
-</nav>
-
+    <!-- ═══════════════════════════════════════════════
+         MAIN CONTENT
+    ═══════════════════════════════════════════════ -->
     <main class="admin-main" id="main-content">
-<!-- Content Wrapper -->
-<div class="content-wrapper">
+    <div class="content-wrapper">
+
+        <!-- ─────────────────────────────────────────
+             DASHBOARD
+             ★ REPLACES: <div id="dashboard" class="admin-card">
+             IDs: teacher-count, pupil-count, class-count, announce-count — all preserved.
+        ───────────────────────────────────────── -->
         <div id="dashboard" class="admin-card">
-            <h1>Admin Dashboard</h1>
-            <p class="section-description">Welcome to the school management system</p>
-            <div class="stats-grid">
-                <div class="stat-card stat-card-primary">
-                    <h3>Total Teachers</h3>
-                    <div class="stat-number" id="teacher-count">0</div>
+            <div style="position:relative; z-index:1;">
+                <div style="margin-bottom:1.75rem;">
+                    <h1>Admin Dashboard</h1>
+                    <p class="section-description">Welcome back — here's your school overview</p>
                 </div>
-                <div class="stat-card stat-card-secondary">
-                    <h3>Total Pupils</h3>
-                    <div class="stat-number" id="pupil-count">0</div>
-                </div>
-                <div class="stat-card stat-card-success">
-                    <h3>Total Classes</h3>
-                    <div class="stat-number" id="class-count">0</div>
-                </div>
-                <div class="stat-card stat-card-warning">
-                    <h3>Announcements</h3>
-                    <div class="stat-number" id="announce-count">0</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-icon">
+                            <i data-lucide="user-check" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
+                        </div>
+                        <h3>Total Teachers</h3>
+                        <div class="stat-number" id="teacher-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">
+                            <i data-lucide="users-2" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
+                        </div>
+                        <h3>Total Pupils</h3>
+                        <div class="stat-number" id="pupil-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">
+                            <i data-lucide="school" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
+                        </div>
+                        <h3>Total Classes</h3>
+                        <div class="stat-number" id="class-count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">
+                            <i data-lucide="megaphone" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
+                        </div>
+                        <h3>Announcements</h3>
+                        <div class="stat-number" id="announce-count">0</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Teachers Section -->
+        <!-- ─────────────────────────────────────────
+             TEACHERS
+             ★ REPLACES: <div id="teachers" class="admin-card">
+        ───────────────────────────────────────── -->
         <div id="teachers" class="admin-card" style="display:none;">
-            <h1>Manage Teachers</h1>
-            <button class="btn" onclick="showTeacherForm()">+ Add New Teacher</button>
-<!-- Add this ABOVE the teachers table -->
-<div style="margin-bottom: var(--space-lg);">
-  <input 
-    type="text" 
-    id="teachers-search" 
-    placeholder="🔍 Search by name..." 
-    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
-    oninput="filterTeachers()">
-  <p id="teachers-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
-</div>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Manage Teachers</h1>
+                    <p class="section-description">Add, edit, and manage teacher accounts</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn" onclick="showTeacherForm()">
+                        <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Teacher
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search bar — same IDs, unified component -->
+            <div class="search-bar">
+                <input type="text" id="teachers-search"
+                       placeholder="Search by name..."
+                       oninput="filterTeachers()">
+            </div>
+            <p id="teachers-search-count" class="search-count"></p>
+
+            <!-- Add Teacher Form -->
             <div id="teacher-form" class="form-section" style="display:none;">
-                <h3>Add New Teacher</h3>
+                <h3><i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add New Teacher</h3>
                 <form id="add-teacher-form" class="admin-form">
-                    <div class="form-group">
-                        <label for="teacher-name">Full Name <span class="required">*</span></label>
-                        <input type="text" id="teacher-name" placeholder="Enter teacher's full name" required>
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="teacher-name">Full Name <span class="required">*</span></label>
+                            <input type="text" id="teacher-name" placeholder="Enter teacher's full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacher-email">Email (Login) <span class="required">*</span></label>
+                            <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="teacher-email">Email (Login) <span class="required">*</span></label>
-                        <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="teacher-contact">Contact</label>
-                        <input type="text" id="teacher-contact" placeholder="08100000000">
-                    </div>
-                    <div class="form-group">
-                        <label for="teacher-password">Temporary Password <span class="required">*</span></label>
-                        <input type="password" id="teacher-password" placeholder="Temporary login password" required minlength="6">
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="teacher-contact">Contact</label>
+                            <input type="text" id="teacher-contact" placeholder="08100000000">
+                        </div>
+                        <div class="form-group">
+                            <label for="teacher-password">Temporary Password <span class="required">*</span></label>
+                            <input type="password" id="teacher-password" placeholder="Min. 6 characters" required minlength="6">
+                        </div>
                     </div>
                     <div class="form-actions">
-                        <button type="submit" class="btn">Save Teacher</button>
+                        <button type="submit" class="btn">
+                            <i data-lucide="save" style="width:15px;height:15px;"></i> Save Teacher
+                        </button>
                         <button type="button" class="btn btn-secondary" onclick="cancelTeacherForm()">Cancel</button>
                     </div>
                 </form>
@@ -951,433 +561,391 @@ button[onclick="exportPupilResults()"]:hover {
                         </tr>
                     </thead>
                     <tbody id="teachers-table">
-                        <tr>
-                            <td colspan="4" class="table-loading">Loading...</td>
-                        </tr>
+                        <tr><td colspan="4" class="table-loading">Loading teachers...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-       <!-- Pupils Section -->
-<div id="pupils" class="admin-card" style="display:none;">
-    <h1>Manage Pupils</h1>
-    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-lg);">
-        <button class="btn" onclick="showPupilForm()">+ Add New Pupil</button>
-        <button class="btn btn-success" onclick="exportPupilsToExcel()">📊 Export to Excel</button>
-        <button class="btn btn-primary" onclick="exportPupilsToPDF()">📄 Export to PDF</button>
-    </div>
-<!-- Add this ABOVE the pupils table, inside the pupils section -->
-<div style="margin-bottom: var(--space-lg);">
-  <input 
-    type="text" 
-    id="pupils-search" 
-    placeholder="🔍 Search by name or admission number..." 
-    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
-    oninput="filterPupils()">
-  <p id="pupils-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
-</div>
-    <div id="pupil-form" class="form-section" style="display:none;">
-        <h3 id="pupil-form-title">Add New Pupil</h3>
-        <form id="add-pupil-form" class="admin-form">
-            <input type="hidden" id="pupil-id">
-
-            <div class="form-group">
-                <label for="pupil-name">Full Name <span class="required">*</span></label>
-                <input type="text" id="pupil-name" placeholder="Enter pupil's full name" required>
+        <!-- ─────────────────────────────────────────
+             PUPILS
+             ★ REPLACES: <div id="pupils" class="admin-card">
+        ───────────────────────────────────────── -->
+        <div id="pupils" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Manage Pupils</h1>
+                    <p class="section-description">Full pupil registry with bulk operations and export</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn" onclick="showPupilForm()">
+                        <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Pupil
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportPupilsToExcel()" title="Export to Excel">
+                        <i data-lucide="table-2" style="width:15px;height:15px;"></i> Excel
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportPupilsToPDF()" title="Export to PDF">
+                        <i data-lucide="file-text" style="width:15px;height:15px;"></i> PDF
+                    </button>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="pupil-admission-no">Admission No <span class="required">*</span></label>
-                <input type="text" id="pupil-admission-no" placeholder="Enter admission number" required>
+            <!-- Search -->
+            <div class="search-bar">
+                <input type="text" id="pupils-search"
+                       placeholder="Search by name or admission number..."
+                       oninput="filterPupils()">
+            </div>
+            <p id="pupils-search-count" class="search-count"></p>
+
+            <!-- Add/Edit Pupil Form -->
+            <div id="pupil-form" class="form-section" style="display:none;">
+                <h3 id="pupil-form-title"><i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add New Pupil</h3>
+                <form id="add-pupil-form" class="admin-form">
+                    <input type="hidden" id="pupil-id">
+
+                    <!-- Personal Info -->
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="pupil-name">Full Name <span class="required">*</span></label>
+                            <input type="text" id="pupil-name" placeholder="Pupil's full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-admission-no">Admission No <span class="required">*</span></label>
+                            <input type="text" id="pupil-admission-no" placeholder="Admission number" required>
+                        </div>
+                    </div>
+                    <div class="form-row form-row-3">
+                        <div class="form-group">
+                            <label for="pupil-dob">Date of Birth <span class="required">*</span></label>
+                            <input type="date" id="pupil-dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-gender">Gender <span class="required">*</span></label>
+                            <select id="pupil-gender" required>
+                                <option value="">-- Select Gender --</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-class">Class <span class="required">*</span></label>
+                            <select id="pupil-class" required>
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Parent / Contact -->
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="pupil-parent-name">Parent / Guardian Name</label>
+                            <input type="text" id="pupil-parent-name" placeholder="Parent / Guardian Name">
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-parent-email">Parent Email</label>
+                            <input type="email" id="pupil-parent-email" placeholder="parent@example.com">
+                        </div>
+                    </div>
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="pupil-contact">Contact Number</label>
+                            <input type="tel" id="pupil-contact" placeholder="+2348012345678">
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-address">Address</label>
+                            <input type="text" id="pupil-address" placeholder="Home address">
+                        </div>
+                    </div>
+
+                    <!-- Login credentials -->
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
+                            <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pupil-password">Temporary Password <span class="required">*</span></label>
+                            <input type="password" id="pupil-password" placeholder="Min. 6 characters" required minlength="6">
+                        </div>
+                    </div>
+
+                    <!-- Enrollment Period -->
+                    <div class="form-group">
+                        <label>Enrollment Period</label>
+                        <div class="form-row form-row-2" style="margin-bottom:0;">
+                            <select id="pupil-admission-term">
+                                <option value="First Term">First Term (Admission)</option>
+                                <option value="Second Term">Second Term</option>
+                                <option value="Third Term">Third Term</option>
+                            </select>
+                            <select id="pupil-exit-term">
+                                <option value="First Term">First Term</option>
+                                <option value="Second Term">Second Term</option>
+                                <option value="Third Term" selected>Third Term (Full Session)</option>
+                            </select>
+                        </div>
+                        <small>Fees apply only within this enrollment window. Default = full academic year.</small>
+                    </div>
+
+                    <details>
+                        <summary>ℹ️ About Enrollment Period</summary>
+                        <div>
+                            <ul style="margin:0;padding-left:1.25rem;font-size:0.8125rem;color:#1e40af;line-height:1.8;">
+                                <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
+                                <li><strong>Exit Term:</strong> Last term enrolled (fees stop after this)</li>
+                                <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
+                                <li>Pupil is <strong>not billed</strong> for terms outside this period</li>
+                            </ul>
+                        </div>
+                    </details>
+
+                    <!-- Fee Adjustment -->
+                    <div class="form-group" style="margin-top:0.75rem;">
+                        <label>Fee Adjustment <span style="font-weight:400;color:#94a3b8;">(Optional)</span></label>
+                        <div class="form-row form-row-2" style="margin-bottom:0;">
+                            <input type="number" id="pupil-fee-adjustment-percent"
+                                   placeholder="Percentage (e.g. -50 for 50% discount)"
+                                   step="0.1">
+                            <input type="number" id="pupil-fee-adjustment-amount"
+                                   placeholder="Fixed amount ₦ (e.g. -5000)"
+                                   step="1">
+                        </div>
+                        <small>Negative = discount · Positive = surcharge · Percentage applied first, then fixed amount</small>
+                    </div>
+
+                    <details>
+                        <summary>💰 How Fee Adjustment Works</summary>
+                        <div>
+                            <p style="font-size:0.8125rem;font-weight:700;color:#92400e;margin:0 0 0.5rem;">Formula: Final Fee = (Base Fee × (1 + Percent/100)) + Amount</p>
+                            <ul style="margin:0;padding-left:1.25rem;font-size:0.8125rem;color:#92400e;line-height:1.8;">
+                                <li><strong>50% scholarship:</strong> Percent = -50 → ₦20,000 × 0.5 = ₦10,000</li>
+                                <li><strong>₦5,000 discount:</strong> Amount = -5000 → ₦20,000 − ₦5,000 = ₦15,000</li>
+                                <li><strong>Free:</strong> Percent = -100 → ₦0</li>
+                                <li>Applies <strong>per term</strong> — leave blank for standard class fee</li>
+                            </ul>
+                        </div>
+                    </details>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn" id="save-pupil-btn">
+                            <i data-lucide="save" style="width:15px;height:15px;"></i> Save Pupil
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelPupilForm()">Cancel</button>
+                    </div>
+                </form>
             </div>
 
-            <div class="form-group">
-                <label for="pupil-dob">Date of Birth <span class="required">*</span></label>
-                <input type="date" id="pupil-dob" required>
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-gender">Gender <span class="required">*</span></label>
-                <select id="pupil-gender" required>
-                    <option value="">-- Select Gender --</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-class">Class <span class="required">*</span></label>
-                <select id="pupil-class" required>
-                    <option value="">-- Select Class --</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-parent-name">Parent / Guardian Name</label>
-                <input type="text" id="pupil-parent-name" placeholder="Parent / Guardian Name">
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-parent-email">Parent Email</label>
-                <input type="email" id="pupil-parent-email" placeholder="parent@example.com">
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-contact">Contact Number</label>
-                <input type="tel" id="pupil-contact" placeholder="e.g., +2348012345678">
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-address">Address</label>
-                <textarea id="pupil-address" rows="3" placeholder="Home address"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
-                <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
-            </div>
-
-            <div class="form-group">
-                <label for="pupil-password">Temporary Password <span class="required">*</span></label>
-                <input type="password" id="pupil-password" placeholder="Temporary login password" required minlength="6">
-            </div>
-
-            <!-- Enrollment Period -->
-            <div class="form-group">
-                <label>Enrollment Period</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-                    <select id="pupil-admission-term">
-                        <option value="First Term">First Term (Sept)</option>
-                        <option value="Second Term">Second Term (Jan)</option>
-                        <option value="Third Term">Third Term (Apr)</option>
+            <!-- Bulk Actions Bar -->
+            <div id="bulk-actions-bar" style="display:none; align-items:center; gap:0.875rem; flex-wrap:wrap;">
+                <input type="checkbox" id="select-all-pupils" style="cursor:pointer; width:16px; height:16px; accent-color:#1a56db;">
+                <label for="select-all-pupils" style="cursor:pointer; margin:0; font-size:0.875rem; font-weight:600;">Select All</label>
+                <span id="selected-count" style="margin-left:0.25rem; color:#94a3b8; font-size:0.8125rem;">0 selected</span>
+                <div style="margin-left:auto; display:flex; gap:0.5rem; align-items:center;">
+                    <select id="bulk-action-select" disabled
+                            style="padding:0.375rem 0.625rem; font-size:0.8125rem; border:1.5px solid #e2e8f0; border-radius:6px; background:white;">
+                        <option value="">-- Select Action --</option>
+                        <option value="reassign-class">Reassign to Class</option>
+                        <option value="delete">Delete Selected</option>
                     </select>
-
-                    <select id="pupil-exit-term">
-                        <option value="First Term">First Term</option>
-                        <option value="Second Term">Second Term</option>
-                        <option value="Third Term" selected>Third Term (Full Session)</option>
-                    </select>
+                    <button id="apply-bulk-action-btn" class="btn btn-small btn-danger"
+                            onclick="applyBulkAction()" disabled>Apply</button>
                 </div>
             </div>
-<details style="margin-top: var(--space-md);">
-  <summary style="cursor: pointer; font-size: var(--text-sm); color: #1565c0; font-weight: 600;">
-    ℹ️ About Enrollment Period (click to view)
-  </summary>
 
-  <div class="info-box" style="margin-top: var(--space-sm); padding: var(--space-md); background: #e3f2fd; border-left: 4px solid #2196F3; border-radius: var(--radius-sm);">
-    <h4 style="margin: 0 0 var(--space-sm); color: #1565c0; font-size: var(--text-sm);">
-      ℹ️ About Enrollment Period
-    </h4>
-
-    <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #0d47a1;">
-      <li><strong>Admission Term:</strong> First term the pupil started (fees begin from here)</li>
-      <li><strong>Exit Term:</strong> Last term the pupil is enrolled (fees stop after this)</li>
-      <li><strong>Default:</strong> First Term to Third Term (full academic year)</li>
-      <li><strong>Effect:</strong> Pupil is NOT billed for terms outside this period</li>
-    </ul>
-
-    <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
-      Example: If admission term = "Second Term", pupil will NOT be charged for First Term fees.
-    </p>
-  </div>
-</details>
-
-            <!-- Fee Adjustment -->
-            <div class="form-group">
-                <label>Fee Adjustment (Optional)</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-                    <input type="number" 
-                           id="pupil-fee-adjustment-percent" 
-                           placeholder="Percentage (e.g., -50 for 50% discount)"
-                           step="0.1">
-
-                    <input type="number" 
-                           id="pupil-fee-adjustment-amount" 
-                           placeholder="Fixed amount (₦)"
-                           step="1">
-                </div>
-                <small style="color: #666;">Negative % = discount, positive = surcharge. Fixed amount applies after percentage.</small>
-            </div>
-            <details style="margin-top: var(--space-md);">
-  <summary style="cursor: pointer; font-size: var(--text-sm); color: #e65100; font-weight: 600;">
-    💰 How Fee Adjustment Works (click to view)
-  </summary>
-
-  <div class="info-box" style="margin-top: var(--space-sm); padding: var(--space-md); background: #fff3e0; border-left: 4px solid #ff9800; border-radius: var(--radius-sm);">
-    <h4 style="margin: 0 0 var(--space-sm); color: #e65100; font-size: var(--text-sm);">
-      💰 How Fee Adjustment Works
-    </h4>
-
-    <div style="margin-bottom: var(--space-md);">
-      <strong style="color: #e65100;">Calculation Formula:</strong>
-      <pre style="background: white; padding: var(--space-sm); border-radius: var(--radius-xs); font-size: var(--text-xs); margin-top: var(--space-xs);">
-Final Fee = (Base Fee × (1 + Percent/100)) + Amount
-
-Example 1: 50% scholarship
-  Base: ₦20,000
-  Percent: -50
-  Amount: ₦0
-  Result: ₦20,000 × 0.5 = ₦10,000
-
-Example 2: ₦5,000 discount
-  Base: ₦20,000
-  Percent: 0
-  Amount: -5,000
-  Result: ₦20,000 - ₦5,000 = ₦15,000
-
-Example 3: Free education
-  Base: ₦20,000
-  Percent: -100
-  Amount: ₦0
-  Result: ₦20,000 × 0 = ₦0
-      </pre>
-    </div>
-
-    <ul style="margin: 0; padding-left: var(--space-lg); font-size: var(--text-sm); color: #bf360c;">
-      <li><strong>Percentage Adjustment:</strong> Applied FIRST (multiplies base fee)</li>
-      <li><strong>Amount Adjustment:</strong> Applied SECOND (adds or subtracts fixed value)</li>
-      <li><strong>Per Term:</strong> Adjustment applies to EACH term's fee</li>
-      <li><strong>Negative Values:</strong> Use negative numbers for discounts or scholarships</li>
-      <li><strong>Blank = No Change:</strong> Leave empty to use normal class fee</li>
-    </ul>
-
-    <p style="margin: var(--space-sm) 0 0; font-size: var(--text-xs); color: #64748b; font-style: italic;">
-      💡 Tip: For scholarships, use percentage (-50 = half price). For fixed discounts, use amount (-5,000).
-    </p>
-  </div>
-</details>
-        
-            <div class="form-actions">
-                <button type="submit" class="btn" id="save-pupil-btn">Save Pupil</button>
-                <button type="button" class="btn btn-secondary" onclick="cancelPupilForm()">Cancel</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- BULK ACTIONS BAR -->
-    <div id="bulk-actions-bar" style="display:none; background:#f8f9fa; padding:var(--space-md); border-radius:var(--radius-md); margin-bottom:var(--space-lg); align-items:center; gap:var(--space-md);">
-        <input type="checkbox" id="select-all-pupils" style="cursor:pointer;">
-        <label for="select-all-pupils" style="cursor:pointer; margin:0;">Select All</label>
-
-        <span id="selected-count" style="margin-left:var(--space-md); color:var(--color-gray-600); font-size:var(--text-sm);">
-            0 selected
-        </span>
-
-        <div style="margin-left:auto; display:flex; gap:var(--space-sm);">
-            <select id="bulk-action-select" disabled style="padding:var(--space-xs) var(--space-sm);">
-                <option value="">-- Select Action --</option>
-                <option value="reassign-class">Reassign to Class</option>
-                <option value="delete">Delete Selected</option>
-            </select>
-
-            <button id="apply-bulk-action-btn" class="btn-small btn-primary" onclick="applyBulkAction()" disabled>
-                Apply to Selected
-            </button>
-        </div>
-    </div>
-
-    <div class="table-container">
-        <table class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Class</th>
-                    <th>Gender</th>
-                    <th>Parent Name</th>
-                    <th>Parent Contact</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="pupils-table">
-                <tr>
-                    <td colspan="6" class="table-loading">Loading...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Alumni Section (NEW) -->
-<div id="alumni" class="admin-card" style="display:none;">
-    <h1>Alumni (Graduated Pupils)</h1>
-    <p class="section-description">Pupils who have graduated from the terminal class</p>
-<!-- Add this ABOVE the alumni table -->
-<div style="margin-bottom: var(--space-lg);">
-  <input 
-    type="text" 
-    id="alumni-search" 
-    placeholder="🔍 Search by name or graduation session..." 
-    style="width: 100%; padding: var(--space-sm); border: 1px solid var(--color-gray-300); border-radius: var(--radius-sm);"
-    oninput="filterAlumni()">
-  <p id="alumni-search-count" style="margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-gray-600);"></p>
-</div>
-    <div class="table-container">
-        <table class="responsive-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Final Class</th>
-                    <th>Graduation Session</th>
-                    <th>Graduation Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="alumni-table">
-                <tr>
-                    <td colspan="5" class="table-loading">Loading...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- AUDIT LOG SECTION -->
-<div id="audit-log" class="admin-card" style="display:none;">
-  <h2>📋 Audit Log</h2>
-  <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
-    View system activity and administrative actions. All critical operations are logged for compliance and security.
-  </p>
-  
-  <div id="audit-log-container"></div>
-</div>
-
-<!-- View Results Section (NEW) -->
-<div id="view-results" class="admin-card" style="display:none;">
-    <h1>View Pupil Results</h1>
-    <p class="section-description">Search and view academic results by session, class, and pupil</p>
-
-    <!-- Filter Controls -->
-    <div class="form-section" style="background: #f8fafc; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
-        <h3 style="margin-top: 0; margin-bottom: var(--space-lg); color: var(--color-primary);">
-            🔍 Filter Results
-        </h3>
-        
-        <div class="form-row form-row-3">
-            <div class="form-group">
-                <label for="filter-session">
-                    <strong>1. Select Session</strong> <span class="required">*</span>
-                </label>
-                <select id="filter-session" onchange="loadFilteredClasses()">
-                    <option value="">-- Select Session --</option>
-                    <option value="current">Current Session</option>
-                </select>
-                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
-                    Choose academic session to view
-                </small>
-            </div>
-            
-            <div class="form-group">
-                <label for="filter-class">
-                    <strong>2. Select Class</strong> <span class="required">*</span>
-                </label>
-                <select id="filter-class" onchange="loadFilteredPupils()" disabled>
-                    <option value="">-- Select Class --</option>
-                </select>
-                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
-                    Filter by class
-                </small>
-            </div>
-            
-            <div class="form-group">
-                <label for="filter-pupil">
-                    <strong>3. Select Pupil</strong> <span class="required">*</span>
-                </label>
-                <select id="filter-pupil" disabled>
-                    <option value="">-- Select Pupil --</option>
-                </select>
-                <small style="color: var(--color-gray-600); display: block; margin-top: var(--space-xs);">
-                    View individual results
-                </small>
+            <div class="table-container">
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Gender</th>
+                            <th>Parent Name</th>
+                            <th>Contact</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pupils-table">
+                        <tr><td colspan="6" class="table-loading">Loading pupils...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-        
-        <div style="display: flex; gap: var(--space-md); margin-top: var(--space-lg); flex-wrap: wrap;">
-            <button class="btn btn-secondary" onclick="clearResultsFilter()">
-                🔄 Clear Filters
-            </button>
-            <button class="btn" onclick="loadPupilResults()" id="view-results-btn" disabled>
-                👁️ View Results
-            </button>
-        </div>
-    </div>
 
-    <!-- Pupil Info Card -->
-    <div id="pupil-info-card" class="form-section" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-bottom: var(--space-xl);">
-        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: var(--space-lg);">
-            <div style="flex: 1; min-width: 250px;">
-                <h3 style="margin: 0 0 var(--space-sm); color: white;">
-                    <span id="pupil-info-name">Pupil Name</span>
-                </h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md); margin-top: var(--space-md);">
-                    <div>
-                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Class</div>
-                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-class">-</div>
-                    </div>
-                    <div>
-                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Session</div>
-                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-session">-</div>
-                    </div>
-                    <div>
-                        <div style="font-size: var(--text-xs); opacity: 0.9; text-transform: uppercase; letter-spacing: 0.05em;">Gender</div>
-                        <div style="font-size: var(--text-lg); font-weight: 700; margin-top: var(--space-xs);" id="pupil-info-gender">-</div>
-                    </div>
+        <!-- ─────────────────────────────────────────
+             ALUMNI
+        ───────────────────────────────────────── -->
+        <div id="alumni" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Alumni</h1>
+                    <p class="section-description">Pupils who have graduated from the terminal class</p>
                 </div>
             </div>
-            <div>
-                <button class="btn" onclick="exportPupilResults()" style="background: rgba(255,255,255,0.2); border: 2px solid white;">
-                    📥 Export Results
-                </button>
+            <div class="search-bar">
+                <input type="text" id="alumni-search"
+                       placeholder="Search by name or graduation session..."
+                       oninput="filterAlumni()">
+            </div>
+            <p id="alumni-search-count" class="search-count"></p>
+            <div class="table-container">
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Final Class</th>
+                            <th>Graduation Session</th>
+                            <th>Graduation Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alumni-table">
+                        <tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
 
-    <!-- Results Display -->
-    <div id="results-display-container">
-        <div style="text-align: center; padding: var(--space-2xl); color: var(--color-gray-600);">
-            <div style="font-size: 3rem; margin-bottom: var(--space-md);">📊</div>
-            <p style="font-size: var(--text-lg); font-weight: 600; margin-bottom: var(--space-xs);">
-                Select filters to view results
-            </p>
-            <p style="font-size: var(--text-sm);">
-                Choose session, class, and pupil from the filters above
-            </p>
-        </div>
-    </div>
-
-    <!-- Session Comparison -->
-    <div id="session-comparison-section" style="display: none; margin-top: var(--space-2xl); padding-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xl);">
-            <div>
-                <h2 style="margin: 0;">📈 Session Comparison</h2>
-                <p style="color: var(--color-gray-600); margin: var(--space-xs) 0 0;">
-                    Compare this pupil's performance across different sessions
-                </p>
+        <!-- ─────────────────────────────────────────
+             AUDIT LOG
+        ───────────────────────────────────────── -->
+        <div id="audit-log" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Audit Log</h1>
+                    <p class="section-description">System activity and administrative actions — logged for compliance and security</p>
+                </div>
             </div>
-            <button class="btn btn-secondary" onclick="toggleSessionComparison()">
-                Hide Comparison
-            </button>
+            <div id="audit-log-container"></div>
         </div>
-        <div id="session-comparison-content">
-            <!-- Comparison data will be loaded here -->
-        </div>
-    </div>
-</div>
 
-       <!-- Classes Section -->
+        <!-- ─────────────────────────────────────────
+             VIEW RESULTS
+        ───────────────────────────────────────── -->
+        <div id="view-results" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>View Pupil Results</h1>
+                    <p class="section-description">Search and view academic results by session, class, and pupil</p>
+                </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="form-section">
+                <h3><i data-lucide="filter" style="width:15px;height:15px;"></i> Filter Results</h3>
+                <div class="form-row form-row-3">
+                    <div class="form-group">
+                        <label for="filter-session"><strong>1. Session</strong> <span class="required">*</span></label>
+                        <select id="filter-session" onchange="loadFilteredClasses()">
+                            <option value="">-- Select Session --</option>
+                            <option value="current">Current Session</option>
+                        </select>
+                        <small>Choose academic session</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-class"><strong>2. Class</strong> <span class="required">*</span></label>
+                        <select id="filter-class" onchange="loadFilteredPupils()" disabled>
+                            <option value="">-- Select Class --</option>
+                        </select>
+                        <small>Filter by class</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-pupil"><strong>3. Pupil</strong> <span class="required">*</span></label>
+                        <select id="filter-pupil" disabled>
+                            <option value="">-- Select Pupil --</option>
+                        </select>
+                        <small>View individual results</small>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn" onclick="loadPupilResults()" id="view-results-btn" disabled>
+                        <i data-lucide="eye" style="width:15px;height:15px;"></i> View Results
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResultsFilter()">
+                        <i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i> Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pupil Info Card -->
+            <div id="pupil-info-card" class="form-section" style="display:none; background:linear-gradient(135deg,#1e3a5f 0%,#0f2d5a 100%); border:none; color:white;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                    <div style="flex:1; min-width:220px;">
+                        <h3 style="margin:0 0 0.5rem; color:white; border-bottom-color:rgba(255,255,255,.2);">
+                            <span id="pupil-info-name">Pupil Name</span>
+                        </h3>
+                        <div class="status-body" style="margin:0;">
+                            <div class="status-item">
+                                <span class="status-label">Class</span>
+                                <span class="status-value" id="pupil-info-class">—</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Session</span>
+                                <span class="status-value" id="pupil-info-session">—</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Gender</span>
+                                <span class="status-value" id="pupil-info-gender">—</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportPupilResults()"
+                            style="background:rgba(255,255,255,.15); border:1.5px solid rgba(255,255,255,.3); color:white;">
+                        <i data-lucide="download" style="width:15px;height:15px;"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Display -->
+            <div id="results-display-container">
+                <div style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                    <i data-lucide="bar-chart-3" style="width:48px;height:48px; margin-bottom:1rem; opacity:.4;"></i>
+                    <p style="font-size:1rem; font-weight:600; margin:0 0 0.25rem; color:#64748b;">Select filters to view results</p>
+                    <p style="font-size:0.875rem; margin:0;">Choose session, class, and pupil from above</p>
+                </div>
+            </div>
+
+            <!-- Session Comparison -->
+            <div id="session-comparison-section" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+                    <div>
+                        <h2 style="margin:0; font-size:1.25rem;">Session Comparison</h2>
+                        <p style="color:#94a3b8; margin:0.25rem 0 0; font-size:0.875rem;">Performance across sessions</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="toggleSessionComparison()">Hide Comparison</button>
+                </div>
+                <div id="session-comparison-content"></div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────
+             CLASSES
+        ───────────────────────────────────────── -->
         <div id="classes" class="admin-card" style="display:none;">
-            <h1>Manage Classes</h1>
-            <button class="btn" onclick="showClassForm()">+ Add New Class</button>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Manage Classes</h1>
+                    <p class="section-description">Create classes and assign subjects to them</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn" onclick="showClassForm()">
+                        <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Class
+                    </button>
+                </div>
+            </div>
 
             <div id="class-form" class="form-section" style="display:none;">
-                <h3>Create New Class</h3>
+                <h3><i data-lucide="plus-circle" style="width:15px;height:15px;"></i> Create New Class</h3>
                 <div class="form-group">
                     <label for="class-name">Class Name <span class="required">*</span></label>
                     <input type="text" id="class-name" placeholder="e.g., Nursery 1, Primary 3" required>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn" onclick="addClass()">Create Class</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('class-form').style.display='none'">Cancel</button>
+                    <button type="button" class="btn" onclick="addClass()">
+                        <i data-lucide="check" style="width:15px;height:15px;"></i> Create Class
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('class-form').style.display='none'">Cancel</button>
                 </div>
             </div>
 
@@ -1392,91 +960,104 @@ Example 3: Free education
                         </tr>
                     </thead>
                     <tbody id="classes-table">
-                        <tr>
-                            <td colspan="4" class="table-loading">Loading...</td>
-                        </tr>
+                        <tr><td colspan="4" class="table-loading">Loading classes...</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- NEW: Subject Assignment Modal -->
+            <!-- Subject Assignment Modal — IDs preserved -->
             <div id="subject-assignment-modal" class="modal" style="display:none;">
-                <div class="modal-content" style="max-width: 600px;">
-                    <button class="modal-close" onclick="closeSubjectAssignmentModal()" aria-label="Close subject assignment modal">&times;</button>
-                    <h2>Assign Subjects to Class</h2>
-                    <p id="assignment-class-name" style="font-weight:600; margin-bottom: var(--space-lg);"></p>
-
-                    <div id="subject-checkboxes" class="subject-checkbox-container">
-                        <!-- Checkboxes will be loaded here -->
-                    </div>
-
-                    <div class="form-actions" style="margin-top: var(--space-xl);">
+                <div class="modal-content" style="max-width:600px;">
+                    <button class="modal-close" onclick="closeSubjectAssignmentModal()" aria-label="Close">&times;</button>
+                    <h2 style="margin:0 0 0.375rem;">Assign Subjects</h2>
+                    <p id="assignment-class-name" style="font-weight:600; color:#64748b; margin:0 0 1.25rem;"></p>
+                    <div id="subject-checkboxes" class="subject-checkbox-container"></div>
+                    <div class="form-actions">
                         <button class="btn" onclick="saveClassSubjects()">
-                            💾 Save Subjects
+                            <i data-lucide="save" style="width:15px;height:15px;"></i> Save Subjects
                         </button>
-                        <button class="btn btn-secondary" onclick="closeSubjectAssignmentModal()">
-                            Cancel
-                        </button>
+                        <button class="btn btn-secondary" onclick="closeSubjectAssignmentModal()">Cancel</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Subjects Section -->
+        <!-- ─────────────────────────────────────────
+             SUBJECTS
+        ───────────────────────────────────────── -->
         <div id="subjects" class="admin-card" style="display:none;">
-            <h1>Manage Subjects</h1>
-            <button class="btn" onclick="showSubjectForm()">+ Add New Subject</button>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Manage Subjects</h1>
+                    <p class="section-description">Define subjects offered across the school</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn" onclick="showSubjectForm()">
+                        <i data-lucide="plus" style="width:16px;height:16px;"></i> Add Subject
+                    </button>
+                </div>
+            </div>
 
             <div id="subject-form" class="form-section" style="display:none;">
-                <h3>Create New Subject</h3>
+                <h3><i data-lucide="plus-circle" style="width:15px;height:15px;"></i> Create New Subject</h3>
                 <div class="form-group">
                     <label for="subject-name">Subject Name <span class="required">*</span></label>
                     <input type="text" id="subject-name" placeholder="e.g., Mathematics, English" required>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn" onclick="addSubject()">Create Subject</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('subject-form').style.display='none'">Cancel</button>
+                    <button type="button" class="btn" onclick="addSubject()">
+                        <i data-lucide="check" style="width:15px;height:15px;"></i> Create Subject
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('subject-form').style.display='none'">Cancel</button>
                 </div>
             </div>
 
             <div class="table-container">
                 <table class="responsive-table">
                     <thead>
-                        <tr>
-                            <th>Subject Name</th>
-                            <th>Actions</th>
-                        </tr>
+                        <tr><th>Subject Name</th><th>Actions</th></tr>
                     </thead>
                     <tbody id="subjects-table">
-                        <tr>
-                            <td colspan="2" class="table-loading">Loading...</td>
-                        </tr>
+                        <tr><td colspan="2" class="table-loading">Loading subjects...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Assign Teachers Section (NEW) -->
+        <!-- ─────────────────────────────────────────
+             ASSIGN TEACHERS
+        ───────────────────────────────────────── -->
         <div id="assign-teachers" class="admin-card" style="display:none;">
-            <h1>Assign Teachers to Classes</h1>
-            <p class="section-description">Select a teacher and class to make an assignment. Teachers can be assigned to multiple classes if needed.</p>
-
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="assign-teacher">Select Teacher <span class="required">*</span></label>
-                    <select id="assign-teacher" required>
-                        <option value="">-- Select Teacher --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="assign-class">Select Class <span class="required">*</span></label>
-                    <select id="assign-class" required>
-                        <option value="">-- Select Class --</option>
-                    </select>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Assign Teachers to Classes</h1>
+                    <p class="section-description">Teachers can be assigned to multiple classes</p>
                 </div>
             </div>
 
-            <button class="btn" onclick="assignTeacherToClass()">Assign Teacher</button>
+            <div class="form-section">
+                <h3><i data-lucide="user-plus" style="width:15px;height:15px;"></i> New Assignment</h3>
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label for="assign-teacher">Select Teacher <span class="required">*</span></label>
+                        <select id="assign-teacher" required>
+                            <option value="">-- Select Teacher --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="assign-class">Select Class <span class="required">*</span></label>
+                        <select id="assign-class" required>
+                            <option value="">-- Select Class --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn" onclick="assignTeacherToClass()">
+                        <i data-lucide="check" style="width:15px;height:15px;"></i> Assign Teacher
+                    </button>
+                </div>
+            </div>
 
             <h2>Current Assignments</h2>
             <div class="table-container">
@@ -1489,18 +1070,22 @@ Example 3: Free education
                         </tr>
                     </thead>
                     <tbody id="assignments-table">
-                        <tr>
-                            <td colspan="3" class="table-loading">Loading current assignments...</td>
-                        </tr>
+                        <tr><td colspan="3" class="table-loading">Loading assignments...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-<!-- Promotion Requests Section (NEW) -->
+        <!-- ─────────────────────────────────────────
+             PROMOTION REQUESTS
+        ───────────────────────────────────────── -->
         <div id="promotion-requests" class="admin-card" style="display:none;">
-            <h1>Promotion Requests</h1>
-            <p class="section-description">Review and approve teacher promotion recommendations</p>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Promotion Requests</h1>
+                    <p class="section-description">Review and approve teacher promotion recommendations</p>
+                </div>
+            </div>
 
             <!-- Promotion Period Toggle -->
             <div class="promotion-period-control">
@@ -1518,14 +1103,13 @@ Example 3: Free education
             <!-- Bulk Actions -->
             <div class="bulk-actions" id="bulk-actions" style="display:none;">
                 <button class="btn btn-success" onclick="approveAllPendingPromotions()">
-                    ✓ Approve All Pending
+                    <i data-lucide="check" style="width:15px;height:15px;"></i> Approve All Pending
                 </button>
                 <button class="btn btn-danger" onclick="rejectAllPendingPromotions()">
-                    ✗ Reject All Pending
+                    <i data-lucide="x" style="width:15px;height:15px;"></i> Reject All Pending
                 </button>
             </div>
 
-            <!-- Promotion Requests Table -->
             <div class="table-container">
                 <table class="responsive-table">
                     <thead>
@@ -1533,433 +1117,400 @@ Example 3: Free education
                             <th>Teacher</th>
                             <th>From Class</th>
                             <th>To Class</th>
-                            <th>Pupils to Promote</th>
-                            <th>Pupils to Hold</th>
+                            <th>Promote</th>
+                            <th>Hold Back</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="promotion-requests-table">
-                        <tr>
-                            <td colspan="7" class="table-loading">Loading promotion requests...</td>
-                        </tr>
+                        <tr><td colspan="7" class="table-loading">Loading promotion requests...</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- No Requests Message -->
-            <div id="no-requests-message" style="display:none; text-align:center; padding: var(--space-2xl); color: var(--color-gray-600);">
-                <p style="font-size: var(--text-lg); margin-bottom: var(--space-md);">📋 No promotion requests yet</p>
-                <p>Teachers will submit promotion requests when the promotion period is active.</p>
+            <div id="no-requests-message" style="display:none; text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                <i data-lucide="clipboard" style="width:40px;height:40px; margin-bottom:1rem; opacity:.4;"></i>
+                <p style="font-size:1rem; font-weight:600; color:#64748b; margin:0 0 0.25rem;">No promotion requests yet</p>
+                <p style="font-size:0.875rem; margin:0;">Teachers submit requests when the promotion period is active.</p>
             </div>
         </div>
 
-        <!-- Promotion Details Modal (NEW) -->
+        <!-- Promotion Details Modal — IDs preserved -->
         <div id="promotion-details-modal" class="modal" style="display:none;">
-            <div class="modal-content" style="max-width: 800px;">
-                <button class="modal-close" onclick="closePromotionDetailsModal()" aria-label="Close promotion details modal">&times;</button>
-                <h2>Promotion Request Details</h2>
-                
-                <div id="promotion-details-content">
-                    <!-- Details will be loaded here -->
-                </div>
-
+            <div class="modal-content" style="max-width:800px;">
+                <button class="modal-close" onclick="closePromotionDetailsModal()" aria-label="Close">&times;</button>
+                <h2 style="margin:0 0 1.25rem;">Promotion Request Details</h2>
+                <div id="promotion-details-content"></div>
                 <div class="modal-actions">
                     <button class="btn btn-success" id="approve-promotion-btn" onclick="approvePromotion()">
-                        ✓ Approve & Execute
+                        <i data-lucide="check" style="width:15px;height:15px;"></i> Approve & Execute
                     </button>
                     <button class="btn btn-danger" id="reject-promotion-btn" onclick="rejectPromotion()">
-                        ✗ Reject Request
+                        <i data-lucide="x" style="width:15px;height:15px;"></i> Reject Request
                     </button>
-                    <button class="btn btn-secondary" onclick="closePromotionDetailsModal()">
-                        Close
-                    </button>
+                    <button class="btn btn-secondary" onclick="closePromotionDetailsModal()">Close</button>
                 </div>
             </div>
         </div>
-        
-        <!-- Result Approvals Section (NEW) -->
-<div id="result-approvals" class="admin-card" style="display:none;">
-    <h1>Result Approvals</h1>
-    <p class="section-description">Review and approve teacher-submitted results</p>
-    
-    <div class="table-container">
-        <table class="responsive-table">
-            <thead>
-            <tr>
-            <th style="width:40px;"></th>
-            <th>Teacher</th>
-            <th>Class</th>
-            <th>Subject</th>
-            <th>Term</th>
-            <th>Pupils</th>
-            <th>Submitted</th>
-            <th>Status</th>
-            <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody id="result-approvals-table">
-                <tr><td colspan="8" class="table-loading">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div id="no-approvals-message" style="display:none; text-align:center; padding: var(--space-2xl); color: var(--color-gray-600);">
-        <p style="font-size: var(--text-lg); margin-bottom: var(--space-md);">📋 No Pending Approvals</p>
-        <p>Teachers will submit results here for your review.</p>
-    </div>
-</div>
 
-        <!-- ========================================
-     FEE MANAGEMENT SECTION
-========================================= -->
-<section id="fee-management" class="admin-card" style="display:none;">
-  <h1>💰 Fee Management</h1>
-  <p class="section-description">Configure fee structures for each class and term</p>
-  
-  <!-- Current Session/Term Display -->
-  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
-    <strong>Current Session:</strong> <span id="fee-session-display">Loading...</span> • 
-    <strong>Term:</strong> <span id="fee-term-display">Loading...</span>
-  </div>
-  
-  <!-- Fee Configuration Form -->
-<div class="admin-card" style="background:var(--color-gray-50); border:2px solid var(--color-primary); display:block;">
-    <h2 style="margin-top:0;">Configure Fee Structure</h2>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="fee-config-class">Select Class <span style="color:var(--color-danger);">*</span></label>
-        <select id="fee-config-class" required>
-          <option value="">-- Select Class --</option>
-        </select>
-      </div>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="fee-tuition">Tuition Fee (₦)</label>
-        <input type="number" id="fee-tuition" min="0" step="0.01" placeholder="0.00">
-      </div>
-      
-      <div class="form-group">
-        <label for="fee-exam">Exam Fee (₦)</label>
-        <input type="number" id="fee-exam" min="0" step="0.01" placeholder="0.00">
-      </div>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="fee-uniform">Uniform Fee (₦)</label>
-        <input type="number" id="fee-uniform" min="0" step="0.01" placeholder="0.00">
-      </div>
-      
-      <div class="form-group">
-        <label for="fee-books">Books Fee (₦)</label>
-        <input type="number" id="fee-books" min="0" step="0.01" placeholder="0.00">
-      </div>
-    </div>
-    
-    <div class="form-row">
-      <div class="form-group">
-        <label for="fee-pta">PTA Fee (₦)</label>
-        <input type="number" id="fee-pta" min="0" step="0.01" placeholder="0.00">
-      </div>
-      
-      <div class="form-group">
-        <label for="fee-other">Other Fees (₦)</label>
-        <input type="number" id="fee-other" min="0" step="0.01" placeholder="0.00">
-      </div>
-    </div>
-    
-    <button class="btn btn-primary" id="save-fee-structure-btn" onclick="saveFeeStructure()">
-  💾 Save Fee Structure
-</button>
-  </div>
-  
-  <!-- Existing Fee Structures -->
-  <div style="margin-top:var(--space-2xl);">
-    <h2>Configured Fee Structures</h2>
-    <div id="fee-structures-list">
-      <div style="text-align:center; padding:var(--space-2xl);">
-        <div class="spinner"></div>
-        <p>Loading fee structures...</p>
-      </div>
-    </div>
-  </div>
+        <!-- ─────────────────────────────────────────
+             RESULT APPROVALS
+        ───────────────────────────────────────── -->
+        <div id="result-approvals" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Result Approvals</h1>
+                    <p class="section-description">Review and approve teacher-submitted results</p>
+                </div>
+            </div>
 
-<!-- UPDATED: Bulk Actions Section -->
-<div style="margin-top: var(--space-2xl); padding: var(--space-xl); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
-  <h3 style="margin: 0 0 var(--space-md);">💼 Bulk Operations</h3>
-  
-  <p style="margin: 0 0 var(--space-lg); color: var(--color-gray-600); font-size: var(--text-sm);">
-    Generate payment records for all pupils who don't have them yet. This ensures complete financial tracking.
-  </p>
-  
-  <button 
-    id="bulk-generate-btn" 
-    class="btn btn-primary" 
-    onclick="ensureAllPupilsHavePaymentRecords()"
-    style="width: 100%;">
-    📋 Generate All Missing Payment Records
-  </button>
-  
-  <div style="margin-top: var(--space-md); padding: var(--space-md); background: white; border-radius: var(--radius-sm); font-size: var(--text-sm);">
-    <strong>What this does:</strong>
-    <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
-      <li>Creates payment records for pupils who don't have them</li>
-      <li>Calculates and applies arrears from previous sessions</li>
-      <li>Preserves all existing payment data (100% safe)</li>
-      <li>Shows detailed summary of what was created</li>
-    </ul>
-  </div>
-</div>
-</section>
+            <div class="table-container">
+                <table class="responsive-table">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;"></th>
+                            <th>Teacher</th>
+                            <th>Class</th>
+                            <th>Subject</th>
+                            <th>Term</th>
+                            <th>Pupils</th>
+                            <th>Submitted</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result-approvals-table">
+                        <tr><td colspan="9" class="table-loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-<!-- ========================================
-     RECORD PAYMENT SECTION
-========================================= -->
-<section id="record-payment" class="admin-card" style="display:none;">
-  <h1>💳 Record Payment</h1>
-  <p class="section-description">Record fee payments and generate receipts</p>
-  
-  <!-- Current Session/Term Display -->
-  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
-    <strong>Session:</strong> <span id="payment-session-display">Loading...</span> • 
-    <strong>Term:</strong> <span id="payment-term-display">Loading...</span>
-  </div>
-  
-  <!-- Class and Pupil Selection -->
-  <div class="form-row">
-    <div class="form-group">
-      <label for="payment-class-filter">Select Class <span style="color:var(--color-danger);">*</span></label>
-      <select id="payment-class-filter" onchange="loadPupilsForPayment()">
-        <option value="">-- Select Class --</option>
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label for="payment-pupil-select">Select Pupil <span style="color:var(--color-danger);">*</span></label>
-      <select id="payment-pupil-select" onchange="loadPupilPaymentStatus()">
-        <option value="">-- Select Pupil --</option>
-      </select>
-    </div>
-  </div>
-  
-  <!-- Payment Form Container -->
-  <div id="payment-form-container" style="display:none;">
-    
-    <!-- Payment Status Display -->
-    <div id="payment-status-display" style="margin-bottom:var(--space-xl);">
-      <!-- Populated by JavaScript -->
-    </div>
-    
-    <!-- Payment Input Section -->
-    <div id="payment-input-section" class="admin-card" style="background:var(--color-gray-50); border:2px solid var(--color-success); display:none;">
-      <h2 style="margin-top:0;">Record New Payment</h2>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="payment-amount">Amount Paid (₦) <span style="color:var(--color-danger);">*</span></label>
-          <input type="number" id="payment-amount" min="0" step="0.01" placeholder="0.00" required>
-          <small style="color:var(--color-gray-600);">Enter the amount paid by the parent</small>
+            <div id="no-approvals-message" style="display:none; text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                <i data-lucide="clipboard-check" style="width:40px;height:40px; margin-bottom:1rem; opacity:.4;"></i>
+                <p style="font-size:1rem; font-weight:600; color:#64748b; margin:0 0 0.25rem;">No Pending Approvals</p>
+                <p style="font-size:0.875rem; margin:0;">Teachers will submit results here for your review.</p>
+            </div>
         </div>
-        
-        <div class="form-group">
-          <label for="payment-method">Payment Method</label>
-          <select id="payment-method">
-            <option value="cash">Cash</option>
-            <option value="bank">Bank Transfer</option>
-            <option value="pos">POS/Card</option>
-            <option value="online">Online Payment</option>
-            <option value="cheque">Cheque</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="payment-notes">Notes (Optional)</label>
-        <textarea id="payment-notes" rows="2" placeholder="Add any additional notes about this payment..."></textarea>
-      </div>
-      
-      <button class="btn btn-primary" id="record-payment-btn" onclick="recordPayment()">
-        💰 Record Payment
-      </button>
-    </div>
-    
-    <!-- Payment History -->
-    <div style="margin-top:var(--space-2xl);">
-      <h3>Payment History</h3>
-      <div id="payment-history-list">
-        <!-- Populated by JavaScript -->
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- ========================================
-     OUTSTANDING FEES SECTION
-========================================= -->
-<section id="outstanding-fees" class="admin-card" style="display:none;">
-  <h1>📊 Outstanding Fees</h1>
-  <p class="section-description">Track pupils with outstanding fee balances</p>
-  
-  <!-- Summary Cards -->
-  <div class="stats-grid" style="margin-bottom:var(--space-2xl);">
-    <div class="stat-card" style="background:linear-gradient(135deg, #f44336 0%, #d32f2f 100%);">
-      <div class="stat-icon">📋</div>
-      <div class="stat-value" id="outstanding-count">0</div>
-      <div class="stat-label">Pupils Owing</div>
-    </div>
-    
-    <div class="stat-card" style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
-      <div class="stat-icon">💰</div>
-      <div class="stat-value" id="outstanding-total">₦0</div>
-      <div class="stat-label">Total Outstanding</div>
-    </div>
-  </div>
-  
-  <!-- Outstanding Fees Table -->
-  <div class="table-container">
-    <table class="responsive-table" id="outstanding-fees-table">
-      <thead>
-        <tr>
-          <th>Pupil Name</th>
-          <th>Class</th>
-          <th>Amount Due</th>
-          <th>Paid</th>
-          <th>Balance</th>
-          <th>Status</th>
-          <th>Term</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="6" class="table-loading">Loading outstanding fees...</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</section>
+        <!-- ─────────────────────────────────────────
+             FEE MANAGEMENT
+             ★ REPLACES: <section id="fee-management">
+        ───────────────────────────────────────── -->
+        <section id="fee-management" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Fee Management</h1>
+                    <p class="section-description">Configure fee structures per class</p>
+                </div>
+            </div>
 
-<!-- ========================================
-     FINANCIAL REPORTS SECTION
-========================================= -->
-<section id="financial-reports" class="admin-card" style="display:none;">
-  <h1>📈 Financial Reports</h1>
-  <p class="section-description">Comprehensive financial overview and analytics</p>
-  
-  <!-- Session/Term Display -->
-  <div class="alert alert-info" style="margin-bottom:var(--space-xl);">
-    <strong>Reporting Period:</strong> 
-    <span id="report-session-display">Loading...</span> • 
-    <span id="report-term-display">Loading...</span>
-  </div>
-  
-  <!-- Summary Statistics -->
-  <div class="stats-grid">
-    <div class="stat-card" style="background:linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
-      <div class="stat-icon">💵</div>
-      <div class="stat-value" id="report-total-expected">₦0</div>
-      <div class="stat-label">Total Expected</div>
-    </div>
-    
-    <div class="stat-card" style="background:linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);">
-      <div class="stat-icon">✓</div>
-      <div class="stat-value" id="report-total-collected">₦0</div>
-      <div class="stat-label">Total Collected</div>
-    </div>
-    
-    <div class="stat-card" style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
-      <div class="stat-icon">⏳</div>
-      <div class="stat-value" id="report-total-outstanding">₦0</div>
-      <div class="stat-label">Outstanding</div>
-    </div>
-    
-    <div class="stat-card" style="background:linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
-      <div class="stat-icon">📊</div>
-      <div class="stat-value" id="report-collection-rate">0%</div>
-      <div class="stat-label">Overall Collection Rate</div>
-      <div style="font-size:var(--text-xs); opacity:0.85; margin-top:4px;">
-        (fees + arrears)
-      </div>
-    </div>
+            <!-- Session info -->
+            <div class="alert alert-info">
+                <i data-lucide="info" style="width:16px;height:16px; flex-shrink:0;"></i>
+                <span>
+                    <strong>Current Session:</strong> <span id="fee-session-display">Loading...</span> &nbsp;·&nbsp;
+                    <strong>Term:</strong> <span id="fee-term-display">Loading...</span>
+                </span>
+            </div>
 
-    <div class="stat-card" style="background:linear-gradient(135deg, #00897B 0%, #00695C 100%);">
-      <div class="stat-icon">🎯</div>
-      <div class="stat-value" id="report-current-term-collection-rate">0%</div>
-      <div class="stat-label">Current Term Rate</div>
-      <div style="font-size:var(--text-xs); opacity:0.85; margin-top:4px;">
-        (this term's fees only)
-      </div>
-    </div>
-  </div>
-  
-  <!-- Payment Status Breakdown -->
-  <div class="admin-card" style="margin-top:var(--space-2xl); background:var(--color-gray-50);">
-    <h2 style="margin-top:0;">Payment Status Breakdown</h2>
-    
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:var(--space-lg);">
-      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-success);">
-        <div style="font-size:3rem; margin-bottom:var(--space-sm);">✓</div>
-        <div style="font-size:2rem; font-weight:700; color:var(--color-success);" id="report-paid-full">0</div>
-        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Paid in Full</div>
-      </div>
-      
-      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-warning);">
-        <div style="font-size:3rem; margin-bottom:var(--space-sm);">⚠️</div>
-        <div style="font-size:2rem; font-weight:700; color:var(--color-warning);" id="report-partial">0</div>
-        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Partial Payment</div>
-      </div>
-      
-      <div style="text-align:center; padding:var(--space-xl); background:white; border-radius:var(--radius-md); border:2px solid var(--color-danger);">
-        <div style="font-size:3rem; margin-bottom:var(--space-sm);">✗</div>
-        <div style="font-size:2rem; font-weight:700; color:var(--color-danger);" id="report-owing">0</div>
-        <div style="color:var(--color-gray-600); margin-top:var(--space-xs);">Not Paid</div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Export Options -->
-  <div style="margin-top:var(--space-2xl); padding:var(--space-xl); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-md);">
-    <h3 style="margin-top:0;">Export Reports</h3>
-    <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">Download financial data for external analysis</p>
-    
-    <div style="display:flex; gap:var(--space-md); flex-wrap:wrap;">
-      <button class="btn btn-secondary" onclick="exportFinancialReport('csv')">
-        📥 Export to CSV
-      </button>
-      <button class="btn btn-secondary" onclick="exportFinancialReport('pdf')">
-        📄 Generate PDF Report
-      </button>
-    </div>
-  </div>
-<!-- NEW: Comprehensive Report Button -->
-<div style="margin-bottom: var(--space-xl); padding: var(--space-lg); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: var(--radius-lg); color: white;">
-  <h3 style="margin: 0 0 var(--space-sm); color: white; display: flex; align-items: center; gap: var(--space-sm);">
-    <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
-    Comprehensive Financial Report
-  </h3>
-  <p style="margin: 0 0 var(--space-md); opacity: 0.9; font-size: var(--text-sm);">
-    Download a complete, insight-driven financial report with charts, analytics, and actionable recommendations.
-  </p>
-  <button 
-    class="btn" 
-    onclick="window.generateComprehensiveFinancialReport()"
-    style="background: white; color: #667eea; font-weight: 600;">
-    <i data-lucide="download" style="width: 18px; height: 18px; margin-right: 8px;"></i>
-    Generate Comprehensive Report (PDF)
-  </button>
-</div>
-</section>
+            <!-- Configure Fee Structure -->
+            <div class="form-section" style="border-color:#1a56db; border-width:2px;">
+                <h3><i data-lucide="settings-2" style="width:15px;height:15px;"></i> Configure Fee Structure</h3>
+                <div class="form-group">
+                    <label for="fee-config-class">Select Class <span class="required">*</span></label>
+                    <select id="fee-config-class" required>
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label for="fee-tuition">Tuition Fee (₦)</label>
+                        <input type="number" id="fee-tuition" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="fee-exam">Exam Fee (₦)</label>
+                        <input type="number" id="fee-exam" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label for="fee-uniform">Uniform Fee (₦)</label>
+                        <input type="number" id="fee-uniform" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="fee-books">Books Fee (₦)</label>
+                        <input type="number" id="fee-books" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-row form-row-2">
+                    <div class="form-group">
+                        <label for="fee-pta">PTA Fee (₦)</label>
+                        <input type="number" id="fee-pta" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="fee-other">Other Fees (₦)</label>
+                        <input type="number" id="fee-other" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn" id="save-fee-structure-btn" onclick="saveFeeStructure()">
+                        <i data-lucide="save" style="width:15px;height:15px;"></i> Save Fee Structure
+                    </button>
+                </div>
+            </div>
 
-        <!-- Announcements Section -->
+            <!-- Existing Fee Structures -->
+            <h2>Configured Fee Structures</h2>
+            <div id="fee-structures-list">
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Loading fee structures...</p>
+                </div>
+            </div>
+
+            <!-- Bulk Operations -->
+            <div class="form-section" style="margin-top:1.5rem;">
+                <h3><i data-lucide="layers" style="width:15px;height:15px;"></i> Bulk Operations</h3>
+                <p style="font-size:0.875rem; color:#64748b; margin:0 0 1rem;">
+                    Generate payment records for all pupils who don't have them yet. Preserves all existing payment data.
+                </p>
+                <button id="bulk-generate-btn" class="btn" onclick="ensureAllPupilsHavePaymentRecords()" style="width:100%;">
+                    <i data-lucide="database" style="width:15px;height:15px;"></i>
+                    Generate All Missing Payment Records
+                </button>
+                <div style="margin-top:0.875rem; padding:0.875rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; font-size:0.8125rem; color:#64748b;">
+                    <strong style="color:#0f172a;">What this does:</strong> Creates payment records for pupils who don't have them ·
+                    Calculates and applies arrears · Preserves existing data · 100% safe to run
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────
+             RECORD PAYMENT
+        ───────────────────────────────────────── -->
+        <section id="record-payment" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Record Payment</h1>
+                    <p class="section-description">Record fee payments and generate receipts</p>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i data-lucide="info" style="width:16px;height:16px; flex-shrink:0;"></i>
+                <span>
+                    <strong>Session:</strong> <span id="payment-session-display">Loading...</span> &nbsp;·&nbsp;
+                    <strong>Term:</strong> <span id="payment-term-display">Loading...</span>
+                </span>
+            </div>
+
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label for="payment-class-filter">Select Class <span class="required">*</span></label>
+                    <select id="payment-class-filter" onchange="loadPupilsForPayment()">
+                        <option value="">-- Select Class --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="payment-pupil-select">Select Pupil <span class="required">*</span></label>
+                    <select id="payment-pupil-select" onchange="loadPupilPaymentStatus()">
+                        <option value="">-- Select Pupil --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="payment-form-container" style="display:none;">
+                <div id="payment-status-display" style="margin-bottom:1.5rem;"></div>
+
+                <div id="payment-input-section" class="form-section" style="display:none; border-color:#0f9764; border-width:2px; background:#ecfdf5;">
+                    <h3 style="color:#065f46;"><i data-lucide="credit-card" style="width:15px;height:15px;"></i> Record New Payment</h3>
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="payment-amount">Amount Paid (₦) <span class="required">*</span></label>
+                            <input type="number" id="payment-amount" min="0" step="0.01" placeholder="0.00" required>
+                            <small>Enter the amount paid by the parent</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="payment-method">Payment Method</label>
+                            <select id="payment-method">
+                                <option value="cash">Cash</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="pos">POS / Card</option>
+                                <option value="online">Online Payment</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="payment-notes">Notes (Optional)</label>
+                        <textarea id="payment-notes" rows="2" placeholder="Any additional notes..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn" id="record-payment-btn" onclick="recordPayment()">
+                            <i data-lucide="check-circle" style="width:15px;height:15px;"></i> Record Payment
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top:2rem;">
+                    <h2>Payment History</h2>
+                    <div id="payment-history-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────
+             OUTSTANDING FEES
+        ───────────────────────────────────────── -->
+        <section id="outstanding-fees" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Outstanding Fees</h1>
+                    <p class="section-description">Pupils with outstanding fee balances</p>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom:1.5rem;">
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #dc2626; padding:1.25rem; border-radius:12px;">
+                    <div class="stat-icon" style="font-size:1.25rem; margin-bottom:0.5rem;">📋</div>
+                    <div class="stat-value" id="outstanding-count" style="font-size:2rem; font-weight:800; color:#0f172a;">0</div>
+                    <div class="stat-label" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.25rem;">Pupils Owing</div>
+                </div>
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #d97706; padding:1.25rem; border-radius:12px;">
+                    <div class="stat-icon" style="font-size:1.25rem; margin-bottom:0.5rem;">💰</div>
+                    <div class="stat-value" id="outstanding-total" style="font-size:2rem; font-weight:800; color:#0f172a;">₦0</div>
+                    <div class="stat-label" style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.25rem;">Total Outstanding</div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="responsive-table" id="outstanding-fees-table">
+                    <thead>
+                        <tr>
+                            <th>Pupil Name</th>
+                            <th>Class</th>
+                            <th>Amount Due</th>
+                            <th>Paid</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Term</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="7" class="table-loading">Loading outstanding fees...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────
+             FINANCIAL REPORTS
+        ───────────────────────────────────────── -->
+        <section id="financial-reports" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Financial Reports</h1>
+                    <p class="section-description">Comprehensive financial overview and analytics</p>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i data-lucide="calendar" style="width:16px;height:16px; flex-shrink:0;"></i>
+                <span>
+                    <strong>Period:</strong>
+                    <span id="report-session-display">Loading...</span> &nbsp;·&nbsp;
+                    <span id="report-term-display">Loading...</span>
+                </span>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="stats-grid">
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #1a56db; padding:1.25rem; border-radius:12px;">
+                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Total Expected</div>
+                    <div id="report-total-expected" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
+                </div>
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #0f9764; padding:1.25rem; border-radius:12px;">
+                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Total Collected</div>
+                    <div id="report-total-collected" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
+                </div>
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #d97706; padding:1.25rem; border-radius:12px;">
+                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Outstanding</div>
+                    <div id="report-total-outstanding" style="font-size:1.75rem;font-weight:800;color:#0f172a;">₦0</div>
+                </div>
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #7c3aed; padding:1.25rem; border-radius:12px;">
+                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Overall Collection Rate</div>
+                    <div id="report-collection-rate" style="font-size:1.75rem;font-weight:800;color:#0f172a;">0%</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">fees + arrears</div>
+                </div>
+                <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #0891b2; padding:1.25rem; border-radius:12px;">
+                    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:0.5rem;">Current Term Rate</div>
+                    <div id="report-current-term-collection-rate" style="font-size:1.75rem;font-weight:800;color:#0f172a;">0%</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;margin-top:0.25rem;">this term's fees only</div>
+                </div>
+            </div>
+
+            <!-- Payment Status Breakdown -->
+            <div class="form-section" style="margin-top:1.5rem;">
+                <h3><i data-lucide="pie-chart" style="width:15px;height:15px;"></i> Payment Status Breakdown</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem;">
+                    <div style="text-align:center; padding:1.5rem; background:white; border-radius:10px; border:1.5px solid #d1fae5;">
+                        <div style="font-size:2rem; color:#0f9764; font-weight:800;" id="report-paid-full">0</div>
+                        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.375rem;">Paid in Full</div>
+                    </div>
+                    <div style="text-align:center; padding:1.5rem; background:white; border-radius:10px; border:1.5px solid #fde68a;">
+                        <div style="font-size:2rem; color:#d97706; font-weight:800;" id="report-partial">0</div>
+                        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.375rem;">Partial Payment</div>
+                    </div>
+                    <div style="text-align:center; padding:1.5rem; background:white; border-radius:10px; border:1.5px solid #fecaca;">
+                        <div style="font-size:2rem; color:#dc2626; font-weight:800;" id="report-owing">0</div>
+                        <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-top:0.375rem;">Not Paid</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export + Comprehensive Report -->
+            <div class="form-section" style="margin-top:1.5rem; background:linear-gradient(135deg,#1e3a5f 0%,#0f2d5a 100%); border:none; color:white;">
+                <h3 style="color:#f1f5f9; border-bottom-color:rgba(255,255,255,.15);">
+                    <i data-lucide="file-text" style="width:15px;height:15px;"></i>
+                    Export & Reports
+                </h3>
+                <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+                    <button class="btn btn-secondary" onclick="exportFinancialReport('csv')"
+                            style="background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.3); color:white;">
+                        <i data-lucide="download" style="width:15px;height:15px;"></i> Export CSV
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportFinancialReport('pdf')"
+                            style="background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.3); color:white;">
+                        <i data-lucide="file-text" style="width:15px;height:15px;"></i> Generate PDF Report
+                    </button>
+                </div>
+                <button class="btn" onclick="window.generateComprehensiveFinancialReport()"
+                        style="background:white; color:#1a56db; font-weight:700; border:none;">
+                    <i data-lucide="bar-chart-2" style="width:15px;height:15px;"></i>
+                    Generate Comprehensive Financial Report (PDF)
+                </button>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────
+             ANNOUNCEMENTS
+        ───────────────────────────────────────── -->
         <div id="announcements" class="admin-card" style="display:none;">
-            <h1>Manage Announcements</h1>
-            <button class="btn" onclick="showAnnounceForm()">+ New Announcement</button>
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Manage Announcements</h1>
+                    <p class="section-description">Publish and manage school announcements</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn" onclick="showAnnounceForm()">
+                        <i data-lucide="plus" style="width:16px;height:16px;"></i> New Announcement
+                    </button>
+                </div>
+            </div>
 
             <div id="announce-form" class="form-section" style="display:none;">
-                <h3>Create Announcement</h3>
+                <h3><i data-lucide="megaphone" style="width:15px;height:15px;"></i> Create Announcement</h3>
                 <form id="add-announcement-form" class="admin-form">
                     <div class="form-group">
                         <label for="announce-title">Title <span class="required">*</span></label>
@@ -1970,369 +1521,474 @@ Example 3: Free education
                         <textarea id="announce-content" rows="6" placeholder="Write your announcement here..." required></textarea>
                     </div>
                     <div class="form-actions">
-                        <button type="button" class="btn" onclick="addAnnouncement()">Publish</button>
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('announce-form').style.display='none'">Cancel</button>
+                        <button type="button" class="btn" onclick="addAnnouncement()">
+                            <i data-lucide="send" style="width:15px;height:15px;"></i> Publish
+                        </button>
+                        <button type="button" class="btn btn-secondary"
+                                onclick="document.getElementById('announce-form').style.display='none'">Cancel</button>
                     </div>
                 </form>
             </div>
 
             <div id="announcements-list" class="announcements-list">
-                <div class="skeleton-container">
-                    <div class="skeleton"></div>
+                <div class="loading-container">
+                    <div class="spinner"></div>
                 </div>
             </div>
         </div>
-        
-       <!-- School Settings Section -->
-<div id="school-calendar" class="admin-card" style="display:none;"></div>
-<div id="settings" class="admin-card" style="display:none;">
-    <h1>School Settings</h1>
-    <p class="section-description">Manage academic session, term, and system settings</p>
 
-    <!-- ── 1. SESSION STATUS CARD (read-only display) ── -->
-    <div class="session-status-card" id="session-status-card">
-        <div class="status-header">
-            <h3>📅 Current Academic Session</h3>
-            <span class="status-badge" id="session-status-badge">Active</span>
-        </div>
-        <div class="status-body">
-            <div class="status-item">
-                <span class="status-label">Session:</span>
-                <span class="status-value" id="display-session-name">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Current Term:</span>
-                <span class="status-value" id="display-current-term">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Session Starts:</span>
-                <span class="status-value" id="display-session-start">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Session Ends:</span>
-                <span class="status-value" id="display-session-end">Loading...</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Next Resumption:</span>
-                <span class="status-value" id="display-next-resumption">Loading...</span>
-            </div>
-        </div>
-        <div class="status-alert" id="session-end-alert" style="display:none;">
-            <strong>⚠️ Session Ending Soon!</strong>
-            <p>This academic session will end soon. Prepare for promotion and new session.</p>
-        </div>
-    </div>
+        <!-- ─────────────────────────────────────────
+             SCHOOL CALENDAR (content loaded by JS)
+        ───────────────────────────────────────── -->
+        <div id="school-calendar" class="admin-card" style="display:none;"></div>
 
-    <!-- ── 2. EDIT SESSION SETTINGS FORM ── -->
-    <div class="form-section" style="margin-top: var(--space-xl);">
-        <h3>📝 Update Session Settings</h3>
-        <form id="settings-form" class="admin-form">
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="session-start-year">Session Start Year <span class="required">*</span></label>
-                    <input type="number" id="session-start-year" placeholder="2025" required min="2020" max="2100">
-                </div>
-                <div class="form-group">
-                    <label for="session-end-year">Session End Year <span class="required">*</span></label>
-                    <input type="number" id="session-end-year" placeholder="2026" required min="2020" max="2100">
+        <!-- ─────────────────────────────────────────
+             SCHOOL SETTINGS
+             ★ REPLACES: <div id="settings" class="admin-card">
+        ───────────────────────────────────────── -->
+        <div id="settings" class="admin-card" style="display:none;">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>School Settings</h1>
+                    <p class="section-description">Manage academic session, term, and system configuration</p>
                 </div>
             </div>
 
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="session-start-date">Session Start Date <span class="required">*</span></label>
-                    <input type="date" id="session-start-date" required>
+            <!-- 1. Current Session Status -->
+            <div class="session-status-card" id="session-status-card">
+                <div class="status-header">
+                    <h3>Current Academic Session</h3>
+                    <span class="status-badge" id="session-status-badge">Active</span>
                 </div>
-                <div class="form-group">
-                    <label for="session-end-date">Session End Date <span class="required">*</span></label>
-                    <input type="date" id="session-end-date" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="current-term">Current Term <span class="required">*</span></label>
-                <select id="current-term" required>
-                    <option value="First Term">First Term</option>
-                    <option value="Second Term">Second Term</option>
-                    <option value="Third Term">Third Term</option>
-                </select>
-                <small style="color: var(--color-gray-600); margin-top: var(--space-xs); display: block;">
-                    ℹ️ Changing the term automatically creates payment records for the new term with arrears carried forward.
-                </small>
-            </div>
-
-            <div class="form-group">
-                <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
-                <input type="date" id="resumption-date" required>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn">💾 Save Settings</button>
-                <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">↻ Refresh</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- ── 3. START NEW SESSION ── -->
-    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-        <h3 style="color: var(--color-primary);">🎓 Start New Academic Session</h3>
-        <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-            Use this when the current session ends. This will archive the current session and prepare a new one.
-        </p>
-
-        <div class="alert alert-warning" style="margin-bottom: var(--space-lg);">
-            <strong>⚠️ This will:</strong>
-            <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
-                <li>Archive the current session</li>
-                <li>Create a new session (next year)</li>
-                <li>Reset current term to "First Term"</li>
-                <li>Enable promotion period for teachers</li>
-            </ul>
-        </div>
-
-        <button type="button" class="btn btn-danger" onclick="confirmStartNewSession()" id="start-new-session-btn">
-            🚀 Start New Session
-        </button>
-    </div>
-
-    <!-- ── 4. ARREARS MANAGEMENT ── -->
-    <!--
-        Placed directly after "Start New Session" because this is
-        the logical next step after starting a new session.
-        Previously this was buried inside the session history div.
-    -->
-    <div class="admin-card" style="margin-top: var(--space-xl); border-left: 4px solid #f59e0b;">
-        <h3 style="margin-top: 0;">💸 Arrears Management</h3>
-        <p style="color: var(--color-gray-700); margin-bottom: var(--space-md);">
-            After starting a new session, run this to carry forward any unpaid balances from the previous session 
-            into the current session's payment records.
-        </p>
-
-        <button
-            id="migrate-arrears-btn"
-            class="btn btn-warning"
-            onclick="migrateArrearsToNewSession()">
-            🔄 Migrate Arrears from Previous Session
-        </button>
-
-        <div class="alert alert-info" style="margin-top: var(--space-md);">
-            <strong>ℹ️ When to use this:</strong>
-            <ul style="margin: var(--space-sm) 0 0; padding-left: var(--space-lg);">
-                <li>Run <strong>once</strong> at the start of each new academic session</li>
-                <li>Finds all pupils with unpaid balances from the previous session</li>
-                <li>Updates their current session payment records with the correct arrears amount</li>
-                <li>Use this if payment records exist but arrears are showing as ₦0</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- ── 5. SESSION HISTORY ── -->
-    <!--
-        session-history-container now ONLY contains the table.
-        The migration tools that were incorrectly nested inside
-        this div have been moved out.
-    -->
-    <div class="form-section" style="margin-top: var(--space-2xl);">
-        <h3>📚 Session History</h3>
-        <div id="session-history-container" class="table-container">
-            <table class="responsive-table">
-                <thead>
-                    <tr>
-                        <th>Session</th>
-                        <th>Start Date</th>
-                        <th>End Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="session-history-table">
-                    <tr>
-                        <td colspan="4" class="table-loading">Loading history...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- ── 6. CLASS PROGRESSION ORDER ── -->
-    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-        <h3>📊 Class Progression Order</h3>
-        <p style="color: var(--color-gray-700); margin-bottom: var(--space-lg);">
-            Arrange your classes in order from lowest to highest level. The last class in the list will be the terminal/graduation class.
-        </p>
-
-        <div class="alert alert-info" style="margin-bottom: var(--space-lg);">
-            <strong>ℹ️ How it works:</strong>
-            <ul style="margin: var(--space-sm) 0 0 var(--space-lg);">
-                <li><strong>Classes are automatically loaded from the "Classes" section</strong></li>
-                <li>Drag and drop to rearrange the order</li>
-                <li>The last class (bottom) will be the terminal/graduation class</li>
-                <li>Pupils in the terminal class will graduate and move to alumni</li>
-                <li>To add/remove classes, go to the "Classes" section above</li>
-            </ul>
-        </div>
-
-        <div class="class-hierarchy-editor">
-            <div id="hierarchy-container">
-                <!-- Classes will be loaded here dynamically -->
-            </div>
-        </div>
-    </div>
-
-    <!-- ── 7. ADVANCED / DATA MAINTENANCE ── -->
-    <!--
-        Both "Data Migration Tools" sections previously had identical headings.
-        They are now grouped under a single collapsible "Advanced" section
-        with distinct, descriptive labels for each tool.
-        Neither button ID nor onclick has changed.
-    -->
-    <div class="form-section" style="margin-top: var(--space-2xl); border-top: 2px solid var(--color-gray-300); padding-top: var(--space-xl);">
-
-        <details>
-            <summary style="
-                cursor: pointer;
-                list-style: none;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: var(--space-md) var(--space-lg);
-                background: #fef3c7;
-                border: 2px solid #f59e0b;
-                border-radius: var(--radius-md);
-                font-weight: 700;
-                font-size: var(--text-base);
-                color: #78350f;
-                user-select: none;
-            ">
-                <span>🛠️ Advanced — Data Maintenance Tools</span>
-                <span style="font-size: var(--text-sm); font-weight: 400; opacity: 0.8;">
-                    Click to expand
-                </span>
-            </summary>
-
-            <div style="
-                margin-top: var(--space-md);
-                padding: var(--space-xl);
-                background: #fffbeb;
-                border: 1px solid #f59e0b;
-                border-radius: 0 0 var(--radius-md) var(--radius-md);
-            ">
-                <p style="color: #78350f; margin: 0 0 var(--space-xl); font-size: var(--text-sm);">
-                    These are <strong>one-time repair tools</strong> for fixing historical data issues. 
-                    They are safe to run — they never delete data — but under normal operation 
-                    you should not need them regularly.
-                </p>
-
-                <!-- Tool A: Fix incorrect payment amounts -->
-                <div style="
-                    background: white;
-                    border: 1px solid #e2e8f0;
-                    border-radius: var(--radius-md);
-                    padding: var(--space-xl);
-                    margin-bottom: var(--space-xl);
-                ">
-                    <h4 style="margin: 0 0 var(--space-sm); color: #0f172a;">
-                        🔧 Fix Payment Record Amounts
-                    </h4>
-                    <p style="color: var(--color-gray-600); font-size: var(--text-sm); margin: 0 0 var(--space-md);">
-                        If payment records were created before the adjusted fees system was set up, 
-                        they may show incorrect amounts (not reflecting scholarships or discounts). 
-                        This recalculates all records with the correct adjusted fees.
-                        <strong>Payment history is preserved.</strong>
-                    </p>
-                    <button
-                        id="migrate-payments-btn"
-                        class="btn btn-warning"
-                        onclick="migratePaymentRecordsToAdjustedFees()">
-                        🔄 Recalculate Payment Records to Adjusted Fees
-                    </button>
-                </div>
-
-                <!-- Tool B: Add session info to old results -->
-                <div style="
-                    background: white;
-                    border: 1px solid #e2e8f0;
-                    border-radius: var(--radius-md);
-                    padding: var(--space-xl);
-                ">
-                    <h4 style="margin: 0 0 var(--space-sm); color: #0f172a;">
-                        🔧 Add Session Info to Old Results
-                    </h4>
-                    <p style="color: var(--color-gray-600); font-size: var(--text-sm); margin: 0 0 var(--space-md);">
-                        Results entered before session tracking was introduced have no session field.
-                        This assigns the current session to all such results based on when they were created.
-                        <strong>No existing data is deleted or overwritten.</strong>
-                        Only run this once when you first enable the session system.
-                    </p>
-
-                    <div class="alert alert-warning" style="margin-bottom: var(--space-md);">
-                        <strong>⚠️ Instructions:</strong>
-                        <ul style="margin: var(--space-sm) 0 0 var(--space-lg); line-height: 1.8;">
-                            <li>All results without a session will be assigned to the <strong>current session</strong></li>
-                            <li>This operation may take a few minutes if you have many results</li>
-                            <li>Only run <strong>once</strong></li>
-                        </ul>
+                <div class="status-body">
+                    <div class="status-item">
+                        <span class="status-label">Session</span>
+                        <span class="status-value" id="display-session-name">Loading...</span>
                     </div>
+                    <div class="status-item">
+                        <span class="status-label">Current Term</span>
+                        <span class="status-value" id="display-current-term">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Session Starts</span>
+                        <span class="status-value" id="display-session-start">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Session Ends</span>
+                        <span class="status-value" id="display-session-end">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Next Resumption</span>
+                        <span class="status-value" id="display-next-resumption">Loading...</span>
+                    </div>
+                </div>
+                <div class="status-alert" id="session-end-alert" style="display:none;">
+                    <strong>⚠️ Session Ending Soon!</strong>
+                    <p>Prepare for promotion and new session rollover.</p>
+                </div>
+            </div>
 
-                    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-warning" onclick="backfillSessionData()" id="backfill-btn">
-                            🔄 Add Session Info to Old Results
-                        </button>
-                        <div id="migration-status" style="flex: 1; min-width: 300px; padding: var(--space-md); background: white; border-radius: var(--radius-sm); display: none;">
-                            <p style="margin: 0; font-size: 0.875rem;"></p>
+            <!-- 2. Edit Session Settings -->
+            <div class="form-section">
+                <h3><i data-lucide="pencil" style="width:15px;height:15px;"></i> Update Session Settings</h3>
+                <form id="settings-form" class="admin-form">
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="session-start-year">Session Start Year <span class="required">*</span></label>
+                            <input type="number" id="session-start-year" placeholder="2025" required min="2020" max="2100">
+                        </div>
+                        <div class="form-group">
+                            <label for="session-end-year">Session End Year <span class="required">*</span></label>
+                            <input type="number" id="session-end-year" placeholder="2026" required min="2020" max="2100">
                         </div>
                     </div>
-                </div>
-
+                    <div class="form-row form-row-2">
+                        <div class="form-group">
+                            <label for="session-start-date">Session Start Date <span class="required">*</span></label>
+                            <input type="date" id="session-start-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="session-end-date">Session End Date <span class="required">*</span></label>
+                            <input type="date" id="session-end-date" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="current-term">Current Term <span class="required">*</span></label>
+                        <select id="current-term" required>
+                            <option value="First Term">First Term</option>
+                            <option value="Second Term">Second Term</option>
+                            <option value="Third Term">Third Term</option>
+                        </select>
+                        <small>Changing the term auto-creates payment records with arrears carried forward.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="resumption-date">Next Resumption Date <span class="required">*</span></label>
+                        <input type="date" id="resumption-date" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">
+                            <i data-lucide="save" style="width:15px;height:15px;"></i> Save Settings
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="loadCurrentSettings()">
+                            <i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i> Refresh
+                        </button>
+                    </div>
+                </form>
             </div>
-        </details>
-    </div>
-</div>
 
-<section id="lesson-notes" class="admin-card" hidden tabindex="-1">
-    <h1>Lesson Notes Management</h1>
-    <p class="section-description">
-        Review and approve lesson notes submitted by teachers.
-        Filter by status, term, class, or teacher.
-    </p>
-    <div id="lesson-notes-admin-container">
-        <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
-            Loading lesson notes...
+            <!-- 3. Start New Session -->
+            <div class="form-section" style="border-top: 2px solid #e2e8f0; padding-top:1.75rem;">
+                <h3><i data-lucide="rocket" style="width:15px;height:15px;"></i> Start New Academic Session</h3>
+                <p style="font-size:0.875rem; color:#64748b; margin:0 0 1rem;">
+                    Use at the end of the current session. This archives the current session and prepares a new one.
+                </p>
+                <div class="alert alert-warning">
+                    <span>
+                        <strong>This will:</strong> Archive the current session ·
+                        Create a new session (next year) ·
+                        Reset to First Term ·
+                        Enable promotion period
+                    </span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-danger" onclick="confirmStartNewSession()" id="start-new-session-btn">
+                        <i data-lucide="alert-triangle" style="width:15px;height:15px;"></i>
+                        Start New Session
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. Arrears Management -->
+            <div class="form-section" style="border-left:3px solid #d97706;">
+                <h3><i data-lucide="refresh-cw" style="width:15px;height:15px; color:#d97706;"></i> Arrears Management</h3>
+                <p style="font-size:0.875rem; color:#64748b; margin:0 0 1rem;">
+                    After starting a new session, run this to carry forward unpaid balances into the current session's payment records.
+                </p>
+                <button id="migrate-arrears-btn" class="btn btn-warning" onclick="migrateArrearsToNewSession()">
+                    <i data-lucide="arrow-right-left" style="width:15px;height:15px;"></i>
+                    Migrate Arrears from Previous Session
+                </button>
+                <div class="alert alert-info" style="margin-top:1rem;">
+                    <span>
+                        <strong>When to use:</strong> Once at the start of each new academic session ·
+                        Finds all unpaid balances · Updates current payment records · Safe to run if arrears show ₦0
+                    </span>
+                </div>
+            </div>
+
+            <!-- 5. Session History -->
+            <div class="form-section">
+                <h3><i data-lucide="history" style="width:15px;height:15px;"></i> Session History</h3>
+                <div id="session-history-container" class="table-container">
+                    <table class="responsive-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="session-history-table">
+                            <tr><td colspan="4" class="table-loading">Loading history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. Class Progression Order -->
+            <div class="form-section" style="border-top:2px solid #e2e8f0; padding-top:1.75rem;">
+                <h3><i data-lucide="git-branch" style="width:15px;height:15px;"></i> Class Progression Order</h3>
+                <p style="font-size:0.875rem; color:#64748b; margin:0 0 1rem;">
+                    Arrange classes from lowest to highest level. The last class is the terminal / graduation class.
+                </p>
+                <div class="alert alert-info">
+                    <span>
+                        Classes are loaded from the Classes section ·
+                        Drag to reorder ·
+                        Last class = terminal (pupils graduate) ·
+                        Add/remove classes in the Classes section
+                    </span>
+                </div>
+                <div class="class-hierarchy-editor">
+                    <div id="hierarchy-container"></div>
+                </div>
+            </div>
+
+            <!-- 7. Advanced Data Maintenance -->
+            <div class="form-section" style="border-top:2px solid #e2e8f0; padding-top:1.75rem;">
+                <details>
+                    <summary>🛠️ Advanced — Data Maintenance Tools</summary>
+                    <div>
+                        <p style="font-size:0.8125rem; color:#92400e; margin:0 0 1.25rem;">
+                            One-time repair tools for fixing historical data. Safe to run — no data is deleted.
+                            Under normal operation you should not need these regularly.
+                        </p>
+
+                        <!-- Tool A -->
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; margin-bottom:1rem;">
+                            <h4 style="margin:0 0 0.5rem; font-size:0.9375rem; color:#0f172a;">
+                                🔧 Fix Payment Record Amounts
+                            </h4>
+                            <p style="font-size:0.8125rem; color:#64748b; margin:0 0 0.875rem;">
+                                Recalculates all payment records with correct adjusted fees (scholarships/discounts).
+                                Payment history is preserved.
+                            </p>
+                            <button id="migrate-payments-btn" class="btn btn-warning"
+                                    onclick="migratePaymentRecordsToAdjustedFees()">
+                                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+                                Recalculate Payment Records
+                            </button>
+                        </div>
+
+                        <!-- Tool B -->
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem;">
+                            <h4 style="margin:0 0 0.5rem; font-size:0.9375rem; color:#0f172a;">
+                                🔧 Add Session Info to Old Results
+                            </h4>
+                            <p style="font-size:0.8125rem; color:#64748b; margin:0 0 0.875rem;">
+                                Assigns current session to results created before session tracking was introduced.
+                                No existing data is deleted. Run only once.
+                            </p>
+                            <div class="alert alert-warning">
+                                All session-less results → assigned to current session ·
+                                May take a few minutes · Run only once
+                            </div>
+                            <div style="display:flex; gap:0.875rem; align-items:center; flex-wrap:wrap; margin-top:0.875rem;">
+                                <button type="button" class="btn btn-warning" onclick="backfillSessionData()" id="backfill-btn">
+                                    <i data-lucide="database" style="width:14px;height:14px;"></i>
+                                    Add Session Info to Old Results
+                                </button>
+                                <div id="migration-status" style="flex:1; min-width:240px; padding:0.75rem; background:white; border-radius:8px; font-size:0.8125rem; display:none;">
+                                    <p style="margin:0;"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
         </div>
-    </div>
-</section>
-</div> <!-- Close content-wrapper -->
+
+        <!-- ─────────────────────────────────────────
+             LESSON NOTES
+        ───────────────────────────────────────── -->
+        <section id="lesson-notes" class="admin-card" hidden tabindex="-1">
+            <div class="section-top-bar">
+                <div class="section-title-block">
+                    <h1>Lesson Notes Management</h1>
+                    <p class="section-description">Review and approve lesson notes submitted by teachers</p>
+                </div>
+            </div>
+            <div id="lesson-notes-admin-container">
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Loading lesson notes...</p>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- /content-wrapper -->
     </main>
 
+    <!-- Toast Container -->
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- SheetJS for Excel Export -->
+    <!-- External Libraries (unchanged) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- jsPDF for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    
-    <!-- Optimization Scripts -->
-<script src="session-cache.js"></script>
-<script src="button-loader.js"></script>
-<!-- Chart.js for generating charts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="session-cache.js"></script>
+    <script src="button-loader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="financial-report-generator.js"></script>
 
-<!-- Financial Report Generator -->
-<script src="financial-report-generator.js"></script>
-<!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
+    <!-- ═══════════════════════════════════════════════
+         DESIGN-ONLY JAVASCRIPT
+         Pure UI behavior — zero business logic touched.
+         All original functionality (admin.js, firebase-init.js, etc.) unchanged.
+    ═══════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        'use strict';
+
+        /* ─── 1. SIDEBAR GROUP TOGGLES ─────────────────
+           Replaces the original toggle logic with smooth
+           CSS max-height transition. data-group and
+           aria-expanded attributes preserved.
+        ──────────────────────────────────────────────── */
+        function initSidebarGroups() {
+            const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
+            toggles.forEach(function(toggle) {
+                toggle.addEventListener('click', function() {
+                    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                    const content = this.nextElementSibling;
+
+                    // Collapse all other groups
+                    toggles.forEach(function(other) {
+                        if (other !== toggle) {
+                            other.setAttribute('aria-expanded', 'false');
+                            const otherContent = other.nextElementSibling;
+                            if (otherContent) otherContent.classList.remove('active');
+                        }
+                    });
+
+                    this.setAttribute('aria-expanded', String(!isExpanded));
+                    if (content) content.classList.toggle('active', !isExpanded);
+                });
             });
-    });
-}
-</script>
+        }
+
+        /* ─── 2. ACTIVE SIDEBAR LINK ────────────────────
+           Syncs with the existing showSection() in admin.js.
+           We observe DOM mutations to detect section visibility
+           changes without touching admin.js.
+        ──────────────────────────────────────────────── */
+        function syncActiveSidebarLink(sectionId) {
+            document.querySelectorAll('.sidebar-link').forEach(function(link) {
+                const linkSection = link.getAttribute('data-section');
+                link.classList.toggle('active', linkSection === sectionId);
+            });
+
+            // Auto-expand the parent group of the active link
+            document.querySelectorAll('.sidebar-link').forEach(function(link) {
+                if (link.getAttribute('data-section') === sectionId) {
+                    const groupContent = link.closest('.sidebar-group-content-modern');
+                    if (groupContent) {
+                        groupContent.classList.add('active');
+                        const toggle = groupContent.previousElementSibling;
+                        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+                    }
+                }
+            });
+        }
+
+        // Hook into the existing sidebar link click pattern
+        document.querySelectorAll('.sidebar-link[data-section]').forEach(function(link) {
+            link.addEventListener('click', function() {
+                const section = this.getAttribute('data-section');
+                if (section) syncActiveSidebarLink(section);
+
+                // Close sidebar on mobile
+                if (window.innerWidth <= 1024) {
+                    const sidebar = document.getElementById('admin-sidebar');
+                    const hamburger = document.getElementById('hamburger');
+                    if (sidebar) sidebar.classList.remove('active');
+                    if (hamburger) {
+                        hamburger.classList.remove('active');
+                        hamburger.setAttribute('aria-expanded', 'false');
+                    }
+                }
+            });
+        });
+
+        /* ─── 3. HAMBURGER TOGGLE ───────────────────────
+           Enhances the existing hamburger with the new
+           sidebar.active class for smooth CSS transform.
+        ──────────────────────────────────────────────── */
+        function initHamburger() {
+            const hamburger = document.getElementById('hamburger');
+            const sidebar   = document.getElementById('admin-sidebar');
+            if (!hamburger || !sidebar) return;
+
+            hamburger.addEventListener('click', function() {
+                const isOpen = sidebar.classList.toggle('active');
+                this.classList.toggle('active', isOpen);
+                this.setAttribute('aria-expanded', String(isOpen));
+            });
+
+            // Close on backdrop click
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth > 1024) return;
+                if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                    hamburger.classList.remove('active');
+                    hamburger.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        /* ─── 4. CARD ENTRANCE ANIMATION ───────────────
+           When a section card becomes visible (display changes
+           from none to block), add a subtle fade-in.
+        ──────────────────────────────────────────────── */
+        function initCardAnimations() {
+            if (!window.MutationObserver) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    if (m.type === 'attributes' && m.attributeName === 'style') {
+                        const el = m.target;
+                        if (el.style.display !== 'none' && el.classList.contains('admin-card')) {
+                            el.style.animation = 'none';
+                            el.offsetHeight; // reflow
+                            el.style.animation = 'card-fade-in 300ms cubic-bezier(.4,0,.2,1) both';
+                        }
+                    }
+                });
+            });
+
+            document.querySelectorAll('.admin-card[style]').forEach(function(card) {
+                observer.observe(card, { attributes: true, attributeFilter: ['style'] });
+            });
+        }
+
+        /* ─── 5. LUCIDE ICON RE-INIT HELPER ────────────
+           Re-runs lucide.createIcons() after dynamic content
+           is injected by admin.js (tables, modals, etc.)
+        ──────────────────────────────────────────────── */
+        function reinitIcons() {
+            if (typeof lucide !== 'undefined') {
+                try { lucide.createIcons(); } catch(e) {}
+            }
+        }
+
+        // Expose globally so admin.js can call it after dynamic renders
+        window.reinitAdminIcons = reinitIcons;
+
+        /* ─── 6. KEYBOARD ESCAPE — CLOSE MODALS ────────
+           Supplement the existing modal close buttons.
+        ──────────────────────────────────────────────── */
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            const openModal = document.querySelector('.modal[style*="block"],.modal:not([style*="none"])');
+            if (!openModal) return;
+            const closeBtn = openModal.querySelector('.modal-close');
+            if (closeBtn) closeBtn.click();
+        });
+
+        /* ─── 7. SECTION SCROLLTOP ──────────────────────
+           Smoothly scroll to top of main when section changes.
+        ──────────────────────────────────────────────── */
+        const mainEl = document.getElementById('main-content');
+        document.querySelectorAll('.sidebar-link[data-section]').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+
+        /* ─── INIT ──────────────────────────────────────── */
+        document.addEventListener('DOMContentLoaded', function() {
+            initSidebarGroups();
+            initHamburger();
+            initCardAnimations();
+            reinitIcons();
+
+            // Sync active link based on current hash
+            const hash = window.location.hash.replace('#', '');
+            if (hash) syncActiveSidebarLink(hash);
+        });
+
+    }());
+    </script>
+
+    <!-- PWA Service Worker (unchanged) -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js').catch(function(){});
+        });
+    }
+    </script>
 </body>
 </html>
