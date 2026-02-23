@@ -1692,3 +1692,72 @@
         min-width: 160px;
     }
 }
+
+/* ────────────────────────────────────────────────────────────
+   MOBILE TABLE SCROLL FIX — paste at the bottom of teacher-ui.css
+──────────────────────────────────────────────────────────── */
+
+/* Universal horizontal scroll for ALL table containers in the portal */
+.tp-section .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent tables from collapsing — force minimum widths */
+.tp-section .responsive-table {
+    min-width: 500px;
+    width: 100%;
+    table-layout: auto;
+}
+
+/* Results table needs more room (CA + Exam + Total columns) */
+#results-table {
+    min-width: 520px;
+}
+
+/* Attendance table */
+#attendance-table {
+    min-width: 560px;
+}
+
+/* Pupils / My Classes table */
+#pupils-in-class-table {
+    min-width: 420px;
+}
+
+/* Traits tables are wide — give them more space */
+#bulk-traits-table {
+    min-width: 900px;
+}
+
+#bulk-skills-table {
+    min-width: 620px;
+}
+
+/* Scroll hint label under wide tables on mobile */
+@media (max-width: 768px) {
+    .tp-section .table-container {
+        position: relative;
+    }
+
+    .tp-section .table-container::after {
+        content: '← scroll →';
+        display: block;
+        text-align: center;
+        font-size: 0.6875rem;
+        color: var(--tp-text-muted);
+        padding: 4px 0 2px;
+    }
+
+    /* Stop table cells from wrapping text awkwardly */
+    .tp-section .responsive-table th,
+    .tp-section .responsive-table td {
+        white-space: nowrap;
+    }
+
+    /* But allow the name column to wrap if needed */
+    .tp-section .responsive-table td:first-child {
+        white-space: normal;
+        min-width: 130px;
+    }
+}
