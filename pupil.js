@@ -795,7 +795,8 @@ async function loadFeeBalance() {
         }
 
         // Arrears warning
-        const arrearsHTML = arrears > 0 ? `
+        const arrearsCleared = totalPaid >= arrears;
+        const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
             <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
                     <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
