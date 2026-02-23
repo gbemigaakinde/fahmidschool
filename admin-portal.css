@@ -3467,3 +3467,344 @@ body > div[style*="position:fixed"][style*="z-index"] {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── FEE STRUCTURE CARDS — append to admin-portal.css ── */
+
+/* Container */
+#fee-structures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+/* Card reset — override the JS inline styles cleanly */
+#fee-structures-list .fee-structure-card,
+#fee-structures-list > div[style*="background: white"],
+#fee-structures-list > div[style*="background:white"] {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  padding: 1.5rem !important;
+  margin-bottom: 0 !important;
+  box-shadow: var(--admin-shadow-xs) !important;
+  transition: box-shadow var(--admin-transition-fast) !important;
+  display: block !important; /* reset any flex/grid from inline */
+}
+
+#fee-structures-list .fee-structure-card:hover,
+#fee-structures-list > div[style*="background: white"]:hover,
+#fee-structures-list > div[style*="background:white"]:hover {
+  box-shadow: var(--admin-shadow-md) !important;
+}
+
+/* Duplicate warning banner */
+#fee-structures-list div[style*="background: #fff3cd"],
+#fee-structures-list div[style*="background:#fff3cd"] {
+  background: var(--admin-warning-soft) !important;
+  border: 1px solid #fde68a !important;
+  border-radius: var(--admin-radius-sm) !important;
+  padding: 0.625rem 0.875rem !important;
+  font-size: 0.8125rem !important;
+  margin-bottom: 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+
+/* Card header row: class name + action buttons */
+#fee-structures-list div[style*="justify-content:space-between"][style*="align-items:center"],
+#fee-structures-list div[style*="justify-content: space-between"][style*="align-items: center"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 0.75rem !important;
+  margin-bottom: 1rem !important;
+  padding-bottom: 1rem !important;
+  border-bottom: 1px solid var(--admin-border-soft) !important;
+}
+
+/* Class name heading inside card */
+#fee-structures-list h3[style*="color:var(--color-primary)"],
+#fee-structures-list h3[style*="color: var(--color-primary)"] {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: var(--admin-primary) !important;
+  margin: 0 0 0.25rem !important;
+}
+
+/* "Applies to ALL Terms & Sessions" label */
+#fee-structures-list p[style*="font-size:var(--text-sm)"] {
+  font-size: 0.75rem !important;
+  color: var(--admin-text-muted) !important;
+  margin: 0 !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Fee line items — two-column grid on desktop */
+#fee-structures-list div[style*="margin-bottom:var(--space-md)"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+  gap: 0.375rem 1.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Individual fee row */
+#fee-structures-list div[style*="display:flex"][style*="justify-content:space-between"][style*="padding:var(--space-xs)"],
+#fee-structures-list div[style*="display: flex"][style*="justify-content: space-between"][style*="padding"] {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0.3125rem 0 !important;
+  border-bottom: 1px solid var(--admin-border-soft) !important;
+  font-size: 0.875rem !important;
+}
+
+#fee-structures-list div[style*="display:flex"][style*="justify-content:space-between"][style*="padding:var(--space-xs)"] span,
+#fee-structures-list div[style*="display: flex"][style*="justify-content: space-between"] span {
+  color: var(--admin-text-secondary) !important;
+  font-size: 0.875rem !important;
+  text-transform: capitalize !important;
+}
+
+#fee-structures-list div[style*="display:flex"][style*="justify-content:space-between"][style*="padding:var(--space-xs)"] strong,
+#fee-structures-list div[style*="display: flex"][style*="justify-content: space-between"] strong {
+  color: var(--admin-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Total row */
+#fee-structures-list div[style*="padding-top:var(--space-md)"][style*="border-top:2px solid"],
+#fee-structures-list div[style*="border-top:2px solid var(--color-primary)"],
+#fee-structures-list div[style*="border-top: 2px solid"] {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding-top: 0.875rem !important;
+  border-top: 2px solid var(--admin-primary) !important;
+  margin-top: 0.5rem !important;
+}
+
+#fee-structures-list div[style*="border-top:2px solid"] strong:first-child,
+#fee-structures-list div[style*="border-top: 2px solid"] strong:first-child {
+  font-size: 0.9375rem !important;
+  color: var(--admin-text-primary) !important;
+}
+
+#fee-structures-list div[style*="border-top:2px solid"] strong:last-child,
+#fee-structures-list div[style*="border-top: 2px solid"] strong:last-child {
+  font-size: 1.25rem !important;
+  color: var(--admin-primary) !important;
+  font-weight: 800 !important;
+}
+
+/* Permanent info banner at card bottom */
+#fee-structures-list div[style*="background:#e3f2fd"],
+#fee-structures-list div[style*="background: #e3f2fd"] {
+  background: #eff6ff !important;
+  border-left: 3px solid var(--admin-primary) !important;
+  border-radius: 0 var(--admin-radius-sm) var(--admin-radius-sm) 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem !important;
+  color: #1e40af !important;
+  margin-top: 0.875rem !important;
+}
+
+/* Action buttons inside card header */
+#fee-structures-list .btn-small,
+#fee-structures-list button.btn-small {
+  padding: 0.3125rem 0.75rem !important;
+  font-size: 0.75rem !important;
+  border-radius: var(--admin-radius-sm) !important;
+}
+
+/* Responsive: single column fee items on mobile */
+@media (max-width: 640px) {
+  #fee-structures-list div[style*="margin-bottom:var(--space-md)"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── SCHOOL CALENDAR — append to admin-portal.css ── */
+
+/* Session/term "will be saved for" info bar */
+#school-calendar div[style*="background: #f8fafc"][style*="display: flex"],
+#school-calendar div[style*="background:#f8fafc"][style*="display: flex"] {
+  background: var(--admin-surface-2) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-md) !important;
+  padding: 0.625rem 1rem !important;
+  font-size: 0.8125rem !important;
+  color: var(--admin-text-secondary) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 1rem !important;
+}
+
+/* The "📌 Will be saved for:" label */
+#school-calendar div[style*="background: #f8fafc"] span:first-child,
+#school-calendar div[style*="background:#f8fafc"] span:first-child {
+  color: var(--admin-text-muted) !important;
+  font-weight: 500 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Session and term strong values */
+#cal-session-display,
+#cal-term-display {
+  font-weight: 700 !important;
+  color: var(--admin-primary) !important;
+  background: var(--admin-primary-soft) !important;
+  padding: 0.125rem 0.5rem !important;
+  border-radius: var(--admin-radius-pill) !important;
+  font-size: 0.8125rem !important;
+}
+
+/* "(matches current school settings)" note — visually de-emphasised */
+#school-calendar div[style*="margin-left:auto"],
+#school-calendar span[style*="margin-left:auto"] {
+  margin-left: auto !important;
+  font-size: 0.6875rem !important;
+  color: var(--admin-text-muted) !important;
+  font-style: italic !important;
+}
+
+/* Empty state — when no calendar entries exist */
+#cal-table-body tr td[colspan="6"] {
+  padding: 3rem 1rem !important;
+  text-align: center !important;
+}
+
+/* Style the empty state content inside the cell */
+#cal-table-body tr td[colspan="6"] > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.625rem !important;
+  padding: 1rem !important;
+}
+
+#cal-table-body tr td[colspan="6"] p[style*="font-size:var(--text-lg)"],
+#cal-table-body tr td[colspan="6"] p[style*="font-size: var(--text-lg)"] {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: var(--admin-text-secondary) !important;
+  margin: 0 !important;
+}
+
+#cal-table-body tr td[colspan="6"] p[style*="font-size:var(--text-sm)"],
+#cal-table-body tr td[colspan="6"] p[style*="font-size: var(--text-sm)"] {
+  font-size: 0.8125rem !important;
+  color: var(--admin-text-muted) !important;
+  max-width: 360px !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+/* Empty state emoji/icon treatment */
+#cal-table-body tr td[colspan="6"] p[style*="font-size:2rem"],
+#cal-table-body tr td[colspan="6"] p[style*="font-size: 2rem"] {
+  font-size: 2.5rem !important;
+  line-height: 1 !important;
+  margin: 0 0 0.25rem !important;
+  opacity: 0.5 !important;
+}
+
+/* Summary badges container */
+#cal-summary-badges {
+  display: flex !important;
+  gap: 0.5rem !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  min-height: 2rem !important; /* prevents layout jump when empty */
+}
+
+/* Filter bar alignment */
+#school-calendar div[style*="display: flex"][style*="gap:var(--space-md)"],
+#school-calendar div[style*="display:flex"][style*="gap:var(--space-md)"] {
+  display: flex !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  background: var(--admin-surface-2) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-md) !important;
+}
+
+/* Entry count label */
+#cal-entry-count {
+  margin-left: auto !important;
+  font-size: 0.8125rem !important;
+  color: var(--admin-text-muted) !important;
+  font-weight: 500 !important;
+}
+
+/* Calendar section info banner */
+#school-calendar div[style*="background: #eff6ff"],
+#school-calendar div[style*="background:#eff6ff"] {
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-left: 4px solid #3b82f6 !important;
+  border-radius: var(--admin-radius-md) !important;
+  padding: 0.875rem 1rem !important;
+  font-size: 0.875rem !important;
+  color: #1e40af !important;
+  margin-bottom: 1.5rem !important;
+  line-height: 1.6 !important;
+}
+
+/* ── DASHBOARD STAT COUNTS — append to admin-portal.css ── */
+
+/* Nuclear reset on the four count elements */
+#teacher-count,
+#pupil-count,
+#class-count,
+#announce-count {
+  /* Clear every possible background source */
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+
+  /* Ensure white text on the dark dashboard card */
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+
+  /* Typography */
+  font-size: 2.5rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.04em !important;
+
+  /* Kill any chip/badge look */
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  display: block !important;
+  width: auto !important;
+}
+
+/* Ensure the stat-card-body holding the count also doesn't interfere */
+#dashboard .stat-card .stat-card-body {
+  background: none !important;
+}
+
+/* stat-card-label colour fix (the small uppercase heading above the number) */
+#dashboard .stat-card .stat-card-label {
+  color: rgba(255, 255, 255, 0.55) !important;
+  background: none !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  margin-bottom: 0.375rem !important;
+}
