@@ -2315,3 +2315,55 @@ table thead {
 #lesson-notes[hidden] {
   display: none !important;
 }
+
+/* ── Finance Stat Cards (replaces inline styles) ── */
+.finance-stats .stat-card {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  padding: 1.25rem !important;
+  color: var(--admin-text-primary);
+  /* Clear the dark dashboard styles */
+  backdrop-filter: none;
+}
+
+.finance-stats .stat-card:hover {
+  background: var(--admin-surface) !important;
+  border-color: #cbd5e1 !important;
+}
+
+.finance-stats .stat-card .stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--admin-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.finance-stats .stat-card .stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--admin-text-primary) !important;
+  -webkit-text-fill-color: var(--admin-text-primary) !important;
+  background: none !important;
+  line-height: 1.1;
+}
+
+.finance-stats .stat-card .stat-sublabel {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  margin-top: 0.25rem;
+}
+
+.finance-stats .stat-card .stat-card-emoji {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card--primary  { border-left: 3px solid var(--admin-primary) !important; }
+.stat-card--success  { border-left: 3px solid var(--admin-success) !important; }
+.stat-card--warning  { border-left: 3px solid var(--admin-warning) !important; }
+.stat-card--danger   { border-left: 3px solid var(--admin-danger)  !important; }
+.stat-card--purple   { border-left: 3px solid var(--admin-purple)  !important; }
+.stat-card--teal     { border-left: 3px solid var(--admin-teal)    !important; }
