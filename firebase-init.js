@@ -55,117 +55,6 @@ try {
 }
 
 // ============================================
-// SHARED HELPER FUNCTIONS
-// ============================================
-
-/**
- * Get user role from Firestore
- */
-window.getUserRole = async function(uid) {
-  try {
-    const doc = await window.db.collection('users').doc(uid).get();
-    return doc.exists ? (doc.data().role || 'pupil') : null;
-  } catch (error) {
-    console.error('Error getting user role:', error);
-    return null;
-  }
-};
-
-/**
- * Check if user has required role
- */
-window.checkRole = function(requiredRole) {
-  return new Promise((resolve, reject) => {
-    window.auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.showToast?.('Please log in to continue', 'warning');
-        setTimeout(() => window.location.href = 'login.html', 1500);
-        reject(new Error('Not authenticated'));
-        return;
-      }
-
-      try {
-        const userDoc = await window.db.collection('users').doc(user.uid).get();
-        
-        if (!userDoc.exists) {
-          window.showToast?.('User profile not found', 'danger');
-          await window.auth.signOut();
-          setTimeout(() => window.location.href = 'login.html', 1500);
-          reject(new Error('User profile not found'));
-          return;
-        }
-
-        const userData = userDoc.data();
-        
-        if (userData.role !== requiredRole) {
-          window.showToast?.('Access denied. Insufficient permissions.', 'danger');
-          await window.auth.signOut();
-          setTimeout(() => window.location.href = 'login.html', 2000);
-          reject(new Error('Insufficient permissions'));
-          return;
-        }
-
-        resolve({
-          uid: user.uid,
-          email: user.email,
-          role: userData.role
-        });
-      } catch (error) {
-        console.error('Error checking role:', error);
-        window.handleError(error, 'Error verifying permissions');
-        reject(error);
-      }
-    });
-  });
-};
-
-/**
- * Login user
- */
-window.login = async function(email, password) {
-  try {
-    await window.auth.signInWithEmailAndPassword(email, password);
-    window.showToast?.('Login successful!', 'success');
-    setTimeout(() => window.location.href = 'portal.html', 800);
-  } catch (error) {
-    window.handleError(error, 'Login failed');
-    throw error;
-  }
-};
-
-/**
- * Logout user
- */
-window.logout = async function() {
-  try {
-    await window.auth.signOut();
-    window.showToast?.('Logged out successfully', 'success');
-    setTimeout(() => window.location.href = 'login.html', 800);
-  } catch (error) {
-    window.handleError(error, 'Logout failed');
-  }
-};
-
-/**
- * Get all teachers (for admin)
- */
-window.getAllTeachers = async function() {
-  try {
-    const snapshot = await window.db.collection('teachers').get();
-    const teachers = [];
-    snapshot.forEach(doc => {
-      teachers.push({ uid: doc.id, ...doc.data() });
-    });
-    return teachers.sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
-    console.error('Error fetching teachers:', error);
-    return [];
-  }
-};
-
-console.log('✓ Firebase initialized (shared v3.1.0 - FIXED)');
-
-// ============================================
 // SESSION TIMEOUT CONFIGURATION
 // ============================================
 
@@ -390,6 +279,117 @@ window.getCurrentSettings = async function() {
     return defaultSettings;
   }
 };
+
+// ============================================
+// SHARED HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get user role from Firestore
+ */
+window.getUserRole = async function(uid) {
+  try {
+    const doc = await window.db.collection('users').doc(uid).get();
+    return doc.exists ? (doc.data().role || 'pupil') : null;
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return null;
+  }
+};
+
+/**
+ * Check if user has required role
+ */
+window.checkRole = function(requiredRole) {
+  return new Promise((resolve, reject) => {
+    window.auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.showToast?.('Please log in to continue', 'warning');
+        setTimeout(() => window.location.href = 'login.html', 1500);
+        reject(new Error('Not authenticated'));
+        return;
+      }
+
+      try {
+        const userDoc = await window.db.collection('users').doc(user.uid).get();
+        
+        if (!userDoc.exists) {
+          window.showToast?.('User profile not found', 'danger');
+          await window.auth.signOut();
+          setTimeout(() => window.location.href = 'login.html', 1500);
+          reject(new Error('User profile not found'));
+          return;
+        }
+
+        const userData = userDoc.data();
+        
+        if (userData.role !== requiredRole) {
+          window.showToast?.('Access denied. Insufficient permissions.', 'danger');
+          await window.auth.signOut();
+          setTimeout(() => window.location.href = 'login.html', 2000);
+          reject(new Error('Insufficient permissions'));
+          return;
+        }
+
+        resolve({
+          uid: user.uid,
+          email: user.email,
+          role: userData.role
+        });
+      } catch (error) {
+        console.error('Error checking role:', error);
+        window.handleError(error, 'Error verifying permissions');
+        reject(error);
+      }
+    });
+  });
+};
+
+/**
+ * Login user
+ */
+window.login = async function(email, password) {
+  try {
+    await window.auth.signInWithEmailAndPassword(email, password);
+    window.showToast?.('Login successful!', 'success');
+    setTimeout(() => window.location.href = 'portal.html', 800);
+  } catch (error) {
+    window.handleError(error, 'Login failed');
+    throw error;
+  }
+};
+
+/**
+ * Logout user
+ */
+window.logout = async function() {
+  try {
+    await window.auth.signOut();
+    window.showToast?.('Logged out successfully', 'success');
+    setTimeout(() => window.location.href = 'login.html', 800);
+  } catch (error) {
+    window.handleError(error, 'Logout failed');
+  }
+};
+
+/**
+ * Get all teachers (for admin)
+ */
+window.getAllTeachers = async function() {
+  try {
+    const snapshot = await window.db.collection('teachers').get();
+    const teachers = [];
+    snapshot.forEach(doc => {
+      teachers.push({ uid: doc.id, ...doc.data() });
+    });
+    return teachers.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    return [];
+  }
+};
+
+console.log('✓ Firebase initialized (shared v3.1.0 - FIXED)');
 
 /**
  * Network retry helper with exponential backoff
