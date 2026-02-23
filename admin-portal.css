@@ -3090,3 +3090,647 @@ table thead {
 .text-success { color: var(--admin-success) !important; }
 .text-muted { color: var(--admin-text-muted) !important; }
 .text-strike { text-decoration: line-through; color: var(--admin-text-muted); }
+
+/* ============================================================
+   FIXES PATCH — Append to the very bottom of admin-portal.css
+   Addresses all reported issues in one consolidated block
+   ============================================================ */
+
+/* ============================================================
+   FIX 1: LESSON NOTES — hidden attribute vs style display
+   JS sets style.display='block' but [hidden] { display:none !important }
+   from browser UA stylesheet wins. Must remove hidden attr via JS,
+   but we also patch CSS to ensure it can be overridden.
+   ============================================================ */
+#lesson-notes {
+  /* Remove hidden from HTML and use style="display:none" instead.
+     This CSS ensures the section is never permanently invisible. */
+  display: none;
+}
+
+#lesson-notes[style*="block"],
+#lesson-notes[style*="flex"] {
+  display: block !important;
+}
+
+/* ============================================================
+   FIX 2: SEARCH BAR — icon covers placeholder text
+   The ::before pseudo-element search icon is 16px wide at 0.875rem
+   left offset, but input padding-left is only 0.875rem (14px).
+   Needs padding-left large enough to clear the icon.
+   ============================================================ */
+.search-bar input {
+  padding-left: 2.75rem !important; /* 44px — clears 16px icon + 14px left + breathing room */
+}
+
+/* The ::before icon sits at left:0.875rem (14px) with width:16px.
+   So text starts at 14+16+8 = 38px minimum. 2.75rem = 44px ✓ */
+
+/* ============================================================
+   FIX 3: DASHBOARD STAT CARD COUNTS — remove light background
+   stat-number elements are getting a background from somewhere.
+   The issue is .stat-card has backdrop-filter + background:rgba
+   but the number itself should be plain white text, no bg.
+   ============================================================ */
+#dashboard .stat-card {
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(10px);
+}
+
+#dashboard .stat-number,
+#dashboard [id$="-count"] {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  font-size: 2.5rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.04em !important;
+  display: block !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   FIX 4: DUPLICATE / UGLY LOADING STATES
+   The admin-portal.css injects a ::after spinner on .table-loading
+   AND the JS injects its own spinner HTML. This causes doubles.
+   We suppress the CSS ::after spinner — JS-rendered ones are kept.
+   For section-level .loading-container, we style it properly.
+   ============================================================ */
+
+/* Kill the CSS-injected spinner — JS already renders its own */
+.admin-main .table-loading::after {
+  display: none !important;
+}
+
+/* Give .table-loading a clean look that matches the design */
+.admin-main .table-loading {
+  padding: 3.5rem 1rem !important;
+  text-align: center !important;
+  color: var(--admin-text-muted) !important;
+  font-size: 0.875rem !important;
+  font-style: italic !important;
+}
+
+/* Section-level loading container — clean centered spinner */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
+
+.loading-container .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--admin-border);
+  border-top-color: var(--admin-primary);
+  border-radius: 50%;
+  animation: admin-spin 0.8s linear infinite;
+  margin: 0;
+}
+
+.loading-container p {
+  margin: 0;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
+
+/* .section-loading injected by loadSectionData() */
+.section-loading {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+}
+
+/* ============================================================
+   FIX 5: FEE STRUCTURES LIST — disorganized cards
+   loadFeeStructures() renders .fee-structure-card divs.
+   They're unstyled beyond the base card. Fix the inner layout.
+   ============================================================ */
+#fee-structures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.fee-structure-card {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  padding: 1.25rem 1.5rem !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 1.5rem !important;
+  flex-wrap: wrap !important;
+  transition: box-shadow var(--admin-transition-fast) !important;
+  margin-bottom: 0 !important; /* gap handles spacing */
+}
+
+.fee-structure-card:hover {
+  box-shadow: var(--admin-shadow-sm) !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Class name heading inside fee card */
+.fee-structure-card h3,
+.fee-structure-card h4 {
+  margin: 0 0 0.75rem !important;
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+  color: var(--admin-text-primary) !important;
+  border-bottom: 1px solid var(--admin-border-soft) !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Fee line items inside card */
+.fee-structure-card .fee-item,
+.fee-structure-card p,
+.fee-structure-card span {
+  font-size: 0.875rem !important;
+  color: var(--admin-text-secondary) !important;
+  line-height: 1.6 !important;
+}
+
+/* Fee total row */
+.fee-structure-card .fee-total,
+.fee-structure-card strong {
+  font-weight: 700 !important;
+  color: var(--admin-text-primary) !important;
+}
+
+/* Fee breakdown grid — if JS renders items as a list/table */
+.fee-structure-card table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 0.875rem !important;
+}
+
+.fee-structure-card table td {
+  padding: 0.25rem 0 !important;
+  border: none !important;
+  color: var(--admin-text-secondary) !important;
+  vertical-align: top !important;
+}
+
+.fee-structure-card table td:last-child {
+  text-align: right !important;
+  font-weight: 600 !important;
+  color: var(--admin-text-primary) !important;
+}
+
+/* Duplicate warning inside fee cards */
+.fee-structure-card .duplicate-warning,
+.fee-structure-card [class*="warning"],
+.fee-structure-card [style*="orange"],
+.fee-structure-card [style*="red"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  padding: 0.25rem 0.625rem !important;
+  background: var(--admin-warning-soft) !important;
+  color: var(--admin-warning) !important;
+  border-radius: var(--admin-radius-pill) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Action buttons inside fee cards */
+.fee-structure-card .btn,
+.fee-structure-card button {
+  flex-shrink: 0 !important;
+  align-self: flex-start !important;
+}
+
+@media (max-width: 640px) {
+  .fee-structure-card {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+
+  .fee-structure-card .btn,
+  .fee-structure-card button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ============================================================
+   FIX 6: RECORD PAYMENT — pupil payment status card
+   loadPupilPaymentStatus() renders entirely inline-styled HTML.
+   We target the container and override all inline styles cleanly.
+   ============================================================ */
+#payment-status-display {
+  margin-bottom: 1.5rem;
+}
+
+/* The status card JS renders with inline styles — we override the container */
+#payment-status-display > div {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  padding: 1.25rem !important;
+  box-shadow: var(--admin-shadow-sm) !important;
+  /* Kill the inline grid/flex that makes it too wide */
+  display: block !important;
+  overflow: hidden !important;
+}
+
+/* Payment status header row */
+#payment-status-display > div > div:first-child {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.75rem !important;
+  border-bottom: 1px solid var(--admin-border-soft) !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem !important;
+}
+
+/* Stats grid inside payment status card */
+#payment-status-display [style*="grid"],
+#payment-status-display [style*="display: grid"],
+#payment-status-display [style*="display:grid"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  gap: 0.875rem !important;
+  margin-top: 0.875rem !important;
+}
+
+/* Individual stat items inside payment card */
+#payment-status-display [style*="border:"],
+#payment-status-display [style*="border-radius"],
+#payment-status-display [style*="padding"] {
+  border-radius: var(--admin-radius-md) !important;
+  padding: 0.875rem !important;
+  border: 1px solid var(--admin-border-soft) !important;
+}
+
+/* Override the hardcoded inline background colors on stat items */
+#payment-status-display [style*="background:#4CAF50"],
+#payment-status-display [style*="background: #4CAF50"] {
+  background: var(--admin-success-soft) !important;
+  border-color: #a7f3d0 !important;
+}
+
+#payment-status-display [style*="background:#ff9800"],
+#payment-status-display [style*="background: #ff9800"],
+#payment-status-display [style*="background:#FFF3E0"],
+#payment-status-display [style*="background: #FFF3E0"] {
+  background: var(--admin-warning-soft) !important;
+  border-color: #fde68a !important;
+}
+
+#payment-status-display [style*="background:#f44336"],
+#payment-status-display [style*="background: #f44336"],
+#payment-status-display [style*="background:#FFEBEE"],
+#payment-status-display [style*="background: #FFEBEE"] {
+  background: var(--admin-danger-soft) !important;
+  border-color: #fecaca !important;
+}
+
+#payment-status-display [style*="background:#e3f2fd"],
+#payment-status-display [style*="background: #e3f2fd"],
+#payment-status-display [style*="background:#E3F2FD"],
+#payment-status-display [style*="background: #E3F2FD"] {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+/* Status badge inside payment card — override inline */
+#payment-status-display [style*="background:#4CAF50"] span,
+#payment-status-display [style*="border-radius:50px"],
+#payment-status-display [style*="border-radius: 50px"] {
+  border-radius: var(--admin-radius-pill) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  padding: 0.25rem 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Amount labels inside stat items */
+#payment-status-display [style*="font-size:0.75rem"],
+#payment-status-display [style*="font-size: 0.75rem"] {
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: var(--admin-text-muted) !important;
+}
+
+/* Amount values inside stat items */
+#payment-status-display [style*="font-size:1.5rem"],
+#payment-status-display [style*="font-size: 1.5rem"],
+#payment-status-display [style*="font-weight:bold"],
+#payment-status-display [style*="font-weight: bold"] {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  margin: 0.25rem 0 !important;
+}
+
+@media (max-width: 640px) {
+  #payment-status-display [style*="grid"],
+  #payment-status-display [style*="display: grid"],
+  #payment-status-display [style*="display:grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.625rem !important;
+  }
+
+  #payment-status-display [style*="font-size:1.5rem"],
+  #payment-status-display [style*="font-size: 1.5rem"] {
+    font-size: 1.125rem !important;
+  }
+}
+
+@media (max-width: 380px) {
+  #payment-status-display [style*="grid"],
+  #payment-status-display [style*="display: grid"],
+  #payment-status-display [style*="display:grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ============================================================
+   FIX 7: SCHOOL CALENDAR — disorganized session/term display
+   The calendar JS populates session and term text inline.
+   We style the calendar container and its known sub-components.
+   ============================================================ */
+#school-calendar {
+  padding: 2rem !important;
+}
+
+/* Calendar header/title area */
+#school-calendar h1,
+#school-calendar h2 {
+  text-align: left !important;
+  color: var(--admin-text-primary) !important;
+}
+
+/* Session/term display row — often rendered as a plain div with text */
+#school-calendar .session-info-bar,
+#school-calendar [class*="session"],
+#school-calendar [class*="term-info"],
+#school-calendar [id*="calendar-session"],
+#school-calendar [id*="calendar-term"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.75rem 1rem !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: var(--admin-radius-md) !important;
+  font-size: 0.875rem !important;
+  color: #1e40af !important;
+  margin-bottom: 1.25rem !important;
+  flex-wrap: wrap !important;
+}
+
+/* "will be saved for…" and "(matches current school settings)" — these look fine per user,
+   so we only need to fix the session/term values that are populated by JS */
+#school-calendar [class*="calendar-settings"],
+#school-calendar [class*="settings-match"],
+#school-calendar .settings-info {
+  font-size: 0.8125rem !important;
+  color: var(--admin-text-muted) !important;
+  font-style: italic !important;
+  margin-top: 0.375rem !important;
+}
+
+/* The dynamically rendered session/term text values */
+#school-calendar strong,
+#school-calendar b {
+  font-weight: 700 !important;
+  color: var(--admin-text-primary) !important;
+}
+
+/* Calendar section card containers */
+#school-calendar > div,
+#school-calendar section {
+  margin-bottom: 1.5rem !important;
+}
+
+/* Holiday list — empty state */
+#school-calendar .empty-state,
+#school-calendar [class*="no-holiday"],
+#school-calendar [class*="empty"] {
+  text-align: center !important;
+  padding: 2.5rem 1.5rem !important;
+  color: var(--admin-text-muted) !important;
+  background: var(--admin-surface-2) !important;
+  border: 2px dashed var(--admin-border) !important;
+  border-radius: var(--admin-radius-lg) !important;
+  font-size: 0.875rem !important;
+  font-style: italic !important;
+}
+
+/* Calendar form fields */
+#school-calendar input,
+#school-calendar select,
+#school-calendar textarea {
+  border-radius: var(--admin-radius-md) !important;
+  border: 1.5px solid var(--admin-border) !important;
+  font-family: 'DM Sans', inherit !important;
+  font-size: 0.875rem !important;
+  padding: 0.5625rem 0.875rem !important;
+  width: 100% !important;
+  background: var(--admin-surface) !important;
+  color: var(--admin-text-primary) !important;
+}
+
+#school-calendar input:focus,
+#school-calendar select:focus,
+#school-calendar textarea:focus {
+  outline: none !important;
+  border-color: var(--admin-primary) !important;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12) !important;
+}
+
+/* Calendar table (holidays list) */
+#school-calendar table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+#school-calendar thead {
+  background: var(--admin-surface-2) !important;
+}
+
+#school-calendar th {
+  padding: 0.75rem 1rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  color: var(--admin-text-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--admin-border) !important;
+}
+
+#school-calendar td {
+  padding: 0.875rem 1rem !important;
+  font-size: 0.875rem !important;
+  color: var(--admin-text-secondary) !important;
+  border-bottom: 1px solid var(--admin-border-soft) !important;
+  vertical-align: middle !important;
+}
+
+#school-calendar tbody tr:hover {
+  background: #f8faff !important;
+}
+
+/* Calendar inline-rendered session display — the problematic part */
+/* JS often renders something like: <div>Session: <span>2024/2025</span></div> */
+#school-calendar [style*="display:flex"],
+#school-calendar [style*="display: flex"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+}
+
+/* Calendar buttons */
+#school-calendar button,
+#school-calendar .btn {
+  border-radius: var(--admin-radius-md) !important;
+  font-family: 'DM Sans', inherit !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  padding: 0.5625rem 1.25rem !important;
+  cursor: pointer !important;
+  transition: all var(--admin-transition-fast) !important;
+}
+
+/* ============================================================
+   FIX 8: LESSON NOTES — JS fix (inline script supplement)
+   The HTML uses `hidden` attribute. We cannot fix that in CSS alone
+   because [hidden]{display:none!important} is browser UA.
+   This must be fixed in HTML — change to style="display:none;"
+   But as a CSS backup:
+   ============================================================ */
+section#lesson-notes[hidden] {
+  display: none !important;
+}
+
+/* When JS sets style.display, the inline style should win IF
+   we also force-remove the hidden attribute via the script below */
+
+/* ============================================================
+   FIX 9: AUDIT LOG SEARCH — preserve its working state
+   User says audit log search looks perfect — don't change it.
+   Only apply the search icon padding fix to OTHER search bars.
+   ============================================================ */
+#audit-log-container .search-bar input {
+  /* Keep audit log search exactly as is — only override if it also got broken */
+  padding-left: 2.75rem !important;
+}
+
+/* ============================================================
+   FIX 10: GENERAL INLINE-STYLE OVERRIDE HELPERS
+   For JS-rendered content that uses inline styles extensively,
+   provide clean base styles that cascade correctly.
+   ============================================================ */
+
+/* Payment history cards */
+#payment-history-list > div {
+  background: var(--admin-surface) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-md) !important;
+  padding: 1rem 1.25rem !important;
+  margin-bottom: 0.625rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  flex-wrap: wrap !important;
+  transition: box-shadow var(--admin-transition-fast) !important;
+}
+
+#payment-history-list > div:hover {
+  box-shadow: var(--admin-shadow-xs) !important;
+}
+
+#payment-history-list:empty::after {
+  content: 'No payment history yet.';
+  display: block;
+  text-align: center;
+  padding: 2rem;
+  color: var(--admin-text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Audit log modal (fully inline-styled) — override to match design */
+#audit-log-container .modal,
+body > div[style*="position:fixed"][style*="z-index"] {
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ============================================================
+   FIX 11: SKELETON LOADING STATES (announcements)
+   .skeleton-container and .skeleton are injected by JS.
+   Give them a proper shimmer animation.
+   ============================================================ */
+.skeleton-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--admin-border) 25%,
+    var(--admin-surface-2) 50%,
+    var(--admin-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--admin-radius-md);
+  height: 1rem;
+}
+
+.skeleton.skeleton-title {
+  height: 1.25rem;
+  width: 60%;
+}
+
+.skeleton.skeleton-text {
+  height: 0.875rem;
+  width: 100%;
+}
+
+.skeleton.skeleton-text:last-child {
+  width: 75%;
+}
+
+.skeleton.skeleton-card {
+  height: 80px;
+  width: 100%;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
