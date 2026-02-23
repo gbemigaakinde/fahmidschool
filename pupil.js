@@ -963,6 +963,8 @@ async function loadAllPaymentHistory(pupilId) {
                         transition: all 0.2s ease; margin-bottom: var(--space-sm);
                     `;
 
+                  const balanceAfter = typeof txn.balanceAfter === 'number' ? txn.balanceAfter : null;
+
                     itemDiv.innerHTML = `
                         <div style="flex: 1;">
                             <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
@@ -991,6 +993,22 @@ async function loadAllPaymentHistory(pupilId) {
                                     ${arrearsPayment > 0 ? `💰 Arrears: ₦${arrearsPayment.toLocaleString()}` : ''}
                                     ${currentTermPayment > 0 ? `📌 Current Term: ₦${currentTermPayment.toLocaleString()}` : ''}
                                 </div>
+                                ${balanceAfter !== null ? `
+                                <div style="
+                                    display: inline-flex; align-items: center; gap: var(--space-xs);
+                                    margin-top: var(--space-xs);
+                                    padding: 3px 10px;
+                                    border-radius: 999px;
+                                    font-size: var(--text-xs);
+                                    font-weight: 700;
+                                    background: ${balanceAfter <= 0 ? '#f0fdf4' : '#fffbeb'};
+                                    color: ${balanceAfter <= 0 ? '#16a34a' : '#b45309'};
+                                    border: 1px solid ${balanceAfter <= 0 ? '#bbf7d0' : '#fde68a'};
+                                ">
+                                    <i data-lucide="${balanceAfter <= 0 ? 'check-circle' : 'alert-circle'}" style="width: 12px; height: 12px;"></i>
+                                    Balance after: ₦${Math.max(0, balanceAfter).toLocaleString()}
+                                    ${balanceAfter <= 0 ? ' · Fully paid' : ''}
+                                </div>` : ''}
                             </div>
                         </div>
                         <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')">
