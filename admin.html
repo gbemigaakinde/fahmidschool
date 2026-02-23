@@ -454,43 +454,88 @@
              IDs: teacher-count, pupil-count, class-count, announce-count — all preserved.
         ───────────────────────────────────────── -->
         <div id="dashboard" class="admin-card">
-            <div style="position:relative; z-index:1;">
-                <div style="margin-bottom:1.75rem;">
-                    <h1>Admin Dashboard</h1>
-                    <p class="section-description">Welcome back — here's your school overview</p>
-                </div>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-card-icon">
-                            <i data-lucide="user-check" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
-                        </div>
-                        <h3>Total Teachers</h3>
-                        <div class="stat-number" id="teacher-count">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon">
-                            <i data-lucide="users-2" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
-                        </div>
-                        <h3>Total Pupils</h3>
-                        <div class="stat-number" id="pupil-count">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon">
-                            <i data-lucide="school" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
-                        </div>
-                        <h3>Total Classes</h3>
-                        <div class="stat-number" id="class-count">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon">
-                            <i data-lucide="megaphone" style="width:18px;height:18px;color:rgba(255,255,255,.7)"></i>
-                        </div>
-                        <h3>Announcements</h3>
-                        <div class="stat-number" id="announce-count">0</div>
-                    </div>
-                </div>
-            </div>
+  <div class="dashboard-inner">
+
+    <!-- Header row: title + live date/time -->
+    <div class="dashboard-header">
+      <div class="dashboard-title-block">
+        <h1>Admin Dashboard</h1>
+        <p class="section-description" style="margin-bottom:0;">
+          Welcome back — here's your school overview
+        </p>
+      </div>
+      <div class="dashboard-meta">
+        <div class="dashboard-date" id="dashboard-live-date">
+          <i data-lucide="calendar" style="width:14px;height:14px;opacity:.6;"></i>
+          <span id="dashboard-date-text">Loading…</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Stat cards grid -->
+    <div class="stats-grid">
+
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <i data-lucide="user-check" style="width:18px;height:18px;color:rgba(255,255,255,.75)"></i>
+        </div>
+        <div class="stat-card-body">
+          <div class="stat-card-label">Total Teachers</div>
+          <div class="stat-number" id="teacher-count">—</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <i data-lucide="users-2" style="width:18px;height:18px;color:rgba(255,255,255,.75)"></i>
+        </div>
+        <div class="stat-card-body">
+          <div class="stat-card-label">Total Pupils</div>
+          <div class="stat-number" id="pupil-count">—</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <i data-lucide="school" style="width:18px;height:18px;color:rgba(255,255,255,.75)"></i>
+        </div>
+        <div class="stat-card-body">
+          <div class="stat-card-label">Total Classes</div>
+          <div class="stat-number" id="class-count">—</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <i data-lucide="megaphone" style="width:18px;height:18px;color:rgba(255,255,255,.75)"></i>
+        </div>
+        <div class="stat-card-body">
+          <div class="stat-card-label">Announcements</div>
+          <div class="stat-number" id="announce-count">—</div>
+        </div>
+      </div>
+
+    </div><!-- /stats-grid -->
+
+    <!-- Quick-action shortcuts -->
+    <div class="dashboard-quick-actions">
+      <span class="quick-actions-label">Quick Actions</span>
+      <button class="quick-action-btn" onclick="showSection('record-payment')">
+        <i data-lucide="credit-card" style="width:15px;height:15px;"></i> Record Payment
+      </button>
+      <button class="quick-action-btn" onclick="showSection('result-approvals')">
+        <i data-lucide="clipboard-check" style="width:15px;height:15px;"></i> Approve Results
+      </button>
+      <button class="quick-action-btn" onclick="showSection('pupils')">
+        <i data-lucide="user-plus" style="width:15px;height:15px;"></i> Add Pupil
+      </button>
+      <button class="quick-action-btn" onclick="showSection('outstanding-fees')">
+        <i data-lucide="alert-circle" style="width:15px;height:15px;"></i> Outstanding Fees
+      </button>
+    </div>
+
+  </div>
+</div>
 
         <!-- ─────────────────────────────────────────
              TEACHERS
