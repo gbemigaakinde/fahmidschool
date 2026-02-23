@@ -2047,5 +2047,42 @@ updateDashboardDate();
         });
     }
     </script>
+    <script>
+    /* ── INPUT BLUR ZOOM RESET — add to the bottom of admin.html 
+   inside the existing inline <script> block, or as a separate
+
+(function () {
+  'use strict';
+
+  var FOCUSABLE = 'input, select, textarea';
+
+  function resetZoom() {
+    var viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+
+    var original = viewport.getAttribute('content');
+
+    /* Step 1 — set maximum-scale=1 to snap viewport back */
+    viewport.setAttribute(
+      'content',
+      'width=device-width, initial-scale=1, maximum-scale=1'
+    );
+
+    /* Step 2 — restore original content on next frame so pinch-zoom
+       still works after the reset */
+    requestAnimationFrame(function () {
+      viewport.setAttribute('content', original);
+    });
+  }
+
+  /* Attach to every current and future focusable element via delegation */
+  document.addEventListener('blur', function (e) {
+    if (e.target && e.target.matches(FOCUSABLE)) {
+      resetZoom();
+    }
+  }, true); /* useCapture = true so it fires even if child stops propagation */
+
+}());
+</script>
 </body>
 </html>
