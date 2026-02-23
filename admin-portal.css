@@ -1993,11 +1993,6 @@ table thead {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-
-  /* Only animate newly-shown sections */
-  .admin-card[style*="block"] {
-    animation: card-fade-in var(--admin-transition-medium) ease both;
-  }
 }
 
 /* ============================================================
