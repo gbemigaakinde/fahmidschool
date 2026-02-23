@@ -4492,9 +4492,9 @@ body > div[style*="position:fixed"][style*="z-index"] {
   }
 }
 
-/* ── DATE INPUT OVERFLOW — CORRECT FIX — append to admin-portal.css ── */
+/* ── DATE INPUT OVERFLOW — COMPLETE FIX — append to admin-portal.css ── */
 
-/* Fix the grid cell constraint */
+/* Fix the grid cell constraint — use overflow:visible so right border isn't clipped */
 .admin-main .form-row > .form-group,
 .admin-main .form-row-2 > .form-group,
 .admin-main .form-row-3 > .form-group,
@@ -4502,7 +4502,7 @@ body > div[style*="position:fixed"][style*="z-index"] {
 .admin-main .form-row-2 > div,
 .admin-main .form-row-3 > div {
   min-width: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* Also fix direct grid children that aren't .form-group */
@@ -4510,6 +4510,7 @@ body > div[style*="position:fixed"][style*="z-index"] {
 .admin-main .form-row-2,
 .admin-main .form-row-3 {
   min-width: 0 !important;
+  overflow: visible !important;
 }
 
 /* Ensure the input itself cannot exceed its cell */
@@ -4518,12 +4519,11 @@ body > div[style*="position:fixed"][style*="z-index"] {
   max-width: 100% !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
-  /* Prevent the native date picker icon from adding to the width */
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
 }
 
-/* Specific fix for date inputs that sit directly in a flex/grid 
+/* Specific fix for date inputs that sit directly in a flex/grid
    without a .form-group wrapper */
 .admin-main .form-section input[type="date"],
 .admin-main .admin-card input[type="date"] {
@@ -4532,6 +4532,8 @@ body > div[style*="position:fixed"][style*="z-index"] {
   min-width: 0 !important;
   box-sizing: border-box !important;
   display: block !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
 }
 
 /* School settings specific — the session date form rows */
@@ -4542,16 +4544,6 @@ body > div[style*="position:fixed"][style*="z-index"] {
   min-width: 0 !important;
   box-sizing: border-box !important;
   display: block !important;
-}
-
-/* ── DATE INPUT APPEARANCE FIX — append to admin-portal.css ── */
-
-.admin-main input[type="date"] {
-  -webkit-appearance: auto !important;
-  appearance: auto !important;
-}
-
-#settings input[type="date"] {
   -webkit-appearance: auto !important;
   appearance: auto !important;
 }
