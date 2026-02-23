@@ -1989,6 +1989,15 @@ function updateDashboardDate() {
 }
 updateDashboardDate();
 
+// Strip any background from dashboard count elements
+['teacher-count','pupil-count','class-count','announce-count'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+        el.style.background = 'none';
+        el.style.webkitTextFillColor = '#ffffff';
+    }
+});
+
     /* ─── 5. LUCIDE ICON RE-INIT ──────────────────────── */
     function reinitIcons() {
         if (typeof lucide !== 'undefined') {
