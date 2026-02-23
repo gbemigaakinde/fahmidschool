@@ -4543,3 +4543,15 @@ body > div[style*="position:fixed"][style*="z-index"] {
   box-sizing: border-box !important;
   display: block !important;
 }
+
+/* ── DATE INPUT APPEARANCE FIX — append to admin-portal.css ── */
+
+.admin-main input[type="date"] {
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+}
+
+#settings input[type="date"] {
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+}
