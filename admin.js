@@ -4817,6 +4817,7 @@ async function loadPaymentHistory(pupilId, session, term) {
     container.innerHTML = transactions.map(txn => {
       const date = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB') : 'N/A';
       const hasArrears = txn.arrearsPayment > 0;
+      const balanceAfter = typeof txn.balanceAfter === 'number' ? txn.balanceAfter : null;
       
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-md); background:white; border:1px solid var(--color-gray-300); border-radius:var(--radius-sm); margin-bottom:var(--space-sm);">
@@ -4831,6 +4832,12 @@ async function loadPaymentHistory(pupilId, session, term) {
               <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:#991b1b; font-weight:600;">
                 💰 Arrears: ₦${txn.arrearsPayment.toLocaleString()} 
                 ${txn.currentTermPayment > 0 ? `• Current: ₦${txn.currentTermPayment.toLocaleString()}` : ''}
+              </div>
+            ` : ''}
+            ${balanceAfter !== null ? `
+              <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:${balanceAfter <= 0 ? '#16a34a' : '#b45309'}; font-weight:600;">
+                Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
+                ${balanceAfter <= 0 ? ' ✅ Fully paid' : ''}
               </div>
             ` : ''}
           </div>
