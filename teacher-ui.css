@@ -1650,3 +1650,45 @@
     border: 3px solid var(--tp-border);
     border-top-color: var(--tp-primary-light);
 }
+
+/* ────────────────────────────────────────────────────────────
+   PROMOTION TABLE — MOBILE HORIZONTAL SCROLL FIX
+──────────────────────────────────────────────────────────── */
+#promotion-table-container .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#promotion-table-container .responsive-table {
+    min-width: 600px;
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    #promotion-table-container .table-container::after {
+        content: '← scroll →';
+        display: block;
+        text-align: center;
+        font-size: 0.6875rem;
+        color: var(--tp-text-muted);
+        padding: var(--tp-space-1);
+    }
+
+    #promotion-table-container .responsive-table th,
+    #promotion-table-container .responsive-table td {
+        white-space: nowrap;
+    }
+
+    /* First column (checkbox) stays narrow */
+    #promotion-table-container .responsive-table th:first-child,
+    #promotion-table-container .responsive-table td:first-child {
+        width: 40px;
+        text-align: center;
+    }
+
+    /* Name column gets breathing room */
+    #promotion-table-container .responsive-table th:nth-child(2),
+    #promotion-table-container .responsive-table td:nth-child(2) {
+        min-width: 160px;
+    }
+}
