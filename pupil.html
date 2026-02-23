@@ -27,136 +27,117 @@
 
 <style>
 /* ============================================================
-   PUPIL PORTAL — UI AUDIT PATCH (inline, applied on top of pupil-portal.css)
-   All fixes from Phase 3 audit. No business logic changes.
+   PUPIL PORTAL — COMPLETE UI FIX PATCH
+   Applied on top of pupil-portal.css.
+   Every confirmed bug from the full cross-file audit is fixed here.
+   No business logic is touched.
    ============================================================ */
 
-/* ── FIX 1: prefers-reduced-motion ──────────────────────────── */
+/* ── FIX A: prefers-reduced-motion ─────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .pp-card {
-    animation: none;
-    opacity: 1;
-    transform: none;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
-  .pp-skeleton,
-  .pp-skeleton * {
-    animation: none;
-  }
-  .spinner {
-    animation: none;
-    border: 3px solid #1a56db;
-    border-radius: 50%;
-  }
-  .pp-action-btn--solid:hover {
-    transform: none;
-  }
-  .pp-btn--primary:hover {
-    transform: none;
-  }
+  .pp-skeleton, .pp-skeleton * { animation: none !important; }
+  .spinner { animation: none !important; }
+  .pp-action-btn--solid:hover,
+  .pp-btn--primary:hover { transform: none !important; }
 }
 
-/* ── FIX 2: Bottom navigation (tablet + mobile) ─────────────── */
-.pp-bottom-nav {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 300;
-  background: #ffffff;
-  border-top: 1px solid #e4e4e7;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
-}
-
-.pp-bottom-nav__inner {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.pp-bottom-nav__link {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 6px 4px;
-  text-decoration: none;
-  color: #a1a1aa;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-radius: 8px;
-  transition: color 150ms cubic-bezier(.4,0,.2,1);
-  min-height: 44px;
-  min-width: 44px;
-}
-
-.pp-bottom-nav__link i[data-lucide] {
-  width: 20px;
-  height: 20px;
-  transition: transform 150ms cubic-bezier(.4,0,.2,1);
-}
-
-.pp-bottom-nav__link:hover,
-.pp-bottom-nav__link--active {
-  color: #1a56db;
-}
-
-.pp-bottom-nav__link--active i[data-lucide] {
-  transform: translateY(-1px);
-}
-
+/* ── FIX B: Bottom-nav active state helpers ─────────────────── */
+.pp-bottom-nav__link--active { color: #1a56db; }
+.pp-bottom-nav__link--active i[data-lucide] { transform: translateY(-1px); }
 .pp-bottom-nav__link:focus-visible {
   outline: 2.5px solid #1a56db;
   outline-offset: 2px;
   border-radius: 8px;
 }
 
+/* ── FIX C: Footer overlap by bottom nav ────────────────────── */
+/*
+  Bug: The fixed bottom nav (≈64 px tall) sits on top of .pp-footer
+  because the footer's own padding is too small.
+  pupil-portal.css sets margin-bottom: 72px on .pp-footer at <=1024px —
+  that pushes *space below* the footer, not *inside* it. The footer text
+  still sits at the top of the footer block and gets covered.
+  Fix: use padding-bottom so the footer's own content clears the nav.
+*/
 @media (max-width: 1024px) {
-  .pp-bottom-nav {
-    display: flex;
-  }
-  .pp-main {
-    padding-bottom: calc(48px + 72px);
-  }
   .pp-footer {
-    margin-bottom: 72px;
-  }
-  /* Hide top nav on tablet/mobile — bottom nav takes over */
-  .pp-topbar__nav {
-    display: none;
+    padding-bottom: max(24px, calc(72px + env(safe-area-inset-bottom)));
+    margin-bottom: 0 !important; /* the margin-bottom was pushing blank space below footer */
   }
 }
 
-/* ── FIX 3: Results table mobile card-row transform ─────────── */
+/* ── FIX D: #session-info — floating "Viewing: …" text ─────── */
+/*
+  Bug: pupil.js/loadSessionResults() does:
+    if (sessionInfo) { sessionInfo.style.display = 'block'; }
+  This overrides any CSS `display:none` on the element because inline
+  styles have higher specificity than class/id rules — UNLESS we use
+  !important on the id selector.
+
+  Previous CSS only hid .pp-session-pill (the class). The element's
+  id is #session-info, so it was not suppressed. Result: the session
+  name appeared as floating text between the dropdown and the results.
+
+  Fix: target the id directly with !important.
+  The DOM nodes are kept so pupil.js does not throw null-reference errors.
+*/
+#session-info {
+  display: none !important;
+}
+/* Belt-and-suspenders: also suppress the class name */
+.pp-session-pill { display: none !important; }
+
+/* ── FIX E: Session bar layout ──────────────────────────────── */
+.pp-session-bar {
+  display: block;
+  padding: 0 32px 24px;
+}
+.pp-session-bar__field { max-width: 440px; }
+.pp-session-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #52525b;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.pp-session-bar__hint {
+  font-size: 12px;
+  color: #a1a1aa;
+  margin: 0 0 8px;
+  font-style: italic;
+}
+@media (max-width: 768px) {
+  .pp-session-bar { padding: 0 16px 16px; }
+  .pp-session-bar__field { max-width: 100%; }
+}
+
+/* ── FIX F: Results table — mobile card-row transform (≤600px) ─ */
 @media (max-width: 600px) {
   .results-table {
     display: block;
     overflow: visible;
     white-space: normal;
     border: none;
-    font-size: 14px;
+    min-width: 0;
   }
-
-  .results-table thead {
-    display: none;
-  }
-
+  .results-table thead { display: none; }
   .results-table tbody {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
-
   .results-table tbody tr {
     display: grid;
-    grid-template-columns: repeat(3, 1fr) auto;
+    grid-template-columns: 1fr 1fr 1fr auto;
     grid-template-rows: auto auto;
     gap: 4px 8px;
     background: #ffffff;
@@ -165,26 +146,17 @@
     padding: 12px 14px;
     box-shadow: 0 1px 2px rgba(0,0,0,.05);
   }
-
-  .results-table tbody tr:hover {
-    background: #eff6ff;
-  }
-
-  /* Subject name — full width, row 1 */
+  .results-table tbody tr:hover { background: #eff6ff; }
   .results-table td:first-child {
     grid-column: 1 / -1;
     font-size: 14px;
     font-weight: 700;
     color: #18181b;
-    padding: 0 0 8px 0;
+    padding: 0 0 8px;
     border-bottom: 1px solid #f4f4f5;
-    margin-bottom: 4px;
-    text-align: left;
     background: transparent;
     border-radius: 0;
   }
-
-  /* Score cells — labeled pill style */
   .results-table td:nth-child(2),
   .results-table td:nth-child(3),
   .results-table td:nth-child(4) {
@@ -201,11 +173,9 @@
     color: #27272a;
     text-align: center;
   }
-
   .results-table td:nth-child(2)::before { content: 'CA'; }
   .results-table td:nth-child(3)::before { content: 'EXAM'; }
   .results-table td:nth-child(4)::before { content: 'TOTAL'; }
-
   .results-table td:nth-child(2)::before,
   .results-table td:nth-child(3)::before,
   .results-table td:nth-child(4)::before {
@@ -215,10 +185,7 @@
     text-transform: uppercase;
     color: #a1a1aa;
     margin-bottom: 3px;
-    font-family: 'DM Sans', sans-serif;
   }
-
-  /* Grade — chip, rightmost column */
   .results-table td:nth-child(5) {
     display: flex;
     align-items: center;
@@ -227,19 +194,13 @@
     border-radius: 8px;
     font-size: 15px;
     font-weight: 800;
-    text-align: center;
   }
-
-  /* Summary rows — full-width block */
   .results-table .summary-row {
     display: block;
     padding: 10px 14px;
     border-radius: 10px;
-    border: none;
     background: #f4f4f5;
-    grid-column: 1 / -1;
   }
-
   .results-table .summary-row td {
     display: flex;
     justify-content: space-between;
@@ -251,132 +212,64 @@
     color: #1a56db;
     font-weight: 700;
   }
-
-  .results-table .summary-row td::before {
-    display: none;
-  }
+  .results-table .summary-row td::before { display: none; }
 }
 
-/* ── FIX 4: Grade cells — background chip treatment ────────── */
-/* These override the plain-text grade colors in pupil-portal.css */
-.results-table td.grade-A1,
+/* ── FIX G: Grade cells — background chip treatment ────────── */
+/*
+  styles.css defines .grade-A1 { color only } at low specificity.
+  pupil-portal.css adds background. We bump specificity with !important
+  so styles.css cannot win even if loaded after portal CSS.
+*/
+.results-table td.grade-A1 { color: #065f46 !important; background-color: #d1fae5 !important; font-weight: 800; text-align: center; vertical-align: middle; }
 .results-table td.grade-B2,
-.results-table td.grade-B3,
+.results-table td.grade-B3 { color: #1e3a8a !important; background-color: #dbeafe !important; font-weight: 800; text-align: center; vertical-align: middle; }
 .results-table td.grade-C4,
 .results-table td.grade-C5,
-.results-table td.grade-C6,
+.results-table td.grade-C6 { color: #78350f !important; background-color: #fef3c7 !important; font-weight: 800; text-align: center; vertical-align: middle; }
 .results-table td.grade-D7,
-.results-table td.grade-D8,
-.results-table td.grade-F9 {
-  font-weight: 800;
-  font-size: 12.5px;
-  text-align: center;
-  vertical-align: middle;
-}
+.results-table td.grade-D8 { color: #7c2d12 !important; background-color: #ffedd5 !important; font-weight: 800; text-align: center; vertical-align: middle; }
+.results-table td.grade-F9 { color: #7f1d1d !important; background-color: #fee2e2 !important; font-weight: 800; text-align: center; vertical-align: middle; }
 
-/* Chip inside the td — using padding + border-radius on the td itself */
-.results-table td.grade-A1 {
-  color: #065f46;
-  background-color: #d1fae5;
-}
-.results-table td.grade-B2,
-.results-table td.grade-B3 {
-  color: #1e3a8a;
-  background-color: #dbeafe;
-}
-.results-table td.grade-C4,
-.results-table td.grade-C5,
-.results-table td.grade-C6 {
-  color: #78350f;
-  background-color: #fef3c7;
-}
-.results-table td.grade-D7,
-.results-table td.grade-D8 {
-  color: #7c2d12;
-  background-color: #ffedd5;
-}
-.results-table td.grade-F9 {
-  color: #7f1d1d;
-  background-color: #fee2e2;
-}
-
-/* ── FIX 5: Session bar — no refresh button, cleaner layout ─── */
-.pp-session-bar {
-  display: block;
-  padding: 0 32px 24px;
-}
-
-.pp-session-bar__field {
-  max-width: 420px;
-}
-
-.pp-session-bar__hint {
-  font-size: 12px;
-  color: #a1a1aa;
-  margin: 0 0 8px;
-  font-style: italic;
-  font-family: 'DM Sans', sans-serif;
-}
-
-@media (max-width: 768px) {
-  .pp-session-bar {
-    padding: 0 16px 16px;
-  }
-  .pp-session-bar__field {
-    max-width: 100%;
-  }
-}
-
-/* ── FIX 6: Footer nav container ─────────────────────────────── */
+/* ── FIX H: Footer nav wrapper ──────────────────────────────── */
 .pp-footer-nav {
   display: flex;
   justify-content: center;
-  padding: 16px 0 48px;
+  padding: 16px 0 32px;
 }
 
-/* ── FIX 7: Min-height on results container (prevent CLS) ────── */
-#results-container {
-  min-height: 200px;
-}
+/* ── FIX I: Results container min-height (prevents CLS) ─────── */
+#results-container { min-height: 200px; }
 
-/* ── FIX 8: Accessibility — explicit focus rings ────────────── */
+/* ── FIX J: Explicit focus rings (WCAG 2.4.7) ──────────────── */
 .pp-body :focus-visible {
   outline: 2.5px solid #1a56db;
   outline-offset: 2px;
   border-radius: 2px;
 }
-
-.pp-body :focus:not(:focus-visible) {
-  outline: none;
-}
-
+.pp-body :focus:not(:focus-visible) { outline: none; }
 .pp-select:focus-visible {
   outline: 2.5px solid #1a56db;
   outline-offset: 0;
   border-color: #1a56db;
-  box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.12);
+  box-shadow: 0 0 0 4px rgba(26,86,219,.12);
 }
-
-.pp-nav-link:focus-visible {
+.pp-nav-link:focus-visible,
+.pp-bottom-nav__link:focus-visible {
   outline: 2.5px solid #1a56db;
   outline-offset: 2px;
   border-radius: 9999px;
 }
-
 .pp-btn:focus-visible,
 .pp-action-btn:focus-visible,
-.pp-btn-logout:focus-visible,
-.pp-refresh-btn:focus-visible {
+.pp-btn-logout:focus-visible {
   outline: 2.5px solid #1a56db;
   outline-offset: 2px;
 }
 
-/* ── FIX 9: Academic column mobile separation ────────────────── */
+/* ── FIX K: Academic column mobile visual break ─────────────── */
 @media (max-width: 768px) {
-  .pp-profile-col--academic {
-    margin-top: 6px;
-  }
-
+  .pp-profile-col--academic { margin-top: 6px; }
   .pp-profile-col--academic::before {
     content: '';
     display: block;
@@ -388,49 +281,35 @@
   }
 }
 
-/* ── FIX 11: Long class name overflow ────────────────────────── */
+/* ── FIX L: Hero tag overflow (long class names) ────────────── */
 .pp-tag {
-  max-width: 220px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 @media (max-width: 480px) {
   .pp-hero__tags {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
   }
-
-  .pp-tag {
-    max-width: 100%;
-    white-space: normal;
-  }
+  .pp-tag { max-width: 100%; white-space: normal; }
 }
 
-/* ── Visually hidden utility (for table captions, sr-only text) */
+/* ── FIX M: Visually-hidden utility ─────────────────────────── */
 .visually-hidden {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip: rect(0,0,0,0);
   white-space: nowrap;
   border: 0;
 }
 
-/* ── Suppress the pp-card--profile modifier warning (add a benign rule) */
-.pp-card--profile {
-  /* intentionally empty — modifier reserved for future enhancement */
-}
-
-/* ── Session pill: retained but hidden (JS safe, visually removed) */
-.pp-session-pill {
-  display: none !important;
-}
+/* ── FIX N: Suppress unused-modifier DevTools warning ────────── */
+.pp-card--profile { /* modifier reserved for future use */ }
 </style>
 </head>
 
@@ -455,7 +334,7 @@
       </div>
     </div>
 
-    <!-- Desktop nav — hidden at ≤1024px, bottom nav takes over -->
+    <!-- Desktop nav — hidden ≤1024px, bottom nav takes over -->
     <nav class="pp-topbar__nav" aria-label="Portal sections">
       <a href="#pp-profile" class="pp-nav-link" data-section="profile">
         <i data-lucide="user" aria-hidden="true"></i>
@@ -487,7 +366,10 @@
   <div class="pp-hero__inner">
 
     <div class="pp-hero__identity">
-      <!-- Avatar is decorative; screen readers use the h1 greeting for name -->
+      <!--
+        aria-hidden: decorative only. Screen readers announce
+        the pupil's name via the h1 greeting text below.
+      -->
       <div class="pp-avatar" id="pp-avatar-initials" aria-hidden="true">
         <i data-lucide="user" class="pp-avatar__fallback" aria-hidden="true"></i>
       </div>
@@ -518,13 +400,12 @@
     </div>
 
   </div>
-  <!-- Purely decorative mesh gradient -->
   <div class="pp-hero__mesh" aria-hidden="true"></div>
 </section>
 
 
 <!-- ═══════════════════════════════════════
-     MAIN CONTENT WRAPPER
+     MAIN CONTENT
 ═══════════════════════════════════════ -->
 <main class="pp-main" id="main-content">
 
@@ -543,7 +424,7 @@
 
     <div class="pp-profile-grid">
 
-      <!-- Left column: personal / contact fields -->
+      <!-- Left: personal / contact fields -->
       <div class="pp-profile-col pp-profile-col--identity">
 
         <div class="pp-field">
@@ -603,7 +484,7 @@
 
       </div>
 
-      <!-- Right column: academic fields -->
+      <!-- Right: academic fields -->
       <div class="pp-profile-col pp-profile-col--academic">
 
         <div class="pp-academic-banner" aria-hidden="true">
@@ -658,8 +539,22 @@
       </div>
     </div>
 
-    <!-- Session selector control bar -->
-    <!-- FIX 5: Refresh button removed — change event auto-loads results -->
+    <!--
+      Session selector.
+
+      IMPORTANT NOTES for maintainers:
+      ─────────────────────────────────
+      1. The Refresh button is intentionally absent.
+         The 'change' event on the <select> triggers loadSessionResults()
+         automatically (wired in pupil.js/loadResults).
+
+      2. pupil.js/loadResults() replaces this <select> element with a
+         cloneNode(true) to remove stale listeners. cloneNode(true) copies
+         all attributes, so aria-describedby is preserved.
+
+      3. populateSessionSelector() clears innerHTML and repopulates it,
+         so there is never more than one "Current Session" option.
+    -->
     <div class="pp-session-bar">
       <div class="pp-session-bar__field">
         <label for="pupil-session-select" class="pp-session-bar__label">
@@ -681,17 +576,28 @@
     </div>
 
     <!--
-      FIX 10: Session pill is suppressed visually (display:none via CSS).
-      The elements are retained so pupil.js references to
-      'session-info' and 'selected-session-name' do not throw errors.
+      #session-info / #selected-session-name:
+      ─────────────────────────────────────────
+      pupil.js/loadSessionResults() sets sessionInfo.style.display = 'block'
+      and writes the selected session name here.
+
+      We suppress this element permanently with #session-info { display:none !important }
+      in the <style> block above. The DOM nodes are kept so pupil.js does
+      not throw a null-reference error when it tries to access them.
+
+      The session name is already communicated to the user via the dropdown
+      itself, so hiding this duplicate is correct.
     -->
-    <div id="session-info" aria-hidden="true" style="display:none;">
+    <div id="session-info" aria-hidden="true">
       <span id="selected-session-name"></span>
     </div>
 
-    <!-- Results output area — FIX 7: min-height prevents CLS -->
-    <div id="results-container" class="pp-results-body" aria-live="polite" aria-atomic="false">
-      <!-- JS populates this -->
+    <!-- Results output — min-height prevents layout shift on session switch -->
+    <div id="results-container"
+         class="pp-results-body"
+         aria-live="polite"
+         aria-atomic="false">
+      <!-- pupil.js populates this -->
     </div>
 
     <div class="pp-card__footer">
@@ -706,22 +612,27 @@
 
   <!-- ─── FEE BALANCE SECTION ──────────────── -->
   <!--
-    loadFeeBalance() replaces this section's innerHTML entirely.
-    The getElementById proxy in the inline script below routes
-    getElementById('fee-balance-section') → this element (#pp-fees),
-    so the JS never needs to be touched.
+    pupil.js/loadFeeBalance() fully replaces this section's innerHTML.
+    The getElementById proxy (see inline <script> below) redirects
+    getElementById('fee-balance-section') → this #pp-fees element.
+    pupil.js writes here without modification.
+
+    Bottom-nav active state:
+    This section starts as display:none so IntersectionObserver cannot
+    observe it at page load. scrollToSection() reveals it and then calls
+    window.__ppRegisterFeesObserver(el) to add it to the observer dynamically.
   -->
   <section class="pp-card" id="pp-fees" style="display:none;" aria-labelledby="fees-heading">
-    <!-- JS (loadFeeBalance) fully populates this -->
+    <!-- pupil.js populates this entirely -->
   </section>
 
   <!--
-    Alias div: retained so the getElementById proxy has a target to redirect FROM.
-    It is permanently hidden and has no visual presence.
+    Alias div: exists only so the getElementById proxy has a real element
+    to redirect calls FROM. Permanently hidden, never rendered.
   -->
   <div id="fee-balance-section" style="display:none;" aria-hidden="true"></div>
 
-  <!-- FIX 6: Back to Website — now inside a proper centred container -->
+  <!-- Back-to-website — properly contained and centred -->
   <div class="pp-footer-nav">
     <a href="index.html" class="pp-btn pp-btn--ghost">
       <i data-lucide="home" aria-hidden="true"></i>
@@ -732,8 +643,13 @@
 </main>
 
 
-<!-- ── BOTTOM NAVIGATION (tablet + mobile only) ──────────────── -->
-<!-- FIX 2: Provides section navigation at ≤1024px where top nav is hidden -->
+<!-- ── BOTTOM NAVIGATION (tablet + mobile ≤1024px) ──────────── -->
+<!--
+  Visible only at ≤1024px via .pp-bottom-nav { display:none } →
+  @media(max-width:1024px) { .pp-bottom-nav { display:flex } }
+  in pupil-portal.css.
+  Active state synced by the sectionObserver in the DOMContentLoaded handler.
+-->
 <nav class="pp-bottom-nav" aria-label="Portal sections">
   <div class="pp-bottom-nav__inner">
     <a href="#pp-profile" class="pp-bottom-nav__link" data-section="profile">
@@ -752,13 +668,18 @@
 </nav>
 
 
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<!--
+  padding-bottom at ≤1024px (set in the <style> block above, FIX C)
+  ensures the footer text clears the fixed bottom nav.
+-->
 <footer class="pp-footer">
   <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
 </footer>
 
 
 <!-- ═══════════════════════════════════════
-     SCRIPTS — load order preserved
+     SCRIPTS — load order matters
 ═══════════════════════════════════════ -->
 <script src="firebase-init.js"></script>
 <script src="script.js"></script>
@@ -768,8 +689,7 @@
 <script>
 /* ──────────────────────────────────────────────────────────────
    PAGE INITIALISATION
-   All logic below is UI/structural only.
-   No Firebase, no business logic changes.
+   Pure UI / structural code. No Firebase, no business logic.
 ────────────────────────────────────────────────────────────── */
 
 // Copyright year
@@ -781,20 +701,15 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
 
   // ── Avatar initials ───────────────────────────────────────
-  // Observes the name display element; once a real name loads,
-  // replaces the fallback icon with initials.
+  // pupil.js sets the pupil's name as textContent on #pupil-name-display.
+  // We watch for that change and replace the fallback icon with initials.
   const nameEl   = document.getElementById('pupil-name-display');
   const avatarEl = document.getElementById('pp-avatar-initials');
 
   const avatarObserver = new MutationObserver(() => {
     const name = nameEl?.textContent?.trim();
     if (name && name !== 'Loading…' && name !== '-') {
-      const initials = name
-        .split(' ')
-        .slice(0, 2)
-        .map(w => w[0])
-        .join('')
-        .toUpperCase();
+      const initials = name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
       avatarEl.innerHTML = `<span>${initials}</span>`;
       avatarEl.classList.add('pp-avatar--loaded');
       avatarObserver.disconnect();
@@ -802,82 +717,84 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (nameEl) avatarObserver.observe(nameEl, { childList: true, characterData: true, subtree: true });
 
-  // ── Active nav link on scroll (top nav + bottom nav) ─────
-  const sections = ['pp-profile', 'pp-results', 'pp-fees'];
+  // ── Active nav link syncing (top + bottom nav) ────────────
   const topNavLinks    = document.querySelectorAll('.pp-nav-link');
   const bottomNavLinks = document.querySelectorAll('.pp-bottom-nav__link');
 
+  function setActiveSection(id) {
+    topNavLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
+    const top = document.querySelector(`.pp-nav-link[href="#${id}"]`);
+    if (top) top.classList.add('pp-nav-link--active');
+
+    bottomNavLinks.forEach(l => l.classList.remove('pp-bottom-nav__link--active'));
+    const btm = document.querySelector(`.pp-bottom-nav__link[href="#${id}"]`);
+    if (btm) btm.classList.add('pp-bottom-nav__link--active');
+  }
+
   const sectionObserver = new IntersectionObserver(entries => {
     entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-
-      const id = entry.target.id;
-
-      // Top nav
-      topNavLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
-      const topMatch = document.querySelector(`.pp-nav-link[href="#${id}"]`);
-      if (topMatch) topMatch.classList.add('pp-nav-link--active');
-
-      // Bottom nav
-      bottomNavLinks.forEach(l => l.classList.remove('pp-bottom-nav__link--active'));
-      const bottomMatch = document.querySelector(`.pp-bottom-nav__link[href="#${id}"]`);
-      if (bottomMatch) bottomMatch.classList.add('pp-bottom-nav__link--active');
+      if (entry.isIntersecting) setActiveSection(entry.target.id);
     });
   }, { threshold: 0.35 });
 
-  sections.forEach(id => {
+  // Observe sections that are visible at load time.
+  // #pp-fees starts as display:none — it cannot be observed yet.
+  // It is added to the observer inside scrollToSection() once revealed.
+  ['pp-profile', 'pp-results'].forEach(id => {
     const el = document.getElementById(id);
     if (el) sectionObserver.observe(el);
   });
 
-  // ── Set initial active state on Profile (first section) ──
-  // Prevents the nav having no active state before the user scrolls.
-  const firstTopLink    = document.querySelector('.pp-nav-link[data-section="profile"]');
-  const firstBottomLink = document.querySelector('.pp-bottom-nav__link[data-section="profile"]');
-  if (firstTopLink)    firstTopLink.classList.add('pp-nav-link--active');
-  if (firstBottomLink) firstBottomLink.classList.add('pp-bottom-nav__link--active');
+  // Set Profile as active on initial load (before any scroll)
+  setActiveSection('pp-profile');
 
+  // Expose observer registration for #pp-fees so scrollToSection can use it
+  window.__ppRegisterFeesObserver = (el) => sectionObserver.observe(el);
 });
 
 
 /* ──────────────────────────────────────────────────────────────
    SCROLL HELPER
-   Used by the "Fee Balance" hero button and any other CTA.
+   Called by the "Fee Balance" hero button.
+   Handles: revealing the section, registering with the observer,
+   and smooth-scrolling.
 ────────────────────────────────────────────────────────────── */
 function scrollToSection(id) {
   const el = document.getElementById(id);
-  if (el) {
-    el.style.display = 'block';
-    // Small delay lets display:block repaint before scrollIntoView measures
-    requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    window.showToast?.('📊 Viewing fee balance', 'info', 2000);
+  if (!el) return;
+
+  // Reveal the section (fees starts as display:none)
+  el.style.display = 'block';
+
+  // Register with IntersectionObserver now that the element is visible.
+  // Must happen AFTER display:block so the observer can measure it.
+  if (window.__ppRegisterFeesObserver) {
+    window.__ppRegisterFeesObserver(el);
   }
+
+  // Small RAF delay: lets the browser repaint display:block before
+  // scrollIntoView calculates position.
+  requestAnimationFrame(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  window.showToast?.('📊 Viewing fee balance', 'info', 2000);
 }
 
-// Alias kept for any legacy callers
+// Legacy aliases — kept for any existing callers in other scripts
 window.scrollToFees    = () => scrollToSection('fee-balance-section');
 window.scrollToSection = scrollToSection;
 
+(function () {
+  var _native = document.getElementById.bind(document);
 
-/* ──────────────────────────────────────────────────────────────
-   getElementById PROXY
-   Routes getElementById('fee-balance-section') → #pp-fees
-   so loadFeeBalance() in pupil.js writes into the styled pp-card
-   without any changes to the JS business logic.
-────────────────────────────────────────────────────────────── */
-(function() {
-  const feeSection = document.getElementById('pp-fees');
-  if (!feeSection) return;
-
-  const _nativeGetById = document.getElementById.bind(document);
-
-  document.getElementById = function(id) {
-    if (id === 'fee-balance-section') return feeSection;
-    return _nativeGetById(id);
+  document.getElementById = function (id) {
+    if (id === 'fee-balance-section') {
+      return _native('pp-fees') || _native(id);
+    }
+    return _native(id);
   };
-})();
+}());
 </script>
 
 <script src="session-cache.js"></script>
