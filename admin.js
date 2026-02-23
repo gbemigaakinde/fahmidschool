@@ -4656,24 +4656,26 @@ async function loadPupilPaymentStatus() {
       }
     }
 
-    // Arrears warning
-    const arrearsHTML = arrears > 0 ? `
-      <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
-        <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
-          <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
-          <div>
-            <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
-            <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Term(s)</p>
-          </div>
-        </div>
-        <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
-          ₦${arrears.toLocaleString()}
-        </div>
-        <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
-          ⚠️ Payments will prioritize clearing arrears first.
-        </p>
+    // Arrears warning — only show if arrears haven't been fully paid off yet
+// totalPaid >= arrears means the arrears portion has been cleared
+const arrearsCleared = totalPaid >= arrears;
+const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
+  <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
+    <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
+      <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
+      <div>
+        <h3 style="margin: 0; color: white;">Outstanding Arrears</h3>
+        <p style="margin: var(--space-xs) 0 0; opacity: 0.9;">From Previous Term(s)</p>
       </div>
-    ` : '';
+    </div>
+    <div style="font-size: var(--text-3xl); font-weight: 700; margin-bottom: var(--space-sm);">
+      ₦${arrears.toLocaleString()}
+    </div>
+    <p style="margin: 0; opacity: 0.9; font-size: var(--text-sm);">
+      ⚠️ Payments will prioritize clearing arrears first.
+    </p>
+  </div>
+` : '';
 
     const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
