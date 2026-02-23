@@ -952,8 +952,6 @@ async function loadAllPaymentHistory(pupilId) {
                 transactionsBySession[session].forEach(txn => {
                     const paymentDate = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
                     const amountPaid = Number(txn.amountPaid || 0);
-                    const arrearsPayment = Number(txn.arrearsPayment || 0);
-                    const currentTermPayment = Number(txn.currentTermPayment || 0);
                     const paymentMethodIcon = (txn.paymentMethod || 'Cash').toLowerCase() === 'cash' ? 'banknote' : 'credit-card';
 
                     const itemDiv = document.createElement('div');
@@ -989,10 +987,6 @@ async function loadAllPaymentHistory(pupilId) {
                                         ${txn.receiptNo || 'N/A'}
                                     </span>
                                 </div>
-                                <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); color: #0f172a; font-weight: 500;">
-                                    ${arrearsPayment > 0 ? `💰 Arrears: ₦${arrearsPayment.toLocaleString()}` : ''}
-                                    ${currentTermPayment > 0 ? `📌 Current Term: ₦${currentTermPayment.toLocaleString()}` : ''}
-                                </div>
                                 ${balanceAfter !== null ? `
                                 <div style="
                                     display: inline-flex; align-items: center; gap: var(--space-xs);
@@ -1006,7 +1000,7 @@ async function loadAllPaymentHistory(pupilId) {
                                     border: 1px solid ${balanceAfter <= 0 ? '#bbf7d0' : '#fde68a'};
                                 ">
                                     <i data-lucide="${balanceAfter <= 0 ? 'check-circle' : 'alert-circle'}" style="width: 12px; height: 12px;"></i>
-                                    Balance after: ₦${Math.max(0, balanceAfter).toLocaleString()}
+                                    Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
                                     ${balanceAfter <= 0 ? ' · Fully paid' : ''}
                                 </div>` : ''}
                             </div>
