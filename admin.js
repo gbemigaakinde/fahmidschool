@@ -4828,12 +4828,6 @@ async function loadPaymentHistory(pupilId, session, term) {
             <div style="font-size:var(--text-sm); color:var(--color-gray-600);">
               ${date} • ${txn.paymentMethod} • Receipt #${txn.receiptNo} • ${txn.term}
             </div>
-            ${hasArrears ? `
-              <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:#991b1b; font-weight:600;">
-                💰 Arrears: ₦${txn.arrearsPayment.toLocaleString()} 
-                ${txn.currentTermPayment > 0 ? `• Current: ₦${txn.currentTermPayment.toLocaleString()}` : ''}
-              </div>
-            ` : ''}
             ${balanceAfter !== null ? `
               <div style="font-size:var(--text-sm); margin-top:var(--space-xs); color:${balanceAfter <= 0 ? '#16a34a' : '#b45309'}; font-weight:600;">
                 Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
