@@ -4493,7 +4493,13 @@ body > div[style*="position:fixed"][style*="z-index"] {
 }
 
 /* ── DATE INPUT OVERFLOW — CORRECT FIX — append to admin-portal.css ── */
-
+/*
+  Root cause: the grid cells (.form-group inside .form-row) do not have
+  min-width: 0, so they default to min-width: auto which is as wide as
+  their content. The input's width:100% then resolves relative to that
+  unconstrained width, not the viewport.
+  The fix belongs on the grid cell, not the input itself.
+*/
 /* Fix the grid cell constraint */
 .admin-main .form-row > .form-group,
 .admin-main .form-row-2 > .form-group,
@@ -4503,27 +4509,24 @@ body > div[style*="position:fixed"][style*="z-index"] {
 .admin-main .form-row-3 > div {
   min-width: 0 !important;
   overflow: hidden !important;
-  padding-right: 2px !important; /* gives the input's right border room to render */
 }
-
 /* Also fix direct grid children that aren't .form-group */
 .admin-main .form-row,
 .admin-main .form-row-2,
 .admin-main .form-row-3 {
   min-width: 0 !important;
 }
-
 /* Ensure the input itself cannot exceed its cell */
 .admin-main input[type="date"] {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
-  -webkit-appearance: auto !important;
-  appearance: auto !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  padding: 0.625rem 0.875rem !important; /* adds height */
 }
-
-/* Specific fix for date inputs that sit directly in a flex/grid
+/* Specific fix for date inputs that sit directly in a flex/grid 
    without a .form-group wrapper */
 .admin-main .form-section input[type="date"],
 .admin-main .admin-card input[type="date"] {
@@ -4532,10 +4535,7 @@ body > div[style*="position:fixed"][style*="z-index"] {
   min-width: 0 !important;
   box-sizing: border-box !important;
   display: block !important;
-  -webkit-appearance: auto !important;
-  appearance: auto !important;
 }
-
 /* School settings specific — the session date form rows */
 #settings input[type="date"],
 #settings input[type="number"] {
@@ -4544,6 +4544,4 @@ body > div[style*="position:fixed"][style*="z-index"] {
   min-width: 0 !important;
   box-sizing: border-box !important;
   display: block !important;
-  -webkit-appearance: auto !important;
-  appearance: auto !important;
 }
