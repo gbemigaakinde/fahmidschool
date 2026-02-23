@@ -1311,19 +1311,24 @@ async function loadSessionResults() {
             termSection.appendChild(heading);
 
             const table = document.createElement('table');
-            table.className = 'results-table';
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>SUBJECT</th>
-                        <th>CA (40)</th>
-                        <th>EXAM (60)</th>
-                        <th>TOTAL (100)</th>
-                        <th>GRADE</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            `;
+table.className = 'results-table';
+// Add caption for accessibility
+const caption = document.createElement('caption');
+caption.className = 'visually-hidden';
+caption.textContent = `${termName} results`;
+table.appendChild(caption);
+table.innerHTML += `
+    <thead>
+        <tr>
+            <th scope="col">SUBJECT</th>
+            <th scope="col">CA (40)</th>
+            <th scope="col">EXAM (60)</th>
+            <th scope="col">TOTAL (100)</th>
+            <th scope="col">GRADE</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+`;
             const tbody = table.querySelector('tbody');
 
             let termTotal = 0;
