@@ -1950,27 +1950,33 @@
     }
 
     /* ─── 4. CARD ENTRANCE ANIMATION ─────────────────── */
-    function initCardAnimations() {
-        if (!window.MutationObserver) return;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // AFTER — uses a flag to break the loop
+function initCardAnimations() {
+    if (!window.MutationObserver) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(m) {
-                if (m.type === 'attributes' && m.attributeName === 'style') {
-                    const el = m.target;
-                    if (el.style.display !== 'none' && el.classList.contains('admin-card')) {
-                        el.style.animation = 'none';
-                        el.offsetHeight;
-                        el.style.animation = 'card-fade-in 300ms cubic-bezier(.4,0,.2,1) both';
-                    }
+    let _animating = false;
+
+    const observer = new MutationObserver(function(mutations) {
+        if (_animating) return;
+        mutations.forEach(function(m) {
+            if (m.type === 'attributes' && m.attributeName === 'style') {
+                const el = m.target;
+                if (el.style.display !== 'none' && el.classList.contains('admin-card')) {
+                    _animating = true;
+                    el.style.animation = 'none';
+                    el.offsetHeight;
+                    el.style.animation = 'card-fade-in 300ms cubic-bezier(.4,0,.2,1) both';
+                    setTimeout(function() { _animating = false; }, 350);
                 }
-            });
+            }
         });
+    });
 
-        document.querySelectorAll('.admin-card[style]').forEach(function(card) {
-            observer.observe(card, { attributes: true, attributeFilter: ['style'] });
-        });
-    }
+    document.querySelectorAll('.admin-card[style]').forEach(function(card) {
+        observer.observe(card, { attributes: true, attributeFilter: ['style'] });
+    });
+}
 
 // Live date display on dashboard
 function updateDashboardDate() {
