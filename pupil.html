@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pupil Portal — Fahmid Nursery & Primary School</title>
+<title>Pupil Portal — Fahmid Nursery &amp; Primary School</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,414 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Fahmid School">
 <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+
+<style>
+/* ============================================================
+   PUPIL PORTAL — UI AUDIT PATCH (inline, applied on top of pupil-portal.css)
+   All fixes from Phase 3 audit. No business logic changes.
+   ============================================================ */
+
+/* ── FIX 1: prefers-reduced-motion ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .pp-card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .pp-skeleton,
+  .pp-skeleton * {
+    animation: none;
+  }
+  .spinner {
+    animation: none;
+    border: 3px solid #1a56db;
+    border-radius: 50%;
+  }
+  .pp-action-btn--solid:hover {
+    transform: none;
+  }
+  .pp-btn--primary:hover {
+    transform: none;
+  }
+}
+
+/* ── FIX 2: Bottom navigation (tablet + mobile) ─────────────── */
+.pp-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  background: #ffffff;
+  border-top: 1px solid #e4e4e7;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+}
+
+.pp-bottom-nav__inner {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.pp-bottom-nav__link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  text-decoration: none;
+  color: #a1a1aa;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  transition: color 150ms cubic-bezier(.4,0,.2,1);
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.pp-bottom-nav__link i[data-lucide] {
+  width: 20px;
+  height: 20px;
+  transition: transform 150ms cubic-bezier(.4,0,.2,1);
+}
+
+.pp-bottom-nav__link:hover,
+.pp-bottom-nav__link--active {
+  color: #1a56db;
+}
+
+.pp-bottom-nav__link--active i[data-lucide] {
+  transform: translateY(-1px);
+}
+
+.pp-bottom-nav__link:focus-visible {
+  outline: 2.5px solid #1a56db;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (max-width: 1024px) {
+  .pp-bottom-nav {
+    display: flex;
+  }
+  .pp-main {
+    padding-bottom: calc(48px + 72px);
+  }
+  .pp-footer {
+    margin-bottom: 72px;
+  }
+  /* Hide top nav on tablet/mobile — bottom nav takes over */
+  .pp-topbar__nav {
+    display: none;
+  }
+}
+
+/* ── FIX 3: Results table mobile card-row transform ─────────── */
+@media (max-width: 600px) {
+  .results-table {
+    display: block;
+    overflow: visible;
+    white-space: normal;
+    border: none;
+    font-size: 14px;
+  }
+
+  .results-table thead {
+    display: none;
+  }
+
+  .results-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .results-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
+    background: #ffffff;
+    border: 1px solid #e4e4e7;
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+
+  .results-table tbody tr:hover {
+    background: #eff6ff;
+  }
+
+  /* Subject name — full width, row 1 */
+  .results-table td:first-child {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: 700;
+    color: #18181b;
+    padding: 0 0 8px 0;
+    border-bottom: 1px solid #f4f4f5;
+    margin-bottom: 4px;
+    text-align: left;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  /* Score cells — labeled pill style */
+  .results-table td:nth-child(2),
+  .results-table td:nth-child(3),
+  .results-table td:nth-child(4) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #e4e4e7;
+    font-size: 17px;
+    font-weight: 700;
+    color: #27272a;
+    text-align: center;
+  }
+
+  .results-table td:nth-child(2)::before { content: 'CA'; }
+  .results-table td:nth-child(3)::before { content: 'EXAM'; }
+  .results-table td:nth-child(4)::before { content: 'TOTAL'; }
+
+  .results-table td:nth-child(2)::before,
+  .results-table td:nth-child(3)::before,
+  .results-table td:nth-child(4)::before {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+    margin-bottom: 3px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Grade — chip, rightmost column */
+  .results-table td:nth-child(5) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  /* Summary rows — full-width block */
+  .results-table .summary-row {
+    display: block;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: none;
+    background: #f4f4f5;
+    grid-column: 1 / -1;
+  }
+
+  .results-table .summary-row td {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    font-size: 13px;
+    color: #1a56db;
+    font-weight: 700;
+  }
+
+  .results-table .summary-row td::before {
+    display: none;
+  }
+}
+
+/* ── FIX 4: Grade cells — background chip treatment ────────── */
+/* These override the plain-text grade colors in pupil-portal.css */
+.results-table td.grade-A1,
+.results-table td.grade-B2,
+.results-table td.grade-B3,
+.results-table td.grade-C4,
+.results-table td.grade-C5,
+.results-table td.grade-C6,
+.results-table td.grade-D7,
+.results-table td.grade-D8,
+.results-table td.grade-F9 {
+  font-weight: 800;
+  font-size: 12.5px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Chip inside the td — using padding + border-radius on the td itself */
+.results-table td.grade-A1 {
+  color: #065f46;
+  background-color: #d1fae5;
+}
+.results-table td.grade-B2,
+.results-table td.grade-B3 {
+  color: #1e3a8a;
+  background-color: #dbeafe;
+}
+.results-table td.grade-C4,
+.results-table td.grade-C5,
+.results-table td.grade-C6 {
+  color: #78350f;
+  background-color: #fef3c7;
+}
+.results-table td.grade-D7,
+.results-table td.grade-D8 {
+  color: #7c2d12;
+  background-color: #ffedd5;
+}
+.results-table td.grade-F9 {
+  color: #7f1d1d;
+  background-color: #fee2e2;
+}
+
+/* ── FIX 5: Session bar — no refresh button, cleaner layout ─── */
+.pp-session-bar {
+  display: block;
+  padding: 0 32px 24px;
+}
+
+.pp-session-bar__field {
+  max-width: 420px;
+}
+
+.pp-session-bar__hint {
+  font-size: 12px;
+  color: #a1a1aa;
+  margin: 0 0 8px;
+  font-style: italic;
+  font-family: 'DM Sans', sans-serif;
+}
+
+@media (max-width: 768px) {
+  .pp-session-bar {
+    padding: 0 16px 16px;
+  }
+  .pp-session-bar__field {
+    max-width: 100%;
+  }
+}
+
+/* ── FIX 6: Footer nav container ─────────────────────────────── */
+.pp-footer-nav {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 48px;
+}
+
+/* ── FIX 7: Min-height on results container (prevent CLS) ────── */
+#results-container {
+  min-height: 200px;
+}
+
+/* ── FIX 8: Accessibility — explicit focus rings ────────────── */
+.pp-body :focus-visible {
+  outline: 2.5px solid #1a56db;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.pp-body :focus:not(:focus-visible) {
+  outline: none;
+}
+
+.pp-select:focus-visible {
+  outline: 2.5px solid #1a56db;
+  outline-offset: 0;
+  border-color: #1a56db;
+  box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.12);
+}
+
+.pp-nav-link:focus-visible {
+  outline: 2.5px solid #1a56db;
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+.pp-btn:focus-visible,
+.pp-action-btn:focus-visible,
+.pp-btn-logout:focus-visible,
+.pp-refresh-btn:focus-visible {
+  outline: 2.5px solid #1a56db;
+  outline-offset: 2px;
+}
+
+/* ── FIX 9: Academic column mobile separation ────────────────── */
+@media (max-width: 768px) {
+  .pp-profile-col--academic {
+    margin-top: 6px;
+  }
+
+  .pp-profile-col--academic::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 3px;
+    background: #1a56db;
+    border-radius: 9999px;
+    margin-bottom: 16px;
+  }
+}
+
+/* ── FIX 11: Long class name overflow ────────────────────────── */
+.pp-tag {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .pp-hero__tags {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .pp-tag {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+/* ── Visually hidden utility (for table captions, sr-only text) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Suppress the pp-card--profile modifier warning (add a benign rule) */
+.pp-card--profile {
+  /* intentionally empty — modifier reserved for future enhancement */
+}
+
+/* ── Session pill: retained but hidden (JS safe, visually removed) */
+.pp-session-pill {
+  display: none !important;
+}
+</style>
 </head>
 
 <body class="pp-body">
@@ -36,34 +444,35 @@
 
     <div class="pp-topbar__brand">
       <div class="pp-brand-logo">
-        <img src="IMG_4629.png" alt="Fahmid School">
+        <img src="IMG_4629.png" alt="Fahmid School logo">
       </div>
       <div class="pp-brand-text">
         <span class="pp-brand-name">Fahmid Nursery &amp; Primary School</span>
         <span class="pp-brand-tag">
-          <i data-lucide="layout-dashboard"></i>
+          <i data-lucide="layout-dashboard" aria-hidden="true"></i>
           Pupil Portal
         </span>
       </div>
     </div>
 
-    <nav class="pp-topbar__nav">
+    <!-- Desktop nav — hidden at ≤1024px, bottom nav takes over -->
+    <nav class="pp-topbar__nav" aria-label="Portal sections">
       <a href="#pp-profile" class="pp-nav-link" data-section="profile">
-        <i data-lucide="user"></i>
+        <i data-lucide="user" aria-hidden="true"></i>
         <span>Profile</span>
       </a>
       <a href="#pp-results" class="pp-nav-link" data-section="results">
-        <i data-lucide="bar-chart-2"></i>
+        <i data-lucide="bar-chart-2" aria-hidden="true"></i>
         <span>Results</span>
       </a>
       <a href="#pp-fees" class="pp-nav-link" data-section="fees">
-        <i data-lucide="credit-card"></i>
+        <i data-lucide="credit-card" aria-hidden="true"></i>
         <span>Fees</span>
       </a>
     </nav>
 
-    <button class="pp-btn-logout" onclick="logout()">
-      <i data-lucide="log-out"></i>
+    <button class="pp-btn-logout" onclick="logout()" aria-label="Log out of pupil portal">
+      <i data-lucide="log-out" aria-hidden="true"></i>
       <span>Logout</span>
     </button>
 
@@ -74,22 +483,23 @@
 <!-- ═══════════════════════════════════════
      HERO / IDENTITY BANNER
 ═══════════════════════════════════════ -->
-<section class="pp-hero">
+<section class="pp-hero" aria-label="Pupil identity">
   <div class="pp-hero__inner">
 
     <div class="pp-hero__identity">
-      <div class="pp-avatar" id="pp-avatar-initials">
-        <i data-lucide="user" class="pp-avatar__fallback"></i>
+      <!-- Avatar is decorative; screen readers use the h1 greeting for name -->
+      <div class="pp-avatar" id="pp-avatar-initials" aria-hidden="true">
+        <i data-lucide="user" class="pp-avatar__fallback" aria-hidden="true"></i>
       </div>
       <div class="pp-hero__meta">
         <h1 class="pp-hero__greeting" id="pupil-welcome">Welcome back</h1>
-        <div class="pp-hero__tags">
+        <div class="pp-hero__tags" aria-label="Current class and session">
           <span class="pp-tag pp-tag--class">
-            <i data-lucide="book-open"></i>
+            <i data-lucide="book-open" aria-hidden="true"></i>
             <span id="student-class">Loading…</span>
           </span>
           <span class="pp-tag pp-tag--session">
-            <i data-lucide="calendar"></i>
+            <i data-lucide="calendar" aria-hidden="true"></i>
             <span id="student-session">Loading…</span>
           </span>
         </div>
@@ -98,17 +508,17 @@
 
     <div class="pp-hero__actions">
       <a href="print-results.html" class="pp-action-btn pp-action-btn--outline">
-        <i data-lucide="printer"></i>
+        <i data-lucide="printer" aria-hidden="true"></i>
         Print Report
       </a>
       <button class="pp-action-btn pp-action-btn--solid" onclick="scrollToSection('pp-fees')">
-        <i data-lucide="credit-card"></i>
+        <i data-lucide="credit-card" aria-hidden="true"></i>
         Fee Balance
       </button>
     </div>
 
   </div>
-  <!-- decorative mesh -->
+  <!-- Purely decorative mesh gradient -->
   <div class="pp-hero__mesh" aria-hidden="true"></div>
 </section>
 
@@ -116,67 +526,79 @@
 <!-- ═══════════════════════════════════════
      MAIN CONTENT WRAPPER
 ═══════════════════════════════════════ -->
-<main class="pp-main">
+<main class="pp-main" id="main-content">
 
   <!-- ─── PROFILE SECTION ─────────────────── -->
-  <section class="pp-card pp-card--profile" id="pp-profile">
+  <section class="pp-card pp-card--profile" id="pp-profile" aria-labelledby="profile-heading">
 
     <div class="pp-card__header">
-      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--blue">
+      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--blue" aria-hidden="true">
         <i data-lucide="user-circle-2"></i>
       </div>
       <div>
-        <h2 class="pp-card__title">Pupil Profile</h2>
+        <h2 class="pp-card__title" id="profile-heading">Pupil Profile</h2>
         <p class="pp-card__subtitle">Registered details and academic information</p>
       </div>
     </div>
 
     <div class="pp-profile-grid">
 
-      <!-- Left column: key identity fields -->
+      <!-- Left column: personal / contact fields -->
       <div class="pp-profile-col pp-profile-col--identity">
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="user"></i> Full Name
+          <span class="pp-field__label" id="label-name">
+            <i data-lucide="user" aria-hidden="true"></i> Full Name
           </span>
-          <span class="pp-field__value pp-field__value--name" id="pupil-name-display">Loading…</span>
+          <span class="pp-field__value pp-field__value--name"
+                id="pupil-name-display"
+                aria-labelledby="label-name">Loading…</span>
         </div>
 
         <div class="pp-field-row">
           <div class="pp-field">
-            <span class="pp-field__label">
-              <i data-lucide="hash"></i> Admission No.
+            <span class="pp-field__label" id="label-admission">
+              <i data-lucide="hash" aria-hidden="true"></i> Admission No.
             </span>
-            <span class="pp-field__value" id="pupil-admission-display">Loading…</span>
+            <span class="pp-field__value"
+                  id="pupil-admission-display"
+                  aria-labelledby="label-admission">Loading…</span>
           </div>
           <div class="pp-field">
-            <span class="pp-field__label">
-              <i data-lucide="users"></i> Gender
+            <span class="pp-field__label" id="label-gender">
+              <i data-lucide="users" aria-hidden="true"></i> Gender
             </span>
-            <span class="pp-field__value" id="pupil-gender-display">Loading…</span>
+            <span class="pp-field__value"
+                  id="pupil-gender-display"
+                  aria-labelledby="label-gender">Loading…</span>
           </div>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="calendar"></i> Date of Birth
+          <span class="pp-field__label" id="label-dob">
+            <i data-lucide="calendar" aria-hidden="true"></i> Date of Birth
           </span>
-          <span class="pp-field__value" id="pupil-dob-display">Loading…</span>
+          <span class="pp-field__value"
+                id="pupil-dob-display"
+                aria-labelledby="label-dob">Loading…</span>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="phone"></i> Contact Number
+          <span class="pp-field__label" id="label-contact">
+            <i data-lucide="phone" aria-hidden="true"></i> Contact Number
           </span>
-          <span class="pp-field__value" id="pupil-contact-display">Loading…</span>
+          <span class="pp-field__value"
+                id="pupil-contact-display"
+                aria-labelledby="label-contact">Loading…</span>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="map-pin"></i> Address
+          <span class="pp-field__label" id="label-address">
+            <i data-lucide="map-pin" aria-hidden="true"></i> Address
           </span>
-          <span class="pp-field__value" id="pupil-address-display">Loading…</span>
+          <span class="pp-field__value"
+                id="pupil-address-display"
+                aria-labelledby="label-address">Loading…</span>
         </div>
 
       </div>
@@ -184,30 +606,36 @@
       <!-- Right column: academic fields -->
       <div class="pp-profile-col pp-profile-col--academic">
 
-        <div class="pp-academic-banner">
+        <div class="pp-academic-banner" aria-hidden="true">
           <i data-lucide="graduation-cap" class="pp-academic-banner__icon"></i>
           <span class="pp-academic-banner__label">Academic Details</span>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="book-open"></i> Class
+          <span class="pp-field__label" id="label-class">
+            <i data-lucide="book-open" aria-hidden="true"></i> Class
           </span>
-          <span class="pp-field__value pp-field__value--highlight" id="pupil-class-display">Loading…</span>
+          <span class="pp-field__value pp-field__value--highlight"
+                id="pupil-class-display"
+                aria-labelledby="label-class">Loading…</span>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="user-check"></i> Assigned Teacher
+          <span class="pp-field__label" id="label-teacher">
+            <i data-lucide="user-check" aria-hidden="true"></i> Assigned Teacher
           </span>
-          <span class="pp-field__value" id="pupil-teacher-display">Loading…</span>
+          <span class="pp-field__value"
+                id="pupil-teacher-display"
+                aria-labelledby="label-teacher">Loading…</span>
         </div>
 
         <div class="pp-field">
-          <span class="pp-field__label">
-            <i data-lucide="library"></i> Subjects
+          <span class="pp-field__label" id="label-subjects">
+            <i data-lucide="library" aria-hidden="true"></i> Subjects
           </span>
-          <span class="pp-field__value pp-field__value--subjects" id="pupil-subjects-display">Loading…</span>
+          <span class="pp-field__value pp-field__value--subjects"
+                id="pupil-subjects-display"
+                aria-labelledby="label-subjects">Loading…</span>
         </div>
 
       </div>
@@ -218,51 +646,57 @@
 
 
   <!-- ─── RESULTS SECTION ─────────────────── -->
-  <section class="pp-card" id="pp-results">
+  <section class="pp-card" id="pp-results" aria-labelledby="results-heading">
 
     <div class="pp-card__header">
-      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--indigo">
+      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--indigo" aria-hidden="true">
         <i data-lucide="bar-chart-2"></i>
       </div>
       <div>
-        <h2 class="pp-card__title">Academic Results</h2>
+        <h2 class="pp-card__title" id="results-heading">Academic Results</h2>
         <p class="pp-card__subtitle">Your performance record by session and term</p>
       </div>
     </div>
 
     <!-- Session selector control bar -->
+    <!-- FIX 5: Refresh button removed — change event auto-loads results -->
     <div class="pp-session-bar">
       <div class="pp-session-bar__field">
         <label for="pupil-session-select" class="pp-session-bar__label">
-          <i data-lucide="calendar-range"></i>
+          <i data-lucide="calendar-range" aria-hidden="true"></i>
           Academic Session
         </label>
+        <p class="pp-session-bar__hint" id="session-hint">
+          Results update automatically when you select a session
+        </p>
         <div class="pp-select-wrap">
-          <select id="pupil-session-select" class="pp-select">
+          <select id="pupil-session-select"
+                  class="pp-select"
+                  aria-describedby="session-hint">
             <option value="current">Current Session (Loading…)</option>
           </select>
-          <i data-lucide="chevron-down" class="pp-select-chevron"></i>
+          <i data-lucide="chevron-down" class="pp-select-chevron" aria-hidden="true"></i>
         </div>
       </div>
-      <button onclick="loadSessionResults()" class="pp-refresh-btn">
-        <i data-lucide="refresh-cw"></i>
-        Refresh
-      </button>
     </div>
 
-    <!-- Active session indicator -->
-    <div id="session-info" class="pp-session-pill" style="display:none;">
-      Viewing: <strong id="selected-session-name">Current Session</strong>
+    <!--
+      FIX 10: Session pill is suppressed visually (display:none via CSS).
+      The elements are retained so pupil.js references to
+      'session-info' and 'selected-session-name' do not throw errors.
+    -->
+    <div id="session-info" aria-hidden="true" style="display:none;">
+      <span id="selected-session-name"></span>
     </div>
 
-    <!-- Results output area -->
-    <div id="results-container" class="pp-results-body">
+    <!-- Results output area — FIX 7: min-height prevents CLS -->
+    <div id="results-container" class="pp-results-body" aria-live="polite" aria-atomic="false">
       <!-- JS populates this -->
     </div>
 
     <div class="pp-card__footer">
       <a href="print-results.html" class="pp-btn pp-btn--primary">
-        <i data-lucide="printer"></i>
+        <i data-lucide="printer" aria-hidden="true"></i>
         View &amp; Print Report Card
       </a>
     </div>
@@ -271,21 +705,51 @@
 
 
   <!-- ─── FEE BALANCE SECTION ──────────────── -->
-  <section class="pp-card" id="pp-fees" style="display:none;">
-    <!-- JS (loadFeeBalance) fully replaces this section's innerHTML -->
-    <!-- The id="fee-balance-section" alias is set below for backward compatibility -->
+  <!--
+    loadFeeBalance() replaces this section's innerHTML entirely.
+    The getElementById proxy in the inline script below routes
+    getElementById('fee-balance-section') → this element (#pp-fees),
+    so the JS never needs to be touched.
+  -->
+  <section class="pp-card" id="pp-fees" style="display:none;" aria-labelledby="fees-heading">
+    <!-- JS (loadFeeBalance) fully populates this -->
   </section>
 
-  <!-- Alias anchor so existing JS (getElementById('fee-balance-section')) still works -->
-  <div id="fee-balance-section" style="display:none;"></div>
+  <!--
+    Alias div: retained so the getElementById proxy has a target to redirect FROM.
+    It is permanently hidden and has no visual presence.
+  -->
+  <div id="fee-balance-section" style="display:none;" aria-hidden="true"></div>
 
-    <div>
-     <a href="index.html" class="pp-btn pp-btn--ghost">
-        <i data-lucide="home"></i>
-        Back to Website
-      </a>
-    </div>
+  <!-- FIX 6: Back to Website — now inside a proper centred container -->
+  <div class="pp-footer-nav">
+    <a href="index.html" class="pp-btn pp-btn--ghost">
+      <i data-lucide="home" aria-hidden="true"></i>
+      Back to Website
+    </a>
+  </div>
+
 </main>
+
+
+<!-- ── BOTTOM NAVIGATION (tablet + mobile only) ──────────────── -->
+<!-- FIX 2: Provides section navigation at ≤1024px where top nav is hidden -->
+<nav class="pp-bottom-nav" aria-label="Portal sections">
+  <div class="pp-bottom-nav__inner">
+    <a href="#pp-profile" class="pp-bottom-nav__link" data-section="profile">
+      <i data-lucide="user" aria-hidden="true"></i>
+      <span>Profile</span>
+    </a>
+    <a href="#pp-results" class="pp-bottom-nav__link" data-section="results">
+      <i data-lucide="bar-chart-2" aria-hidden="true"></i>
+      <span>Results</span>
+    </a>
+    <a href="#pp-fees" class="pp-bottom-nav__link" data-section="fees">
+      <i data-lucide="credit-card" aria-hidden="true"></i>
+      <span>Fees</span>
+    </a>
+  </div>
+</nav>
 
 
 <footer class="pp-footer">
@@ -293,100 +757,141 @@
 </footer>
 
 
-<!-- Scripts -->
+<!-- ═══════════════════════════════════════
+     SCRIPTS — load order preserved
+═══════════════════════════════════════ -->
 <script src="firebase-init.js"></script>
 <script src="script.js"></script>
 <script src="finance.js"></script>
 <script src="pupil.js"></script>
 
 <script>
-// Set copyright year
+/* ──────────────────────────────────────────────────────────────
+   PAGE INITIALISATION
+   All logic below is UI/structural only.
+   No Firebase, no business logic changes.
+────────────────────────────────────────────────────────────── */
+
+// Copyright year
 document.getElementById('copyright-year').textContent = new Date().getFullYear();
 
-// Initialise Lucide icons
 document.addEventListener('DOMContentLoaded', () => {
+
+  // ── Lucide icons ──────────────────────────────────────────
   lucide.createIcons();
 
-  // Generate avatar initials once the name is populated
-  const nameEl = document.getElementById('pupil-name-display');
+  // ── Avatar initials ───────────────────────────────────────
+  // Observes the name display element; once a real name loads,
+  // replaces the fallback icon with initials.
+  const nameEl   = document.getElementById('pupil-name-display');
   const avatarEl = document.getElementById('pp-avatar-initials');
-  const observer = new MutationObserver(() => {
+
+  const avatarObserver = new MutationObserver(() => {
     const name = nameEl?.textContent?.trim();
     if (name && name !== 'Loading…' && name !== '-') {
-      const initials = name.split(' ')
+      const initials = name
+        .split(' ')
         .slice(0, 2)
         .map(w => w[0])
         .join('')
         .toUpperCase();
       avatarEl.innerHTML = `<span>${initials}</span>`;
       avatarEl.classList.add('pp-avatar--loaded');
-      observer.disconnect();
+      avatarObserver.disconnect();
     }
   });
-  if (nameEl) observer.observe(nameEl, { childList: true, characterData: true, subtree: true });
+  if (nameEl) avatarObserver.observe(nameEl, { childList: true, characterData: true, subtree: true });
 
-  // Active nav link on scroll
+  // ── Active nav link on scroll (top nav + bottom nav) ─────
   const sections = ['pp-profile', 'pp-results', 'pp-fees'];
-  const navLinks = document.querySelectorAll('.pp-nav-link');
+  const topNavLinks    = document.querySelectorAll('.pp-nav-link');
+  const bottomNavLinks = document.querySelectorAll('.pp-bottom-nav__link');
 
-  const io = new IntersectionObserver(entries => {
+  const sectionObserver = new IntersectionObserver(entries => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        navLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
-        const match = document.querySelector(`.pp-nav-link[href="#${entry.target.id}"]`);
-        if (match) match.classList.add('pp-nav-link--active');
-      }
+      if (!entry.isIntersecting) return;
+
+      const id = entry.target.id;
+
+      // Top nav
+      topNavLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
+      const topMatch = document.querySelector(`.pp-nav-link[href="#${id}"]`);
+      if (topMatch) topMatch.classList.add('pp-nav-link--active');
+
+      // Bottom nav
+      bottomNavLinks.forEach(l => l.classList.remove('pp-bottom-nav__link--active'));
+      const bottomMatch = document.querySelector(`.pp-bottom-nav__link[href="#${id}"]`);
+      if (bottomMatch) bottomMatch.classList.add('pp-bottom-nav__link--active');
     });
-  }, { threshold: 0.4 });
+  }, { threshold: 0.35 });
 
   sections.forEach(id => {
     const el = document.getElementById(id);
-    if (el) io.observe(el);
+    if (el) sectionObserver.observe(el);
   });
+
+  // ── Set initial active state on Profile (first section) ──
+  // Prevents the nav having no active state before the user scrolls.
+  const firstTopLink    = document.querySelector('.pp-nav-link[data-section="profile"]');
+  const firstBottomLink = document.querySelector('.pp-bottom-nav__link[data-section="profile"]');
+  if (firstTopLink)    firstTopLink.classList.add('pp-nav-link--active');
+  if (firstBottomLink) firstBottomLink.classList.add('pp-bottom-nav__link--active');
+
 });
 
-// Smooth scroll helper (replaces scrollToFees)
+
+/* ──────────────────────────────────────────────────────────────
+   SCROLL HELPER
+   Used by the "Fee Balance" hero button and any other CTA.
+────────────────────────────────────────────────────────────── */
 function scrollToSection(id) {
   const el = document.getElementById(id);
   if (el) {
     el.style.display = 'block';
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Small delay lets display:block repaint before scrollIntoView measures
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     window.showToast?.('📊 Viewing fee balance', 'info', 2000);
   }
 }
 
-// Keep scrollToFees alias working
-window.scrollToFees = () => scrollToSection('fee-balance-section');
+// Alias kept for any legacy callers
+window.scrollToFees    = () => scrollToSection('fee-balance-section');
 window.scrollToSection = scrollToSection;
 
-// Redirect fee-balance-section writes to pp-fees
-// (loadFeeBalance uses getElementById('fee-balance-section'))
-// We proxy the display:none toggle by watching the alias div
-const feeAlias = document.getElementById('fee-balance-section');
-const feeSection = document.getElementById('pp-fees');
 
-if (feeAlias && feeSection) {
-  // Proxy innerHTML writes from JS to the real card
-  const originalDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-  
-  // Simpler approach: override getElementById locally for this page
-  const _getElementById = document.getElementById.bind(document);
+/* ──────────────────────────────────────────────────────────────
+   getElementById PROXY
+   Routes getElementById('fee-balance-section') → #pp-fees
+   so loadFeeBalance() in pupil.js writes into the styled pp-card
+   without any changes to the JS business logic.
+────────────────────────────────────────────────────────────── */
+(function() {
+  const feeSection = document.getElementById('pp-fees');
+  if (!feeSection) return;
+
+  const _nativeGetById = document.getElementById.bind(document);
+
   document.getElementById = function(id) {
     if (id === 'fee-balance-section') return feeSection;
-    return _getElementById(id);
+    return _nativeGetById(id);
   };
-}
+})();
 </script>
 
 <script src="session-cache.js"></script>
 <script src="button-loader.js"></script>
+<script src="pupil-ui-patch.js"></script>
 
 <script>
+// Service Worker registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
 </script>
+
 </body>
 </html>
