@@ -27,289 +27,500 @@
 
 <style>
 /* ============================================================
-   PUPIL PORTAL — COMPLETE UI FIX PATCH
-   Applied on top of pupil-portal.css.
-   Every confirmed bug from the full cross-file audit is fixed here.
-   No business logic is touched.
+   PUPIL PORTAL — COMPLETE UI PATCH  v3
+   Includes: all previous bug fixes + full results redesign
    ============================================================ */
 
-/* ── FIX A: prefers-reduced-motion ─────────────────────────── */
+/* ── A: prefers-reduced-motion ──────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .pp-card {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
+  .pp-card { animation: none !important; opacity: 1 !important; transform: none !important; }
   .pp-skeleton, .pp-skeleton * { animation: none !important; }
   .spinner { animation: none !important; }
-  .pp-action-btn--solid:hover,
-  .pp-btn--primary:hover { transform: none !important; }
+  .pp-action-btn--solid:hover, .pp-btn--primary:hover { transform: none !important; }
 }
 
-/* ── FIX B: Bottom-nav active state helpers ─────────────────── */
+/* ── B: Bottom-nav active state ─────────────────────────────── */
 .pp-bottom-nav__link--active { color: #1a56db; }
 .pp-bottom-nav__link--active i[data-lucide] { transform: translateY(-1px); }
-.pp-bottom-nav__link:focus-visible {
-  outline: 2.5px solid #1a56db;
-  outline-offset: 2px;
-  border-radius: 8px;
-}
+.pp-bottom-nav__link:focus-visible { outline: 2.5px solid #1a56db; outline-offset: 2px; border-radius: 8px; }
 
-/* ── FIX C: Footer overlap by bottom nav ────────────────────── */
-/*
-  Bug: The fixed bottom nav (≈64 px tall) sits on top of .pp-footer
-  because the footer's own padding is too small.
-  pupil-portal.css sets margin-bottom: 72px on .pp-footer at <=1024px —
-  that pushes *space below* the footer, not *inside* it. The footer text
-  still sits at the top of the footer block and gets covered.
-  Fix: use padding-bottom so the footer's own content clears the nav.
-*/
+/* ── C: Footer overlap fix ──────────────────────────────────── */
 @media (max-width: 1024px) {
   .pp-footer {
     padding-bottom: max(24px, calc(72px + env(safe-area-inset-bottom)));
-    margin-bottom: 0 !important; /* the margin-bottom was pushing blank space below footer */
+    margin-bottom: 0 !important;
   }
 }
 
-/* ── FIX D: #session-info — floating "Viewing: …" text ─────── */
-/*
-  Bug: pupil.js/loadSessionResults() does:
-    if (sessionInfo) { sessionInfo.style.display = 'block'; }
-  This overrides any CSS `display:none` on the element because inline
-  styles have higher specificity than class/id rules — UNLESS we use
-  !important on the id selector.
-
-  Previous CSS only hid .pp-session-pill (the class). The element's
-  id is #session-info, so it was not suppressed. Result: the session
-  name appeared as floating text between the dropdown and the results.
-
-  Fix: target the id directly with !important.
-  The DOM nodes are kept so pupil.js does not throw null-reference errors.
-*/
-#session-info {
-  display: none !important;
-}
-/* Belt-and-suspenders: also suppress the class name */
+/* ── D: Suppress floating session-info text ─────────────────── */
+#session-info { display: none !important; }
 .pp-session-pill { display: none !important; }
 
-/* ── FIX E: Session bar layout ──────────────────────────────── */
-.pp-session-bar {
-  display: block;
-  padding: 0 32px 24px;
-}
+/* ── E: Session bar ─────────────────────────────────────────── */
+.pp-session-bar { display: block; padding: 0 32px 24px; }
 .pp-session-bar__field { max-width: 440px; }
-.pp-session-bar__label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #52525b;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.pp-session-bar__hint {
-  font-size: 12px;
-  color: #a1a1aa;
-  margin: 0 0 8px;
-  font-style: italic;
-}
-@media (max-width: 768px) {
-  .pp-session-bar { padding: 0 16px 16px; }
-  .pp-session-bar__field { max-width: 100%; }
-}
+.pp-session-bar__label { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: #52525b; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px; }
+.pp-session-bar__hint { font-size: 12px; color: #a1a1aa; margin: 0 0 8px; font-style: italic; }
+@media (max-width: 768px) { .pp-session-bar { padding: 0 16px 16px; } .pp-session-bar__field { max-width: 100%; } }
 
-/* ── FIX F: Results table — mobile card-row transform (≤600px) ─ */
-@media (max-width: 600px) {
-  .results-table {
-    display: block;
-    overflow: visible;
-    white-space: normal;
-    border: none;
-    min-width: 0;
-  }
-  .results-table thead { display: none; }
-  .results-table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .results-table tbody tr {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 4px 8px;
-    background: #ffffff;
-    border: 1px solid #e4e4e7;
-    border-radius: 12px;
-    padding: 12px 14px;
-    box-shadow: 0 1px 2px rgba(0,0,0,.05);
-  }
-  .results-table tbody tr:hover { background: #eff6ff; }
-  .results-table td:first-child {
-    grid-column: 1 / -1;
-    font-size: 14px;
-    font-weight: 700;
-    color: #18181b;
-    padding: 0 0 8px;
-    border-bottom: 1px solid #f4f4f5;
-    background: transparent;
-    border-radius: 0;
-  }
-  .results-table td:nth-child(2),
-  .results-table td:nth-child(3),
-  .results-table td:nth-child(4) {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 6px;
-    background: #fafafa;
-    border-radius: 8px;
-    border: 1px solid #e4e4e7;
-    font-size: 17px;
-    font-weight: 700;
-    color: #27272a;
-    text-align: center;
-  }
-  .results-table td:nth-child(2)::before { content: 'CA'; }
-  .results-table td:nth-child(3)::before { content: 'EXAM'; }
-  .results-table td:nth-child(4)::before { content: 'TOTAL'; }
-  .results-table td:nth-child(2)::before,
-  .results-table td:nth-child(3)::before,
-  .results-table td:nth-child(4)::before {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #a1a1aa;
-    margin-bottom: 3px;
-  }
-  .results-table td:nth-child(5) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 6px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 800;
-  }
-  .results-table .summary-row {
-    display: block;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: #f4f4f5;
-  }
-  .results-table .summary-row td {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    font-size: 13px;
-    color: #1a56db;
-    font-weight: 700;
-  }
-  .results-table .summary-row td::before { display: none; }
-}
-
-/* ── FIX G: Grade cells — background chip treatment ────────── */
-/*
-  styles.css defines .grade-A1 { color only } at low specificity.
-  pupil-portal.css adds background. We bump specificity with !important
-  so styles.css cannot win even if loaded after portal CSS.
-*/
-.results-table td.grade-A1 { color: #065f46 !important; background-color: #d1fae5 !important; font-weight: 800; text-align: center; vertical-align: middle; }
-.results-table td.grade-B2,
-.results-table td.grade-B3 { color: #1e3a8a !important; background-color: #dbeafe !important; font-weight: 800; text-align: center; vertical-align: middle; }
-.results-table td.grade-C4,
-.results-table td.grade-C5,
-.results-table td.grade-C6 { color: #78350f !important; background-color: #fef3c7 !important; font-weight: 800; text-align: center; vertical-align: middle; }
-.results-table td.grade-D7,
-.results-table td.grade-D8 { color: #7c2d12 !important; background-color: #ffedd5 !important; font-weight: 800; text-align: center; vertical-align: middle; }
-.results-table td.grade-F9 { color: #7f1d1d !important; background-color: #fee2e2 !important; font-weight: 800; text-align: center; vertical-align: middle; }
-
-/* ── FIX H: Footer nav wrapper ──────────────────────────────── */
-.pp-footer-nav {
-  display: flex;
-  justify-content: center;
-  padding: 16px 0 32px;
-}
-
-/* ── FIX I: Results container min-height (prevents CLS) ─────── */
-#results-container { min-height: 200px; }
-
-/* ── FIX J: Explicit focus rings (WCAG 2.4.7) ──────────────── */
-.pp-body :focus-visible {
-  outline: 2.5px solid #1a56db;
-  outline-offset: 2px;
-  border-radius: 2px;
-}
+/* ── F: Focus rings ─────────────────────────────────────────── */
+.pp-body :focus-visible { outline: 2.5px solid #1a56db; outline-offset: 2px; border-radius: 2px; }
 .pp-body :focus:not(:focus-visible) { outline: none; }
-.pp-select:focus-visible {
-  outline: 2.5px solid #1a56db;
-  outline-offset: 0;
-  border-color: #1a56db;
-  box-shadow: 0 0 0 4px rgba(26,86,219,.12);
-}
-.pp-nav-link:focus-visible,
-.pp-bottom-nav__link:focus-visible {
-  outline: 2.5px solid #1a56db;
-  outline-offset: 2px;
-  border-radius: 9999px;
-}
-.pp-btn:focus-visible,
-.pp-action-btn:focus-visible,
-.pp-btn-logout:focus-visible {
-  outline: 2.5px solid #1a56db;
-  outline-offset: 2px;
-}
+.pp-select:focus-visible { outline: 2.5px solid #1a56db; outline-offset: 0; border-color: #1a56db; box-shadow: 0 0 0 4px rgba(26,86,219,.12); }
+.pp-nav-link:focus-visible, .pp-bottom-nav__link:focus-visible { outline: 2.5px solid #1a56db; outline-offset: 2px; border-radius: 9999px; }
+.pp-btn:focus-visible, .pp-action-btn:focus-visible, .pp-btn-logout:focus-visible { outline: 2.5px solid #1a56db; outline-offset: 2px; }
 
-/* ── FIX K: Academic column mobile visual break ─────────────── */
+/* ── G: Academic column mobile break ────────────────────────── */
 @media (max-width: 768px) {
   .pp-profile-col--academic { margin-top: 6px; }
-  .pp-profile-col--academic::before {
-    content: '';
-    display: block;
-    width: 40px;
-    height: 3px;
-    background: #1a56db;
-    border-radius: 9999px;
-    margin-bottom: 16px;
-  }
+  .pp-profile-col--academic::before { content: ''; display: block; width: 40px; height: 3px; background: #1a56db; border-radius: 9999px; margin-bottom: 16px; }
 }
 
-/* ── FIX L: Hero tag overflow (long class names) ────────────── */
-.pp-tag {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* ── H: Hero tag overflow ───────────────────────────────────── */
+.pp-tag { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 480px) { .pp-hero__tags { flex-direction: column; align-items: flex-start; gap: 6px; } .pp-tag { max-width: 100%; white-space: normal; } }
+
+/* ── I: Footer nav wrapper ──────────────────────────────────── */
+.pp-footer-nav { display: flex; justify-content: center; padding: 16px 0 32px; }
+
+/* ── J: Results container min-height ────────────────────────── */
+#results-container { min-height: 200px; }
+
+/* ── K: Visually-hidden utility ─────────────────────────────── */
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ── L: pp-card--profile no-op ──────────────────────────────── */
+.pp-card--profile { /* reserved */ }
+
+
+/* ════════════════════════════════════════════════════════════
+   RESULTS REDESIGN — DESKTOP + MOBILE
+   
+   Structure generated by pupil.js:
+   
+   <div class="results-term-section">          ← term wrapper
+     <h3 style="color:#0f172a;margin-bottom:…">First Term</h3>
+     <table class="results-table">
+       <caption class="visually-hidden">…</caption>
+       <thead><tr>
+         <th>SUBJECT</th><th>CA (40)</th><th>EXAM (60)</th>
+         <th>TOTAL (100)</th><th>GRADE</th>
+       </tr></thead>
+       <tbody>
+         <tr>                                   ← data row (5 tds)
+           <td><strong>Maths</strong></td>
+           <td style="text-align:center;">32</td>
+           <td style="text-align:center;">55</td>
+           <td style="text-align:center;font-weight:bold;">87</td>
+           <td style="text-align:center;" class="grade-A1">A1</td>
+         </tr>
+         <tr class="summary-row">               ← summary (2 tds with colspan)
+           <td colspan="3"><strong>TOTAL SCORE</strong></td>
+           <td colspan="2"><strong>870 / 1000</strong></td>
+         </tr>
+         <tr class="summary-row">
+           <td colspan="3"><strong>AVERAGE</strong></td>
+           <td colspan="2"><strong>87.0% (A1)</strong></td>
+         </tr>
+       </tbody>
+     </table>
+   </div>
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Results body padding ────────────────────────────────────── */
+.pp-results-body {
+  padding: 0 32px 8px;
+}
+@media (max-width: 768px) {
+  .pp-results-body { padding: 0 16px 8px; }
+}
+
+/* ── Term section wrapper ────────────────────────────────────── */
+.results-term-section {
+  margin-bottom: 36px !important; /* override inline style */
+}
+
+/* ── Term heading ────────────────────────────────────────────── */
+/*
+  pupil.js sets heading.style.color = '#0f172a' as inline style.
+  We need !important to override only the colour, then add our 
+  decorative treatment on top.
+*/
+.results-term-section h3 {
+  /* Visual design */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: #1a56db !important;     /* override inline #0f172a */
+  margin-bottom: 12px !important;
+  padding: 0;
+}
+
+/* Decorative line after the term label */
+.results-term-section h3::after {
+  content: '';
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(to right, #dbeafe, transparent);
+  border-radius: 9999px;
+}
+
+/* ── Table base — reset conflicting global rules from styles.css ── */
+/*
+  styles.css sets: table { border-collapse: collapse; background: white }
+  th, td { padding: var(--space-4) var(--space-6); border-bottom: 1px solid... }
+  We override with tighter, purpose-built rules scoped to .results-table.
+*/
+.results-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── DESKTOP TABLE ───────────────────────────────────────────── */
+/* thead */
+.results-table thead tr {
+  background: #f8faff;
+}
+
+.results-table thead th {
+  padding: 10px 14px !important;  /* tighter than styles.css 16px 24px */
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: #6b7280 !important;
+  border-bottom: 2px solid #e0e7ff !important;
+  background: #f8faff !important;
   white-space: nowrap;
 }
-@media (max-width: 480px) {
-  .pp-hero__tags {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  .pp-tag { max-width: 100%; white-space: normal; }
+
+.results-table thead th:first-child {
+  border-radius: 10px 0 0 0;
+  padding-left: 18px !important;
+}
+.results-table thead th:last-child {
+  border-radius: 0 10px 0 0;
+  text-align: center !important;
 }
 
-/* ── FIX M: Visually-hidden utility ─────────────────────────── */
-.visually-hidden {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
+/* Data rows */
+.results-table tbody tr:not(.summary-row) {
+  transition: background 120ms ease;
+}
+
+.results-table tbody tr:not(.summary-row):nth-child(odd) {
+  background: #ffffff;
+}
+.results-table tbody tr:not(.summary-row):nth-child(even) {
+  background: #fafbff;
+}
+.results-table tbody tr:not(.summary-row):hover {
+  background: #eff6ff;
+}
+
+/* Data cells */
+.results-table tbody tr:not(.summary-row) td {
+  padding: 11px 14px !important;  /* override styles.css */
+  font-size: 13.5px !important;
+  color: #374151 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  vertical-align: middle !important;
+  text-align: left;
+}
+
+/* Subject cell */
+.results-table tbody tr:not(.summary-row) td:first-child {
+  padding-left: 18px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+/* Score cells */
+.results-table tbody tr:not(.summary-row) td:nth-child(2),
+.results-table tbody tr:not(.summary-row) td:nth-child(3) {
+  text-align: center !important;
+  color: #64748b !important;
+  font-variant-numeric: tabular-nums;
+}
+.results-table tbody tr:not(.summary-row) td:nth-child(4) {
+  text-align: center !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Grade cell — pill badge */
+.results-table tbody tr:not(.summary-row) td:nth-child(5) {
+  text-align: center !important;
+  padding: 8px 10px !important;
+}
+
+/* Grade badge styles — override styles.css .grade-* (text only) with chip */
+.results-table td.grade-A1 { background: #dcfce7 !important; color: #14532d !important; font-weight: 800 !important; font-size: 12px !important; border-radius: 6px !important; }
+.results-table td.grade-B2,
+.results-table td.grade-B3 { background: #dbeafe !important; color: #1e3a8a !important; font-weight: 800 !important; font-size: 12px !important; border-radius: 6px !important; }
+.results-table td.grade-C4,
+.results-table td.grade-C5,
+.results-table td.grade-C6 { background: #fef9c3 !important; color: #713f12 !important; font-weight: 800 !important; font-size: 12px !important; border-radius: 6px !important; }
+.results-table td.grade-D7,
+.results-table td.grade-D8 { background: #ffedd5 !important; color: #7c2d12 !important; font-weight: 800 !important; font-size: 12px !important; border-radius: 6px !important; }
+.results-table td.grade-F9 { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 800 !important; font-size: 12px !important; border-radius: 6px !important; }
+
+/* Summary rows */
+.results-table tbody tr.summary-row td {
+  padding: 10px 18px !important;
+  font-size: 13px !important;
+  border-bottom: none !important;
+  border-top: 2px solid #e0e7ff !important;
+  background: #f0f5ff !important;
+  color: #1e40af !important;
+}
+
+.results-table tbody tr.summary-row:first-of-type td {
+  border-top: 2px solid #e0e7ff !important;
+}
+.results-table tbody tr.summary-row:last-child td {
+  border-bottom: none !important;
+}
+
+/* Make summary label left and value right */
+.results-table tbody tr.summary-row td:first-child {
+  color: #4b5563 !important;
+  font-weight: 600 !important;
+  padding-left: 18px !important;
+}
+.results-table tbody tr.summary-row td:last-child {
+  text-align: right !important;
+  padding-right: 18px !important;
+  font-weight: 800 !important;
+  color: #1a56db !important;
+}
+
+/* Rounded bottom corners on the whole table block */
+.results-table tbody tr:last-child td:first-child { border-radius: 0 0 0 10px; }
+.results-table tbody tr:last-child td:last-child { border-radius: 0 0 10px 0; }
+
+/* Table outer border/shadow */
+.results-table {
+  border-radius: 10px;
   overflow: hidden;
-  clip: rect(0,0,0,0);
-  white-space: nowrap;
-  border: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 0 0 1px #e0e7ff;
 }
 
-/* ── FIX N: Suppress unused-modifier DevTools warning ────────── */
-.pp-card--profile { /* modifier reserved for future use */ }
+
+/* ── MOBILE TABLE — card-per-row layout ──────────────────────── */
+/*
+  KEY INSIGHT: summary-row tds use colspan="3" and colspan="2".
+  colspan does NOT create new <td> elements; it just stretches the 
+  existing td. So:
+    - Data rows have 5 <td>s → nth-child(1..5) works
+    - Summary rows have 2 <td>s → nth-child(1) and nth-child(2) only
+
+  GRID LAYOUT for data rows (tr:not(.summary-row)):
+  Named grid areas so each td maps cleanly:
+  
+    ┌─────────────────────────┬───────┐
+    │ SUBJECT (name)          │       │
+    ├────────┬────────┬───────┤ GRADE │
+    │   CA   │  EXAM  │ TOTAL │       │
+    └────────┴────────┴───────┴───────┘
+*/
+@media (max-width: 640px) {
+
+  /* Reset global table/cell rules that fight us */
+  .results-table,
+  .results-table thead,
+  .results-table tbody,
+  .results-table tr,
+  .results-table th,
+  .results-table td {
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Hide desktop header row */
+  .results-table thead { display: none !important; }
+
+  /* Term table becomes a plain column of cards */
+  .results-table {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  .results-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* ── DATA ROW: grid layout ── */
+  .results-table tbody tr:not(.summary-row) {
+    display: grid !important;
+    grid-template-areas:
+      "subject  subject  subject  grade"
+      "ca       exam     total    grade" !important;
+    grid-template-columns: 1fr 1fr 1fr 52px !important;
+    grid-template-rows: auto auto !important;
+    gap: 0 !important;
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    transition: box-shadow 150ms ease !important;
+  }
+
+  .results-table tbody tr:not(.summary-row):hover {
+    box-shadow: 0 4px 16px rgba(26,86,219,.12) !important;
+    border-color: #bfdbfe !important;
+  }
+
+  /* Subject name — top row, spans 3 of 4 columns */
+  .results-table tbody tr:not(.summary-row) td:nth-child(1) {
+    grid-area: subject !important;
+    padding: 13px 14px 10px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    text-align: left !important;
+    background: #ffffff !important;
+    display: block !important;
+  }
+
+  /* Score cells — bottom row, left 3 columns */
+  .results-table tbody tr:not(.summary-row) td:nth-child(2) {
+    grid-area: ca !important;
+  }
+  .results-table tbody tr:not(.summary-row) td:nth-child(3) {
+    grid-area: exam !important;
+  }
+  .results-table tbody tr:not(.summary-row) td:nth-child(4) {
+    grid-area: total !important;
+  }
+
+  .results-table tbody tr:not(.summary-row) td:nth-child(2),
+  .results-table tbody tr:not(.summary-row) td:nth-child(3),
+  .results-table tbody tr:not(.summary-row) td:nth-child(4) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px 8px 12px !important;
+    background: #f8faff !important;
+    text-align: center !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    border-right: 1px solid #e2e8f0 !important;
+    min-height: 60px !important;
+  }
+
+  /* Score labels via ::before */
+  .results-table tbody tr:not(.summary-row) td:nth-child(2)::before,
+  .results-table tbody tr:not(.summary-row) td:nth-child(3)::before,
+  .results-table tbody tr:not(.summary-row) td:nth-child(4)::before {
+    display: block !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: #94a3b8 !important;
+    margin-bottom: 3px !important;
+    font-family: 'DM Sans', sans-serif !important;
+  }
+  .results-table tbody tr:not(.summary-row) td:nth-child(2)::before { content: 'CA' !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(3)::before { content: 'Exam' !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(4)::before { content: 'Total' !important; }
+
+  /* Grade — right column, spans both rows */
+  .results-table tbody tr:not(.summary-row) td:nth-child(5) {
+    grid-area: grade !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    border-left: 1px solid #e2e8f0 !important;
+    border-bottom: none !important;
+    border-radius: 0 14px 14px 0 !important;
+    min-height: 100% !important;
+    /* Grade colours are set by .grade-* rules below in mobile context */
+  }
+
+  /* ── SUMMARY ROWS ── */
+  .results-table tbody tr.summary-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px 16px !important;
+    background: #eef2ff !important;
+    border-radius: 10px !important;
+    border: 1px solid #c7d2fe !important;
+    box-shadow: none !important;
+    gap: 8px !important;
+  }
+
+  .results-table tbody tr.summary-row td {
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    font-size: 13px !important;
+    color: #4338ca !important;
+    text-align: left !important;
+  }
+
+  .results-table tbody tr.summary-row td:first-child {
+    font-weight: 600 !important;
+    color: #64748b !important;
+  }
+
+  .results-table tbody tr.summary-row td:last-child {
+    font-weight: 800 !important;
+    color: #1a56db !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  /* Grade colours in mobile context — must match grid-area styling */
+  .results-table td.grade-A1 { background: #dcfce7 !important; color: #14532d !important; }
+  .results-table td.grade-B2,
+  .results-table td.grade-B3 { background: #dbeafe !important; color: #1e3a8a !important; }
+  .results-table td.grade-C4,
+  .results-table td.grade-C5,
+  .results-table td.grade-C6 { background: #fef9c3 !important; color: #713f12 !important; }
+  .results-table td.grade-D7,
+  .results-table td.grade-D8 { background: #ffedd5 !important; color: #7c2d12 !important; }
+  .results-table td.grade-F9 { background: #fee2e2 !important; color: #7f1d1d !important; }
+
+  /* Nudge bottom-nav clear */
+  .pp-main { padding-bottom: calc(var(--pp-gap-2xl, 48px) + 72px) !important; }
+}
+
+/* ── Term heading — mobile ───────────────────────────────────── */
+@media (max-width: 640px) {
+  .results-term-section h3 {
+    font-size: 11px !important;
+    margin-bottom: 10px !important;
+  }
+}
 </style>
 </head>
 
@@ -334,7 +545,6 @@
       </div>
     </div>
 
-    <!-- Desktop nav — hidden ≤1024px, bottom nav takes over -->
     <nav class="pp-topbar__nav" aria-label="Portal sections">
       <a href="#pp-profile" class="pp-nav-link" data-section="profile">
         <i data-lucide="user" aria-hidden="true"></i>
@@ -366,10 +576,6 @@
   <div class="pp-hero__inner">
 
     <div class="pp-hero__identity">
-      <!--
-        aria-hidden: decorative only. Screen readers announce
-        the pupil's name via the h1 greeting text below.
-      -->
       <div class="pp-avatar" id="pp-avatar-initials" aria-hidden="true">
         <i data-lucide="user" class="pp-avatar__fallback" aria-hidden="true"></i>
       </div>
@@ -424,16 +630,13 @@
 
     <div class="pp-profile-grid">
 
-      <!-- Left: personal / contact fields -->
       <div class="pp-profile-col pp-profile-col--identity">
 
         <div class="pp-field">
           <span class="pp-field__label" id="label-name">
             <i data-lucide="user" aria-hidden="true"></i> Full Name
           </span>
-          <span class="pp-field__value pp-field__value--name"
-                id="pupil-name-display"
-                aria-labelledby="label-name">Loading…</span>
+          <span class="pp-field__value pp-field__value--name" id="pupil-name-display" aria-labelledby="label-name">Loading…</span>
         </div>
 
         <div class="pp-field-row">
@@ -441,17 +644,13 @@
             <span class="pp-field__label" id="label-admission">
               <i data-lucide="hash" aria-hidden="true"></i> Admission No.
             </span>
-            <span class="pp-field__value"
-                  id="pupil-admission-display"
-                  aria-labelledby="label-admission">Loading…</span>
+            <span class="pp-field__value" id="pupil-admission-display" aria-labelledby="label-admission">Loading…</span>
           </div>
           <div class="pp-field">
             <span class="pp-field__label" id="label-gender">
               <i data-lucide="users" aria-hidden="true"></i> Gender
             </span>
-            <span class="pp-field__value"
-                  id="pupil-gender-display"
-                  aria-labelledby="label-gender">Loading…</span>
+            <span class="pp-field__value" id="pupil-gender-display" aria-labelledby="label-gender">Loading…</span>
           </div>
         </div>
 
@@ -459,32 +658,25 @@
           <span class="pp-field__label" id="label-dob">
             <i data-lucide="calendar" aria-hidden="true"></i> Date of Birth
           </span>
-          <span class="pp-field__value"
-                id="pupil-dob-display"
-                aria-labelledby="label-dob">Loading…</span>
+          <span class="pp-field__value" id="pupil-dob-display" aria-labelledby="label-dob">Loading…</span>
         </div>
 
         <div class="pp-field">
           <span class="pp-field__label" id="label-contact">
             <i data-lucide="phone" aria-hidden="true"></i> Contact Number
           </span>
-          <span class="pp-field__value"
-                id="pupil-contact-display"
-                aria-labelledby="label-contact">Loading…</span>
+          <span class="pp-field__value" id="pupil-contact-display" aria-labelledby="label-contact">Loading…</span>
         </div>
 
         <div class="pp-field">
           <span class="pp-field__label" id="label-address">
             <i data-lucide="map-pin" aria-hidden="true"></i> Address
           </span>
-          <span class="pp-field__value"
-                id="pupil-address-display"
-                aria-labelledby="label-address">Loading…</span>
+          <span class="pp-field__value" id="pupil-address-display" aria-labelledby="label-address">Loading…</span>
         </div>
 
       </div>
 
-      <!-- Right: academic fields -->
       <div class="pp-profile-col pp-profile-col--academic">
 
         <div class="pp-academic-banner" aria-hidden="true">
@@ -496,27 +688,21 @@
           <span class="pp-field__label" id="label-class">
             <i data-lucide="book-open" aria-hidden="true"></i> Class
           </span>
-          <span class="pp-field__value pp-field__value--highlight"
-                id="pupil-class-display"
-                aria-labelledby="label-class">Loading…</span>
+          <span class="pp-field__value pp-field__value--highlight" id="pupil-class-display" aria-labelledby="label-class">Loading…</span>
         </div>
 
         <div class="pp-field">
           <span class="pp-field__label" id="label-teacher">
             <i data-lucide="user-check" aria-hidden="true"></i> Assigned Teacher
           </span>
-          <span class="pp-field__value"
-                id="pupil-teacher-display"
-                aria-labelledby="label-teacher">Loading…</span>
+          <span class="pp-field__value" id="pupil-teacher-display" aria-labelledby="label-teacher">Loading…</span>
         </div>
 
         <div class="pp-field">
           <span class="pp-field__label" id="label-subjects">
             <i data-lucide="library" aria-hidden="true"></i> Subjects
           </span>
-          <span class="pp-field__value pp-field__value--subjects"
-                id="pupil-subjects-display"
-                aria-labelledby="label-subjects">Loading…</span>
+          <span class="pp-field__value pp-field__value--subjects" id="pupil-subjects-display" aria-labelledby="label-subjects">Loading…</span>
         </div>
 
       </div>
@@ -539,22 +725,6 @@
       </div>
     </div>
 
-    <!--
-      Session selector.
-
-      IMPORTANT NOTES for maintainers:
-      ─────────────────────────────────
-      1. The Refresh button is intentionally absent.
-         The 'change' event on the <select> triggers loadSessionResults()
-         automatically (wired in pupil.js/loadResults).
-
-      2. pupil.js/loadResults() replaces this <select> element with a
-         cloneNode(true) to remove stale listeners. cloneNode(true) copies
-         all attributes, so aria-describedby is preserved.
-
-      3. populateSessionSelector() clears innerHTML and repopulates it,
-         so there is never more than one "Current Session" option.
-    -->
     <div class="pp-session-bar">
       <div class="pp-session-bar__field">
         <label for="pupil-session-select" class="pp-session-bar__label">
@@ -565,9 +735,7 @@
           Results update automatically when you select a session
         </p>
         <div class="pp-select-wrap">
-          <select id="pupil-session-select"
-                  class="pp-select"
-                  aria-describedby="session-hint">
+          <select id="pupil-session-select" class="pp-select" aria-describedby="session-hint">
             <option value="current">Current Session (Loading…)</option>
           </select>
           <i data-lucide="chevron-down" class="pp-select-chevron" aria-hidden="true"></i>
@@ -575,28 +743,10 @@
       </div>
     </div>
 
-    <!--
-      #session-info / #selected-session-name:
-      ─────────────────────────────────────────
-      pupil.js/loadSessionResults() sets sessionInfo.style.display = 'block'
-      and writes the selected session name here.
+    <!-- Kept in DOM so pupil.js doesn't throw null errors; CSS hides it permanently -->
+    <div id="session-info" aria-hidden="true"><span id="selected-session-name"></span></div>
 
-      We suppress this element permanently with #session-info { display:none !important }
-      in the <style> block above. The DOM nodes are kept so pupil.js does
-      not throw a null-reference error when it tries to access them.
-
-      The session name is already communicated to the user via the dropdown
-      itself, so hiding this duplicate is correct.
-    -->
-    <div id="session-info" aria-hidden="true">
-      <span id="selected-session-name"></span>
-    </div>
-
-    <!-- Results output — min-height prevents layout shift on session switch -->
-    <div id="results-container"
-         class="pp-results-body"
-         aria-live="polite"
-         aria-atomic="false">
+    <div id="results-container" class="pp-results-body" aria-live="polite" aria-atomic="false">
       <!-- pupil.js populates this -->
     </div>
 
@@ -611,28 +761,11 @@
 
 
   <!-- ─── FEE BALANCE SECTION ──────────────── -->
-  <!--
-    pupil.js/loadFeeBalance() fully replaces this section's innerHTML.
-    The getElementById proxy (see inline <script> below) redirects
-    getElementById('fee-balance-section') → this #pp-fees element.
-    pupil.js writes here without modification.
-
-    Bottom-nav active state:
-    This section starts as display:none so IntersectionObserver cannot
-    observe it at page load. scrollToSection() reveals it and then calls
-    window.__ppRegisterFeesObserver(el) to add it to the observer dynamically.
-  -->
   <section class="pp-card" id="pp-fees" style="display:none;" aria-labelledby="fees-heading">
-    <!-- pupil.js populates this entirely -->
+    <!-- pupil.js populates this -->
   </section>
-
-  <!--
-    Alias div: exists only so the getElementById proxy has a real element
-    to redirect calls FROM. Permanently hidden, never rendered.
-  -->
   <div id="fee-balance-section" style="display:none;" aria-hidden="true"></div>
 
-  <!-- Back-to-website — properly contained and centred -->
   <div class="pp-footer-nav">
     <a href="index.html" class="pp-btn pp-btn--ghost">
       <i data-lucide="home" aria-hidden="true"></i>
@@ -643,13 +776,7 @@
 </main>
 
 
-<!-- ── BOTTOM NAVIGATION (tablet + mobile ≤1024px) ──────────── -->
-<!--
-  Visible only at ≤1024px via .pp-bottom-nav { display:none } →
-  @media(max-width:1024px) { .pp-bottom-nav { display:flex } }
-  in pupil-portal.css.
-  Active state synced by the sectionObserver in the DOMContentLoaded handler.
--->
+<!-- ── BOTTOM NAVIGATION ─────────────────────────────────────── -->
 <nav class="pp-bottom-nav" aria-label="Portal sections">
   <div class="pp-bottom-nav__inner">
     <a href="#pp-profile" class="pp-bottom-nav__link" data-section="profile">
@@ -668,18 +795,13 @@
 </nav>
 
 
-<!-- ── FOOTER ────────────────────────────────────────────────── -->
-<!--
-  padding-bottom at ≤1024px (set in the <style> block above, FIX C)
-  ensures the footer text clears the fixed bottom nav.
--->
 <footer class="pp-footer">
   <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
 </footer>
 
 
 <!-- ═══════════════════════════════════════
-     SCRIPTS — load order matters
+     SCRIPTS
 ═══════════════════════════════════════ -->
 <script src="firebase-init.js"></script>
 <script src="script.js"></script>
@@ -688,110 +810,74 @@
 
 <script>
 /* ──────────────────────────────────────────────────────────────
-   PAGE INITIALISATION
-   Pure UI / structural code. No Firebase, no business logic.
+   PAGE INITIALISATION — UI/structural only, no business logic
 ────────────────────────────────────────────────────────────── */
-
-// Copyright year
 document.getElementById('copyright-year').textContent = new Date().getFullYear();
 
 document.addEventListener('DOMContentLoaded', () => {
-
-  // ── Lucide icons ──────────────────────────────────────────
   lucide.createIcons();
 
-  // ── Avatar initials ───────────────────────────────────────
-  // pupil.js sets the pupil's name as textContent on #pupil-name-display.
-  // We watch for that change and replace the fallback icon with initials.
+  // Avatar initials
   const nameEl   = document.getElementById('pupil-name-display');
   const avatarEl = document.getElementById('pp-avatar-initials');
-
-  const avatarObserver = new MutationObserver(() => {
+  const avatarObs = new MutationObserver(() => {
     const name = nameEl?.textContent?.trim();
     if (name && name !== 'Loading…' && name !== '-') {
       const initials = name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
       avatarEl.innerHTML = `<span>${initials}</span>`;
       avatarEl.classList.add('pp-avatar--loaded');
-      avatarObserver.disconnect();
+      avatarObs.disconnect();
     }
   });
-  if (nameEl) avatarObserver.observe(nameEl, { childList: true, characterData: true, subtree: true });
+  if (nameEl) avatarObs.observe(nameEl, { childList: true, characterData: true, subtree: true });
 
-  // ── Active nav link syncing (top + bottom nav) ────────────
-  const topNavLinks    = document.querySelectorAll('.pp-nav-link');
-  const bottomNavLinks = document.querySelectorAll('.pp-bottom-nav__link');
+  // Active nav syncing
+  const topLinks = document.querySelectorAll('.pp-nav-link');
+  const btmLinks = document.querySelectorAll('.pp-bottom-nav__link');
 
-  function setActiveSection(id) {
-    topNavLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
-    const top = document.querySelector(`.pp-nav-link[href="#${id}"]`);
-    if (top) top.classList.add('pp-nav-link--active');
-
-    bottomNavLinks.forEach(l => l.classList.remove('pp-bottom-nav__link--active'));
-    const btm = document.querySelector(`.pp-bottom-nav__link[href="#${id}"]`);
-    if (btm) btm.classList.add('pp-bottom-nav__link--active');
+  function setActive(id) {
+    topLinks.forEach(l => l.classList.remove('pp-nav-link--active'));
+    const t = document.querySelector(`.pp-nav-link[href="#${id}"]`);
+    if (t) t.classList.add('pp-nav-link--active');
+    btmLinks.forEach(l => l.classList.remove('pp-bottom-nav__link--active'));
+    const b = document.querySelector(`.pp-bottom-nav__link[href="#${id}"]`);
+    if (b) b.classList.add('pp-bottom-nav__link--active');
   }
 
-  const sectionObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) setActiveSection(entry.target.id);
-    });
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
   }, { threshold: 0.35 });
 
-  // Observe sections that are visible at load time.
-  // #pp-fees starts as display:none — it cannot be observed yet.
-  // It is added to the observer inside scrollToSection() once revealed.
   ['pp-profile', 'pp-results'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) sectionObserver.observe(el);
+    if (el) observer.observe(el);
   });
 
-  // Set Profile as active on initial load (before any scroll)
-  setActiveSection('pp-profile');
+  setActive('pp-profile');
 
-  // Expose observer registration for #pp-fees so scrollToSection can use it
-  window.__ppRegisterFeesObserver = (el) => sectionObserver.observe(el);
+  // Expose for scrollToSection to register fees section once shown
+  window.__ppRegisterFeesObserver = el => observer.observe(el);
 });
 
 
-/* ──────────────────────────────────────────────────────────────
-   SCROLL HELPER
-   Called by the "Fee Balance" hero button.
-   Handles: revealing the section, registering with the observer,
-   and smooth-scrolling.
-────────────────────────────────────────────────────────────── */
+/* ── Scroll helper ───────────────────────────────────────────── */
 function scrollToSection(id) {
   const el = document.getElementById(id);
   if (!el) return;
-
-  // Reveal the section (fees starts as display:none)
   el.style.display = 'block';
-
-  // Register with IntersectionObserver now that the element is visible.
-  // Must happen AFTER display:block so the observer can measure it.
-  if (window.__ppRegisterFeesObserver) {
-    window.__ppRegisterFeesObserver(el);
-  }
-
-  // Small RAF delay: lets the browser repaint display:block before
-  // scrollIntoView calculates position.
-  requestAnimationFrame(() => {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
+  if (window.__ppRegisterFeesObserver) window.__ppRegisterFeesObserver(el);
+  requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   window.showToast?.('📊 Viewing fee balance', 'info', 2000);
 }
-
-// Legacy aliases — kept for any existing callers in other scripts
 window.scrollToFees    = () => scrollToSection('fee-balance-section');
 window.scrollToSection = scrollToSection;
 
+
+/* ── getElementById proxy ────────────────────────────────────── */
 (function () {
   var _native = document.getElementById.bind(document);
-
   document.getElementById = function (id) {
-    if (id === 'fee-balance-section') {
-      return _native('pp-fees') || _native(id);
-    }
+    if (id === 'fee-balance-section') return _native('pp-fees') || _native(id);
     return _native(id);
   };
 }());
@@ -802,11 +888,8 @@ window.scrollToSection = scrollToSection;
 <script src="pupil-ui-patch.js"></script>
 
 <script>
-// Service Worker registration
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 </script>
 
