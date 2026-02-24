@@ -25,28 +25,6 @@
    19. Responsive Breakpoints
    ═══════════════════════════════════════════════════════════ */
 
-/* ============================================================
-   SELF-CONTAINED RESET — No dependency on styles.css
-   ============================================================ */
-.tp-main *,
-.tp-main *::before,
-.tp-main *::after,
-.tp-sidebar *,
-.tp-sidebar *::before,
-.tp-sidebar *::after,
-.tp-section *,
-.tp-section *::before,
-.tp-section *::after {
-  box-sizing: border-box;
-}
-
-.tp-main,
-.tp-sidebar,
-.tp-section {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 /* ────────────────────────────────────────────────────────────
    1. DESIGN TOKENS
 ──────────────────────────────────────────────────────────── */
@@ -450,18 +428,6 @@
     color: var(--tp-text-secondary);
     margin: 0;
     line-height: 1.5;
-}
-
-/* Label reset — self-contained, no dependency on styles.css */
-.tp-section label,
-.tp-filter-bar label,
-.tp-remarks-form label {
-    display: block;
-    font-family: var(--tp-font);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--tp-text-primary);
-    margin-bottom: 0.25rem;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -1474,10 +1440,6 @@
     margin: 0 auto var(--tp-space-3);
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
 /* Ripple effect for save buttons */
 .tp-btn-primary.btn:active { transform: scale(0.98); }
 
@@ -2372,15 +2334,15 @@
     #pupils-in-class-table tbody tr,
     #promotion-table-container tbody tr {
         /* Grid is set per-table above; cancel the block override */
-        display: table-row;
+        display: revert;
     }
 
     #results-table td,
     #attendance-table td,
     #pupils-in-class-table td,
     #promotion-table-container td {
-        display: table-cell;
-        text-align: left;
+        display: revert;
+        text-align: revert;
     }
 
     /* Re-apply our grid rules (more specific selectors override revert) */
@@ -2401,83 +2363,5 @@
     }
     #promotion-table-container tbody tr {
         display: grid;
-    }
-}
-
-/* ============================================================
-   TOAST NOTIFICATIONS — Self-contained, no dependency on styles.css
-   ============================================================ */
-#toast-container {
-    position: fixed;
-    top: 1.25rem;
-    right: 1.25rem;
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-    pointer-events: none;
-    max-width: 380px;
-}
-
-.toast {
-    pointer-events: auto;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.625rem;
-    padding: 0.875rem 1rem;
-    border-radius: var(--tp-radius-md);
-    box-shadow: var(--tp-shadow-lg);
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.4;
-    border-left: 3px solid;
-    background: var(--tp-surface);
-    transform: translateX(120%);
-    opacity: 0;
-    transition: transform 350ms cubic-bezier(.4,0,.2,1),
-                opacity 350ms cubic-bezier(.4,0,.2,1);
-}
-
-.toast.show {
-    transform: translateX(0);
-    opacity: 1;
-}
-
-.toast.hide {
-    transform: translateX(120%);
-    opacity: 0;
-}
-
-.toast-success {
-    border-left-color: var(--tp-success);
-    background: var(--tp-success-bg);
-    color: #065f46;
-}
-
-.toast-danger {
-    border-left-color: var(--tp-danger);
-    background: var(--tp-danger-bg);
-    color: #991b1b;
-}
-
-.toast-warning {
-    border-left-color: var(--tp-warning);
-    background: var(--tp-warning-bg);
-    color: #92400e;
-}
-
-.toast-info {
-    border-left-color: var(--tp-info);
-    background: var(--tp-info-bg);
-    color: #1e40af;
-}
-
-@media (max-width: 480px) {
-    #toast-container {
-        top: auto;
-        bottom: 1rem;
-        left: 1rem;
-        right: 1rem;
-        max-width: none;
     }
 }
