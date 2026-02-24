@@ -955,14 +955,15 @@ async function loadAllPaymentHistory(pupilId) {
 
             const itemDiv = document.createElement('div');
             itemDiv.style.cssText = `
-                padding: var(--space-md); background: #f8fafc; border: 1px solid #e2e8f0;
-                border-radius: var(--radius-md); display: flex; justify-content: space-between;
-                align-items: center; transition: all 0.2s ease; margin-bottom: var(--space-sm);
-                position: relative;
-            `;
+    padding: var(--space-md); background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: var(--radius-md); display: flex; justify-content: space-between;
+    align-items: flex-start; transition: all 0.2s ease; margin-bottom: var(--space-sm);
+    position: relative; width: 100%; min-width: 0; box-sizing: border-box;
+    flex-wrap: wrap; gap: 8px;
+`;
 
             itemDiv.innerHTML = `
-                <div style="flex: 1;">
+                <div style="flex: 1; min-width: 0; overflow-wrap: break-word; word-break: break-word;">
                     <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
                         ₦${amountPaid.toLocaleString()}
                     </div>
@@ -1000,9 +1001,9 @@ async function loadAllPaymentHistory(pupilId) {
                         </div>` : ''}
                     </div>
                 </div>
-                <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                    View Receipt
+                <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')" style="flex-shrink: 0; align-self: flex-start; margin-top: 4px;">
+                <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                        View Receipt
                 </button>
             `;
 
@@ -1056,6 +1057,7 @@ async function loadAllPaymentHistory(pupilId) {
                      width: 100%;
                      min-width: 0;
                      box-sizing: border-box;
+                     overflow: hidden;
                  `;
 
                 txns.slice(1).forEach(txn => {
@@ -1086,6 +1088,7 @@ async function loadAllPaymentHistory(pupilId) {
                      olderWrapper.style.width = '100%';
                      olderWrapper.style.minWidth = '0';
                      olderWrapper.style.boxSizing = 'border-box';
+                      olderWrapper.style.overflow = 'hidden';
 
                     const icon = toggleBtn.querySelector('i[data-lucide]');
                     if (expanded) {
