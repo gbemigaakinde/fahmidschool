@@ -68,8 +68,6 @@
   --pp-ease: cubic-bezier(.4,0,.2,1);
   --pp-fast: 150ms;
   --pp-base: 250ms;
-  
-  --text-lg: 16px;
 }
 
 /* ── Base reset for portal ──────────────────────────────────── */
