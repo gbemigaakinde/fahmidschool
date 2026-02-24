@@ -297,18 +297,17 @@
 }
 
 
-/* ── MOBILE TABLE — card-per-row layout ──────────────────────── */
-/* ── MOBILE TABLE — card-per-row layout ──────────────────────── */
+/* ── MOBILE TABLE — condensed list-row style ─────────────────── */
 @media (max-width: 640px) {
 
-  /* CRITICAL: Override styles.css min-width: 600px on table */
+  /* Override any min-width from styles.css */
   .results-table,
   table.results-table {
     min-width: 0 !important;
     width: 100% !important;
   }
 
-  /* Reset global table/cell rules that fight us */
+  /* Reset all table elements to block */
   .results-table,
   .results-table thead,
   .results-table tbody,
@@ -322,129 +321,131 @@
     white-space: normal !important;
   }
 
-  /* Hide desktop header row */
+  /* Hide desktop header */
   .results-table thead { display: none !important; }
 
-  /* Term table becomes a plain column of cards */
+  /* Term table = single rounded container */
   .results-table {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
-    overflow: visible !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .results-table tbody {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    width: 100% !important;
-  }
-
-  /* ── DATA ROW: grid layout — FULL WIDTH ── */
-  .results-table tbody tr:not(.summary-row) {
-    display: grid !important;
-    grid-template-areas:
-      "subject  subject  subject  grade"
-      "ca       exam     total    grade" !important;
-    grid-template-columns: 1fr 1fr 1fr 44px !important;
-    grid-template-rows: auto auto !important;
     gap: 0 !important;
-    width: 100% !important;           /* FULL WIDTH FIX */
     background: #ffffff !important;
     border-radius: 12px !important;
     border: 1px solid #e2e8f0 !important;
     box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
     overflow: hidden !important;
-    padding: 0 !important;
-    margin: 0 !important;             /* No margin collapsing the width */
+  }
+
+  .results-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ── EACH SUBJECT ROW: single horizontal line ── */
+  .results-table tbody tr:not(.summary-row) {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 12px !important;
+    min-height: 44px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    gap: 0 !important;
+    transition: background 120ms ease !important;
+  }
+
+  .results-table tbody tr:not(.summary-row):last-of-type {
+    border-bottom: none !important;
   }
 
   .results-table tbody tr:not(.summary-row):hover {
-    box-shadow: 0 3px 12px rgba(26,86,219,.1) !important;
-    border-color: #bfdbfe !important;
+    background: #f8faff !important;
+    box-shadow: none !important;
+    border-color: #f1f5f9 !important;
   }
 
-  /* Subject name — top row, spans 3 of 4 columns */
+  /* Subject name — left, takes remaining space */
   .results-table tbody tr:not(.summary-row) td:nth-child(1) {
-    grid-area: subject !important;
-    padding: 11px 12px 9px !important;
-    font-size: 13px !important;       /* Reduced from 14px */
-    font-weight: 700 !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    padding: 0 8px 0 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
     color: #1e293b !important;
-    border-bottom: 1px solid #f1f5f9 !important;
-    text-align: left !important;
-    background: #ffffff !important;
-    display: block !important;
+    border: none !important;
+    background: transparent !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
+    display: block !important;
   }
 
-  /* Score cells — bottom row, left 3 columns */
-  .results-table tbody tr:not(.summary-row) td:nth-child(2) { grid-area: ca !important; }
-  .results-table tbody tr:not(.summary-row) td:nth-child(3) { grid-area: exam !important; }
-  .results-table tbody tr:not(.summary-row) td:nth-child(4) { grid-area: total !important; }
-
+  /* Score cells — inline flex, fixed small width */
   .results-table tbody tr:not(.summary-row) td:nth-child(2),
   .results-table tbody tr:not(.summary-row) td:nth-child(3),
   .results-table tbody tr:not(.summary-row) td:nth-child(4) {
+    flex: 0 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 8px 6px 10px !important; /* Tighter padding */
-    background: #f8faff !important;
-    text-align: center !important;
-    font-size: 15px !important;       /* Reduced from 18px */
+    width: 36px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    min-height: unset !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    color: #1e293b !important;
-    border-right: 1px solid #e2e8f0 !important;
-    min-height: 52px !important;      /* Reduced from 60px */
+    color: #374151 !important;
+    border-right: none !important;
   }
 
-  /* Score labels via ::before */
+  /* Score label above number */
   .results-table tbody tr:not(.summary-row) td:nth-child(2)::before,
   .results-table tbody tr:not(.summary-row) td:nth-child(3)::before,
   .results-table tbody tr:not(.summary-row) td:nth-child(4)::before {
     display: block !important;
-    font-size: 8.5px !important;      /* Smaller label */
+    font-size: 7px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.08em !important;
+    letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
     color: #94a3b8 !important;
-    margin-bottom: 2px !important;
+    margin-bottom: 1px !important;
     font-family: 'DM Sans', sans-serif !important;
+    line-height: 1 !important;
   }
+
   .results-table tbody tr:not(.summary-row) td:nth-child(2)::before { content: 'CA' !important; }
-.results-table tbody tr:not(.summary-row) td:nth-child(3)::before { content: 'Exam' !important; }
-.results-table tbody tr:not(.summary-row) td:nth-child(4)::before { content: 'Total' !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(3)::before { content: 'Exam' !important; }
+  .results-table tbody tr:not(.summary-row) td:nth-child(4)::before { content: 'Tot' !important; }
 
-/* Explicitly suppress ::before on ALL summary row cells */
-.results-table tbody tr.summary-row td::before,
-.results-table tbody tr.summary-row td:nth-child(2)::before,
-.results-table tbody tr.summary-row td:nth-child(3)::before,
-.results-table tbody tr.summary-row td:nth-child(4)::before {
-  content: none !important;
-  display: none !important;
-}
+  /* Total score — slightly bolder to stand out */
+  .results-table tbody tr:not(.summary-row) td:nth-child(4) {
+    font-size: 13px !important;
+    color: #1e293b !important;
+  }
 
-  /* Grade — right column, spans both rows */
+  /* Grade badge — right, compact pill */
   .results-table tbody tr:not(.summary-row) td:nth-child(5) {
-    grid-area: grade !important;
+    flex: 0 0 auto !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    width: 34px !important;
+    height: 24px !important;
+    margin-left: 6px !important;
     padding: 0 !important;
-    font-size: 13px !important;       /* Reduced from 15px */
-    font-weight: 900 !important;
-    text-align: center !important;
-    border-left: 1px solid #e2e8f0 !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    border-radius: 0 12px 12px 0 !important;
-    min-height: 100% !important;
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    border-left: none !important;
+    min-height: unset !important;
   }
 
   /* ── SUMMARY ROWS ── */
@@ -452,13 +453,18 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 9px 14px !important;
+    padding: 8px 12px !important;
     background: #eef2ff !important;
-    border-radius: 8px !important;
-    border: 1px solid #c7d2fe !important;
+    border-radius: 0 !important;
+    border: none !important;
+    border-top: 1px solid #c7d2fe !important;
     box-shadow: none !important;
     gap: 8px !important;
     width: 100% !important;
+  }
+
+  .results-table tbody tr.summary-row:last-child {
+    border-radius: 0 0 12px 12px !important;
   }
 
   .results-table tbody tr.summary-row td {
@@ -466,7 +472,7 @@
     padding: 0 !important;
     background: transparent !important;
     border: none !important;
-    font-size: 12.5px !important;
+    font-size: 11.5px !important;
     color: #4338ca !important;
     text-align: left !important;
     white-space: normal !important;
@@ -484,7 +490,16 @@
     white-space: nowrap !important;
   }
 
-  /* Grade colours in mobile context */
+  /* Suppress ::before on summary rows */
+  .results-table tbody tr.summary-row td::before,
+  .results-table tbody tr.summary-row td:nth-child(2)::before,
+  .results-table tbody tr.summary-row td:nth-child(3)::before,
+  .results-table tbody tr.summary-row td:nth-child(4)::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* Grade colours preserved */
   .results-table td.grade-A1 { background: #dcfce7 !important; color: #14532d !important; }
   .results-table td.grade-B2,
   .results-table td.grade-B3 { background: #dbeafe !important; color: #1e3a8a !important; }
@@ -495,7 +510,12 @@
   .results-table td.grade-D8 { background: #ffedd5 !important; color: #7c2d12 !important; }
   .results-table td.grade-F9 { background: #fee2e2 !important; color: #7f1d1d !important; }
 
-  /* Nudge bottom-nav clear */
+  /* Term section spacing */
+  .results-term-section {
+    margin-bottom: 24px !important;
+  }
+
+  /* Bottom nav clearance */
   .pp-main { padding-bottom: calc(var(--pp-gap-2xl, 48px) + 72px) !important; }
 }
 
