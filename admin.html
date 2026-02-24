@@ -951,7 +951,7 @@
 </div>
 
             <!-- Session Comparison -->
-            <div id="session-comparison-section" style="display:none; margin-top:2rem; padding-top:2rem; border-top:1px solid #e2e8f0;">
+            <div id="session-comparison-section" style="display:none;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
                     <div>
                         <h2 style="margin:0; font-size:1.25rem;">Session Comparison</h2>
@@ -1359,20 +1359,23 @@
   </span>
 </div>
 
-            <div class="form-row form-row-2">
-                <div class="form-group">
-                    <label for="payment-class-filter">Select Class <span class="required">*</span></label>
-                    <select id="payment-class-filter" onchange="loadPupilsForPayment()">
-                        <option value="">-- Select Class --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="payment-pupil-select">Select Pupil <span class="required">*</span></label>
-                    <select id="payment-pupil-select" onchange="loadPupilPaymentStatus()">
-                        <option value="">-- Select Pupil --</option>
-                    </select>
-                </div>
-            </div>
+            <div class="form-section">
+    <h3><i data-lucide="search" style="width:15px;height:15px;"></i> Select Pupil</h3>
+    <div class="form-row form-row-2">
+        <div class="form-group">
+            <label for="payment-class-filter">Select Class <span class="required">*</span></label>
+            <select id="payment-class-filter" onchange="loadPupilsForPayment()">
+                <option value="">-- Select Class --</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="payment-pupil-select">Select Pupil <span class="required">*</span></label>
+            <select id="payment-pupil-select" onchange="loadPupilPaymentStatus()">
+                <option value="">-- Select Pupil --</option>
+            </select>
+        </div>
+    </div>
+</div>
 
             <div id="payment-form-container" style="display:none;">
                 <div id="payment-status-display" style="margin-bottom:1.5rem;"></div>
