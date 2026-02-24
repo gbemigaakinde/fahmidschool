@@ -1713,7 +1713,13 @@ function loadTraitsSection() {
 }
 
 /**
- * Load bulk traits entry table for all pupils
+ * REPLACEMENT for loadBulkTraitsTable() in teacher.js
+ *
+ * Changes vs original:
+ * - Generates sibling .tp-traits-mobile-cards divs alongside each table
+ * - Mobile sees the card layout; desktop sees the table (toggled via CSS)
+ * - All selects share the same data-pupil / data-field / data-type attributes
+ *   so saveBulkTraitsAndSkills() still works unchanged.
  */
 async function loadBulkTraitsTable() {
   const container = document.getElementById('traits-form-container');
@@ -1741,128 +1747,157 @@ async function loadBulkTraitsTable() {
     const skillsData = {};
 
     for (const pupil of allPupils) {
-      // FIX: Document ID now includes encodedSession
       const traitsDocId = `${pupil.id}_${encodedSession}_${term}`;
-
       const traitsDoc = await db.collection('behavioral_traits').doc(traitsDocId).get();
-      if (traitsDoc.exists) {
-        traitsData[pupil.id] = traitsDoc.data();
-      }
+      if (traitsDoc.exists) traitsData[pupil.id] = traitsDoc.data();
 
       const skillsDoc = await db.collection('psychomotor_skills').doc(traitsDocId).get();
-      if (skillsDoc.exists) {
-        skillsData[pupil.id] = skillsDoc.data();
-      }
+      if (skillsDoc.exists) skillsData[pupil.id] = skillsDoc.data();
     }
 
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    const traitsFields = [
+      { key: 'punctuality',    label: 'Punctuality' },
+      { key: 'neatness',       label: 'Neatness' },
+      { key: 'politeness',     label: 'Politeness' },
+      { key: 'honesty',        label: 'Honesty' },
+      { key: 'obedience',      label: 'Obedience' },
+      { key: 'cooperation',    label: 'Cooperation' },
+      { key: 'attentiveness',  label: 'Attentiveness' },
+      { key: 'leadership',     label: 'Leadership' },
+      { key: 'selfcontrol',    label: 'Self Control' },
+      { key: 'creativity',     label: 'Creativity' },
+    ];
+
+    const skillsFields = [
+      { key: 'handwriting', label: 'Handwriting' },
+      { key: 'drawing',     label: 'Drawing' },
+      { key: 'sports',      label: 'Sports' },
+      { key: 'craft',       label: 'Craft' },
+      { key: 'verbal',      label: 'Verbal' },
+      { key: 'coordination',label: 'Coordination' },
+    ];
+
+    /** Build <select> HTML — shared between table cells and mobile cards */
+    function selectHTML(pupilId, field, type, existingData) {
+      const value = existingData[field] || '';
+      return `
+        <select data-pupil="${pupilId}" data-field="${field}" data-type="${type}">
+          <option value="">-</option>
+          ${[1,2,3,4,5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
+        </select>`;
+    }
+
+    /** Build a mobile card block for one group (traits OR skills) */
+    function buildMobileCards(fields, dataMap, type) {
+      return allPupils.map(pupil => {
+        const existing = dataMap[pupil.id] || {};
+        const fieldCells = fields.map(f => `
+          <div class="tp-traits-field">
+            <span class="tp-traits-field-label">${f.label}</span>
+            ${selectHTML(pupil.id, f.key, type, existing)}
+          </div>`).join('');
+
+        return `
+          <div class="tp-traits-pupil-card">
+            <div class="tp-traits-pupil-name">${pupil.name}</div>
+            <div class="tp-traits-fields">${fieldCells}</div>
+          </div>`;
+      }).join('');
+    }
+
+    /** Build a desktop <table> for one group */
+    function buildDesktopTable(id, fields, dataMap, type) {
+      const headerCells = fields.map(f => `<th>${f.label}</th>`).join('');
+      const bodyRows = allPupils.map(pupil => {
+        const existing = dataMap[pupil.id] || {};
+        const cells = fields.map(f => `
+          <td data-label="${f.label}" style="text-align:center;">
+            ${selectHTML(pupil.id, f.key, type, existing)}
+          </td>`).join('');
+        return `
+          <tr>
+            <td data-label="Name"><strong>${pupil.name}</strong></td>
+            ${cells}
+          </tr>`;
+      }).join('');
+
+      return `
+        <div class="table-container">
+          <table class="responsive-table" id="${id}">
+            <thead>
+              <tr>
+                <th style="min-width:130px;">Pupil Name</th>
+                ${headerCells}
+              </tr>
+            </thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────
+
     container.innerHTML = `
-      <div style="margin-bottom: var(--space-lg); padding: var(--space-md); background: #e0f2fe; border: 1px solid #0284c7; border-radius: var(--radius-md);">
-        <strong style="color: #0c4a6e;">📊 Bulk Entry Mode</strong>
-        <p style="margin: 0.5rem 0 0; color: #075985; font-size: var(--text-sm);">
+      <div style="margin-bottom: var(--tp-space-5); padding: var(--tp-space-4) var(--tp-space-5);
+                  background: #e0f2fe; border: 1px solid #0284c7;
+                  border-radius: var(--tp-radius-md);">
+        <strong style="color:#0c4a6e;">📊 Bulk Entry Mode</strong>
+        <p style="margin:.5rem 0 0; color:#075985; font-size:var(--text-sm);">
           Rate each trait/skill from 1 (Poor) to 5 (Excellent). Leave blank if not assessed.
         </p>
       </div>
 
-      <!-- Behavioral Traits Table -->
-      <div style="margin-bottom: var(--space-2xl);">
-        <h3 style="margin-bottom: var(--space-md);">Behavioral Traits</h3>
-        <div class="table-container">
-          <table class="responsive-table" id="bulk-traits-table">
-            <thead>
-              <tr>
-                <th style="min-width: 150px;">Pupil Name</th>
-                <th>Punctuality</th>
-                <th>Neatness</th>
-                <th>Politeness</th>
-                <th>Honesty</th>
-                <th>Obedience</th>
-                <th>Cooperation</th>
-                <th>Attentiveness</th>
-                <th>Leadership</th>
-                <th>Self Control</th>
-                <th>Creativity</th>
-              </tr>
-            </thead>
-            <tbody id="bulk-traits-tbody"></tbody>
-          </table>
+      <!-- ── BEHAVIORAL TRAITS ── -->
+      <div style="margin-bottom: var(--tp-space-8);">
+        <h3 style="margin-bottom: var(--tp-space-4);">Behavioral Traits</h3>
+
+        <!-- Desktop table (hidden on mobile via CSS) -->
+        ${buildDesktopTable('bulk-traits-table', traitsFields, traitsData, 'trait')}
+
+        <!-- Mobile cards (hidden on desktop via CSS) -->
+        <div class="tp-traits-mobile-cards" id="mobile-traits-cards">
+          ${buildMobileCards(traitsFields, traitsData, 'trait')}
         </div>
       </div>
 
-      <!-- Psychomotor Skills Table -->
-      <div style="margin-bottom: var(--space-xl);">
-        <h3 style="margin-bottom: var(--space-md);">Psychomotor Skills</h3>
-        <div class="table-container">
-          <table class="responsive-table" id="bulk-skills-table">
-            <thead>
-              <tr>
-                <th style="min-width: 150px;">Pupil Name</th>
-                <th>Handwriting</th>
-                <th>Drawing/Painting</th>
-                <th>Sports</th>
-                <th>Craft</th>
-                <th>Verbal Fluency</th>
-                <th>Coordination</th>
-              </tr>
-            </thead>
-            <tbody id="bulk-skills-tbody"></tbody>
-          </table>
+      <!-- ── PSYCHOMOTOR SKILLS ── -->
+      <div style="margin-bottom: var(--tp-space-6);">
+        <h3 style="margin-bottom: var(--tp-space-4);">Psychomotor Skills</h3>
+
+        <!-- Desktop table (hidden on mobile via CSS) -->
+        ${buildDesktopTable('bulk-skills-table', skillsFields, skillsData, 'skill')}
+
+        <!-- Mobile cards (hidden on desktop via CSS) -->
+        <div class="tp-traits-mobile-cards" id="mobile-skills-cards">
+          ${buildMobileCards(skillsFields, skillsData, 'skill')}
         </div>
       </div>
 
-      <button class="btn btn-primary" onclick="saveBulkTraitsAndSkills()" style="width: 100%;">
-        💾 Save All Traits & Skills
+      <button class="btn btn-primary" onclick="saveBulkTraitsAndSkills()"
+              style="width:100%; margin-top: var(--tp-space-4);">
+        💾 Save All Traits &amp; Skills
       </button>
     `;
 
-    const traitsFields = ['punctuality', 'neatness', 'politeness', 'honesty', 'obedience', 'cooperation', 'attentiveness', 'leadership', 'selfcontrol', 'creativity'];
-    const traitsTbody = document.getElementById('bulk-traits-tbody');
-
-    allPupils.forEach(pupil => {
-      const existing = traitsData[pupil.id] || {};
-      const tr = document.createElement('tr');
-
-      let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
-
-      traitsFields.forEach(field => {
-        const value = existing[field] || '';
-        cellsHTML += `
-          <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
-            <select data-pupil="${pupil.id}" data-field="${field}" data-type="trait" style="width: 100%; max-width: 80px;">
-              <option value="">-</option>
-              ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
-            </select>
-          </td>
-        `;
+    // Hide mobile cards on desktop, hide tables on mobile — done via CSS.
+    // But we also do it with JS as a fallback for browsers that don't
+    // support the CSS selectors cleanly.
+    function applyVisibility() {
+      const isMobile = window.innerWidth <= 640;
+      ['bulk-traits-table', 'bulk-skills-table'].forEach(id => {
+        const el = document.getElementById(id)?.closest('.table-container');
+        if (el) el.style.display = isMobile ? 'none' : '';
       });
-
-      tr.innerHTML = cellsHTML;
-      traitsTbody.appendChild(tr);
-    });
-
-    const skillsFields = ['handwriting', 'drawing', 'sports', 'craft', 'verbal', 'coordination'];
-    const skillsTbody = document.getElementById('bulk-skills-tbody');
-
-    allPupils.forEach(pupil => {
-      const existing = skillsData[pupil.id] || {};
-      const tr = document.createElement('tr');
-
-      let cellsHTML = `<td data-label="Name"><strong>${pupil.name}</strong></td>`;
-
-      skillsFields.forEach(field => {
-        const value = existing[field] || '';
-        cellsHTML += `
-          <td data-label="${field.charAt(0).toUpperCase() + field.slice(1)}" style="text-align: center;">
-            <select data-pupil="${pupil.id}" data-field="${field}" data-type="skill" style="width: 100%; max-width: 80px;">
-              <option value="">-</option>
-              ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${value == n ? 'selected' : ''}>${n}</option>`).join('')}
-            </select>
-          </td>
-        `;
+      ['mobile-traits-cards', 'mobile-skills-cards'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isMobile ? 'flex' : 'none';
       });
+    }
 
-      tr.innerHTML = cellsHTML;
-      skillsTbody.appendChild(tr);
-    });
+    applyVisibility();
+    window.addEventListener('resize', applyVisibility);
 
     console.log(`✓ Bulk traits table loaded for ${allPupils.length} pupils`);
 
