@@ -1693,71 +1693,662 @@
     }
 }
 
-/* ────────────────────────────────────────────────────────────
-   MOBILE TABLE SCROLL FIX — paste at the bottom of teacher-ui.css
-──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   TEACHER PORTAL — MOBILE TABLE REDESIGN
+   Paste this at the BOTTOM of teacher-ui.css, replacing the
+   existing "MOBILE TABLE SCROLL FIX" block that starts with:
+   "Universal horizontal scroll for ALL table containers..."
+   ═══════════════════════════════════════════════════════════ */
 
-/* Universal horizontal scroll for ALL table containers in the portal */
-.tp-section .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+/* ────────────────────────────────────────────────────────────
+   RESET: Remove the old scroll-fix block's min-widths
+   (These forced everything to be wide and scroll-only)
+──────────────────────────────────────────────────────────── */
+.tp-section .responsive-table { min-width: unset; }
+#results-table                 { min-width: unset; }
+#attendance-table              { min-width: unset; }
+#pupils-in-class-table         { min-width: unset; }
+#bulk-traits-table             { min-width: unset; }
+#bulk-skills-table             { min-width: unset; }
+
+/* ────────────────────────────────────────────────────────────
+   1. MY CLASSES — PUPILS TABLE
+   Simple 3-col table. On mobile: stacked card per pupil.
+──────────────────────────────────────────────────────────── */
+#pupils-in-class-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-/* Prevent tables from collapsing — force minimum widths */
-.tp-section .responsive-table {
-    min-width: 500px;
+@media (max-width: 640px) {
+    #pupils-in-class-table thead { display: none; }
+
+    #pupils-in-class-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-md);
+        margin-bottom: var(--tp-space-3);
+        overflow: hidden;
+        background: var(--tp-surface);
+        box-shadow: var(--tp-shadow-sm);
+    }
+
+    /* Name spans full width */
+    #pupils-in-class-table tbody td:first-child {
+        grid-column: 1 / -1;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--tp-text-primary);
+        background: var(--tp-bg);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: 1px solid var(--tp-border);
+        white-space: normal;
+    }
+
+    #pupils-in-class-table tbody td:not(:first-child) {
+        padding: var(--tp-space-2) var(--tp-space-4);
+        font-size: 0.8125rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        white-space: normal;
+        border-bottom: none;
+    }
+
+    #pupils-in-class-table tbody td:not(:first-child)::before {
+        content: attr(data-label);
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--tp-text-muted);
+    }
+
+    /* Divider between the two smaller cells */
+    #pupils-in-class-table tbody td:nth-child(2) {
+        border-right: 1px solid var(--tp-border);
+    }
+
+    /* Disable the global responsive-table card flip for this table */
+    #pupils-in-class-table tbody tr:hover { background: var(--tp-surface); }
+}
+
+/* ────────────────────────────────────────────────────────────
+   2. RESULTS TABLE
+   4 columns: Name | CA Input | Exam Input | Total
+   Desktop: standard table. Mobile: card per pupil with
+   the two inputs side-by-side in a compact row.
+──────────────────────────────────────────────────────────── */
+#results-table {
     width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 700px) {
+    #results-table thead { display: none; }
+
+    #results-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 0;
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-md);
+        margin-bottom: var(--tp-space-3);
+        overflow: hidden;
+        background: var(--tp-surface);
+        box-shadow: var(--tp-shadow-sm);
+    }
+
+    /* Pupil name — top-left, spans both columns */
+    #results-table tbody td:nth-child(1) {
+        grid-column: 1 / -1;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--tp-text-primary);
+        background: var(--tp-bg);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: 1px solid var(--tp-border);
+        white-space: normal;
+    }
+
+    /* CA and Exam inputs sit side-by-side */
+    #results-table tbody td:nth-child(2),
+    #results-table tbody td:nth-child(3) {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--tp-space-1);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: none;
+    }
+
+    #results-table tbody td:nth-child(2) {
+        border-right: 1px solid var(--tp-border);
+    }
+
+    #results-table tbody td:nth-child(2)::before { content: "CA (max 40)"; }
+    #results-table tbody td:nth-child(3)::before { content: "Exam (max 60)"; }
+
+    #results-table tbody td:nth-child(2)::before,
+    #results-table tbody td:nth-child(3)::before {
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--tp-text-muted);
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    /* Input fills the cell */
+    #results-table tbody td:nth-child(2) input,
+    #results-table tbody td:nth-child(3) input {
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center;
+        font-size: 1rem;
+        padding: 8px;
+        border-radius: var(--tp-radius-sm);
+    }
+
+    /* Total — right-aligned chip in top-right */
+    #results-table tbody td:nth-child(4) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--tp-space-2) var(--tp-space-3);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--tp-text-secondary);
+        background: var(--tp-bg);
+        border-top: 1px solid var(--tp-border);
+        grid-column: 1 / -1;
+    }
+
+    #results-table tbody td:nth-child(4)::before {
+        content: "Total: ";
+        font-weight: 600;
+        color: var(--tp-text-muted);
+        margin-right: 4px;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────
+   3. ATTENDANCE TABLE
+   4 columns: Name | Opened | Present | Absent
+   Mobile: card per pupil with 3 inputs in a row.
+──────────────────────────────────────────────────────────── */
+#attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 700px) {
+    #attendance-table thead { display: none; }
+
+    #attendance-table tbody tr {
+        display: block;
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-md);
+        margin-bottom: var(--tp-space-3);
+        overflow: hidden;
+        background: var(--tp-surface);
+        box-shadow: var(--tp-shadow-sm);
+    }
+
+    /* Name row */
+    #attendance-table tbody td:first-child {
+        display: block;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--tp-text-primary);
+        background: var(--tp-bg);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: 1px solid var(--tp-border);
+        white-space: normal;
+    }
+
+    /* The 3 numeric inputs sit side-by-side */
+    #attendance-table tbody td:not(:first-child) {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--tp-space-1);
+        width: calc(33.333% - 1px);
+        padding: var(--tp-space-3) var(--tp-space-2);
+        border-bottom: none;
+        vertical-align: top;
+    }
+
+    #attendance-table tbody td:nth-child(2) { border-right: 1px solid var(--tp-border); }
+    #attendance-table tbody td:nth-child(3) { border-right: 1px solid var(--tp-border); }
+
+    #attendance-table tbody td:nth-child(2)::before { content: "Opened"; }
+    #attendance-table tbody td:nth-child(3)::before { content: "Present"; }
+    #attendance-table tbody td:nth-child(4)::before { content: "Absent"; }
+
+    #attendance-table tbody td:not(:first-child)::before {
+        font-size: 0.5625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--tp-text-muted);
+        display: block;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+
+    #attendance-table tbody td:not(:first-child) input {
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center;
+        font-size: 1rem;
+        padding: 8px 4px;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────
+   4. TRAITS & SKILLS BULK TABLES
+   These have 11 and 7 columns respectively — way too wide
+   for any mobile.
+
+   Solution: On mobile, replace table with a vertical card
+   per pupil. Each trait/skill becomes a labelled row with
+   a compact select inside it, using a 2-column grid.
+──────────────────────────────────────────────────────────── */
+
+/* Desktop: keep the table but with compact cells */
+#bulk-traits-table,
+#bulk-skills-table {
+    width: 100%;
+    border-collapse: collapse;
     table-layout: auto;
 }
 
-/* Results table needs more room (CA + Exam + Total columns) */
-#results-table {
-    min-width: 520px;
+#bulk-traits-table th:not(:first-child),
+#bulk-skills-table th:not(:first-child) {
+    font-size: 0.5625rem;
+    padding: var(--tp-space-2) var(--tp-space-1);
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+    max-width: 52px;
+    line-height: 1.2;
 }
 
-/* Attendance table */
-#attendance-table {
-    min-width: 560px;
+#bulk-traits-table th:first-child,
+#bulk-skills-table th:first-child {
+    min-width: 130px;
+    white-space: nowrap;
 }
 
-/* Pupils / My Classes table */
-#pupils-in-class-table {
-    min-width: 420px;
+#bulk-traits-table td,
+#bulk-skills-table td {
+    padding: var(--tp-space-2) var(--tp-space-1);
+    text-align: center;
+    vertical-align: middle;
 }
 
-/* Traits tables are wide — give them more space */
-#bulk-traits-table {
-    min-width: 900px;
+#bulk-traits-table td:first-child,
+#bulk-skills-table td:first-child {
+    text-align: left;
+    padding-left: var(--tp-space-3);
+    font-size: 0.8125rem;
 }
 
-#bulk-skills-table {
-    min-width: 620px;
+#bulk-traits-table select,
+#bulk-skills-table select {
+    width: 48px !important;
+    max-width: 48px !important;
+    padding: 4px 2px !important;
+    font-size: 0.8125rem !important;
+    text-align: center;
+    border-radius: var(--tp-radius-sm);
+    cursor: pointer;
+    background-image: none !important; /* remove arrow arrow on compact selects */
+    -webkit-appearance: menulist-button;
+    appearance: auto;
 }
 
-/* Scroll hint label under wide tables on mobile */
-@media (max-width: 768px) {
-    .tp-section .table-container {
-        position: relative;
+/* Traits container needs horizontal scroll on tablet */
+@media (max-width: 1024px) and (min-width: 641px) {
+    #traits-form-container .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .tp-section .table-container::after {
-        content: '← scroll →';
+    #bulk-traits-table { min-width: 700px; }
+    #bulk-skills-table { min-width: 480px; }
+}
+
+/* ── MOBILE: Convert traits tables to stacked cards ── */
+@media (max-width: 640px) {
+    /* Hide the actual tables on mobile */
+    #bulk-traits-table,
+    #bulk-skills-table {
+        display: none !important;
+    }
+
+    /* Show mobile card view instead */
+    .tp-traits-mobile-cards {
+        display: flex;
+        flex-direction: column;
+        gap: var(--tp-space-3);
+    }
+
+    .tp-traits-pupil-card {
+        background: var(--tp-surface);
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-md);
+        overflow: hidden;
+        box-shadow: var(--tp-shadow-sm);
+    }
+
+    .tp-traits-pupil-name {
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--tp-text-primary);
+        background: var(--tp-bg);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: 1px solid var(--tp-border);
+    }
+
+    .tp-traits-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: var(--tp-border);
+    }
+
+    .tp-traits-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: var(--tp-space-3) var(--tp-space-3);
+        background: var(--tp-surface);
+    }
+
+    .tp-traits-field-label {
+        font-size: 0.5625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--tp-text-muted);
+    }
+
+    .tp-traits-field select {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 6px 8px !important;
+        font-size: 0.875rem !important;
+        -webkit-appearance: menulist;
+        appearance: menulist;
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-sm);
+        background: white;
+        cursor: pointer;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────
+   5. PROMOTION TABLE
+   Fix: checkbox column, name, average, grade, status.
+   The checkbox was floating oddly.
+──────────────────────────────────────────────────────────── */
+
+/* Desktop refinements */
+#promotion-table-container .responsive-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: unset;
+    table-layout: auto;
+}
+
+#promotion-table-container thead th {
+    white-space: nowrap;
+    padding: var(--tp-space-3) var(--tp-space-4);
+    font-size: 0.6875rem;
+}
+
+/* Checkbox column — fixed narrow width, properly centred */
+#promotion-table-container th:first-child,
+#promotion-table-container td:first-child {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    text-align: center;
+    padding: var(--tp-space-3) var(--tp-space-2) !important;
+    vertical-align: middle;
+}
+
+#promotion-table-container td:first-child input[type="checkbox"],
+#promotion-table-container th:first-child input[type="checkbox"] {
+    display: block;
+    margin: 0 auto;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--tp-primary-light);
+    vertical-align: middle;
+    position: relative;
+    top: 0;
+}
+
+/* Name column */
+#promotion-table-container td:nth-child(2),
+#promotion-table-container th:nth-child(2) {
+    min-width: 140px;
+}
+
+/* Average, Grade, Status — centre-aligned */
+#promotion-table-container td:nth-child(3),
+#promotion-table-container td:nth-child(4),
+#promotion-table-container td:nth-child(5),
+#promotion-table-container th:nth-child(3),
+#promotion-table-container th:nth-child(4),
+#promotion-table-container th:nth-child(5) {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Status badge polish */
+#promotion-table-container .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Mobile: promotion table becomes stacked cards */
+@media (max-width: 640px) {
+    #promotion-table-container .table-container {
+        overflow-x: unset;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    #promotion-table-container .responsive-table thead { display: none; }
+
+    #promotion-table-container .responsive-table tbody tr {
+        display: grid;
+        grid-template-columns: 44px 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 0;
+        border: 1px solid var(--tp-border);
+        border-radius: var(--tp-radius-md);
+        margin-bottom: var(--tp-space-3);
+        overflow: hidden;
+        background: var(--tp-surface);
+        box-shadow: var(--tp-shadow-sm);
+        align-items: center;
+    }
+
+    /* Checkbox — left column, both rows */
+    #promotion-table-container tbody td:first-child {
+        grid-column: 1;
+        grid-row: 1 / 3;
+        width: 44px;
+        min-width: 44px;
+        max-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--tp-space-4) 0 !important;
+        background: var(--tp-bg);
+        border-right: 1px solid var(--tp-border);
+        height: 100%;
+    }
+
+    #promotion-table-container tbody td:first-child input[type="checkbox"] {
+        display: block;
+        margin: 0 auto;
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Pupil name — top-right area */
+    #promotion-table-container tbody td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--tp-text-primary);
+        padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-1);
+        text-align: left;
+        border-bottom: none;
+    }
+
+    /* Status badge — top-right corner */
+    #promotion-table-container tbody td:nth-child(5) {
+        grid-column: 3;
+        grid-row: 1;
+        padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-1);
+        text-align: right;
+        border-bottom: none;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+    }
+
+    /* Average + Grade — second row, spans cols 2-3 */
+    #promotion-table-container tbody td:nth-child(3),
+    #promotion-table-container tbody td:nth-child(4) {
+        grid-row: 2;
+        font-size: 0.8125rem;
+        color: var(--tp-text-secondary);
+        padding: 0 var(--tp-space-3) var(--tp-space-3);
+        text-align: left;
+        border-bottom: none;
+        display: inline;
+    }
+
+    #promotion-table-container tbody td:nth-child(3) {
+        grid-column: 2;
+        padding-left: var(--tp-space-4);
+    }
+
+    #promotion-table-container tbody td:nth-child(3)::before { content: "Avg: "; font-weight: 600; color: var(--tp-text-muted); }
+    #promotion-table-container tbody td:nth-child(4)::before { content: " · Grade: "; font-weight: 600; color: var(--tp-text-muted); }
+
+    #promotion-table-container tbody td:nth-child(4) {
+        grid-column: 3;
+        grid-row: 2;
+        padding-right: var(--tp-space-3);
+        text-align: right;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────
+   6. SHARED: Remove the "← scroll →" hint from tables that
+   now use card layouts on mobile (it was added globally)
+──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    /* Keep scroll hint only for traits tables (they still scroll on tablet) */
+    .tp-section .table-container::after { content: none; }
+
+    #traits-form-container .table-container::after {
+        content: '← scroll to see all traits →';
         display: block;
         text-align: center;
-        font-size: 0.6875rem;
+        font-size: 0.625rem;
         color: var(--tp-text-muted);
         padding: 4px 0 2px;
+        letter-spacing: 0.03em;
+    }
+}
+
+/* ────────────────────────────────────────────────────────────
+   7. GENERAL TABLE CELL POLISH — all portal tables
+──────────────────────────────────────────────────────────── */
+.tp-section .responsive-table th {
+    font-size: 0.625rem;
+    padding: var(--tp-space-2) var(--tp-space-3);
+}
+
+.tp-section .responsive-table td {
+    padding: var(--tp-space-2) var(--tp-space-3);
+    font-size: 0.875rem;
+}
+
+/* Number inputs tighter on desktop too */
+.tp-section table input[type="number"] {
+    width: 80px;
+    padding: 6px 6px;
+    font-size: 0.875rem;
+}
+
+/* Remove the global mobile flip for responsive-table
+   (styles.css applies display:block/flex to all tbody tds on mobile
+   — that breaks our grid layouts above) */
+@media (max-width: 768px) {
+    #results-table thead,
+    #attendance-table thead,
+    #pupils-in-class-table thead,
+    #promotion-table-container thead {
+        display: none;
     }
 
-    /* Stop table cells from wrapping text awkwardly */
-    .tp-section .responsive-table th,
-    .tp-section .responsive-table td {
-        white-space: nowrap;
+    /* Prevent styles.css responsive-table rules from breaking our grids */
+    #results-table tbody tr,
+    #attendance-table tbody tr,
+    #pupils-in-class-table tbody tr,
+    #promotion-table-container tbody tr {
+        /* Grid is set per-table above; cancel the block override */
+        display: revert;
     }
 
-    /* But allow the name column to wrap if needed */
-    .tp-section .responsive-table td:first-child {
-        white-space: normal;
-        min-width: 130px;
+    #results-table td,
+    #attendance-table td,
+    #pupils-in-class-table td,
+    #promotion-table-container td {
+        display: revert;
+        text-align: revert;
+    }
+
+    /* Re-apply our grid rules (more specific selectors override revert) */
+    #results-table tbody tr {
+        display: grid;
+    }
+    #attendance-table tbody tr {
+        display: block;
+    }
+    #pupils-in-class-table tbody tr {
+        display: revert; /* handled at 640px below */
+    }
+}
+
+@media (max-width: 640px) {
+    #pupils-in-class-table tbody tr {
+        display: grid;
+    }
+    #promotion-table-container tbody tr {
+        display: grid;
     }
 }
