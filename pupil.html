@@ -1186,12 +1186,12 @@
 /* ISSUE #17 — Reduce excess bottom padding on mobile */
 @media (max-width: 1024px) {
   .pp-main {
-    padding-bottom: calc(var(--pp-gap-xl) + 68px) !important; /* was 48px + 72px = 120px → now 32px + 68px = 100px */
+    padding-bottom: calc(var(--pp-gap-xl) + 68px) !important;
   }
   .pp-footer {
-    margin-bottom: 68px !important; /* Matches nav height */
+    margin-bottom: 0 !important;
     margin-top: 0 !important;
-    padding: 16px var(--pp-gap-lg) !important;
+    padding: 16px var(--pp-gap-lg) calc(68px + max(16px, env(safe-area-inset-bottom))) !important;
   }
 }
 
