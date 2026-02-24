@@ -12,23 +12,6 @@
  * All UI improvements from v2.0.0 are integrated correctly.
  * All cross-file patching conflicts are eliminated.
  *
- * KEY BUGS FIXED vs previous two-file approach:
- *   FIX-A: renderDailyRegisterShell() is now a plain function (not a
- *           window override that raced against the call site).
- *   FIX-B: Modal uses CSS class .is-open correctly — no inline
- *           display:none fighting the stylesheet.
- *   FIX-C: #daily-register-grid is the DIRECT scroll container —
- *           no extra wrapper that broke the JS querySelector target.
- *   FIX-D: #weekly-summary-panel lives at the correct DOM level so
- *           renderWeeklySummaryPanel() can always find it.
- *   FIX-E: saveModalAttendance patching loop eliminated — single
- *           function with loading state built in.
- *   FIX-F: col-gen sticky left uses a concrete pixel value derived
- *           from the actual rendered name column, not a CSS var.
- *   FIX-G: @keyframes spin defined for the legacy save button spinner.
- *   FIX-H: sectionLoaders install uses a retry loop (unchanged) but
- *           now also exposed on window for robustness.
- *
  * @version 3.0.0
  * @requires teacher.js       (window.assignedClasses, window.allPupils,
  *                              window.currentUser, window.paginateTable,
@@ -77,7 +60,12 @@ async function loadAttendanceSectionEnhanced() {
 
     const contextHeaderHTML = buildContextHeader(term, allPupils, assignedClasses);
 
-    // FIX-B: Modal has NO inline style — CSS controls visibility via .is-open
+    // Modal is injected into document.body — NOT inside container.
+    // Reason: position:fixed breaks whenever any ancestor has transform,
+    // will-change, filter, or perspective applied (common in admin layouts).
+    // Moving the modal to <body> guarantees it overlays the full viewport.
+    _ensureModalInBody();
+
     container.innerHTML = `
         ${contextHeaderHTML}
 
@@ -109,32 +97,9 @@ async function loadAttendanceSectionEnhanced() {
             </div>
             <div id="manual-attendance-container"></div>
         </div>
-
-        <!-- MODAL (FIX-B: no inline display style) -->
-        <div id="mark-day-modal" role="dialog" aria-modal="true"
-             aria-labelledby="mark-modal-title"
-             onclick="handleModalBackdropClick(event)">
-            <div class="att-modal-sheet" role="document">
-                <div class="att-modal-header">
-                    <h3 id="mark-modal-title">Mark Attendance</h3>
-                    <button class="att-modal-close" onclick="closeMarkDayModal()"
-                            aria-label="Close modal">✕</button>
-                </div>
-                <div class="att-modal-body" id="mark-modal-body"></div>
-                <div class="att-modal-footer" id="mark-modal-footer" style="display:none;">
-                    <button class="att-modal-save-btn" id="att-modal-save-btn"
-                            onclick="saveModalAttendance()">
-                        💾 Save Attendance
-                    </button>
-                    <button class="att-modal-cancel-btn" onclick="closeMarkDayModal()">
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        </div>
     `;
 
-    // Load both panels in parallel where safe
+    // Load both panels
     await loadDailyRegisterPanel(term);
     await loadManualAttendanceLegacy(term);
 
@@ -151,6 +116,44 @@ async function loadAttendanceSectionEnhanced() {
             }, { passive: true });
         }
     }
+}
+
+/**
+ * Creates the modal once on <body> and reuses it on subsequent visits.
+ * Idempotent — safe to call every time the attendance section loads.
+ */
+function _ensureModalInBody() {
+    // Already exists — nothing to do
+    if (document.getElementById('mark-day-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id              = 'mark-day-modal';
+    modal.role            = 'dialog';
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'mark-modal-title');
+    modal.onclick         = handleModalBackdropClick;
+
+    modal.innerHTML = `
+        <div class="att-modal-sheet" role="document">
+            <div class="att-modal-header">
+                <h3 id="mark-modal-title">Mark Attendance</h3>
+                <button class="att-modal-close" onclick="closeMarkDayModal()"
+                        aria-label="Close modal">✕</button>
+            </div>
+            <div class="att-modal-body" id="mark-modal-body"></div>
+            <div class="att-modal-footer" id="mark-modal-footer" style="display:none;">
+                <button class="att-modal-save-btn" id="att-modal-save-btn"
+                        onclick="saveModalAttendance()">
+                    💾 Save Attendance
+                </button>
+                <button class="att-modal-cancel-btn" onclick="closeMarkDayModal()">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
 }
 
 /* ══════════════════════════════════════════════════════════════
