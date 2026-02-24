@@ -418,8 +418,17 @@
     font-family: 'DM Sans', sans-serif !important;
   }
   .results-table tbody tr:not(.summary-row) td:nth-child(2)::before { content: 'CA' !important; }
-  .results-table tbody tr:not(.summary-row) td:nth-child(3)::before { content: 'Exam' !important; }
-  .results-table tbody tr:not(.summary-row) td:nth-child(4)::before { content: 'Total' !important; }
+.results-table tbody tr:not(.summary-row) td:nth-child(3)::before { content: 'Exam' !important; }
+.results-table tbody tr:not(.summary-row) td:nth-child(4)::before { content: 'Total' !important; }
+
+/* Explicitly suppress ::before on ALL summary row cells */
+.results-table tbody tr.summary-row td::before,
+.results-table tbody tr.summary-row td:nth-child(2)::before,
+.results-table tbody tr.summary-row td:nth-child(3)::before,
+.results-table tbody tr.summary-row td:nth-child(4)::before {
+  content: none !important;
+  display: none !important;
+}
 
   /* Grade — right column, spans both rows */
   .results-table tbody tr:not(.summary-row) td:nth-child(5) {
