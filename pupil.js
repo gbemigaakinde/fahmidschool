@@ -1050,10 +1050,14 @@ async function loadAllPaymentHistory(pupilId) {
                 const olderWrapper = document.createElement('div');
                 olderWrapper.id = collapseId;
                 olderWrapper.style.cssText = `
-                    display: none;
-                    flex-direction: column;
-                    margin-top: 0;
-                `;
+                     display: none;
+                     flex-direction: column;
+                     margin-top: 0;
+                     width: 100%;
+                     min-width: 0;
+                     box-sizing: border-box;
+                     overflow: hidden;
+                 `;
 
                 txns.slice(1).forEach(txn => {
                     olderWrapper.appendChild(buildTransactionCard(txn));
@@ -1079,7 +1083,11 @@ async function loadAllPaymentHistory(pupilId) {
                 toggleBtn.addEventListener('click', () => {
                     expanded = !expanded;
                     olderWrapper.style.display = expanded ? 'flex' : 'none';
-                    olderWrapper.style.flexDirection = 'column';
+                     olderWrapper.style.flexDirection = 'column';
+                     olderWrapper.style.width = '100%';
+                     olderWrapper.style.minWidth = '0';
+                     olderWrapper.style.boxSizing = 'border-box';
+                     olderWrapper.style.overflow = 'hidden';
 
                     const icon = toggleBtn.querySelector('i[data-lucide]');
                     if (expanded) {
