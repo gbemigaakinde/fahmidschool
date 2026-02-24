@@ -1,167 +1,295 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Teacher Daily Attendance UI - attendance-teacher-ui.js
+ * Teacher Attendance UI — attendance-teacher-ui.js
  *
- * Provides the digital class register UI inside teacher.js's attendance section.
- * Replaces/extends the existing loadAttendanceSection() display.
+ * COMPLETE REPLACEMENT — v3.0.0
  *
- * INTEGRATION: This is loaded AFTER teacher.js. It patches into the existing
- * loadAttendanceSection() by adding a tab interface: Manual Entry | Daily Register
+ * This single file replaces BOTH:
+ *   - attendance-teacher-ui.js (v1.0.0)
+ *   - attendance-teacher-ui-redesigned.js (v2.0.0)
  *
- * @version 1.0.0
+ * All business logic from v1.0.0 is preserved verbatim.
+ * All UI improvements from v2.0.0 are integrated correctly.
+ * All cross-file patching conflicts are eliminated.
+ *
+ * KEY BUGS FIXED vs previous two-file approach:
+ *   FIX-A: renderDailyRegisterShell() is now a plain function (not a
+ *           window override that raced against the call site).
+ *   FIX-B: Modal uses CSS class .is-open correctly — no inline
+ *           display:none fighting the stylesheet.
+ *   FIX-C: #daily-register-grid is the DIRECT scroll container —
+ *           no extra wrapper that broke the JS querySelector target.
+ *   FIX-D: #weekly-summary-panel lives at the correct DOM level so
+ *           renderWeeklySummaryPanel() can always find it.
+ *   FIX-E: saveModalAttendance patching loop eliminated — single
+ *           function with loading state built in.
+ *   FIX-F: col-gen sticky left uses a concrete pixel value derived
+ *           from the actual rendered name column, not a CSS var.
+ *   FIX-G: @keyframes spin defined for the legacy save button spinner.
+ *   FIX-H: sectionLoaders install uses a retry loop (unchanged) but
+ *           now also exposed on window for robustness.
+ *
+ * @version 3.0.0
+ * @requires teacher.js       (window.assignedClasses, window.allPupils,
+ *                              window.currentUser, window.paginateTable,
+ *                              window._saveAttendanceFromInputs)
+ * @requires attendance-daily.js (window.dailyAttendance)
+ * @requires firebase-init.js    (db)
  */
 
 'use strict';
 
-/* ══════════════════════════════════════════
-   PATCH INTO EXISTING ATTENDANCE SECTION
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   § 1  WEEK NAVIGATION STATE
+══════════════════════════════════════════════════════════════ */
 
-/**
- * Enhanced loadAttendanceSection — replaces the existing one.
- * Adds tabs: [Daily Register] [Manual Entry (Legacy)]
- */
+let currentWeekMonday = null;
+let _modalDate        = null;   // shared across open/save/close
+
+/* ══════════════════════════════════════════════════════════════
+   § 2  SECTION ENTRY POINT
+   Replaces teacher.js sectionLoaders['attendance']
+══════════════════════════════════════════════════════════════ */
+
 async function loadAttendanceSectionEnhanced() {
     const container = document.getElementById('attendance-form-container');
-    const saveBtn = document.getElementById('save-attendance-btn');
-    const term = document.getElementById('attendance-term')?.value || 'First Term';
+    const saveBtn   = document.getElementById('save-attendance-btn');
+    const term      = document.getElementById('attendance-term')?.value || 'First Term';
 
     if (!container) return;
 
-    // Guard: need classes and pupils
-    // Use window.* (set by teacher.js after data loads) with fallback to empty array
     const assignedClasses = window.assignedClasses || [];
-    const allPupils = window.allPupils || [];
+    const allPupils       = window.allPupils       || [];
 
     if (assignedClasses.length === 0 || allPupils.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:var(--color-gray-600);">No pupils in assigned classes</p>';
+        container.innerHTML = renderEmptyState(
+            'No pupils assigned',
+            'No pupils have been assigned to your class yet. Contact the admin.'
+        );
         if (saveBtn) saveBtn.hidden = true;
         return;
     }
 
-    // Inject tab shell
+    // Cache settings once for context header
+    try {
+        window._attCurrentSettings = await window.getCurrentSettings();
+    } catch (_) {}
+
+    const contextHeaderHTML = buildContextHeader(term, allPupils, assignedClasses);
+
+    // FIX-B: Modal has NO inline style — CSS controls visibility via .is-open
     container.innerHTML = `
-        <div class="attendance-tabs" style="margin-bottom: var(--space-lg);">
-            <button class="attendance-tab active" data-tab="daily" onclick="switchAttendanceTab('daily')">
+        ${contextHeaderHTML}
+
+        <!-- TABS -->
+        <div class="att-tabs" role="tablist" aria-label="Attendance entry mode">
+            <button class="att-tab att-tab--active" role="tab" aria-selected="true"
+                    data-tab="daily" onclick="switchAttendanceTab('daily')">
                 📅 Daily Register
             </button>
-            <button class="attendance-tab" data-tab="manual" onclick="switchAttendanceTab('manual')">
+            <button class="att-tab" role="tab" aria-selected="false"
+                    data-tab="manual" onclick="switchAttendanceTab('manual')">
                 ✏️ Manual Totals
             </button>
         </div>
 
-        <!-- DAILY REGISTER TAB -->
-        <div id="attendance-tab-daily" class="attendance-tab-panel">
-            ${renderDailyRegisterShell(term)}
+        <!-- DAILY REGISTER PANEL -->
+        <div id="att-panel-daily" class="att-panel" role="tabpanel">
+            ${buildDailyRegisterShell(term)}
         </div>
 
-        <!-- MANUAL ENTRY TAB (existing system, untouched) -->
-        <div id="attendance-tab-manual" class="attendance-tab-panel" style="display:none;">
-            <div class="alert-info" style="padding:var(--space-md);background:#e3f2fd;border:1px solid #90caf9;border-radius:var(--radius-md);margin-bottom:var(--space-lg);">
-                <strong>ℹ️ Legacy Manual Entry</strong>
-                <p style="margin:0.25rem 0 0;font-size:var(--text-sm);">
-                    Use this if you need to override totals. These values will be overwritten if you use Daily Register.
-                </p>
+        <!-- MANUAL ENTRY PANEL -->
+        <div id="att-panel-manual" class="att-panel" style="display:none;" role="tabpanel">
+            <div class="att-legacy-banner">
+                <span class="att-legacy-icon">ℹ️</span>
+                <div>
+                    <strong>Legacy Manual Entry</strong>
+                    <p>Override cumulative totals directly. Values here are overwritten when the Daily Register is used.</p>
+                </div>
             </div>
             <div id="manual-attendance-container"></div>
         </div>
+
+        <!-- MODAL (FIX-B: no inline display style) -->
+        <div id="mark-day-modal" role="dialog" aria-modal="true"
+             aria-labelledby="mark-modal-title"
+             onclick="handleModalBackdropClick(event)">
+            <div class="att-modal-sheet" role="document">
+                <div class="att-modal-header">
+                    <h3 id="mark-modal-title">Mark Attendance</h3>
+                    <button class="att-modal-close" onclick="closeMarkDayModal()"
+                            aria-label="Close modal">✕</button>
+                </div>
+                <div class="att-modal-body" id="mark-modal-body"></div>
+                <div class="att-modal-footer" id="mark-modal-footer" style="display:none;">
+                    <button class="att-modal-save-btn" id="att-modal-save-btn"
+                            onclick="saveModalAttendance()">
+                        💾 Save Attendance
+                    </button>
+                    <button class="att-modal-cancel-btn" onclick="closeMarkDayModal()">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
-    // Load both panels
+    // Load both panels in parallel where safe
     await loadDailyRegisterPanel(term);
-    await loadManualAttendanceLegacy(term, container);
+    await loadManualAttendanceLegacy(term);
 
-    // Hide the old save button (daily register has its own)
     if (saveBtn) saveBtn.hidden = true;
+
+    // Scroll affordance: detect when table is scrolled to end
+    const scrollEl = document.getElementById('daily-register-grid');
+    if (scrollEl) {
+        const wrap = scrollEl.closest('.att-register-scroll');
+        if (wrap) {
+            scrollEl.addEventListener('scroll', () => {
+                const atEnd = scrollEl.scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 4;
+                wrap.classList.toggle('att-register-scroll--end', atEnd);
+            }, { passive: true });
+        }
+    }
 }
 
-function renderDailyRegisterShell(term) {
-    const today = window.dailyAttendance.getTodayISO();
-    const monday = window.dailyAttendance.getMondayOfWeek(new Date());
-    const mondayISO = window.dailyAttendance.formatDateISO(monday);
+/* ══════════════════════════════════════════════════════════════
+   § 3  CONTEXT HEADER
+══════════════════════════════════════════════════════════════ */
+
+function buildContextHeader(term, allPupils, assignedClasses) {
+    const className = assignedClasses[0]?.name || '—';
+    const session   = window._attCurrentSettings?.session || '—';
+    const today     = new Date().toLocaleDateString('en-GB', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
 
     return `
-        <!-- Week Navigator -->
-        <div class="week-navigator" style="
-            display:flex;align-items:center;gap:var(--space-md);
-            padding:var(--space-md) var(--space-lg);
-            background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--radius-lg);
-            margin-bottom:var(--space-lg);flex-wrap:wrap;
-        ">
-            <button class="btn btn-secondary" onclick="navigateWeek(-1)" style="padding:0.5rem 1rem;min-width:auto;">
-                ← Prev
-            </button>
-            <div style="flex:1;text-align:center;">
-                <strong id="week-label">Loading week...</strong>
-            </div>
-            <button class="btn btn-secondary" onclick="navigateWeek(1)" style="padding:0.5rem 1rem;min-width:auto;">
-                Next →
-            </button>
-            <button class="btn btn-secondary" onclick="goToCurrentWeek()" style="padding:0.5rem 1rem;min-width:auto;font-size:var(--text-sm);">
-                Today
-            </button>
-        </div>
-
-        <!-- Quick Mark Today Button -->
-        <div style="margin-bottom:var(--space-lg);">
-            <button class="btn btn-primary" onclick="openMarkTodayModal()" style="width:100%;">
-                ✅ Mark Today's Attendance (${window.dailyAttendance.formatDateDisplay(today)})
-            </button>
-        </div>
-
-        <!-- Register Grid Container -->
-        <div id="daily-register-grid" style="overflow-x:auto;">
-            <p style="text-align:center;color:var(--color-gray-500);padding:var(--space-xl);">Select a week to view register...</p>
-        </div>
-
-        <!-- Weekly Summary -->
-        <div id="weekly-summary-panel" style="display:none;margin-top:var(--space-xl);"></div>
-
-        <!-- Print Button -->
-        <div style="margin-top:var(--space-lg);display:flex;gap:var(--space-md);">
-            <button class="btn btn-secondary" onclick="printAttendanceRegister()" style="flex:1;">
-                🖨️ Print Register
-            </button>
-        </div>
-
-        <!-- Mark Day Modal -->
-        <div id="mark-day-modal" style="display:none;
-            position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;
-            align-items:center;justify-content:center;padding:var(--space-lg);">
-            <div style="background:white;border-radius:var(--radius-xl);
-                max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:var(--space-xl);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg);">
-                    <h3 style="margin:0;" id="mark-modal-title">Mark Attendance</h3>
-                    <button onclick="closeMarkDayModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">✕</button>
-                </div>
-                <div id="mark-modal-body"></div>
+    <div class="att-context-header">
+        <div class="att-context-header__left">
+            <h2 class="att-context-header__title">📚 ${className}</h2>
+            <div class="att-context-header__badges">
+                <span class="att-badge">🗓 ${term}</span>
+                <span class="att-badge">📅 ${session}</span>
+                <span class="att-badge">👥 ${allPupils.length} pupils</span>
             </div>
         </div>
-    `;
+        <div class="att-context-header__right">
+            <span class="att-today-label">Today</span>
+            <span class="att-today-date">${today}</span>
+        </div>
+    </div>`;
 }
 
-/* ══════════════════════════════════════════
-   WEEK NAVIGATION STATE
-══════════════════════════════════════════ */
-let currentWeekMonday = null;
+/* ══════════════════════════════════════════════════════════════
+   § 4  DAILY REGISTER SHELL
+   FIX-A: plain function, not window override — no race condition.
+   FIX-B: modal has no inline display style.
+   FIX-C: #daily-register-grid IS the scrollable element.
+   FIX-D: #weekly-summary-panel is a sibling of the grid, outside
+          the scroll container so it can expand naturally.
+══════════════════════════════════════════════════════════════ */
+
+function buildDailyRegisterShell(term) {
+    const today        = window.dailyAttendance.getTodayISO();
+    const todayDisplay = window.dailyAttendance.formatDateDisplay(today);
+
+    return `
+    <!-- Week Navigator -->
+    <div class="att-week-nav">
+        <button class="att-btn-nav" onclick="navigateWeek(-1)"
+                aria-label="Previous week" title="Previous week">←</button>
+        <span id="week-label" class="att-week-label">Loading…</span>
+        <button class="att-btn-nav" onclick="navigateWeek(1)"
+                aria-label="Next week" title="Next week">→</button>
+        <button class="att-btn-today" onclick="goToCurrentWeek()">↩ Today</button>
+    </div>
+
+    <!-- Mark Today CTA -->
+    <div class="att-cta-wrap">
+        <button class="att-cta-btn" onclick="openMarkTodayModal()"
+                aria-label="Mark today's attendance">
+            <span>✅ Mark Today's Attendance</span>
+            <span class="att-cta-date">${todayDisplay}</span>
+        </button>
+    </div>
+
+    <!-- Register scroll container (FIX-C: grid IS the scroll el) -->
+    <div class="att-register-scroll">
+        <div id="daily-register-grid" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            ${buildTableSkeleton(6)}
+        </div>
+    </div>
+
+    <!-- Weekly summary (FIX-D: outside scroll container) -->
+    <div id="weekly-summary-panel" style="display:none;"></div>
+
+    <!-- Action row -->
+    <div class="att-action-row">
+        <button class="att-btn-print" onclick="printAttendanceRegister()">
+            🖨️ Print Register
+        </button>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   § 5  SKELETON LOADER
+══════════════════════════════════════════════════════════════ */
+
+function buildTableSkeleton(rows = 6) {
+    const cells = Array(5).fill('<div class="att-skel att-skel--cell"></div>').join('');
+    let html = `<div class="att-skel-header"></div>`;
+    for (let i = 0; i < rows; i++) {
+        html += `<div class="att-skel-row" style="animation-delay:${i * 60}ms;">
+            <div class="att-skel att-skel--name"></div>
+            ${cells}
+        </div>`;
+    }
+    return html;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   § 6  EMPTY STATE
+══════════════════════════════════════════════════════════════ */
+
+function renderEmptyState(title, subtitle) {
+    return `
+    <div class="att-empty">
+        <div class="att-empty__icon">📋</div>
+        <p class="att-empty__title">${title}</p>
+        <p class="att-empty__sub">${subtitle}</p>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   § 7  TAB SWITCHER
+══════════════════════════════════════════════════════════════ */
+
+function switchAttendanceTab(tabName) {
+    document.querySelectorAll('.att-tab').forEach(t => {
+        const isActive = t.dataset.tab === tabName;
+        t.classList.toggle('att-tab--active', isActive);
+        t.setAttribute('aria-selected', String(isActive));
+    });
+    ['daily', 'manual'].forEach(name => {
+        const panel = document.getElementById(`att-panel-${name}`);
+        if (panel) panel.style.display = name === tabName ? 'block' : 'none';
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   § 8  WEEK NAVIGATION
+══════════════════════════════════════════════════════════════ */
 
 async function loadDailyRegisterPanel(term) {
     currentWeekMonday = window.dailyAttendance.getMondayOfWeek(new Date());
     await renderWeekRegister(term);
 }
 
-function switchAttendanceTab(tabName) {
-    document.querySelectorAll('.attendance-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.attendance-tab-panel').forEach(p => p.style.display = 'none');
-
-    document.querySelector(`.attendance-tab[data-tab="${tabName}"]`)?.classList.add('active');
-    document.getElementById(`attendance-tab-${tabName}`).style.display = 'block';
-}
-
 async function navigateWeek(direction) {
     if (!currentWeekMonday) return;
     const d = new Date(currentWeekMonday);
-    d.setDate(d.getDate() + (direction * 7));
+    d.setDate(d.getDate() + direction * 7);
     currentWeekMonday = d;
     const term = document.getElementById('attendance-term')?.value || 'First Term';
     await renderWeekRegister(term);
@@ -173,319 +301,328 @@ async function goToCurrentWeek() {
     await renderWeekRegister(term);
 }
 
-/* ══════════════════════════════════════════
-   REGISTER GRID RENDERER
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   § 9  REGISTER GRID RENDERER
+══════════════════════════════════════════════════════════════ */
 
 async function renderWeekRegister(term) {
-    const grid = document.getElementById('daily-register-grid');
+    const grid      = document.getElementById('daily-register-grid');
     const weekLabel = document.getElementById('week-label');
     if (!grid || !currentWeekMonday) return;
 
     const weekDates = window.dailyAttendance.getWeekDates(currentWeekMonday);
     const startDate = weekDates[0];
-    const endDate = weekDates[4];
+    const endDate   = weekDates[4];
 
-    // Update week label
     if (weekLabel) {
-        const startDisplay = window.dailyAttendance.formatDateDisplay(startDate);
-        const endDisplay = window.dailyAttendance.formatDateDisplay(endDate);
-        weekLabel.textContent = `Week: ${startDisplay} – ${endDisplay}`;
+        const s = window.dailyAttendance.formatDateDisplay(startDate);
+        const e = window.dailyAttendance.formatDateDisplay(endDate);
+        weekLabel.textContent = `${s} – ${e}`;
     }
 
-    grid.innerHTML = `<p style="text-align:center;padding:var(--space-lg);">Loading...</p>`;
+    grid.innerHTML = buildTableSkeleton(Math.min((window.allPupils || []).length, 8));
 
     try {
         const classId = window.assignedClasses?.[0]?.id;
-        if (!classId) { grid.innerHTML = '<p>No class assigned.</p>'; return; }
+        if (!classId) { grid.innerHTML = renderEmptyState('No class assigned', 'Contact admin.'); return; }
 
         const settings = await window.getCurrentSettings();
-        const session = settings.session;
+        const session  = settings.session;
+        const pupils   = window.allPupils || [];
 
-        const { dates, dailyRecords } = await window.dailyAttendance.fetchGrid(
+        const { dailyRecords } = await window.dailyAttendance.fetchGrid(
             classId, term, session, startDate, endDate
         );
 
-        const pupils = window.allPupils || [];
         const summary = window.dailyAttendance.weeklySummary(weekDates, dailyRecords, pupils);
 
-        grid.innerHTML = renderRegisterTable(pupils, weekDates, dailyRecords, summary);
-        renderWeeklySummaryPanel(summary, weekDates);
+        grid.innerHTML = buildRegisterTable(pupils, weekDates, dailyRecords);
+        buildWeeklySummaryPanel(summary, weekDates);
 
     } catch (err) {
-        console.error('Error rendering week register:', err);
-        grid.innerHTML = `<p style="color:var(--color-danger);text-align:center;">Error loading register: ${err.message}</p>`;
+        console.error('renderWeekRegister error:', err);
+        grid.innerHTML = `<div class="att-empty">
+            <div class="att-empty__icon">⚠️</div>
+            <p class="att-empty__title">Error loading register</p>
+            <p class="att-empty__sub">${err.message}</p>
+        </div>`;
     }
 }
 
-function renderRegisterTable(pupils, weekDates, dailyRecords, summary) {
+/* ══════════════════════════════════════════════════════════════
+   § 10  REGISTER TABLE HTML
+   FIX-F: col-gen sticky left is a fixed value matching col-name width.
+══════════════════════════════════════════════════════════════ */
+
+function buildRegisterTable(pupils, weekDates, dailyRecords) {
     const today = window.dailyAttendance.getTodayISO();
 
-    let html = `
-    <table class="attendance-register-table" style="
-        width:100%;border-collapse:collapse;font-size:0.875rem;
-        border:2px solid #1565c0;
-    ">
-    <thead>
-        <tr style="background:#1565c0;color:white;">
-            <th style="padding:8px 12px;text-align:left;position:sticky;left:0;z-index:2;background:#1565c0;min-width:150px;">Pupil Name</th>
-            <th style="padding:8px 6px;text-align:left;min-width:60px;position:sticky;left:150px;background:#1565c0;">Gen</th>
-    `;
+    if (!pupils.length) {
+        return renderEmptyState('No pupils found', 'No pupils are assigned to this class.');
+    }
 
-    weekDates.forEach(date => {
-        const isToday = date === today;
+    // ── HEADER ──────────────────────────────────────────────────────────────
+    let headerCells = weekDates.map(date => {
+        const isToday   = date === today;
         const hasRecord = !!dailyRecords[date];
-        const dayDisplay = window.dailyAttendance.formatDateDisplay(date);
-        const dayStyle = isToday ? 'background:#0d47a1;outline:2px solid #ffeb3b;' : 'background:#1565c0;';
-        html += `<th style="padding:6px 4px;text-align:center;min-width:80px;${dayStyle}">
-            ${dayDisplay}${hasRecord ? ' ✓' : ''}
-            ${isToday ? '<br><small>(Today)</small>' : ''}
+        const d         = new Date(date + 'T12:00:00');
+        const dayName   = d.toLocaleDateString('en-GB', { weekday: 'short' });
+        const dayNum    = d.getDate();
+        const mon       = d.toLocaleDateString('en-GB', { month: 'short' });
+        return `<th class="att-th-day${isToday ? ' att-th-day--today' : ''}">
+            <div class="att-day-inner">
+                <span>${dayName}</span>
+                <span class="att-day-num">${dayNum} ${mon}</span>
+                ${hasRecord ? '<span class="att-day-dot" title="Marked"></span>' : ''}
+                ${isToday ? '<span class="att-today-chip">TODAY</span>' : ''}
+            </div>
         </th>`;
-    });
+    }).join('');
 
-    html += `
-        <th style="padding:8px 6px;text-align:center;background:#0d47a1;">Days<br>Present</th>
-        <th style="padding:8px 6px;text-align:center;background:#0d47a1;">Days<br>Absent</th>
-        <th style="padding:8px 6px;text-align:center;background:#0d47a1;">%</th>
-        </tr>
-    </thead>
-    <tbody>
-    `;
-
-    pupils.forEach((pupil, idx) => {
-        const rowBg = idx % 2 === 0 ? '#f8faff' : 'white';
+    // ── ROWS ─────────────────────────────────────────────────────────────────
+    let bodyRows = pupils.map((pupil, idx) => {
         let weekPresent = 0, weekAbsent = 0;
+        const isBoy = pupil.gender?.toLowerCase() === 'male' || pupil.gender?.toLowerCase() === 'm';
 
-        html += `<tr style="background:${rowBg};">
-            <td style="padding:7px 12px;font-weight:500;border-bottom:1px solid #dbeafe;
-                position:sticky;left:0;z-index:1;background:${rowBg};">${pupil.name}</td>
-            <td style="padding:7px 6px;border-bottom:1px solid #dbeafe;text-align:center;
-                position:sticky;left:150px;background:${rowBg};">${(pupil.gender || '-').charAt(0).toUpperCase()}</td>
-        `;
-
-        weekDates.forEach(date => {
+        const statusCells = weekDates.map(date => {
             const record = dailyRecords[date];
             const status = record?.records?.[pupil.id];
-
-            let cellContent = '-';
-            let cellStyle = 'background:#f3f4f6;';
-
             if (status === 'present') {
-                cellContent = '✓';
-                cellStyle = 'background:#dcfce7;color:#15803d;font-weight:bold;';
                 weekPresent++;
+                return `<td class="att-cell att-cell--present"
+                    role="button" tabindex="0"
+                    title="Present — click to toggle"
+                    aria-label="${pupil.name}, ${window.dailyAttendance.formatDateDisplay(date)}: Present"
+                    onclick="togglePupilStatusInDay('${pupil.id}','${date}','present')"
+                    onkeydown="if(event.key==='Enter'||event.key===' ')togglePupilStatusInDay('${pupil.id}','${date}','present')">✓</td>`;
             } else if (status === 'absent') {
-                cellContent = '✗';
-                cellStyle = 'background:#fee2e2;color:#dc2626;font-weight:bold;';
                 weekAbsent++;
+                return `<td class="att-cell att-cell--absent"
+                    role="button" tabindex="0"
+                    title="Absent — click to toggle"
+                    aria-label="${pupil.name}, ${window.dailyAttendance.formatDateDisplay(date)}: Absent"
+                    onclick="togglePupilStatusInDay('${pupil.id}','${date}','absent')"
+                    onkeydown="if(event.key==='Enter'||event.key===' ')togglePupilStatusInDay('${pupil.id}','${date}','absent')">✗</td>`;
+            } else {
+                return `<td class="att-cell att-cell--unmarked" aria-label="Not marked">—</td>`;
             }
+        }).join('');
 
-            // Make cell clickable if record exists
-            const clickHandler = record
-                ? `onclick="togglePupilStatusInDay('${pupil.id}', '${date}', '${status || 'absent'}')" style="cursor:pointer;"`
-                : '';
+        const total    = weekPresent + weekAbsent;
+        const pct      = total > 0 ? Math.round((weekPresent / total) * 100) : null;
+        const pctClass = pct === null ? '' : pct >= 75 ? 'att-pct--good' : pct >= 50 ? 'att-pct--warn' : 'att-pct--bad';
 
-            html += `<td ${clickHandler} style="padding:6px 4px;text-align:center;border-bottom:1px solid #dbeafe;
-                border-left:1px solid #bfdbfe;${cellStyle}">${cellContent}</td>`;
-        });
-
-        const pct = (weekPresent + weekAbsent) > 0
-            ? Math.round((weekPresent / (weekPresent + weekAbsent)) * 100)
-            : '-';
-        const pctColor = typeof pct === 'number' ? (pct >= 75 ? '#15803d' : pct >= 50 ? '#d97706' : '#dc2626') : '#9ca3af';
-
-        html += `
-            <td style="padding:7px 6px;text-align:center;border-bottom:1px solid #dbeafe;font-weight:600;">${weekPresent}</td>
-            <td style="padding:7px 6px;text-align:center;border-bottom:1px solid #dbeafe;font-weight:600;">${weekAbsent}</td>
-            <td style="padding:7px 6px;text-align:center;border-bottom:1px solid #dbeafe;font-weight:600;color:${pctColor};">${pct}${typeof pct === 'number' ? '%' : ''}</td>
+        return `<tr class="att-row${idx % 2 === 0 ? '' : ' att-row--alt'}">
+            <td class="att-td-name">${pupil.name || '—'}</td>
+            <td class="att-td-gen">${isBoy ? 'M' : 'F'}</td>
+            ${statusCells}
+            <td class="att-td-total">${weekPresent}</td>
+            <td class="att-td-total">${weekAbsent}</td>
+            <td class="att-td-total ${pctClass}">${pct !== null ? pct + '%' : '—'}</td>
         </tr>`;
-    });
+    }).join('');
 
-    // Totals row
-    html += `<tr style="background:#dbeafe;font-weight:700;">
-        <td style="padding:8px 12px;border-top:2px solid #1565c0;position:sticky;left:0;background:#dbeafe;" colspan="2">TOTALS</td>`;
+    // ── TOTALS FOOTER ────────────────────────────────────────────────────────
+    const totalCells = weekDates.map(date => {
+        const rec = dailyRecords[date];
+        return `<td class="att-td-footer">${rec ? `${rec.totalPresent ?? '?'}/${rec.totalPupils ?? '?'}` : '—'}</td>`;
+    }).join('');
 
-    weekDates.forEach(date => {
-        const record = dailyRecords[date];
-        const present = record?.totalPresent ?? '-';
-        const total = record?.totalPupils ?? '';
-        html += `<td style="padding:6px 4px;text-align:center;border-top:2px solid #1565c0;border-left:1px solid #93c5fd;">
-            ${record ? `${present}/${total}` : '-'}
-        </td>`;
-    });
-
-    html += `<td colspan="3" style="padding:8px;text-align:center;border-top:2px solid #1565c0;font-size:var(--text-xs);color:#1e40af;">
-        Week summary below ↓</td></tr>`;
-
-    html += '</tbody></table>';
-
-    return `<div style="overflow-x:auto;">${html}</div>`;
+    return `
+    <table class="att-register-table" role="grid" aria-label="Weekly attendance register">
+        <thead>
+            <tr>
+                <th class="att-th-name">Pupil Name</th>
+                <th class="att-th-gen">G</th>
+                ${headerCells}
+                <th class="att-th-stat">Pres</th>
+                <th class="att-th-stat">Abs</th>
+                <th class="att-th-stat">%</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${bodyRows}
+            <tr class="att-row-totals">
+                <td class="att-td-name att-td-totals-label" colspan="2">Daily Total</td>
+                ${totalCells}
+                <td colspan="3" class="att-td-footer" style="font-size:.7rem;color:#1e40af;">↓ Summary</td>
+            </tr>
+        </tbody>
+    </table>`;
 }
 
-function renderWeeklySummaryPanel(summary, weekDates) {
+/* ══════════════════════════════════════════════════════════════
+   § 11  WEEKLY SUMMARY PANEL
+   FIX-D: targets #weekly-summary-panel which is a sibling of the
+          scroll container — always findable.
+══════════════════════════════════════════════════════════════ */
+
+function buildWeeklySummaryPanel(summary, weekDates) {
     const panel = document.getElementById('weekly-summary-panel');
     if (!panel) return;
 
     const markedDays = weekDates.filter(d => summary.dailyStats[d]);
-    if (markedDays.length === 0) {
-        panel.style.display = 'none';
-        return;
-    }
+    if (markedDays.length === 0) { panel.style.display = 'none'; return; }
 
-    let html = `
-    <div style="padding:var(--space-lg);background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--radius-lg);">
-        <h4 style="margin:0 0 var(--space-md);">📊 Weekly Summary</h4>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg);">
-    `;
-
-    markedDays.forEach(date => {
-        const stats = summary.dailyStats[date];
-        html += `
-        <div style="background:white;padding:var(--space-md);border-radius:var(--radius-md);border:1px solid #bae6fd;text-align:center;">
-            <div style="font-size:var(--text-xs);color:#0369a1;font-weight:600;">${window.dailyAttendance.formatDateDisplay(date)}</div>
-            <div style="font-size:1.25rem;font-weight:700;color:#0c4a6e;">${stats.present}/${stats.total}</div>
-            <div style="font-size:var(--text-xs);color:#0369a1;">${stats.percentage}% present</div>
+    const cards = markedDays.map(date => {
+        const s       = summary.dailyStats[date];
+        const pctCls  = s.percentage >= 75 ? 'att-pct--good' : s.percentage >= 50 ? 'att-pct--warn' : 'att-pct--bad';
+        return `<div class="att-summary-card">
+            <div class="att-summary-card__day">${window.dailyAttendance.formatDateDisplay(date)}</div>
+            <div class="att-summary-card__count">${s.present}<span class="att-summary-card__of">/${s.total}</span></div>
+            <div class="att-summary-card__pct ${pctCls}">${s.percentage}%</div>
         </div>`;
-    });
+    }).join('');
 
-    html += `</div>`;
+    panel.innerHTML = `
+    <div class="att-summary-inner">
+        <p class="att-summary-title">
+            📊 Weekly Summary
+            <span class="att-summary-days-note">— ${markedDays.length} day${markedDays.length !== 1 ? 's' : ''} marked</span>
+        </p>
+        <div class="att-summary-grid">${cards}</div>
+    </div>`;
 
-    // Boys/Girls breakdown (aggregate)
-    let totalBoyPresent = 0, totalGirlPresent = 0;
-    markedDays.forEach(date => {
-        const record = summary; // we need the raw dailyRecords
-    });
-
-    html += `<p style="margin:0;font-size:var(--text-sm);color:#0369a1;">
-        Days marked this week: <strong>${markedDays.length}</strong>
-    </p></div>`;
-
-    panel.innerHTML = html;
     panel.style.display = 'block';
 }
 
-/* ══════════════════════════════════════════
-   MARK TODAY MODAL
-══════════════════════════════════════════ */
-
-let _modalDate = null;
+/* ══════════════════════════════════════════════════════════════
+   § 12  MARK TODAY MODAL
+   FIX-B: uses CSS class .is-open — no inline display toggling.
+   FIX-E: save loading state is built in here, not via patch.
+══════════════════════════════════════════════════════════════ */
 
 async function openMarkTodayModal(dateOverride) {
-    _modalDate = dateOverride || window.dailyAttendance.getTodayISO();
-    const term = document.getElementById('attendance-term')?.value || 'First Term';
-    const classId = window.assignedClasses?.[0]?.id;
-    const pupils = window.allPupils || [];
+    _modalDate     = dateOverride || window.dailyAttendance.getTodayISO();
+    const term     = document.getElementById('attendance-term')?.value || 'First Term';
+    const classId  = window.assignedClasses?.[0]?.id;
+    const pupils   = window.allPupils || [];
 
     if (!classId) { window.showToast?.('No class assigned', 'warning'); return; }
 
-    const modal = document.getElementById('mark-day-modal');
-    const title = document.getElementById('mark-modal-title');
-    const body = document.getElementById('mark-modal-body');
+    const modal  = document.getElementById('mark-day-modal');
+    const title  = document.getElementById('mark-modal-title');
+    const body   = document.getElementById('mark-modal-body');
+    const footer = document.getElementById('mark-modal-footer');
 
     if (!modal || !title || !body) return;
 
     title.textContent = `Mark Attendance — ${window.dailyAttendance.formatDateDisplay(_modalDate)}`;
-    body.innerHTML = `<p style="text-align:center;padding:var(--space-lg);">Loading...</p>`;
-    modal.style.display = 'flex';
+    body.innerHTML    = buildTableSkeleton(Math.min(pupils.length, 8));
+    if (footer) footer.style.display = 'none';
+
+    // FIX-B: CSS class toggle — animation fires correctly
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+
+    requestAnimationFrame(() => modal.querySelector('.att-modal-close')?.focus());
 
     try {
-        // Load existing record for this date (if any)
         const docId = `${classId}_${_modalDate}`;
-        const snap = await db.collection('daily_attendance').doc(docId).get();
+        const snap  = await db.collection('daily_attendance').doc(docId).get();
         const existingRecords = snap.exists ? snap.data().records : {};
 
-        // Date picker for non-today marking
-        let html = `
-        <div style="margin-bottom:var(--space-lg);">
-            <label style="font-size:var(--text-sm);font-weight:600;display:block;margin-bottom:var(--space-xs);">
-                Date
-            </label>
-            <input type="date" id="modal-attendance-date" value="${_modalDate}"
-                style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:var(--radius-md);"
-                onchange="_modalDate=this.value">
+        body.innerHTML = `
+        <div class="att-modal-date-group">
+            <label for="modal-attendance-date">Date</label>
+            <input type="date" id="modal-attendance-date"
+                   value="${_modalDate}"
+                   onchange="_modalDate=this.value"
+                   aria-label="Select attendance date">
         </div>
 
-        <div style="display:flex;gap:var(--space-md);margin-bottom:var(--space-lg);">
-            <button class="btn btn-secondary" onclick="markAllModalPupils('present')" style="flex:1;padding:0.5rem;">
-                ✓ Mark All Present
-            </button>
-            <button class="btn btn-secondary" onclick="markAllModalPupils('absent')" style="flex:1;padding:0.5rem;">
-                ✗ Mark All Absent
-            </button>
+        <div class="att-bulk-actions">
+            <button class="att-bulk-btn att-bulk-btn--present"
+                    onclick="markAllModalPupils('present')">✓ All Present</button>
+            <button class="att-bulk-btn att-bulk-btn--absent"
+                    onclick="markAllModalPupils('absent')">✗ All Absent</button>
         </div>
 
-        <div style="max-height:50vh;overflow-y:auto;">
-        <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="background:#f1f5f9;">
-            <th style="padding:8px;text-align:left;font-size:0.8rem;">Name</th>
-            <th style="padding:8px;text-align:center;font-size:0.8rem;color:#15803d;">Present</th>
-            <th style="padding:8px;text-align:center;font-size:0.8rem;color:#dc2626;">Absent</th>
-        </tr></thead>
-        <tbody>
-        `;
-
-        pupils.forEach((pupil, idx) => {
-            const status = existingRecords[pupil.id] || 'present'; // default present
-            const rowBg = idx % 2 === 0 ? '#f8fafc' : 'white';
-            html += `
-            <tr style="background:${rowBg};">
-                <td style="padding:8px;font-size:0.875rem;">${pupil.name}</td>
-                <td style="padding:8px;text-align:center;">
-                    <input type="radio" name="status_${pupil.id}" value="present"
-                        data-pupil="${pupil.id}"
-                        ${status === 'present' ? 'checked' : ''}>
-                </td>
-                <td style="padding:8px;text-align:center;">
-                    <input type="radio" name="status_${pupil.id}" value="absent"
-                        data-pupil="${pupil.id}"
-                        ${status === 'absent' ? 'checked' : ''}>
-                </td>
-            </tr>`;
-        });
-
-        html += `</tbody></table></div>
-
-        <div style="margin-top:var(--space-lg);display:flex;gap:var(--space-md);">
-            <button class="btn" onclick="saveModalAttendance()" style="flex:2;">
-                💾 Save Attendance
-            </button>
-            <button class="btn btn-secondary" onclick="closeMarkDayModal()" style="flex:1;">
-                Cancel
-            </button>
+        <div class="att-modal-table-wrap">
+            <table class="att-modal-table" role="grid">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th style="color:#15803d;">✓ Present</th>
+                        <th style="color:#dc2626;">✗ Absent</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pupils.map((pupil, idx) => {
+                        const status = existingRecords[pupil.id] || 'present';
+                        return `<tr class="${idx % 2 === 0 ? '' : 'att-modal-row--alt'}">
+                            <td>${pupil.name}</td>
+                            <td style="text-align:center;">
+                                <input type="radio" name="status_${pupil.id}" value="present"
+                                       data-pupil="${pupil.id}"
+                                       class="att-radio att-radio--present"
+                                       aria-label="${pupil.name} — Present"
+                                       ${status === 'present' ? 'checked' : ''}>
+                            </td>
+                            <td style="text-align:center;">
+                                <input type="radio" name="status_${pupil.id}" value="absent"
+                                       data-pupil="${pupil.id}"
+                                       class="att-radio att-radio--absent"
+                                       aria-label="${pupil.name} — Absent"
+                                       ${status === 'absent' ? 'checked' : ''}>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
         </div>`;
 
-        body.innerHTML = html;
+        if (footer) footer.style.display = 'flex';
 
     } catch (err) {
-        body.innerHTML = `<p style="color:var(--color-danger);">Error: ${err.message}</p>`;
+        body.innerHTML = renderEmptyState('Failed to load', err.message);
     }
 }
 
 function closeMarkDayModal() {
     const modal = document.getElementById('mark-day-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+}
+
+// Close on backdrop click (not on sheet click)
+function handleModalBackdropClick(e) {
+    if (e.target.id === 'mark-day-modal') closeMarkDayModal();
 }
 
 function markAllModalPupils(status) {
-    const pupils = window.allPupils || [];
-    pupils.forEach(pupil => {
+    (window.allPupils || []).forEach(pupil => {
         const radio = document.querySelector(`input[name="status_${pupil.id}"][value="${status}"]`);
         if (radio) radio.checked = true;
     });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   § 13  SAVE MODAL ATTENDANCE
+   FIX-E: single function, no patch chain, loading state built in.
+══════════════════════════════════════════════════════════════ */
+
 async function saveModalAttendance() {
-    const term = document.getElementById('attendance-term')?.value || 'First Term';
+    const term      = document.getElementById('attendance-term')?.value || 'First Term';
     const dateInput = document.getElementById('modal-attendance-date');
-    const date = dateInput?.value || _modalDate;
-
-    if (!date) { window.showToast?.('No date selected', 'warning'); return; }
-
-    const classId = window.assignedClasses?.[0]?.id;
-    const pupils = window.allPupils || [];
+    const date      = dateInput?.value || _modalDate;
+    const classId   = window.assignedClasses?.[0]?.id;
+    const pupils    = window.allPupils || [];
     const teacherId = window.currentUser?.uid;
+    const saveBtn   = document.getElementById('att-modal-save-btn');
+    const footer    = document.getElementById('mark-modal-footer');
 
-    if (!classId || !teacherId) { window.showToast?.('Missing class or user info', 'danger'); return; }
+    if (!date)      { window.showToast?.('No date selected', 'warning'); return; }
+    if (!classId)   { window.showToast?.('No class assigned', 'danger'); return; }
+    if (!teacherId) { window.showToast?.('Not authenticated', 'danger'); return; }
+
+    // Loading state
+    if (saveBtn) {
+        saveBtn.disabled    = true;
+        saveBtn.innerHTML   = `<span class="att-spinner"></span> Saving…`;
+    }
 
     // Collect radio values
     const records = {};
@@ -496,71 +633,78 @@ async function saveModalAttendance() {
 
     try {
         const settings = await window.getCurrentSettings();
-        const session = settings.session;
-
-        const saveBtn = document.querySelector('#mark-modal-body .btn');
-        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+        const session  = settings.session;
 
         await window.dailyAttendance.mark(classId, date, term, session, teacherId, records, pupils);
 
-        window.showToast?.(`✓ Attendance saved for ${window.dailyAttendance.formatDateDisplay(date)}`, 'success');
+        window.showToast?.(
+            `✓ Attendance saved for ${window.dailyAttendance.formatDateDisplay(date)}`,
+            'success'
+        );
         closeMarkDayModal();
-
-        // Refresh the week grid
         await renderWeekRegister(term);
 
     } catch (err) {
-        console.error('Error saving daily attendance:', err);
+        console.error('saveModalAttendance error:', err);
         window.showToast?.(`Failed to save: ${err.message}`, 'danger');
+        if (saveBtn) {
+            saveBtn.disabled  = false;
+            saveBtn.innerHTML = '💾 Save Attendance';
+        }
     }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   § 14  QUICK TOGGLE (click a cell to flip present/absent)
+══════════════════════════════════════════════════════════════ */
+
 async function togglePupilStatusInDay(pupilId, date, currentStatus) {
     const newStatus = currentStatus === 'present' ? 'absent' : 'present';
-    const term = document.getElementById('attendance-term')?.value || 'First Term';
-    const classId = window.assignedClasses?.[0]?.id;
+    const term      = document.getElementById('attendance-term')?.value || 'First Term';
+    const classId   = window.assignedClasses?.[0]?.id;
     const teacherId = window.currentUser?.uid;
-    const pupils = window.allPupils || [];
+    const pupils    = window.allPupils || [];
 
     if (!classId || !teacherId) return;
 
     try {
-        const settings = await window.getCurrentSettings();
-        const session = settings.session;
-        const pupilName = pupils.find(p => p.id === pupilId)?.name || 'pupil';
+        const settings   = await window.getCurrentSettings();
+        const session    = settings.session;
+        const pupilName  = pupils.find(p => p.id === pupilId)?.name || 'pupil';
 
-        await window.dailyAttendance.updatePupil(classId, date, term, session, teacherId, pupilId, newStatus, pupils);
-        window.showToast?.(`✓ ${pupilName} marked ${newStatus} on ${window.dailyAttendance.formatDateDisplay(date)}`, 'success', 3000);
+        await window.dailyAttendance.updatePupil(
+            classId, date, term, session, teacherId, pupilId, newStatus, pupils
+        );
+        window.showToast?.(
+            `✓ ${pupilName} marked ${newStatus} on ${window.dailyAttendance.formatDateDisplay(date)}`,
+            'success', 3000
+        );
         await renderWeekRegister(term);
+
     } catch (err) {
         window.showToast?.(`Error: ${err.message}`, 'danger');
     }
 }
 
-/* ══════════════════════════════════════════
-   LEGACY MANUAL PANEL
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   § 15  LEGACY MANUAL PANEL
+══════════════════════════════════════════════════════════════ */
 
-async function loadManualAttendanceLegacy(term, outerContainer) {
+async function loadManualAttendanceLegacy(term) {
     const container = document.getElementById('manual-attendance-container');
     if (!container) return;
 
     const pupils = window.allPupils || [];
-    if (pupils.length === 0) {
-        container.innerHTML = '<p>No pupils.</p>';
-        return;
-    }
+    if (pupils.length === 0) { container.innerHTML = renderEmptyState('No pupils', ''); return; }
 
     try {
-        // FIX: Get current session to build the correct document ID
-        const settings = await window.getCurrentSettings();
+        const settings       = await window.getCurrentSettings();
         const encodedSession = settings.session.replace(/\//g, '-');
 
         const attendanceMap = {};
         for (const pupil of pupils) {
-            // FIX: Document ID now includes encodedSession to match the write format
             const docId = `${pupil.id}_${encodedSession}_${term}`;
-            const doc = await db.collection('attendance').doc(docId).get();
+            const doc   = await db.collection('attendance').doc(docId).get();
             if (doc.exists) attendanceMap[pupil.id] = doc.data();
         }
 
@@ -570,7 +714,7 @@ async function loadManualAttendanceLegacy(term, outerContainer) {
                 <thead>
                     <tr>
                         <th>Pupil Name</th>
-                        <th>Times School Opened</th>
+                        <th>Times Opened</th>
                         <th>Times Present</th>
                         <th>Times Absent</th>
                     </tr>
@@ -578,28 +722,30 @@ async function loadManualAttendanceLegacy(term, outerContainer) {
                 <tbody></tbody>
             </table>
         </div>
-        <button class="btn" onclick="saveAllAttendanceManual('${term}')" style="width:100%;margin-top:var(--space-lg);">
+        <button class="btn btn-primary"
+                onclick="saveAllAttendanceManual('${term}')"
+                style="width:100%;margin-top:1rem;">
             💾 Save Manual Totals
         </button>`;
 
         if (typeof window.paginateTable === 'function') {
             window.paginateTable(pupils, 'manual-attendance-table', 25, (pupil, tbody) => {
-                const existing = attendanceMap[pupil.id] || {};
+                const ex = attendanceMap[pupil.id] || {};
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td data-label="Pupil Name">${pupil.name}</td>
-                    <td data-label="Times School Opened">
-                        <input type="number" min="0" value="${existing.timesOpened || ''}"
+                    <td data-label="Times Opened">
+                        <input type="number" min="0" value="${ex.timesOpened || ''}"
                             data-pupil="${pupil.id}" data-field="timesOpened"
                             style="width:100%;max-width:100px;" placeholder="0">
                     </td>
                     <td data-label="Times Present">
-                        <input type="number" min="0" value="${existing.timesPresent || ''}"
+                        <input type="number" min="0" value="${ex.timesPresent || ''}"
                             data-pupil="${pupil.id}" data-field="timesPresent"
                             style="width:100%;max-width:100px;" placeholder="0">
                     </td>
                     <td data-label="Times Absent">
-                        <input type="number" min="0" value="${existing.timesAbsent || ''}"
+                        <input type="number" min="0" value="${ex.timesAbsent || ''}"
                             data-pupil="${pupil.id}" data-field="timesAbsent"
                             style="width:100%;max-width:100px;" placeholder="0">
                     </td>`;
@@ -608,44 +754,48 @@ async function loadManualAttendanceLegacy(term, outerContainer) {
         }
 
     } catch (err) {
-        container.innerHTML = `<p style="color:var(--color-danger);">Error: ${err.message}</p>`;
+        container.innerHTML = renderEmptyState('Error loading data', err.message);
     }
 }
 
-// Wrap the existing saveAllAttendance to work with the manual panel
 async function saveAllAttendanceManual(term) {
-    // Call the original save function — it queries #attendance-form-container inputs
-    // We route it to the manual container inputs
     const inputs = document.querySelectorAll('#manual-attendance-container input[type="number"]');
     if (!inputs.length || !term) {
         window.showToast?.('No data to save', 'warning');
         return;
     }
-
-    // Reuse validation + save logic from existing saveAllAttendance
-    // (identical logic, just sourced from different container)
     await window._saveAttendanceFromInputs(inputs, term);
 }
 
-/* ══════════════════════════════════════════
-   PRINT REGISTER
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   § 16  KEYBOARD: ESC closes modal
+══════════════════════════════════════════════════════════════ */
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('mark-day-modal');
+        if (modal?.classList.contains('is-open')) closeMarkDayModal();
+    }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   § 17  PRINT REGISTER
+══════════════════════════════════════════════════════════════ */
 
 async function printAttendanceRegister() {
-    const term = document.getElementById('attendance-term')?.value || 'First Term';
-    const classId = window.assignedClasses?.[0]?.id;
+    const term      = document.getElementById('attendance-term')?.value || 'First Term';
+    const classId   = window.assignedClasses?.[0]?.id;
     const className = window.assignedClasses?.[0]?.name || 'Unknown Class';
-    const pupils = window.allPupils || [];
+    const pupils    = window.allPupils || [];
 
     if (!classId) { window.showToast?.('No class assigned', 'warning'); return; }
 
-    window.showToast?.('Preparing print register...', 'info', 3000);
+    window.showToast?.('Preparing print register…', 'info', 3000);
 
     try {
         const settings = await window.getCurrentSettings();
-        const session = settings.session;
+        const session  = settings.session;
 
-        // Fetch ALL daily records for this term
         const snap = await db.collection('daily_attendance')
             .where('classId', '==', classId)
             .where('term', '==', term)
@@ -654,22 +804,20 @@ async function printAttendanceRegister() {
             .get();
 
         const dailyRecords = {};
-        snap.forEach(doc => {
-            dailyRecords[doc.data().date] = doc.data();
-        });
+        snap.forEach(doc => { dailyRecords[doc.data().date] = doc.data(); });
 
-        const allDates = Object.keys(dailyRecords).sort();
-        const printHTML = generatePrintRegisterHTML(className, term, session, pupils, allDates, dailyRecords);
+        const allDates   = Object.keys(dailyRecords).sort();
+        const printHTML  = buildPrintHTML(className, term, session, pupils, allDates, dailyRecords);
+        const printWin   = window.open('', '_blank', 'width=1200,height=800');
 
-        const printWindow = window.open('', '_blank', 'width=1200,height=800');
-        if (!printWindow) {
-            window.showToast?.('Popup blocked. Please allow popups and try again.', 'warning');
+        if (!printWin) {
+            window.showToast?.('Popup blocked — please allow popups.', 'warning');
             return;
         }
-        printWindow.document.write(printHTML);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 800);
+        printWin.document.write(printHTML);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => printWin.print(), 800);
 
     } catch (err) {
         console.error('Print error:', err);
@@ -677,32 +825,30 @@ async function printAttendanceRegister() {
     }
 }
 
-function generatePrintRegisterHTML(className, term, session, pupils, allDates, dailyRecords) {
-    const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    // Group dates by week
-    const weeks = [];
-    let currentWeek = [];
-    allDates.forEach((date, i) => {
-        currentWeek.push(date);
-        if (currentWeek.length === 5 || i === allDates.length - 1) {
-            weeks.push([...currentWeek]);
-            currentWeek = [];
-        }
+function buildPrintHTML(className, term, session, pupils, allDates, dailyRecords) {
+    const today = new Date().toLocaleDateString('en-GB', {
+        year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // Build attendance rows
+    // Bucket dates into weeks of 5
+    const weeks = [];
+    let wk = [];
+    allDates.forEach((date, i) => {
+        wk.push(date);
+        if (wk.length === 5 || i === allDates.length - 1) { weeks.push([...wk]); wk = []; }
+    });
+
     const pupilRows = pupils.map(pupil => {
         let totalPresent = 0, totalAbsent = 0;
         const cells = allDates.map(date => {
             const status = dailyRecords[date]?.records?.[pupil.id];
-            if (status === 'present') { totalPresent++; return { status: 'P', cls: 'p-cell' }; }
-            if (status === 'absent') { totalAbsent++; return { status: 'A', cls: 'a-cell' }; }
-            return { status: '', cls: '' };
+            if (status === 'present') { totalPresent++; return { s: 'P', cls: 'p-cell' }; }
+            if (status === 'absent')  { totalAbsent++;  return { s: 'A', cls: 'a-cell' }; }
+            return { s: '', cls: '' };
         });
         const pct = (totalPresent + totalAbsent) > 0
             ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100) + '%'
-            : '-';
+            : '—';
         return { pupil, cells, totalPresent, totalAbsent, pct };
     });
 
@@ -712,281 +858,157 @@ function generatePrintRegisterHTML(className, term, session, pupils, allDates, d
 <meta charset="UTF-8">
 <title>Attendance Register — ${className} — ${term} ${session}</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; background: white; }
-
-  @page {
-    size: A3 landscape;
-    margin: 10mm 8mm;
-  }
-
-  .page-header {
-    text-align: center;
-    border: 2px solid #1565c0;
-    padding: 8px;
-    margin-bottom: 8px;
-    background: #e3f2fd;
-  }
-
-  .page-header h1 { font-size: 14pt; color: #1565c0; }
-  .page-header h2 { font-size: 11pt; }
-  .page-header p { font-size: 9pt; margin-top: 4px; }
-
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 6px;
-    font-size: 9pt;
-    border-bottom: 1px solid #1565c0;
-    padding-bottom: 4px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 8pt;
-  }
-
-  th, td {
-    border: 1px solid #1565c0;
-    padding: 3px 4px;
-    text-align: center;
-    white-space: nowrap;
-  }
-
-  th { background: #1565c0; color: white; font-weight: 600; }
-
-  .name-col { text-align: left !important; min-width: 120px; max-width: 150px; }
-  .gen-col { width: 24px; }
-  .date-col { width: 30px; font-size: 7pt; }
-  .total-col { font-weight: 700; background: #e3f2fd; }
-
-  .p-cell { background: #dcfce7; color: #15803d; font-weight: 700; }
-  .a-cell { background: #fee2e2; color: #dc2626; font-weight: 700; }
-
-  tr:nth-child(even) td:not(.p-cell):not(.a-cell) { background: #f8faff; }
-
-  .totals-row td { background: #dbeafe !important; font-weight: 700; }
-
-  .week-header th { background: #0d47a1; font-size: 7pt; }
-
-  .summary-section {
-    margin-top: 12px;
-    border: 1px solid #1565c0;
-    padding: 8px;
-  }
-
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .summary-day {
-    border: 1px solid #90caf9;
-    padding: 4px;
-    text-align: center;
-    background: #f0f9ff;
-    font-size: 8pt;
-  }
-
-  .signatures {
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 20px;
-  }
-
-  .sig-box {
-    border-top: 1px solid #000;
-    padding-top: 4px;
-    font-size: 8pt;
-    text-align: center;
-    margin-top: 20px;
-  }
-
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:9pt;color:#000;background:#fff}
+  @page{size:A3 landscape;margin:10mm 8mm}
+  .hdr{text-align:center;border:2px solid #1565c0;padding:8px;margin-bottom:8px;background:#e3f2fd}
+  .hdr h1{font-size:14pt;color:#1565c0}.hdr h2{font-size:11pt}.hdr p{font-size:9pt;margin-top:4px}
+  .info{display:flex;justify-content:space-between;margin-bottom:6px;font-size:9pt;
+        border-bottom:1px solid #1565c0;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;font-size:8pt}
+  th,td{border:1px solid #1565c0;padding:3px 4px;text-align:center;white-space:nowrap}
+  th{background:#1565c0;color:#fff;font-weight:600}
+  .n{text-align:left!important;min-width:120px;max-width:150px}
+  .g{width:24px}.dc{width:30px;font-size:7pt}
+  .tc{font-weight:700;background:#e3f2fd}
+  .p-cell{background:#dcfce7;color:#15803d;font-weight:700}
+  .a-cell{background:#fee2e2;color:#dc2626;font-weight:700}
+  tr:nth-child(even) td:not(.p-cell):not(.a-cell){background:#f8faff}
+  .tr td{background:#dbeafe!important;font-weight:700}
+  .wk-sum{margin-top:12px;border:1px solid #1565c0;padding:8px}
+  .sigs{margin-top:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+  .sig{border-top:1px solid #000;padding-top:4px;font-size:8pt;text-align:center;margin-top:20px}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
-
-<div class="page-header">
-    <h1>FAHMID NURSERY &amp; PRIMARY SCHOOL</h1>
-    <h2>CLASS ATTENDANCE REGISTER</h2>
-    <p>Class: <strong>${className}</strong> &nbsp;|&nbsp;
-       Term: <strong>${term}</strong> &nbsp;|&nbsp;
-       Session: <strong>${session}</strong> &nbsp;|&nbsp;
-       Printed: ${today}</p>
+<div class="hdr">
+  <h1>FAHMID NURSERY &amp; PRIMARY SCHOOL</h1>
+  <h2>CLASS ATTENDANCE REGISTER</h2>
+  <p>Class: <strong>${className}</strong> &nbsp;|&nbsp; Term: <strong>${term}</strong>
+     &nbsp;|&nbsp; Session: <strong>${session}</strong> &nbsp;|&nbsp; Printed: ${today}</p>
 </div>
-
-<div class="info-row">
-    <span>Total Pupils: <strong>${pupils.length}</strong></span>
-    <span>Total Days Marked: <strong>${allDates.length}</strong></span>
-    <span>Boys: <strong>${pupils.filter(p => p.gender?.toLowerCase() === 'male' || p.gender?.toLowerCase() === 'm').length}</strong></span>
-    <span>Girls: <strong>${pupils.filter(p => p.gender?.toLowerCase() !== 'male' && p.gender?.toLowerCase() !== 'm').length}</strong></span>
+<div class="info">
+  <span>Total Pupils: <strong>${pupils.length}</strong></span>
+  <span>Days Marked: <strong>${allDates.length}</strong></span>
+  <span>Boys: <strong>${pupils.filter(p => p.gender?.toLowerCase() === 'male' || p.gender?.toLowerCase() === 'm').length}</strong></span>
+  <span>Girls: <strong>${pupils.filter(p => p.gender?.toLowerCase() !== 'male' && p.gender?.toLowerCase() !== 'm').length}</strong></span>
 </div>
-
 <table>
-    <thead>
-        <tr>
-            <th class="name-col">Pupil Name</th>
-            <th class="gen-col">G</th>
-            ${allDates.map(date => {
-                const d = new Date(date + 'T12:00:00');
-                const dayName = d.toLocaleDateString('en-GB', { weekday: 'narrow' });
-                const dayNum = d.getDate();
-                const mon = d.toLocaleDateString('en-GB', { month: 'short' });
-                return `<th class="date-col">${dayName}<br>${dayNum}<br>${mon}</th>`;
-            }).join('')}
-            <th class="total-col">Pres</th>
-            <th class="total-col">Abs</th>
-            <th class="total-col">%</th>
-        </tr>
-    </thead>
-    <tbody>
-    ${pupilRows.map((row, idx) => {
-        const isBoy = row.pupil.gender?.toLowerCase() === 'male' || row.pupil.gender?.toLowerCase() === 'm';
-        return `<tr>
-            <td class="name-col">${row.pupil.name}</td>
-            <td class="gen-col">${isBoy ? 'M' : 'F'}</td>
-            ${row.cells.map(cell => `<td class="${cell.cls}">${cell.status}</td>`).join('')}
-            <td class="total-col">${row.totalPresent}</td>
-            <td class="total-col">${row.totalAbsent}</td>
-            <td class="total-col">${row.pct}</td>
-        </tr>`;
+  <thead><tr>
+    <th class="n">Pupil Name</th><th class="g">G</th>
+    ${allDates.map(date => {
+        const d = new Date(date + 'T12:00:00');
+        return `<th class="dc">${d.toLocaleDateString('en-GB',{weekday:'narrow'})}<br>${d.getDate()}<br>${d.toLocaleDateString('en-GB',{month:'short'})}</th>`;
     }).join('')}
-    <tr class="totals-row">
-        <td class="name-col" colspan="2"><strong>DAILY TOTAL PRESENT</strong></td>
-        ${allDates.map(date => {
-            const rec = dailyRecords[date];
-            return `<td>${rec?.totalPresent ?? '-'}</td>`;
-        }).join('')}
-        <td></td><td></td><td></td>
-    </tr>
-    <tr class="totals-row">
-        <td class="name-col" colspan="2"><strong>DAILY TOTAL ABSENT</strong></td>
-        ${allDates.map(date => {
-            const rec = dailyRecords[date];
-            return `<td>${rec?.totalAbsent ?? '-'}</td>`;
-        }).join('')}
-        <td></td><td></td><td></td>
-    </tr>
-    <tr class="totals-row">
-        <td class="name-col" colspan="2"><strong>% ATTENDANCE</strong></td>
-        ${allDates.map(date => {
-            const rec = dailyRecords[date];
-            if (!rec) return `<td>-</td>`;
-            const pct = rec.totalPupils > 0
-                ? Math.round((rec.totalPresent / rec.totalPupils) * 100)
-                : '-';
-            return `<td>${pct}${typeof pct === 'number' ? '%' : ''}</td>`;
-        }).join('')}
-        <td></td><td></td><td></td>
-    </tr>
-    </tbody>
+    <th class="tc">Pres</th><th class="tc">Abs</th><th class="tc">%</th>
+  </tr></thead>
+  <tbody>
+  ${pupilRows.map(row => {
+      const isBoy = row.pupil.gender?.toLowerCase() === 'male' || row.pupil.gender?.toLowerCase() === 'm';
+      return `<tr>
+        <td class="n">${row.pupil.name}</td>
+        <td class="g">${isBoy ? 'M' : 'F'}</td>
+        ${row.cells.map(c => `<td class="${c.cls}">${c.s}</td>`).join('')}
+        <td class="tc">${row.totalPresent}</td>
+        <td class="tc">${row.totalAbsent}</td>
+        <td class="tc">${row.pct}</td>
+      </tr>`;
+  }).join('')}
+  <tr class="tr">
+    <td class="n" colspan="2"><strong>DAILY TOTAL PRESENT</strong></td>
+    ${allDates.map(d => `<td>${dailyRecords[d]?.totalPresent ?? '—'}</td>`).join('')}
+    <td></td><td></td><td></td>
+  </tr>
+  <tr class="tr">
+    <td class="n" colspan="2"><strong>DAILY TOTAL ABSENT</strong></td>
+    ${allDates.map(d => `<td>${dailyRecords[d]?.totalAbsent ?? '—'}</td>`).join('')}
+    <td></td><td></td><td></td>
+  </tr>
+  <tr class="tr">
+    <td class="n" colspan="2"><strong>% ATTENDANCE</strong></td>
+    ${allDates.map(d => {
+        const rec = dailyRecords[d];
+        if (!rec) return `<td>—</td>`;
+        const pct = rec.totalPupils > 0 ? Math.round((rec.totalPresent / rec.totalPupils) * 100) : '—';
+        return `<td>${pct}${typeof pct === 'number' ? '%' : ''}</td>`;
+    }).join('')}
+    <td></td><td></td><td></td>
+  </tr>
+  </tbody>
 </table>
 
-<!-- Weekly Summary -->
-<div class="summary-section">
-    <strong>WEEKLY ATTENDANCE SUMMARY</strong>
-    <table style="margin-top:6px;font-size:8pt;" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Week</th>
-                <th>Days</th>
-                <th>Boys Present</th>
-                <th>Girls Present</th>
-                <th>Total Present</th>
-                <th>Total Absent</th>
-                <th>Avg % Present</th>
-            </tr>
-        </thead>
-        <tbody>
-        ${weeks.map((weekDates, wi) => {
-            let boyPresent = 0, girlPresent = 0, totalAbsent = 0;
-            weekDates.forEach(date => {
-                const rec = dailyRecords[date];
-                if (rec) {
-                    boyPresent += rec.boyPresent || 0;
-                    girlPresent += rec.girlPresent || 0;
-                    totalAbsent += rec.totalAbsent || 0;
-                }
-            });
-            const totalPresent = boyPresent + girlPresent;
-            const totalPossible = (boyPresent + girlPresent + totalAbsent);
-            const pct = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) + '%' : '-';
-            const startD = new Date(weekDates[0] + 'T12:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-            return `<tr>
-                <td>Wk ${wi + 1} (${startD})</td>
-                <td>${weekDates.length}</td>
-                <td>${boyPresent}</td>
-                <td>${girlPresent}</td>
-                <td>${totalPresent}</td>
-                <td>${totalAbsent}</td>
-                <td>${pct}</td>
-            </tr>`;
-        }).join('')}
-        </tbody>
-    </table>
+<div class="wk-sum">
+  <strong>WEEKLY ATTENDANCE SUMMARY</strong>
+  <table style="margin-top:6px;font-size:8pt;" cellspacing="0">
+    <thead><tr>
+      <th>Week</th><th>Days</th><th>Boys Present</th>
+      <th>Girls Present</th><th>Total Present</th><th>Total Absent</th><th>Avg %</th>
+    </tr></thead>
+    <tbody>
+    ${weeks.map((wkDates, wi) => {
+        let boyPres=0,girlPres=0,totAbs=0;
+        wkDates.forEach(d => {
+            const r = dailyRecords[d];
+            if (r) { boyPres += r.boyPresent||0; girlPres += r.girlPresent||0; totAbs += r.totalAbsent||0; }
+        });
+        const totPres = boyPres + girlPres;
+        const poss    = totPres + totAbs;
+        const pct     = poss > 0 ? Math.round((totPres/poss)*100)+'%' : '—';
+        const startD  = new Date(wkDates[0]+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+        return `<tr>
+          <td>Wk ${wi+1} (${startD})</td>
+          <td>${wkDates.length}</td>
+          <td>${boyPres}</td><td>${girlPres}</td>
+          <td>${totPres}</td><td>${totAbs}</td><td>${pct}</td>
+        </tr>`;
+    }).join('')}
+    </tbody>
+  </table>
 </div>
 
-<!-- Signature Lines -->
-<div class="signatures">
-    <div class="sig-box">
-        _____________________________<br>
-        Class Teacher's Signature &amp; Date
-    </div>
-    <div class="sig-box">
-        _____________________________<br>
-        Head Teacher's Signature &amp; Date
-    </div>
-    <div class="sig-box">
-        _____________________________<br>
-        School Stamp
-    </div>
+<div class="sigs">
+  <div class="sig">_____________________________<br>Class Teacher's Signature &amp; Date</div>
+  <div class="sig">_____________________________<br>Head Teacher's Signature &amp; Date</div>
+  <div class="sig">_____________________________<br>School Stamp</div>
 </div>
-
 <p style="margin-top:8px;font-size:7pt;text-align:center;color:#666;">
-    Key: P = Present &nbsp;|&nbsp; A = Absent &nbsp;|&nbsp; - = Not marked<br>
-    This register is a legal school document. Handle with care.
+  Key: P = Present &nbsp;|&nbsp; A = Absent &nbsp;|&nbsp; — = Not marked<br>
+  This register is a legal school document. Handle with care.
 </p>
-
-</body>
-</html>`;
+</body></html>`;
 }
 
-/* ══════════════════════════════════════════
-   INSTALL ENHANCED SECTION
-══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   § 18  GLOBAL EXPORTS
+══════════════════════════════════════════════════════════════ */
 
-// Make all functions globally available
 window.loadAttendanceSectionEnhanced = loadAttendanceSectionEnhanced;
-window.switchAttendanceTab = switchAttendanceTab;
-window.navigateWeek = navigateWeek;
-window.goToCurrentWeek = goToCurrentWeek;
-window.openMarkTodayModal = openMarkTodayModal;
-window.closeMarkDayModal = closeMarkDayModal;
-window.markAllModalPupils = markAllModalPupils;
-window.saveModalAttendance = saveModalAttendance;
-window.togglePupilStatusInDay = togglePupilStatusInDay;
-window.printAttendanceRegister = printAttendanceRegister;
-window.saveAllAttendanceManual = saveAllAttendanceManual;
+window.switchAttendanceTab           = switchAttendanceTab;
+window.navigateWeek                  = navigateWeek;
+window.goToCurrentWeek               = goToCurrentWeek;
+window.openMarkTodayModal            = openMarkTodayModal;
+window.closeMarkDayModal             = closeMarkDayModal;
+window.handleModalBackdropClick      = handleModalBackdropClick;
+window.markAllModalPupils            = markAllModalPupils;
+window.saveModalAttendance           = saveModalAttendance;
+window.togglePupilStatusInDay        = togglePupilStatusInDay;
+window.printAttendanceRegister       = printAttendanceRegister;
+window.saveAllAttendanceManual       = saveAllAttendanceManual;
 
-// FIXED: Retry loop — keeps trying until teacher.js finishes its async init
-// and sectionLoaders is available on window
+/* ══════════════════════════════════════════════════════════════
+   § 19  INSTALL INTO sectionLoaders (retry until teacher.js ready)
+══════════════════════════════════════════════════════════════ */
+
 function installEnhancedAttendance() {
     if (window.sectionLoaders) {
         window.sectionLoaders['attendance'] = loadAttendanceSectionEnhanced;
         console.log('✓ Enhanced attendance UI installed into sectionLoaders');
     } else {
-        console.log('⏳ Waiting for sectionLoaders...');
         setTimeout(installEnhancedAttendance, 100);
     }
 }
 
 installEnhancedAttendance();
 
-console.log('✓ attendance-teacher-ui.js loaded (v1.0.0)');
+console.log('✓ attendance-teacher-ui.js v3.0.0 loaded — all conflicts resolved');
