@@ -964,7 +964,7 @@ async function loadAllPaymentHistory(pupilId) {
 
             itemDiv.innerHTML = `
                 <div style="flex: 1; min-width: 0; overflow-wrap: break-word; word-break: break-word;">
-                    <div class="payment-amount" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: var(--space-xs);">
+                    <div class="payment-amount" style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: var(--space-xs);">
                            ₦${amountPaid.toLocaleString()}
                       </div>
                     <div style="font-size: var(--text-sm); color: #64748b; display: flex; flex-direction: column; gap: var(--space-xs);">
