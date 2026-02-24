@@ -929,8 +929,9 @@ async function loadAllPaymentHistory(pupilId) {
         }
 
         container.innerHTML = '';
-        const transactionsBySession = {};
 
+        // ── Group transactions by session ────────────────────────────
+        const transactionsBySession = {};
         snapshot.forEach(doc => {
             const data = doc.data();
             const session = data.session || 'Unknown Session';
@@ -938,99 +939,172 @@ async function loadAllPaymentHistory(pupilId) {
             transactionsBySession[session].push({ id: doc.id, ...data });
         });
 
-        Object.keys(transactionsBySession)
-            .sort((a, b) => (parseInt(b.split('/')[0]) || 0) - (parseInt(a.split('/')[0]) || 0))
-            .forEach(session => {
-                const header = document.createElement('div');
-                header.style.cssText = `
-                    font-weight: 700; font-size: var(--text-lg);
-                    color: #0f172a; margin-top: var(--space-lg); margin-bottom: var(--space-md);
-                    padding-bottom: var(--space-sm); border-bottom: 2px solid #e2e8f0;
-                `;
-                header.innerHTML = `📅 ${session} (${transactionsBySession[session].length} payment${transactionsBySession[session].length > 1 ? 's' : ''})`;
-                container.appendChild(header);
+        // Sort sessions newest first
+        const sortedSessions = Object.keys(transactionsBySession).sort((a, b) => {
+            return (parseInt(b.split('/')[0]) || 0) - (parseInt(a.split('/')[0]) || 0);
+        });
 
-                transactionsBySession[session].forEach(txn => {
-                    const paymentDate = txn.paymentDate ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
-                    const amountPaid = Number(txn.amountPaid || 0);
-                    const paymentMethodIcon = (txn.paymentMethod || 'Cash').toLowerCase() === 'cash' ? 'banknote' : 'credit-card';
+        // ── Build a transaction card element ─────────────────────────
+        function buildTransactionCard(txn) {
+            const paymentDate = txn.paymentDate
+                ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'N/A';
+            const amountPaid = Number(txn.amountPaid || 0);
+            const paymentMethodIcon = (txn.paymentMethod || 'Cash').toLowerCase() === 'cash' ? 'banknote' : 'credit-card';
+            const balanceAfter = typeof txn.balanceAfter === 'number' ? txn.balanceAfter : null;
 
-                    const itemDiv = document.createElement('div');
-                    itemDiv.style.cssText = `
-                        padding: var(--space-md); background: #f8fafc; border: 1px solid #e2e8f0;
-                        border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;
-                        transition: all 0.2s ease; margin-bottom: var(--space-sm);
-                    `;
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = `
+                padding: var(--space-md); background: #f8fafc; border: 1px solid #e2e8f0;
+                border-radius: var(--radius-md); display: flex; justify-content: space-between;
+                align-items: center; transition: all 0.2s ease; margin-bottom: var(--space-sm);
+                position: relative;
+            `;
 
-                  const balanceAfter = typeof txn.balanceAfter === 'number' ? txn.balanceAfter : null;
-
-                    itemDiv.innerHTML = `
-                        <div style="flex: 1;">
-                            <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
-                                ₦${amountPaid.toLocaleString()}
-                            </div>
-                            <div style="font-size: var(--text-sm); color: #64748b; display: flex; flex-direction: column; gap: var(--space-xs);">
-                                <div style="display: flex; flex-wrap: wrap; gap: var(--space-md);">
-                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                        <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-                                        ${paymentDate}
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                        <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
-                                        ${txn.term || 'N/A'}
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                        <i data-lucide="${paymentMethodIcon}" style="width: 14px; height: 14px;"></i>
-                                        ${txn.paymentMethod || 'Cash'}
-                                    </span>
-                                    <span style="display: flex; align-items: center; gap: var(--space-xs);">
-                                        <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
-                                        ${txn.receiptNo || 'N/A'}
-                                    </span>
-                                </div>
-${balanceAfter !== null ? `
-    <div style="
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        margin-top: 4px;
-        padding: 1px 6px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 600;
-        line-height: 1.15;
-        white-space: nowrap;
-        background-color: ${balanceAfter <= 0 ? 'rgba(22,163,74,0.08)' : 'rgba(180,83,9,0.08)'};
-        color: ${balanceAfter <= 0 ? '#15803d' : '#a16207'};
-        border: 1px solid ${balanceAfter <= 0 ? 'rgba(22,163,74,0.25)' : 'rgba(180,83,9,0.25)'};
-    ">
-        <i data-lucide="${balanceAfter <= 0 ? 'check-circle' : 'alert-circle'}"
-           style="width: 12px; height: 12px;"></i>
-        Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
-        ${balanceAfter <= 0 ? ' · Fully paid' : ''}
-    </div>` : ''}
-                            </div>
+            itemDiv.innerHTML = `
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; font-size: var(--text-lg); color: #0f172a; margin-bottom: var(--space-xs);">
+                        ₦${amountPaid.toLocaleString()}
+                    </div>
+                    <div style="font-size: var(--text-sm); color: #64748b; display: flex; flex-direction: column; gap: var(--space-xs);">
+                        <div style="display: flex; flex-wrap: wrap; gap: var(--space-md);">
+                            <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                                ${paymentDate}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                <i data-lucide="bookmark" style="width: 14px; height: 14px;"></i>
+                                ${txn.term || 'N/A'}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                <i data-lucide="${paymentMethodIcon}" style="width: 14px; height: 14px;"></i>
+                                ${txn.paymentMethod || 'Cash'}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: var(--space-xs);">
+                                <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+                                ${txn.receiptNo || 'N/A'}
+                            </span>
                         </div>
-                        <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')">
-                            <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
-                            View Receipt
-                        </button>
-                    `;
+                        ${balanceAfter !== null ? `
+                        <div style="
+                            display: inline-flex; align-items: center; gap: 3px; margin-top: 4px;
+                            padding: 1px 6px; border-radius: 16px; font-size: 12px; font-weight: 600;
+                            line-height: 1.15; white-space: nowrap;
+                            background-color: ${balanceAfter <= 0 ? 'rgba(22,163,74,0.08)' : 'rgba(180,83,9,0.08)'};
+                            color: ${balanceAfter <= 0 ? '#15803d' : '#a16207'};
+                            border: 1px solid ${balanceAfter <= 0 ? 'rgba(22,163,74,0.25)' : 'rgba(180,83,9,0.25)'};
+                        ">
+                            <i data-lucide="${balanceAfter <= 0 ? 'check-circle' : 'alert-circle'}" style="width: 12px; height: 12px;"></i>
+                            Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
+                            ${balanceAfter <= 0 ? ' · Fully paid' : ''}
+                        </div>` : ''}
+                    </div>
+                </div>
+                <button class="btn-small btn-secondary" onclick="viewReceipt('${txn.receiptNo}')">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    View Receipt
+                </button>
+            `;
 
-                    itemDiv.onmouseenter = () => {
-                        itemDiv.style.background = 'white';
-                        itemDiv.style.borderColor = '#cbd5e1';
-                        itemDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-                    };
-                    itemDiv.onmouseleave = () => {
-                        itemDiv.style.background = '#f8fafc';
-                        itemDiv.style.borderColor = '#e2e8f0';
-                        itemDiv.style.boxShadow = 'none';
-                    };
+            itemDiv.onmouseenter = () => {
+                itemDiv.style.background = 'white';
+                itemDiv.style.borderColor = '#cbd5e1';
+                itemDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+            };
+            itemDiv.onmouseleave = () => {
+                itemDiv.style.background = '#f8fafc';
+                itemDiv.style.borderColor = '#e2e8f0';
+                itemDiv.style.boxShadow = 'none';
+            };
 
-                    container.appendChild(itemDiv);
+            return itemDiv;
+        }
+
+        // ── Render each session group ────────────────────────────────
+        sortedSessions.forEach((session, sessionIndex) => {
+            const txns = transactionsBySession[session]; // already sorted newest first
+            const isMostRecent = sessionIndex === 0;
+            const hiddenCount = txns.length - 1; // all except the first (most recent)
+
+            // Session header
+            const header = document.createElement('div');
+            header.style.cssText = `
+                font-weight: 700; font-size: var(--text-lg);
+                color: #0f172a; margin-top: var(--space-lg); margin-bottom: var(--space-md);
+                padding-bottom: var(--space-sm); border-bottom: 2px solid #e2e8f0;
+                display: flex; align-items: center; justify-content: space-between;
+            `;
+            header.innerHTML = `
+                <span>📅 ${session} (${txns.length} payment${txns.length > 1 ? 's' : ''})</span>
+            `;
+            container.appendChild(header);
+
+            // Most recent card — always visible
+            container.appendChild(buildTransactionCard(txns[0]));
+
+            // If there are older payments in this session, collapse them
+            if (hiddenCount > 0) {
+                // Collapsible wrapper for older payments
+                const collapseId = `history-collapse-${sessionIndex}`;
+
+                const olderWrapper = document.createElement('div');
+                olderWrapper.id = collapseId;
+                olderWrapper.style.cssText = `
+                    display: none;
+                    flex-direction: column;
+                    margin-top: 0;
+                `;
+
+                txns.slice(1).forEach(txn => {
+                    olderWrapper.appendChild(buildTransactionCard(txn));
                 });
-            });
+
+                container.appendChild(olderWrapper);
+
+                // Toggle button
+                const toggleBtn = document.createElement('button');
+                toggleBtn.style.cssText = `
+                    display: flex; align-items: center; justify-content: center; gap: 6px;
+                    width: 100%; padding: 8px 14px; margin-bottom: var(--space-sm);
+                    background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: var(--radius-md);
+                    font-size: 12.5px; font-weight: 600; color: #475569;
+                    cursor: pointer; transition: all 0.2s ease;
+                `;
+                toggleBtn.innerHTML = `
+                    <i data-lucide="chevron-down" style="width:14px;height:14px; transition: transform 0.25s ease;"></i>
+                    Show ${hiddenCount} older payment${hiddenCount > 1 ? 's' : ''} in this session
+                `;
+
+                let expanded = false;
+                toggleBtn.addEventListener('click', () => {
+                    expanded = !expanded;
+                    olderWrapper.style.display = expanded ? 'flex' : 'none';
+                    olderWrapper.style.flexDirection = 'column';
+
+                    const icon = toggleBtn.querySelector('i[data-lucide]');
+                    if (expanded) {
+                        toggleBtn.innerHTML = `
+                            <i data-lucide="chevron-up" style="width:14px;height:14px;"></i>
+                            Hide older payments
+                        `;
+                        toggleBtn.style.background = '#e0e7ff';
+                        toggleBtn.style.borderColor = '#a5b4fc';
+                        toggleBtn.style.color = '#3730a3';
+                    } else {
+                        toggleBtn.innerHTML = `
+                            <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                            Show ${hiddenCount} older payment${hiddenCount > 1 ? 's' : ''} in this session
+                        `;
+                        toggleBtn.style.background = '#f1f5f9';
+                        toggleBtn.style.borderColor = '#cbd5e1';
+                        toggleBtn.style.color = '#475569';
+                    }
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                });
+
+                container.appendChild(toggleBtn);
+            }
+        });
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
         console.log(`✓ Loaded ${snapshot.size} total payment records for pupil`);
