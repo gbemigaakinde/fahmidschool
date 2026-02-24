@@ -678,22 +678,32 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   MODAL  (FIX-B: visibility via .is-open, no inline display)
+   MODAL OVERLAY
+   — always display:flex so centering works
+   — visibility + opacity controlled by .is-open
+   — z-index 9999 to clear any admin chrome
 ════════════════════════════════════════════════════════════ */
 #mark-day-modal {
   position: fixed;
-  inset: 0;
-  background: rgba(15,23,42,.55);
-  z-index: 1000;
-  display: flex;               /* always flex — visibility via opacity/pointer-events */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  z-index: 9999;
+  display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  box-sizing: border-box;
+  /* Hidden by default */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity var(--att-t-md) var(--att-ease),
-              visibility var(--att-t-md) var(--att-ease);
+  transition: opacity 200ms var(--att-ease),
+              visibility 200ms var(--att-ease);
 }
 
 #mark-day-modal.is-open {
@@ -702,43 +712,62 @@
   pointer-events: all;
 }
 
+/* ════════════════════════════════════════════════════════════
+   MODAL SHEET (the white card)
+   — flex column so body can scroll independently
+   — min-height:0 is CRITICAL for flex children to shrink+scroll
+   — max-height uses vh (safer than dvh for cross-browser)
+════════════════════════════════════════════════════════════ */
 .att-modal-sheet {
   background: #fff;
   border-radius: var(--att-r-xl);
-  max-width: 580px;
   width: 100%;
-  max-height: 90dvh;
-  overflow: hidden;
+  max-width: 560px;
+  /* Use vh not dvh — more reliable across browsers/WebViews */
+  max-height: 88vh;
+  /* CRITICAL: flex column + min-height:0 lets .att-modal-body scroll */
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   box-shadow: var(--att-sh-lg);
-  transform: translateY(24px) scale(.98);
-  transition: transform var(--att-t-md) var(--att-spring);
+  /* Entry animation */
+  transform: translateY(20px) scale(0.98);
+  transition: transform 220ms var(--att-spring);
 }
 
 #mark-day-modal.is-open .att-modal-sheet {
   transform: translateY(0) scale(1);
 }
 
+/* ── Modal header — fixed, never scrolls ── */
 .att-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--att-slate-100);
-  flex-shrink: 0;
+  flex-shrink: 0;   /* never shrink */
 }
 
 .att-modal-header h3 {
-  font-size: 1rem;
+  font-size: .9375rem;
   font-weight: 800;
   color: var(--att-ink);
   margin: 0;
+  /* Allow title to wrap on narrow screens rather than overflow */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .att-modal-close {
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;   /* prevent flex crush */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--att-r-md);
   background: var(--att-slate-100);
   border: none;
@@ -754,25 +783,31 @@
   color: var(--att-red);
 }
 
+/* ── Modal body — scrollable, takes remaining height ── */
 .att-modal-body {
   flex: 1;
+  min-height: 0;       /* CRITICAL for overflow-y to work inside flex */
   overflow-y: auto;
-  padding: 1.25rem 1.5rem;
   -webkit-overflow-scrolling: touch;
+  padding: 1rem 1.25rem;
+  /* Reduced side padding on small screens via the mobile rule below */
 }
 
+/* ── Modal footer — fixed at bottom, never scrolls ── */
 .att-modal-footer {
   display: flex;
   gap: .75rem;
-  padding: 1rem 1.5rem;
+  padding: .875rem 1.25rem;
   border-top: 1px solid var(--att-slate-100);
   flex-shrink: 0;
   background: var(--att-slate-50);
 }
 
-/* Date picker */
+/* ════════════════════════════════════════════════════════════
+   DATE PICKER
+════════════════════════════════════════════════════════════ */
 .att-modal-date-group {
-  margin-bottom: 1rem;
+  margin-bottom: .875rem;
 }
 
 .att-modal-date-group label {
@@ -787,7 +822,8 @@
 
 .att-modal-date-group input[type="date"] {
   width: 100%;
-  padding: .5625rem .875rem;
+  box-sizing: border-box;
+  padding: .5rem .875rem;
   border: 1.5px solid var(--att-slate-200);
   border-radius: var(--att-r-md);
   font-size: .9375rem;
@@ -795,20 +831,21 @@
   color: var(--att-ink);
   background: #fff;
   transition: border-color var(--att-t);
-  -webkit-appearance: none;
 }
 
 .att-modal-date-group input[type="date"]:focus {
   outline: none;
   border-color: var(--att-blue);
-  box-shadow: 0 0 0 3px rgba(25,118,210,.15);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
 }
 
-/* Bulk action buttons */
+/* ════════════════════════════════════════════════════════════
+   BULK ACTION BUTTONS
+════════════════════════════════════════════════════════════ */
 .att-bulk-actions {
   display: flex;
   gap: .5rem;
-  margin-bottom: 1rem;
+  margin-bottom: .875rem;
 }
 
 .att-bulk-btn {
@@ -816,15 +853,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: .375rem;
-  padding: .625rem .875rem;
+  gap: .35rem;
+  padding: .625rem .5rem;
   min-height: 44px;
   font-size: .8125rem;
   font-weight: 700;
   border-radius: var(--att-r-md);
   cursor: pointer;
-  transition: all var(--att-t) var(--att-ease);
   border: 1.5px solid;
+  transition: all var(--att-t) var(--att-ease);
+  /* Prevent text overflow on narrow screens */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .att-bulk-btn--present {
@@ -835,7 +876,7 @@
 .att-bulk-btn--present:hover {
   background: var(--att-green-ring);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(21,128,61,.2);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.2);
 }
 
 .att-bulk-btn--absent {
@@ -846,23 +887,41 @@
 .att-bulk-btn--absent:hover {
   background: var(--att-red-ring);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(220,38,38,.2);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
 }
 
-/* Modal pupil table */
+/* ════════════════════════════════════════════════════════════
+   PUPIL ATTENDANCE TABLE
+   — wrap scrolls horizontally so Present/Absent cols are
+     always visible even on the narrowest phones
+════════════════════════════════════════════════════════════ */
 .att-modal-table-wrap {
   border: 1px solid var(--att-slate-100);
   border-radius: var(--att-r-md);
-  overflow: hidden;
+  /* KEY FIX: overflow-x:auto NOT overflow:hidden */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .att-modal-table {
+  /* min-width ensures the radio columns never collapse below usable size */
+  min-width: 280px;
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Column widths: name gets the rest, radio cols are fixed */
+.att-modal-table thead th:first-child  { width: auto; }
+.att-modal-table thead th:nth-child(2),
+.att-modal-table thead th:nth-child(3) {
+  width: 76px;
+  min-width: 76px;
 }
 
 .att-modal-table thead th {
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: .625rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -871,40 +930,66 @@
   color: var(--att-gray);
   border-bottom: 1px solid var(--att-slate-100);
   text-align: left;
+  white-space: nowrap;
 }
 
-.att-modal-table thead th:not(:first-child) { text-align: center; width: 70px; }
+.att-modal-table thead th:not(:first-child) {
+  text-align: center;
+}
 
-.att-modal-table tbody tr { transition: background 80ms; }
-.att-modal-table tbody .att-modal-row--alt { background: var(--att-slate-50); }
-.att-modal-table tbody tr:hover { background: var(--att-blue-ghost); }
+.att-modal-table tbody tr {
+  transition: background 80ms;
+}
+
+.att-modal-table tbody .att-modal-row--alt {
+  background: var(--att-slate-50);
+}
+
+.att-modal-table tbody tr:hover {
+  background: var(--att-blue-ghost);
+}
 
 .att-modal-table tbody td {
-  padding: 9px 12px;
+  padding: 10px;
   font-size: .875rem;
   color: var(--att-ink);
   border-bottom: 1px solid var(--att-slate-50);
+  /* Prevent long names from breaking layout */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.att-modal-table tbody td:not(:first-child) { text-align: center; }
+.att-modal-table tbody td:not(:first-child) {
+  text-align: center;
+  /* Ensure radio cells never collapse */
+  min-width: 76px;
+}
 
+/* Radio inputs */
 .att-radio {
-  width: 20px; height: 20px;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
   cursor: pointer;
   accent-color: var(--att-blue-dark);
+  /* Improve tap target on touch screens */
+  touch-action: manipulation;
 }
 
 .att-radio--present { accent-color: var(--att-green); }
 .att-radio--absent  { accent-color: var(--att-red);   }
 
-/* Modal save button */
+/* ════════════════════════════════════════════════════════════
+   MODAL FOOTER BUTTONS
+════════════════════════════════════════════════════════════ */
 .att-modal-save-btn {
   flex: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  padding: .75rem 1.25rem;
+  padding: .75rem 1rem;
   min-height: 48px;
   font-size: .9375rem;
   font-weight: 700;
@@ -914,13 +999,14 @@
   border-radius: var(--att-r-md);
   cursor: pointer;
   transition: all var(--att-t-md) var(--att-ease);
-  box-shadow: 0 2px 8px rgba(25,118,210,.3);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+  white-space: nowrap;
 }
 
 .att-modal-save-btn:hover {
   background: linear-gradient(135deg, var(--att-blue-dark) 0%, var(--att-navy) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(25,118,210,.35);
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.35);
 }
 
 .att-modal-save-btn:disabled {
@@ -935,7 +1021,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: .75rem;
+  padding: .75rem .5rem;
   min-height: 48px;
   font-size: .875rem;
   font-weight: 600;
@@ -945,6 +1031,7 @@
   border-radius: var(--att-r-md);
   cursor: pointer;
   transition: all var(--att-t) var(--att-ease);
+  white-space: nowrap;
 }
 
 .att-modal-cancel-btn:hover {
@@ -953,34 +1040,70 @@
   color: var(--att-ink);
 }
 
-/* Mobile bottom sheet */
+/* ════════════════════════════════════════════════════════════
+   MOBILE: bottom sheet behaviour (≤ 600px)
+════════════════════════════════════════════════════════════ */
 @media (max-width: 600px) {
+  /* Overlay: no padding, sheet slides up from bottom */
   #mark-day-modal {
     align-items: flex-end;
+    justify-content: stretch;
     padding: 0;
   }
+
   .att-modal-sheet {
+    width: 100%;
     max-width: 100%;
+    /* Taller on mobile so the pupil list is comfortably visible */
+    max-height: 90vh;
     border-radius: var(--att-r-xl) var(--att-r-xl) 0 0;
-    max-height: 92dvh;
+    /* Slide-up entry instead of scale */
     transform: translateY(100%);
   }
+
   #mark-day-modal.is-open .att-modal-sheet {
     transform: translateY(0);
   }
-  /* Drag handle */
+
+  /* Drag handle pill above header */
+  .att-modal-header {
+    position: relative;
+    padding-top: 1.5rem;
+  }
+
   .att-modal-header::before {
     content: '';
-    display: block;
     position: absolute;
-    top: .625rem;
+    top: .5rem;
     left: 50%;
     transform: translateX(-50%);
-    width: 40px; height: 4px;
+    width: 36px;
+    height: 4px;
     background: var(--att-slate-200);
     border-radius: 2px;
   }
-  .att-modal-header { position: relative; padding-top: 1.75rem; }
+
+  /* Tighter body padding on mobile */
+  .att-modal-body {
+    padding: .875rem 1rem;
+  }
+
+  .att-modal-footer {
+    padding: .75rem 1rem;
+    /* Push above mobile browser chrome */
+    padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+  }
+
+  /* On very narrow screens, reduce table cell padding */
+  .att-modal-table tbody td {
+    padding: 10px 8px;
+    font-size: .8125rem;
+  }
+
+  .att-modal-table thead th {
+    padding: 8px;
+    font-size: .5625rem;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
