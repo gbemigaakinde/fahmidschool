@@ -1624,7 +1624,7 @@
 ──────────────────────────────────────────────────────────── */
 
 /* #save-results-btn hidden state managed by JS — make sure the button is styled */
-#save-results-btn { display: none; } /* JS uses hidden attr + sets display:block */
+#save-results-btn[hidden] { display: none; }
 #save-results-btn:not([hidden]) { display: inline-flex; }
 
 /* JS toggles display on action bar */
