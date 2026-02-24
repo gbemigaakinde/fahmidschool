@@ -3,1178 +3,1055 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Termly Report Card - Fahmid Nursery & Primary School</title>
+    <title>Termly Report Card – Fahmid Nursery & Primary School</title>
 
-    <!-- Google Fonts: Playfair Display for headings, Source Serif 4 for body -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1B4332">
+    <meta name="theme-color" content="#1565C0">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Fahmid School">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Fahmid School">
     <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-    <meta name="msapplication-TileColor" content="#1B4332">
-    <meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
 
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ============================================================
-           DESIGN TOKENS
-        ============================================================ */
-        :root {
-            --ink:          #1a1a1a;
-            --ink-secondary:#4a4a4a;
-            --ink-muted:    #7a7a7a;
+    /* ================================================================
+       DESIGN TOKENS
+    ================================================================ */
+    :root {
+        --blue-deep:   #1565C0;
+        --blue-mid:    #1976D2;
+        --blue-soft:   #E3F0FB;
+        --blue-border: #BBDEFB;
 
-            --forest:       #1B4332;
-            --forest-mid:   #2D6A4F;
-            --forest-light: #52B788;
-            --forest-pale:  #D8F3DC;
+        --ink:         #111827;
+        --ink-2:       #374151;
+        --ink-3:       #6B7280;
+        --ink-4:       #9CA3AF;
 
-            --paper:        #FEFCF8;
-            --paper-warm:   #F7F3ED;
-            --paper-rule:   #E8E2D9;
+        --paper:       #FFFFFF;
+        --paper-alt:   #F8F9FB;
+        --rule:        #E5E7EB;
 
-            --gold:         #C49A22;
-            --gold-light:   #F5E6B0;
+        --grade-a:     #15803D;
+        --grade-b:     #1D4ED8;
+        --grade-c:     #B45309;
+        --grade-d:     #B91C1C;
+        --grade-f:     #991B1B;
 
-            --danger:       #9B2226;
-            --warning:      #CA6702;
+        --font:        'DM Sans', system-ui, sans-serif;
+        --font-display:'DM Serif Display', Georgia, serif;
 
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-body:    'Source Serif 4', Georgia, serif;
+        --text-2xs:    6.5pt;
+        --text-xs:     7pt;
+        --text-sm:     7.5pt;
+        --text-base:   8.5pt;
+        --text-md:     9.5pt;
+        --text-lg:     11pt;
+        --text-xl:     13pt;
 
-            --radius-sm:    3px;
-            --radius-md:    6px;
+        --radius:      4px;
+    }
 
-            --shadow-card:  0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
-            --shadow-print: none;
+    /* ================================================================
+       RESET
+    ================================================================ */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+        font-family: var(--font);
+        font-size: var(--text-base);
+        color: var(--ink);
+        background: #DDE3ED;
+        padding: 20px 14px 48px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* ================================================================
+       CONTROL BAR
+    ================================================================ */
+    .ctrl {
+        max-width: 720px;
+        margin: 0 auto 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 14px;
+        border-radius: var(--radius);
+        font-family: var(--font);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        letter-spacing: 0.01em;
+        transition: background 0.15s, transform 0.1s;
+        white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--blue-deep); color: #fff; }
+    .btn-primary:hover { background: var(--blue-mid); }
+    .btn-ghost { background: rgba(21,101,192,0.09); color: var(--blue-deep); }
+    .btn-ghost:hover { background: rgba(21,101,192,0.15); }
+
+    .term-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #fff;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius);
+        padding: 5px 12px;
+    }
+    .term-pill label {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        white-space: nowrap;
+    }
+    .term-pill select {
+        border: none;
+        outline: none;
+        font-family: var(--font);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--blue-deep);
+        background: transparent;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 18px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231565C0' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0 center;
+    }
+
+    /* ================================================================
+       DOCUMENT SHELL
+    ================================================================ */
+    .doc {
+        max-width: 720px;
+        margin: 0 auto;
+        background: var(--paper);
+        border-radius: var(--radius);
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.07);
+        overflow: hidden;
+    }
+
+    /* ================================================================
+       DOCUMENT HEADER
+    ================================================================ */
+    .doc-hd {
+        background: var(--blue-deep);
+        padding: 16px 24px 14px;
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 14px;
+        align-items: center;
+        position: relative;
+    }
+    .doc-hd::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #C9A227 0%, #F0D060 50%, #C9A227 100%);
+    }
+
+    .doc-hd__logo {
+        width: 56px; height: 56px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid rgba(255,255,255,0.25);
+        background: #fff;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .doc-hd__logo img { width: 100%; height: 100%; object-fit: contain; }
+
+    .doc-hd__name {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        color: #fff;
+        line-height: 1.2;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+    .doc-hd__tagline {
+        font-size: var(--text-xs);
+        color: rgba(255,255,255,0.65);
+        font-style: italic;
+        margin-bottom: 4px;
+    }
+    .doc-hd__contact {
+        font-size: var(--text-2xs);
+        color: rgba(255,255,255,0.5);
+    }
+
+    /* ================================================================
+       TITLE STRIP
+    ================================================================ */
+    .doc-title {
+        background: var(--paper-alt);
+        border-bottom: 1px solid var(--rule);
+        padding: 7px 24px;
+        text-align: center;
+    }
+    .doc-title__text {
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--ink-2);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    /* ================================================================
+       DOCUMENT BODY
+    ================================================================ */
+    .doc-body {
+        padding: 14px 20px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* ================================================================
+       SECTION COMPONENT — self-contained, extensible
+       To add a new section:
+           <div class="section">
+               <div class="section__hd">
+                   <span class="section__title">Title Here</span>
+               </div>
+               (content)
+           </div>
+    ================================================================ */
+    .section {
+        border: 1px solid var(--rule);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+
+    .section__hd {
+        background: var(--blue-deep);
+        padding: 5px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section__hd::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(255,255,255,0.18);
+    }
+    .section__title {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: rgba(255,255,255,0.92);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+    }
+
+    /* ================================================================
+       STUDENT IDENTITY
+    ================================================================ */
+    .id-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .id-cell {
+        padding: 7px 12px;
+        border-right: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+    }
+    .id-cell:nth-child(even)      { border-right: none; }
+    .id-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .id-cell:last-child           { border-bottom: none; }
+
+    .id-cell__lbl {
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+    }
+    .id-cell__val {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--ink);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ================================================================
+       ATTENDANCE
+    ================================================================ */
+    .att-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .att-card {
+        padding: 10px 8px;
+        text-align: center;
+        border-right: 1px solid var(--rule);
+    }
+    .att-card:last-child { border-right: none; }
+
+    .att-card__n {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--blue-deep);
+        line-height: 1.1;
+        margin-bottom: 2px;
+    }
+    .att-card__lbl {
+        font-size: var(--text-2xs);
+        color: var(--ink-3);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    /* ================================================================
+       ACADEMIC TABLE
+    ================================================================ */
+    .ac-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--text-sm);
+    }
+    .ac-table thead tr {
+        background: var(--paper-alt);
+        border-bottom: 1.5px solid var(--blue-deep);
+    }
+    .ac-table th {
+        padding: 6px 8px;
+        text-align: center;
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-2);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        white-space: nowrap;
+    }
+    .ac-table th:first-child {
+        text-align: left;
+        padding-left: 12px;
+        width: 38%;
+    }
+    .ac-table tbody tr {
+        border-bottom: 1px solid var(--rule);
+    }
+    .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.013); }
+    .ac-table tbody tr:last-child      { border-bottom: none; }
+    .ac-table td {
+        padding: 6px 8px;
+        text-align: center;
+        color: var(--ink);
+    }
+    .ac-table td:first-child {
+        text-align: left;
+        padding-left: 12px;
+        font-weight: 500;
+    }
+    .ac-table td.col-total {
+        font-weight: 700;
+        color: var(--blue-deep);
+    }
+    .ac-table .summary-row {
+        background: var(--blue-soft);
+        border-top: 1.5px solid var(--blue-border);
+    }
+    .ac-table .summary-row td {
+        font-weight: 600;
+        color: var(--blue-deep);
+        font-size: var(--text-sm);
+        padding: 6px 12px;
+    }
+
+    /* Grade colours */
+    .grade-A1            { color: var(--grade-a); font-weight: 700; }
+    .grade-B2,.grade-B3  { color: var(--grade-b); font-weight: 700; }
+    .grade-C4,.grade-C5,
+    .grade-C6            { color: var(--grade-c); font-weight: 700; }
+    .grade-D7,.grade-D8  { color: var(--grade-d); font-weight: 700; }
+    .grade-F9            { color: var(--grade-f); font-weight: 700; }
+
+    /* ================================================================
+       GRADING KEY
+    ================================================================ */
+    .key {
+        border: 1px solid var(--rule);
+        border-radius: var(--radius);
+        padding: 7px 12px;
+        background: var(--paper-alt);
+    }
+    .key__title {
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        margin-bottom: 5px;
+    }
+    .key__items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+    .key__item {
+        font-size: var(--text-2xs);
+        padding: 2px 7px;
+        border-radius: 2px;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        color: var(--ink-2);
+        white-space: nowrap;
+    }
+
+    /* ================================================================
+       SCALE NOTE (shared)
+    ================================================================ */
+    .scale-note {
+        background: var(--paper-alt);
+        border-bottom: 1px solid var(--rule);
+        padding: 4px 12px;
+        font-size: var(--text-2xs);
+        font-style: italic;
+        color: var(--ink-3);
+        text-align: center;
+    }
+
+    /* ================================================================
+       TRAITS GRID
+    ================================================================ */
+    .tr-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .tr-item {
+        padding: 6px 12px;
+        border-right: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        min-width: 0;
+    }
+    .tr-item:nth-child(3n)        { border-right: none; }
+    .tr-item:nth-last-child(-n+3) { border-bottom: none; }
+    .tr-item:last-child           { border-bottom: none; }
+
+    .tr-item__lbl {
+        font-size: var(--text-sm);
+        color: var(--ink-2);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .trait-value {
+        font-size: var(--text-md);
+        font-weight: 700;
+        color: var(--blue-deep);
+        min-width: 20px;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    /* ================================================================
+       REMARKS
+    ================================================================ */
+    .remarks-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .remark-blk {
+        padding: 9px 12px;
+        border-right: 1px solid var(--rule);
+    }
+    .remark-blk:last-child { border-right: none; }
+    .remark-blk__lbl {
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 4px;
+    }
+    .remark-blk__txt {
+        font-size: var(--text-sm);
+        color: var(--ink);
+        line-height: 1.5;
+        min-height: 28px;
+    }
+
+    /* ================================================================
+       CLOSING BAND
+    ================================================================ */
+    .closing {
+        background: var(--paper-alt);
+        border-top: 1px solid var(--rule);
+        padding: 12px 24px;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 16px;
+        align-items: end;
+    }
+    .sig { text-align: center; }
+    .sig__line {
+        border-top: 1px solid var(--ink-2);
+        padding-top: 4px;
+        margin-top: 24px;
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+    }
+    .resump { text-align: center; align-self: center; }
+    .resump__lbl {
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 2px;
+    }
+    .resump__val {
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--blue-deep);
+    }
+
+    /* ================================================================
+       DOCUMENT FOOTER
+    ================================================================ */
+    .doc-ft {
+        border-top: 2px solid var(--rule);
+        padding: 7px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--paper-alt);
+    }
+    .doc-ft__txt {
+        font-size: var(--text-2xs);
+        color: var(--ink-4);
+        font-style: italic;
+    }
+    .doc-ft__badge {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .doc-ft__dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: var(--blue-deep);
+        opacity: 0.5;
+    }
+    .doc-ft__badge-txt {
+        font-size: var(--text-2xs);
+        color: var(--ink-4);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    /* ================================================================
+       JS SPINNER
+    ================================================================ */
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+    }
+
+    /* ================================================================
+       MOBILE  <= 580px
+    ================================================================ */
+    @media (max-width: 580px) {
+        body { padding: 0 0 40px; }
+
+        .ctrl {
+            padding: 10px;
+            flex-direction: column;
+            align-items: stretch;
         }
+        .ctrl > div { display: flex; gap: 8px; flex-wrap: wrap; }
+        .term-pill   { justify-content: space-between; }
+        .btn         { justify-content: center; }
 
-        /* ============================================================
-           BASE RESET
-        ============================================================ */
-        *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        .doc { border-radius: 0; }
 
-        html {
-            font-size: 10pt;
+        .doc-hd {
+            grid-template-columns: 44px 1fr;
+            gap: 10px;
+            padding: 12px 16px 10px;
         }
+        .doc-hd__logo { width: 44px; height: 44px; }
+        .doc-hd__name { font-size: var(--text-lg); }
+
+        .doc-title { padding: 6px 16px; }
+        .doc-body  { padding: 10px 12px 16px; gap: 10px; }
+
+        /* identity: single column */
+        .id-grid { grid-template-columns: 1fr; }
+        .id-cell  { border-right: none; }
+        .id-cell:nth-last-child(-n+2) { border-bottom: 1px solid var(--rule); }
+        .id-cell:last-child           { border-bottom: none; }
+
+        /* academic: horizontal scroll */
+        .section--academic { overflow-x: auto; }
+        .ac-table { min-width: 420px; }
+
+        /* traits: 2-col */
+        .tr-grid { grid-template-columns: repeat(2, 1fr); }
+        .tr-item:nth-child(3n)        { border-right: 1px solid var(--rule); }
+        .tr-item:nth-child(2n)        { border-right: none; }
+        .tr-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--rule); }
+        .tr-item:nth-last-child(-n+2) { border-bottom: none; }
+        .tr-item:last-child           { border-bottom: none; }
+
+        /* remarks: stack */
+        .remarks-row { grid-template-columns: 1fr; }
+        .remark-blk  { border-right: none; border-bottom: 1px solid var(--rule); }
+        .remark-blk:last-child { border-bottom: none; }
+
+        /* closing: stack */
+        .closing { grid-template-columns: 1fr; padding: 14px 16px; gap: 16px; }
+        .resump  { order: -1; }
+
+        .doc-ft { flex-direction: column; gap: 4px; text-align: center; padding: 8px 16px; }
+    }
+
+    /* ================================================================
+       TABLET  581–900px
+    ================================================================ */
+    @media (min-width: 581px) and (max-width: 900px) {
+        .doc-body { padding: 12px 18px 18px; }
+        .doc-hd   { padding: 14px 20px 12px; }
+        .closing  { padding: 10px 20px; }
+
+        /* 2-col traits on tablet */
+        .tr-grid { grid-template-columns: repeat(2, 1fr); }
+        .tr-item:nth-child(3n)        { border-right: 1px solid var(--rule); }
+        .tr-item:nth-child(2n)        { border-right: none; }
+        .tr-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--rule); }
+        .tr-item:nth-last-child(-n+2) { border-bottom: none; }
+        .tr-item:last-child           { border-bottom: none; }
+    }
+
+    /* ================================================================
+       PRINT + PDF
+    ================================================================ */
+    @media print {
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         body {
-            background: #EEEBE5;
-            font-family: var(--font-body);
-            color: var(--ink);
-            line-height: 1.5;
-            padding: 24px 16px 48px;
-            -webkit-font-smoothing: antialiased;
+            background: #fff;
+            padding: 0; margin: 0;
         }
 
-        /* ============================================================
-           CONTROL BAR (screen-only, never prints)
-        ============================================================ */
-        .control-bar {
-            max-width: 800px;
-            margin: 0 auto 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
+        .ctrl, .no-print { display: none !important; }
 
-        .control-bar__nav {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 18px;
-            border-radius: var(--radius-sm);
-            font-family: var(--font-body);
-            font-size: 9pt;
-            font-weight: 600;
+        .doc {
+            max-width: 100%;
+            margin: 0;
+            box-shadow: none;
+            border-radius: 0;
             border: none;
-            cursor: pointer;
-            text-decoration: none;
-            transition: opacity 0.15s, transform 0.1s;
-            letter-spacing: 0.02em;
         }
 
-        .btn:active { transform: scale(0.98); }
-
-        .btn--primary {
-            background: var(--forest);
-            color: #fff;
-        }
-        .btn--primary:hover { background: var(--forest-mid); }
-
-        .btn--ghost {
-            background: rgba(27,67,50,0.08);
-            color: var(--forest);
-        }
-        .btn--ghost:hover { background: rgba(27,67,50,0.14); }
-
-        .term-control {
-            display: flex;
-            align-items: center;
+        .doc-hd {
+            padding: 10px 16px 9px;
             gap: 10px;
-            background: white;
-            border: 1.5px solid var(--paper-rule);
-            border-radius: var(--radius-sm);
-            padding: 6px 14px;
+            grid-template-columns: 46px 1fr;
         }
+        .doc-hd__logo  { width: 46px; height: 46px; }
+        .doc-hd__name  { font-size: 11pt; }
+        .doc-hd__tagline, .doc-hd__contact { font-size: 6pt; }
 
-        .term-control label {
-            font-size: 8.5pt;
-            font-weight: 600;
-            color: var(--ink-secondary);
-            white-space: nowrap;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .term-control select {
-            border: none;
-            outline: none;
-            font-family: var(--font-body);
-            font-size: 9pt;
-            font-weight: 600;
-            color: var(--forest);
-            background: transparent;
-            cursor: pointer;
-            -webkit-appearance: none;
-            appearance: none;
-            padding-right: 20px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231B4332' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0 center;
-        }
-
-        /* ============================================================
-           DOCUMENT WRAPPER
-        ============================================================ */
-        .document {
-            max-width: 800px;
-            margin: 0 auto;
-            background: var(--paper);
-            box-shadow: var(--shadow-card);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-        }
-
-        /* ============================================================
-           DOCUMENT HEADER
-        ============================================================ */
-        .doc-header {
-            background: var(--forest);
-            color: #fff;
-            padding: 28px 36px 24px;
-            display: grid;
-            grid-template-columns: 72px 1fr;
-            gap: 20px;
-            align-items: center;
-            position: relative;
-        }
-
-        /* Decorative rule at bottom of header */
-        .doc-header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
-        }
-
-        .doc-header__logo {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2.5px solid rgba(255,255,255,0.3);
-            background: white;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .doc-header__logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .doc-header__identity { }
-
-        .doc-header__school-name {
-            font-family: var(--font-display);
-            font-size: 15pt;
-            font-weight: 700;
-            line-height: 1.2;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 3px;
-        }
-
-        .doc-header__tagline {
-            font-size: 8pt;
-            color: rgba(255,255,255,0.7);
-            font-style: italic;
-            margin-bottom: 6px;
-        }
-
-        .doc-header__contact {
-            font-size: 7.5pt;
-            color: rgba(255,255,255,0.6);
-            letter-spacing: 0.01em;
-        }
-
-        /* ============================================================
-           DOCUMENT TITLE BAND
-        ============================================================ */
-        .doc-title-band {
-            background: var(--paper-warm);
-            border-bottom: 1px solid var(--paper-rule);
-            padding: 12px 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .doc-title-band__text {
-            font-family: var(--font-display);
-            font-size: 11pt;
-            font-weight: 600;
-            color: var(--forest);
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            line-height: 1.3;
-        }
-
-        /* ============================================================
-           DOCUMENT BODY
-        ============================================================ */
-        .doc-body {
-            padding: 24px 36px 32px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* ============================================================
-           SECTION GENERIC
-        ============================================================ */
-        .section {
-            border: 1px solid var(--paper-rule);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-        }
-
-        .section__header {
-            background: var(--forest);
-            padding: 7px 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .section__title {
-            font-family: var(--font-body);
-            font-size: 7.5pt;
-            font-weight: 600;
-            color: rgba(255,255,255,0.95);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .section__header-rule {
-            flex: 1;
-            height: 1px;
-            background: rgba(255,255,255,0.2);
-        }
-
-        /* ============================================================
-           STUDENT IDENTITY
-        ============================================================ */
-        .identity-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .identity-cell {
-            padding: 9px 14px;
-            border-right: 1px solid var(--paper-rule);
-            border-bottom: 1px solid var(--paper-rule);
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-
-        .identity-cell:nth-child(even) { border-right: none; }
-
-        /* Remove bottom border from last row (last 2 items) */
-        .identity-cell:nth-last-child(-n+2) { border-bottom: none; }
-
-        .identity-cell__label {
-            font-size: 7pt;
-            font-weight: 600;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-        }
-
-        .identity-cell__value {
-            font-size: 10pt;
-            font-weight: 600;
-            color: var(--ink);
-            line-height: 1.3;
-        }
-
-        /* ============================================================
-           ATTENDANCE
-        ============================================================ */
-        .attendance-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .attendance-card {
-            padding: 14px 10px;
-            text-align: center;
-            border-right: 1px solid var(--paper-rule);
-        }
-
-        .attendance-card:last-child { border-right: none; }
-
-        .attendance-card__number {
-            font-family: var(--font-display);
-            font-size: 22pt;
-            font-weight: 700;
-            color: var(--forest);
-            line-height: 1;
-            margin-bottom: 4px;
-        }
-
-        .attendance-card__label {
-            font-size: 7.5pt;
-            color: var(--ink-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        /* ============================================================
-           ACADEMIC TABLE
-        ============================================================ */
-        .academic-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9pt;
-        }
-
-        .academic-table thead tr {
-            background: var(--paper-warm);
-            border-bottom: 2px solid var(--forest);
-        }
-
-        .academic-table th {
-            padding: 8px 10px;
-            text-align: center;
-            font-size: 7.5pt;
-            font-weight: 600;
-            color: var(--ink-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            white-space: nowrap;
-        }
-
-        .academic-table th:first-child {
-            text-align: left;
-            padding-left: 14px;
-            min-width: 160px;
-        }
-
-        .academic-table tbody tr {
-            border-bottom: 1px solid var(--paper-rule);
-            transition: background 0.1s;
-        }
-
-        .academic-table tbody tr:last-child { border-bottom: none; }
-
-        /* Subtle zebra */
-        .academic-table tbody tr:nth-child(even) {
-            background: rgba(0,0,0,0.015);
-        }
-
-        .academic-table td {
-            padding: 9px 10px;
-            text-align: center;
-            color: var(--ink);
-        }
-
-        .academic-table td:first-child {
-            text-align: left;
-            padding-left: 14px;
-            font-weight: 600;
-        }
-
-        /* Score highlight: total column */
-        .academic-table td.col-total {
-            font-weight: 700;
-            font-size: 10pt;
-            color: var(--forest);
-        }
-
-        /* Summary rows */
-        .academic-table .summary-row {
-            background: var(--forest-pale);
-            border-top: 2px solid var(--forest-light);
-            border-bottom: none;
-        }
-
-        .academic-table .summary-row td {
-            font-weight: 700;
-            color: var(--forest);
-            font-size: 9.5pt;
-            padding: 10px 14px;
-        }
-
-        /* Grade Colors */
-        .grade-A1 { color: #1B6B2E; font-weight: 700; }
-        .grade-B2, .grade-B3 { color: #1560BD; font-weight: 700; }
-        .grade-C4, .grade-C5, .grade-C6 { color: #C76B00; font-weight: 700; }
-        .grade-D7, .grade-D8 { color: var(--danger); font-weight: 700; }
-        .grade-F9 { color: var(--danger); font-weight: 700; }
-
-        /* ============================================================
-           GRADING KEY
-        ============================================================ */
-        .grading-key {
-            border: 1px solid var(--paper-rule);
-            border-radius: var(--radius-sm);
-            padding: 10px 14px;
-            background: var(--paper-warm);
-        }
-
-        .grading-key__title {
-            font-size: 7pt;
-            font-weight: 600;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.09em;
-            margin-bottom: 8px;
-        }
-
-        .grading-key__grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-
-        .grading-key__item {
-            font-size: 7.5pt;
-            padding: 3px 8px;
-            border-radius: 2px;
-            border: 1px solid var(--paper-rule);
-            background: white;
-            color: var(--ink-secondary);
-            white-space: nowrap;
-        }
-
-        /* ============================================================
-           TRAITS & PSYCHOMOTOR GRID
-        ============================================================ */
-        .scale-note {
-            background: var(--paper-warm);
-            border-bottom: 1px solid var(--paper-rule);
-            padding: 5px 14px;
-            font-size: 7pt;
-            font-style: italic;
-            color: var(--ink-muted);
-            text-align: center;
-        }
-
-        .traits-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .trait-item {
-            padding: 8px 14px;
-            border-right: 1px solid var(--paper-rule);
-            border-bottom: 1px solid var(--paper-rule);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-        }
-
-        .trait-item:nth-child(3n) { border-right: none; }
-        .trait-item:nth-last-child(-n+3) { border-bottom: none; }
-        /* Edge case: last item when not divisible by 3 */
-        .trait-item:last-child { border-bottom: none; }
-
-        .trait-item__label {
-            font-size: 8.5pt;
-            color: var(--ink-secondary);
-            font-weight: 600;
-        }
-
-        .trait-value {
-            font-family: var(--font-display);
-            font-size: 13pt;
-            font-weight: 700;
-            color: var(--forest);
-            min-width: 24px;
-            text-align: center;
-            line-height: 1;
-        }
-
-        /* ============================================================
-           REMARKS
-        ============================================================ */
-        .remarks-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        .remark-block {
-            padding: 12px 14px;
-            border-right: 1px solid var(--paper-rule);
-        }
-
-        .remark-block:last-child { border-right: none; }
-
-        .remark-block__label {
-            font-size: 7pt;
-            font-weight: 600;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            margin-bottom: 6px;
-        }
-
-        .remark-block__text {
-            font-size: 9pt;
-            color: var(--ink);
-            line-height: 1.5;
-            min-height: 36px;
-        }
-
-        /* ============================================================
-           SIGNATURES & CLOSING
-        ============================================================ */
-        .closing-band {
-            background: var(--paper-warm);
-            border-top: 1px solid var(--paper-rule);
-            padding: 16px 36px;
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            gap: 20px;
-            align-items: end;
-        }
-
-        .sig-block {
-            text-align: center;
-        }
-
-        .sig-block__line {
-            border-top: 1px solid var(--ink-secondary);
-            padding-top: 5px;
-            margin-top: 32px;
-            font-size: 7.5pt;
-            font-weight: 600;
-            color: var(--ink-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .resumption-box {
-            text-align: center;
-            align-self: center;
-        }
-
-        .resumption-box__label {
-            font-size: 7pt;
-            font-weight: 600;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            margin-bottom: 4px;
-        }
-
-        .resumption-box__date {
-            font-family: var(--font-display);
-            font-size: 11pt;
-            font-weight: 600;
-            color: var(--forest);
-        }
-
-        /* ============================================================
-           DOCUMENT FOOTER
-        ============================================================ */
-        .doc-footer {
-            border-top: 3px solid var(--paper-rule);
-            padding: 10px 36px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--paper-warm);
-        }
-
-        .doc-footer__text {
-            font-size: 7pt;
-            color: var(--ink-muted);
-            font-style: italic;
-        }
-
-        .doc-footer__seal {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .doc-footer__seal-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--forest-light);
-        }
-
-        .doc-footer__seal-text {
-            font-size: 7pt;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        /* ============================================================
-           TOAST
-        ============================================================ */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-        }
-
-        /* ============================================================
-           LOADING / EMPTY STATES (for JS injection)
-        ============================================================ */
-        /* JS uses loadingRow() and emptyRow() — those still inject HTML */
-
-        /* ============================================================
-           MOBILE — ≤ 600px
-        ============================================================ */
-        @media (max-width: 600px) {
-            body { padding: 0 0 40px; }
-
-            .control-bar {
-                padding: 12px;
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .control-bar__nav,
-            .term-control { width: 100%; }
-
-            .term-control { justify-content: space-between; }
-
-            .document { border-radius: 0; }
-
-            .doc-header {
-                grid-template-columns: 56px 1fr;
-                gap: 14px;
-                padding: 18px 18px 16px;
-            }
-
-            .doc-header__logo {
-                width: 56px;
-                height: 56px;
-            }
-
-            .doc-header__school-name { font-size: 11.5pt; }
-
-            .doc-title-band { padding: 10px 18px; }
-            .doc-title-band__text { font-size: 9.5pt; }
-
-            .doc-body { padding: 16px 14px 24px; gap: 14px; }
-
-            /* Identity: single column on very small screens */
-            .identity-grid { grid-template-columns: 1fr; }
-            .identity-cell { border-right: none; }
-            .identity-cell:nth-last-child(-n+2) { border-bottom: 1px solid var(--paper-rule); }
-            .identity-cell:last-child { border-bottom: none; }
-
-            /* Attendance: keep 3-col but shrink text */
-            .attendance-card__number { font-size: 18pt; }
-            .attendance-card__label { font-size: 6.5pt; }
-
-            /* Academic table: allow horizontal scroll */
-            .section--academic { overflow-x: auto; }
-            .academic-table { min-width: 480px; }
-
-            /* Grading key: 2-column wrap */
-            .grading-key__grid { gap: 3px; }
-            .grading-key__item { font-size: 7pt; }
-
-            /* Traits: 2-column on mobile */
-            .traits-grid { grid-template-columns: repeat(2, 1fr); }
-            .trait-item:nth-child(3n) { border-right: 1px solid var(--paper-rule); }
-            .trait-item:nth-child(2n) { border-right: none; }
-            .trait-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--paper-rule); }
-            .trait-item:nth-last-child(-n+2) { border-bottom: none; }
-            .trait-item:last-child { border-bottom: none; }
-
-            /* Remarks: stack vertically */
-            .remarks-grid { grid-template-columns: 1fr; }
-            .remark-block { border-right: none; border-bottom: 1px solid var(--paper-rule); }
-            .remark-block:last-child { border-bottom: none; }
-
-            /* Closing band: stack */
-            .closing-band {
-                grid-template-columns: 1fr;
-                padding: 16px 18px;
-                gap: 20px;
-            }
-
-            .resumption-box { order: -1; }
-
-            .doc-footer { padding: 10px 18px; flex-direction: column; gap: 6px; text-align: center; }
-
-            /* Control bar buttons */
-            .btn { justify-content: center; }
-        }
-
-        /* ============================================================
-           TABLET — 601–900px
-        ============================================================ */
-        @media (min-width: 601px) and (max-width: 900px) {
-            body { padding: 16px 16px 40px; }
-            .doc-header { padding: 22px 28px 20px; }
-            .doc-body { padding: 20px 28px 28px; }
-            .traits-grid { grid-template-columns: repeat(2, 1fr); }
-            .trait-item:nth-child(3n) { border-right: 1px solid var(--paper-rule); }
-            .trait-item:nth-child(2n) { border-right: none; }
-            .trait-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--paper-rule); }
-            .trait-item:nth-last-child(-n+2) { border-bottom: none; }
-            .closing-band { padding: 16px 28px; }
-            .doc-footer { padding: 10px 28px; }
-        }
-
-        /* ============================================================
-           PRINT
-        ============================================================ */
-        @media print {
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-            body {
-                background: white;
-                padding: 0;
-                margin: 0;
-                font-size: 8.5pt;
-            }
-
-            .control-bar,
-            .no-print {
-                display: none !important;
-            }
-
-            .document {
-                max-width: 100%;
-                margin: 0;
-                box-shadow: none;
-                border-radius: 0;
-            }
-
-            /* Header tighter in print */
-            .doc-header {
-                padding: 14px 20px 12px;
-                grid-template-columns: 58px 1fr;
-                gap: 14px;
-            }
-
-            .doc-header__logo { width: 58px; height: 58px; }
-            .doc-header__school-name { font-size: 12pt; }
-
-            .doc-title-band { padding: 8px 20px; }
-            .doc-title-band__text { font-size: 9.5pt; }
+        .doc-title { padding: 5px 16px; }
+        .doc-title__text { font-size: 7.5pt; letter-spacing: 0.08em; }
 
-            .doc-body {
-                padding: 12px 20px 16px;
-                gap: 10px;
-            }
+        .doc-body { padding: 8px 14px 10px; gap: 7px; }
 
-            .identity-cell { padding: 6px 10px; }
-            .identity-cell__value { font-size: 9pt; }
+        .id-cell      { padding: 4px 10px; }
+        .id-cell__val { font-size: 7pt; }
+        .id-cell__lbl { font-size: 6pt; }
 
-            .attendance-card { padding: 8px 6px; }
-            .attendance-card__number { font-size: 16pt; }
+        .att-card   { padding: 6px; }
+        .att-card__n   { font-size: 9.5pt; }
+        .att-card__lbl { font-size: 5.5pt; }
 
-            .academic-table th { padding: 5px 8px; font-size: 7pt; }
-            .academic-table td { padding: 6px 8px; font-size: 8.5pt; }
-            .academic-table td:first-child { padding-left: 10px; }
-            .academic-table td.col-total { font-size: 9pt; }
-            .academic-table .summary-row td { padding: 7px 10px; }
+        .ac-table th { padding: 4px 6px; font-size: 6pt; }
+        .ac-table td { padding: 4px 6px; font-size: 7pt; }
+        .ac-table td:first-child { padding-left: 10px; }
+        .ac-table .summary-row td { padding: 5px 10px; font-size: 7pt; }
 
-            .grading-key { padding: 7px 10px; }
-            .grading-key__item { font-size: 7pt; padding: 2px 6px; }
+        .key { padding: 5px 10px; }
+        .key__item { font-size: 6pt; padding: 1px 5px; }
 
-            .scale-note { padding: 3px 10px; font-size: 6.5pt; }
-            .trait-item { padding: 5px 10px; }
-            .trait-item__label { font-size: 7.5pt; }
-            .trait-value { font-size: 11pt; }
-            .traits-grid { grid-template-columns: repeat(3, 1fr); }
+        .scale-note { padding: 2px 10px; font-size: 6pt; }
+        .tr-item    { padding: 4px 10px; }
+        .tr-item__lbl { font-size: 7pt; }
+        .trait-value  { font-size: 8pt; }
 
-            .remark-block { padding: 8px 10px; }
-            .remark-block__text { font-size: 8.5pt; min-height: 24px; }
+        /* force 3-col in print regardless of screen breakpoint */
+        .tr-grid { grid-template-columns: repeat(3, 1fr); }
+        .tr-item:nth-child(2n)        { border-right: 1px solid var(--rule); }
+        .tr-item:nth-child(3n)        { border-right: none; }
+        .tr-item:nth-last-child(-n+2) { border-bottom: 1px solid var(--rule); }
+        .tr-item:nth-last-child(-n+3) { border-bottom: none; }
 
-            .closing-band { padding: 10px 20px; }
-            .sig-block__line { margin-top: 20px; font-size: 7pt; }
-            .resumption-box__date { font-size: 9.5pt; }
+        .remark-blk     { padding: 6px 10px; }
+        .remark-blk__txt { font-size: 7pt; min-height: 18px; }
 
-            .doc-footer { padding: 7px 20px; }
+        .closing    { padding: 8px 16px; }
+        .sig__line  { margin-top: 16px; font-size: 6pt; }
+        .resump__lbl { font-size: 6pt; }
+        .resump__val { font-size: 8pt; }
 
-            /* Prevent page breaks inside sections */
-            .section,
-            .grading-key,
-            .closing-band,
-            .doc-footer,
-            .remarks-grid,
-            .closing-band { page-break-inside: avoid; }
+        .doc-ft { padding: 5px 14px; }
+        .doc-ft__txt, .doc-ft__badge-txt { font-size: 5.5pt; }
 
-            @page {
-                size: A4 portrait;
-                margin: 10mm 12mm 10mm;
-            }
+        .section, .key, .closing, .doc-ft,
+        .remarks-row, .att-row, .id-grid {
+            page-break-inside: avoid;
         }
 
-        /* ============================================================
-           SPINNER (used by JS loadingRow())
-        ============================================================ */
-        @keyframes spin {
-            0%   { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm;
         }
+    }
     </style>
 </head>
 <body>
 
-    <!-- ============================================================
-         CONTROL BAR — never prints
-    ============================================================ -->
-    <div class="control-bar no-print">
-        <div class="control-bar__nav">
-            <a href="pupil.html" class="btn btn--ghost">← Back to Portal</a>
+<!-- CONTROL BAR -->
+<div class="ctrl no-print">
+    <div>
+        <a href="pupil.html" class="btn btn-ghost">← Back to Portal</a>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div class="term-pill">
+            <label for="print-term">Term</label>
+            <select id="print-term">
+                <option value="First Term">First Term</option>
+                <option value="Second Term">Second Term</option>
+                <option value="Third Term">Third Term</option>
+            </select>
         </div>
+        <button class="btn btn-primary" onclick="window.print()">🖨 Print Report Card</button>
+    </div>
+</div>
 
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <div class="term-control">
-                <label for="print-term">Term</label>
-                <select id="print-term">
-                    <option value="First Term">First Term</option>
-                    <option value="Second Term">Second Term</option>
-                    <option value="Third Term">Third Term</option>
-                </select>
-            </div>
-            <button class="btn btn--primary" onclick="window.print()">
-                🖨 Print Report Card
-            </button>
+<!-- DOCUMENT -->
+<div class="doc">
+
+    <!-- HEADER -->
+    <div class="doc-hd">
+        <div class="doc-hd__logo">
+            <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo">
+        </div>
+        <div>
+            <div class="doc-hd__name">Fahmid Nursery &amp; Primary School</div>
+            <div class="doc-hd__tagline">Academic Excellence — Our Duty, Our Right.</div>
+            <div class="doc-hd__contact">18 Shittu Street, Adura Bus Stop, Lagos &nbsp;·&nbsp; +2348061427297 &nbsp;·&nbsp; fahmidschool@gmail.com</div>
         </div>
     </div>
 
-    <!-- ============================================================
-         DOCUMENT
-    ============================================================ -->
-    <div class="document">
-
-        <!-- HEADER -->
-        <div class="doc-header">
-            <div class="doc-header__logo">
-                <img src="IMG_4629.png" alt="Fahmid Nursery & Primary School Logo">
-            </div>
-            <div class="doc-header__identity">
-                <div class="doc-header__school-name">Fahmid Nursery &amp; Primary School</div>
-                <div class="doc-header__tagline">Academic Excellence — Our Duty, Our Right.</div>
-                <div class="doc-header__contact">18 Shittu Street, Adura Bus Stop, Lagos &nbsp;|&nbsp; +2348061427297 &nbsp;|&nbsp; fahmidschool@gmail.com</div>
-            </div>
-        </div>
-
-        <!-- TITLE BAND -->
-        <div class="doc-title-band">
-            <div class="doc-title-band__text" id="report-title">Termly Report Card</div>
-        </div>
-
-        <!-- BODY -->
-        <div class="doc-body">
-
-            <!-- STUDENT IDENTITY -->
-            <div class="section">
-                <div class="section__header">
-                    <span class="section__title">Student Profile</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <div class="identity-grid">
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Student Name</span>
-                        <span class="identity-cell__value" id="student-name">Loading…</span>
-                    </div>
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Admission No.</span>
-                        <span class="identity-cell__value" id="admission-no">Loading…</span>
-                    </div>
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Class</span>
-                        <span class="identity-cell__value" id="student-class">Loading…</span>
-                    </div>
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Gender</span>
-                        <span class="identity-cell__value" id="student-gender">Loading…</span>
-                    </div>
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Term</span>
-                        <span class="identity-cell__value" id="current-term">Loading…</span>
-                    </div>
-                    <div class="identity-cell">
-                        <span class="identity-cell__label">Session</span>
-                        <span class="identity-cell__value" id="current-session">Loading…</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ATTENDANCE -->
-            <div class="section">
-                <div class="section__header">
-                    <span class="section__title">Attendance Record</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <div class="attendance-row">
-                    <div class="attendance-card">
-                        <div class="attendance-card__number" id="times-opened">–</div>
-                        <div class="attendance-card__label">Days School Opened</div>
-                    </div>
-                    <div class="attendance-card">
-                        <div class="attendance-card__number" id="times-present">–</div>
-                        <div class="attendance-card__label">Days Present</div>
-                    </div>
-                    <div class="attendance-card">
-                        <div class="attendance-card__number" id="times-absent">–</div>
-                        <div class="attendance-card__label">Days Absent</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ACADEMIC PERFORMANCE -->
-            <div class="section section--academic">
-                <div class="section__header">
-                    <span class="section__title">Academic Performance</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <table class="academic-table">
-                    <thead>
-                        <tr>
-                            <th>Subject</th>
-                            <th>C.A.<br><span style="font-weight:400;opacity:0.7;">(40)</span></th>
-                            <th>Exam<br><span style="font-weight:400;opacity:0.7;">(60)</span></th>
-                            <th>Total<br><span style="font-weight:400;opacity:0.7;">(100)</span></th>
-                            <th>Grade</th>
-                            <th>Remark</th>
-                        </tr>
-                    </thead>
-                    <tbody id="academic-tbody">
-                        <tr>
-                            <td colspan="6" style="text-align:center; padding:16px; color:var(--ink-muted);">
-                                Loading results…
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- GRADING KEY -->
-            <div class="grading-key">
-                <div class="grading-key__title">Grading System</div>
-                <div class="grading-key__grid">
-                    <div class="grading-key__item"><strong class="grade-A1">A1</strong> &nbsp;75–100 · Excellent</div>
-                    <div class="grading-key__item"><strong class="grade-B2">B2</strong> &nbsp;70–74 · Very Good</div>
-                    <div class="grading-key__item"><strong class="grade-B3">B3</strong> &nbsp;65–69 · Good</div>
-                    <div class="grading-key__item"><strong class="grade-C4">C4</strong> &nbsp;60–64 · Credit</div>
-                    <div class="grading-key__item"><strong class="grade-C5">C5</strong> &nbsp;55–59 · Credit</div>
-                    <div class="grading-key__item"><strong class="grade-C6">C6</strong> &nbsp;50–54 · Credit</div>
-                    <div class="grading-key__item"><strong class="grade-D7">D7</strong> &nbsp;45–49 · Pass</div>
-                    <div class="grading-key__item"><strong class="grade-D8">D8</strong> &nbsp;40–44 · Pass</div>
-                    <div class="grading-key__item"><strong class="grade-F9">F9</strong> &nbsp;0–39 · Fail</div>
-                </div>
-            </div>
-
-            <!-- BEHAVIORAL TRAITS -->
-            <div class="section">
-                <div class="section__header">
-                    <span class="section__title">Behavioral &amp; Affective Traits</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <div class="scale-note">Assessed on a 5-point scale &nbsp;·&nbsp; 1 = Poor &nbsp;·&nbsp; 5 = Excellent</div>
-                <div class="traits-grid">
-                    <div class="trait-item">
-                        <span class="trait-item__label">Punctuality</span>
-                        <span class="trait-value" id="trait-punctuality">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Neatness</span>
-                        <span class="trait-value" id="trait-neatness">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Politeness</span>
-                        <span class="trait-value" id="trait-politeness">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Honesty</span>
-                        <span class="trait-value" id="trait-honesty">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Obedience</span>
-                        <span class="trait-value" id="trait-obedience">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Cooperation</span>
-                        <span class="trait-value" id="trait-cooperation">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Attentiveness</span>
-                        <span class="trait-value" id="trait-attentiveness">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Leadership</span>
-                        <span class="trait-value" id="trait-leadership">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Self Control</span>
-                        <span class="trait-value" id="trait-selfcontrol">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Creativity</span>
-                        <span class="trait-value" id="trait-creativity">–</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PSYCHOMOTOR SKILLS -->
-            <div class="section">
-                <div class="section__header">
-                    <span class="section__title">Psychomotor Skills</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <div class="scale-note">Assessed on a 5-point scale &nbsp;·&nbsp; 1 = Poor &nbsp;·&nbsp; 5 = Excellent</div>
-                <div class="traits-grid">
-                    <div class="trait-item">
-                        <span class="trait-item__label">Handwriting</span>
-                        <span class="trait-value" id="skill-handwriting">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Drawing</span>
-                        <span class="trait-value" id="skill-drawing">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Sports</span>
-                        <span class="trait-value" id="skill-sports">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Craft Work</span>
-                        <span class="trait-value" id="skill-craft">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Verbal Fluency</span>
-                        <span class="trait-value" id="skill-verbal">–</span>
-                    </div>
-                    <div class="trait-item">
-                        <span class="trait-item__label">Coordination</span>
-                        <span class="trait-value" id="skill-coordination">–</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- REMARKS -->
-            <div class="section">
-                <div class="section__header">
-                    <span class="section__title">Remarks</span>
-                    <span class="section__header-rule"></span>
-                </div>
-                <div class="remarks-grid">
-                    <div class="remark-block">
-                        <div class="remark-block__label">Class Teacher's Remark</div>
-                        <div class="remark-block__text" id="teacher-remark">–</div>
-                    </div>
-                    <div class="remark-block">
-                        <div class="remark-block__label">Head Teacher's Remark</div>
-                        <div class="remark-block__text" id="head-remark">–</div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-        <!-- /doc-body -->
-
-        <!-- CLOSING: Signatures + Resumption Date -->
-        <div class="closing-band">
-            <div class="sig-block">
-                <div class="sig-block__line">Class Teacher's Signature &amp; Date</div>
-            </div>
-            <div class="resumption-box">
-                <div class="resumption-box__label">Next Term Resumption</div>
-                <div class="resumption-box__date" id="resumption-date">–</div>
-            </div>
-            <div class="sig-block">
-                <div class="sig-block__line">Head Teacher's Signature &amp; Date</div>
-            </div>
-        </div>
-
-        <!-- DOCUMENT FOOTER -->
-        <div class="doc-footer">
-            <span class="doc-footer__text">This is an official academic document issued by Fahmid Nursery &amp; Primary School.</span>
-            <div class="doc-footer__seal">
-                <span class="doc-footer__seal-dot"></span>
-                <span class="doc-footer__seal-text">Verified &amp; Approved</span>
-            </div>
-        </div>
-
+    <!-- TITLE STRIP -->
+    <div class="doc-title">
+        <div class="doc-title__text" id="report-title">Termly Report Card</div>
     </div>
-    <!-- /document -->
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <!-- BODY -->
+    <div class="doc-body">
 
-    <script src="firebase-init.js"></script>
-    <script src="script.js"></script>
-    <script src="print-results.js"></script>
+        <!-- 1. STUDENT PROFILE -->
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">Student Profile</span>
+            </div>
+            <div class="id-grid">
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Student Name</span>
+                    <span class="id-cell__val" id="student-name">Loading…</span>
+                </div>
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Admission No.</span>
+                    <span class="id-cell__val" id="admission-no">Loading…</span>
+                </div>
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Class</span>
+                    <span class="id-cell__val" id="student-class">Loading…</span>
+                </div>
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Gender</span>
+                    <span class="id-cell__val" id="student-gender">Loading…</span>
+                </div>
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Term</span>
+                    <span class="id-cell__val" id="current-term">Loading…</span>
+                </div>
+                <div class="id-cell">
+                    <span class="id-cell__lbl">Session</span>
+                    <span class="id-cell__val" id="current-session">Loading…</span>
+                </div>
+            </div>
+        </div>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(() => console.log('✓ Service Worker registered'))
-                    .catch(err => console.error('Service Worker error:', err));
-            });
-        }
-    </script>
+        <!-- 2. ATTENDANCE -->
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">Attendance Record</span>
+            </div>
+            <div class="att-row">
+                <div class="att-card">
+                    <div class="att-card__n" id="times-opened">–</div>
+                    <div class="att-card__lbl">Days School Opened</div>
+                </div>
+                <div class="att-card">
+                    <div class="att-card__n" id="times-present">–</div>
+                    <div class="att-card__lbl">Days Present</div>
+                </div>
+                <div class="att-card">
+                    <div class="att-card__n" id="times-absent">–</div>
+                    <div class="att-card__lbl">Days Absent</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. ACADEMIC PERFORMANCE -->
+        <div class="section section--academic">
+            <div class="section__hd">
+                <span class="section__title">Academic Performance</span>
+            </div>
+            <table class="ac-table">
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>C.A.<br><span style="font-weight:400;opacity:0.65;">(40)</span></th>
+                        <th>Exam<br><span style="font-weight:400;opacity:0.65;">(60)</span></th>
+                        <th>Total<br><span style="font-weight:400;opacity:0.65;">(100)</span></th>
+                        <th>Grade</th>
+                        <th>Remark</th>
+                    </tr>
+                </thead>
+                <tbody id="academic-tbody">
+                    <tr>
+                        <td colspan="6" style="text-align:center; padding:12px; color:var(--ink-3);">
+                            Loading results…
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- GRADING KEY -->
+        <div class="key">
+            <div class="key__title">Grading System</div>
+            <div class="key__items">
+                <div class="key__item"><strong class="grade-A1">A1</strong>&nbsp;75–100&nbsp;·&nbsp;Excellent</div>
+                <div class="key__item"><strong class="grade-B2">B2</strong>&nbsp;70–74&nbsp;·&nbsp;Very Good</div>
+                <div class="key__item"><strong class="grade-B3">B3</strong>&nbsp;65–69&nbsp;·&nbsp;Good</div>
+                <div class="key__item"><strong class="grade-C4">C4</strong>&nbsp;60–64&nbsp;·&nbsp;Credit</div>
+                <div class="key__item"><strong class="grade-C5">C5</strong>&nbsp;55–59&nbsp;·&nbsp;Credit</div>
+                <div class="key__item"><strong class="grade-C6">C6</strong>&nbsp;50–54&nbsp;·&nbsp;Credit</div>
+                <div class="key__item"><strong class="grade-D7">D7</strong>&nbsp;45–49&nbsp;·&nbsp;Pass</div>
+                <div class="key__item"><strong class="grade-D8">D8</strong>&nbsp;40–44&nbsp;·&nbsp;Pass</div>
+                <div class="key__item"><strong class="grade-F9">F9</strong>&nbsp;0–39&nbsp;·&nbsp;Fail</div>
+            </div>
+        </div>
+
+        <!-- 4. BEHAVIORAL TRAITS -->
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">Behavioral &amp; Affective Traits</span>
+            </div>
+            <div class="scale-note">5-point scale &nbsp;·&nbsp; 1 = Poor &nbsp;·&nbsp; 5 = Excellent</div>
+            <div class="tr-grid">
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Punctuality</span>
+                    <span class="trait-value" id="trait-punctuality">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Neatness</span>
+                    <span class="trait-value" id="trait-neatness">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Politeness</span>
+                    <span class="trait-value" id="trait-politeness">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Honesty</span>
+                    <span class="trait-value" id="trait-honesty">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Obedience</span>
+                    <span class="trait-value" id="trait-obedience">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Cooperation</span>
+                    <span class="trait-value" id="trait-cooperation">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Attentiveness</span>
+                    <span class="trait-value" id="trait-attentiveness">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Leadership</span>
+                    <span class="trait-value" id="trait-leadership">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Self Control</span>
+                    <span class="trait-value" id="trait-selfcontrol">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Creativity</span>
+                    <span class="trait-value" id="trait-creativity">–</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. PSYCHOMOTOR SKILLS -->
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">Psychomotor Skills</span>
+            </div>
+            <div class="scale-note">5-point scale &nbsp;·&nbsp; 1 = Poor &nbsp;·&nbsp; 5 = Excellent</div>
+            <div class="tr-grid">
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Handwriting</span>
+                    <span class="trait-value" id="skill-handwriting">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Drawing</span>
+                    <span class="trait-value" id="skill-drawing">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Sports</span>
+                    <span class="trait-value" id="skill-sports">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Craft Work</span>
+                    <span class="trait-value" id="skill-craft">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Verbal Fluency</span>
+                    <span class="trait-value" id="skill-verbal">–</span>
+                </div>
+                <div class="tr-item">
+                    <span class="tr-item__lbl">Coordination</span>
+                    <span class="trait-value" id="skill-coordination">–</span>
+                </div>
+            </div>
+        </div>
+
+        <!--
+        ════════════════════════════════════════════════════════
+        TO ADD A NEW SECTION — copy this block and fill it in:
+
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">New Section Title</span>
+            </div>
+            (your content — id-grid, tr-grid, table, custom, etc.)
+        </div>
+
+        The .section class handles all borders, header styling,
+        and print layout automatically. No extra CSS needed.
+        ════════════════════════════════════════════════════════
+        -->
+
+        <!-- 6. REMARKS -->
+        <div class="section">
+            <div class="section__hd">
+                <span class="section__title">Remarks</span>
+            </div>
+            <div class="remarks-row">
+                <div class="remark-blk">
+                    <div class="remark-blk__lbl">Class Teacher's Remark</div>
+                    <div class="remark-blk__txt" id="teacher-remark">–</div>
+                </div>
+                <div class="remark-blk">
+                    <div class="remark-blk__lbl">Head Teacher's Remark</div>
+                    <div class="remark-blk__txt" id="head-remark">–</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /doc-body -->
+
+    <!-- CLOSING -->
+    <div class="closing">
+        <div class="sig">
+            <div class="sig__line">Class Teacher's Signature &amp; Date</div>
+        </div>
+        <div class="resump">
+            <div class="resump__lbl">Next Term Resumption</div>
+            <div class="resump__val" id="resumption-date">–</div>
+        </div>
+        <div class="sig">
+            <div class="sig__line">Head Teacher's Signature &amp; Date</div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="doc-ft">
+        <span class="doc-ft__txt">Official academic document — Fahmid Nursery &amp; Primary School</span>
+        <div class="doc-ft__badge">
+            <span class="doc-ft__dot"></span>
+            <span class="doc-ft__badge-txt">Verified &amp; Approved</span>
+        </div>
+    </div>
+
+</div><!-- /doc -->
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="firebase-init.js"></script>
+<script src="script.js"></script>
+<script src="print-results.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(() => console.log('✓ Service Worker registered'))
+            .catch(e => console.error('SW error:', e));
+    });
+}
+</script>
 </body>
 </html>
