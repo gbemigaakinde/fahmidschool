@@ -46,9 +46,10 @@
 
 /* ── C: Footer overlap fix ──────────────────────────────────── */
 @media (max-width: 1024px) {
-  .pp-footer {
-    padding-bottom: max(24px, calc(72px + env(safe-area-inset-bottom)));
+   .pp-footer {
     margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    padding: 16px var(--pp-gap-lg) calc(68px + max(16px, env(safe-area-inset-bottom))) !important;
   }
 }
 
