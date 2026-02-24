@@ -1814,6 +1814,13 @@
         white-space: normal;
     }
 
+    /* Suppress the global data-label ::before on the name cell —
+       the cell IS the name, it doesn't need a label above it */
+    #results-table tbody td:nth-child(1)::before {
+        content: none !important;
+        display: none !important;
+    }
+
     /* CA and Exam inputs sit side-by-side */
     #results-table tbody td:nth-child(2),
     #results-table tbody td:nth-child(3) {
@@ -1821,7 +1828,7 @@
         flex-direction: column;
         align-items: stretch;
         gap: var(--tp-space-1);
-        padding: var(--tp-space-4) var(--tp-space-4) var(--tp-space-3);
+        padding: var(--tp-space-3) var(--tp-space-4);
         border-bottom: none;
     }
 
@@ -1829,22 +1836,18 @@
         border-right: 1px solid var(--tp-border);
     }
 
-    #results-table tbody td:nth-child(2)::before { content: "CA Score"; }
-    #results-table tbody td:nth-child(3)::before { content: "Exam Score"; }
+    #results-table tbody td:nth-child(2)::before { content: "CA (max 40)"; }
+    #results-table tbody td:nth-child(3)::before { content: "Exam (max 60)"; }
 
     #results-table tbody td:nth-child(2)::before,
     #results-table tbody td:nth-child(3)::before {
-        font-size: 0.5625rem;
+        font-size: 0.625rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.07em;
         color: var(--tp-text-muted);
         display: block;
-        margin-bottom: 6px;
-        padding: 3px 6px;
-        background: var(--tp-bg);
-        border-radius: 3px;
-        align-self: flex-start;
+        margin-bottom: 4px;
     }
 
     /* Input fills the cell */
@@ -2224,35 +2227,39 @@
         font-weight: 700;
         font-size: 0.9375rem;
         color: var(--tp-text-primary);
-        padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-2);
+        padding: var(--tp-space-3) var(--tp-space-4) var(--tp-space-1);
         text-align: left;
-        border-bottom: 1px solid var(--tp-border-light);
+        border-bottom: none;
+    }
+
+    /* Suppress the global data-label ::before on the name cell */
+    #promotion-table-container tbody td:nth-child(2)::before {
+        content: none !important;
+        display: none !important;
     }
 
     /* Status badge — top-right corner */
     #promotion-table-container tbody td:nth-child(5) {
         grid-column: 3;
         grid-row: 1;
-        padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-2);
+        padding: var(--tp-space-3) var(--tp-space-3) var(--tp-space-1);
         text-align: right;
-        border-bottom: 1px solid var(--tp-border-light);
+        border-bottom: none;
         display: flex;
         align-items: flex-start;
         justify-content: flex-end;
     }
 
-    /* Average + Grade — second row */
+    /* Average + Grade — second row, spans cols 2-3 */
     #promotion-table-container tbody td:nth-child(3),
     #promotion-table-container tbody td:nth-child(4) {
         grid-row: 2;
         font-size: 0.8125rem;
         color: var(--tp-text-secondary);
-        padding: var(--tp-space-2) var(--tp-space-3) var(--tp-space-3);
+        padding: 0 var(--tp-space-3) var(--tp-space-3);
         text-align: left;
         border-bottom: none;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+        display: inline;
     }
 
     #promotion-table-container tbody td:nth-child(3) {
@@ -2260,39 +2267,14 @@
         padding-left: var(--tp-space-4);
     }
 
-    #promotion-table-container tbody td:nth-child(3)::before {
-        content: "Avg";
-        font-size: 0.5625rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--tp-text-muted);
-        background: var(--tp-bg);
-        border: 1px solid var(--tp-border);
-        padding: 1px 5px;
-        border-radius: 3px;
-        flex-shrink: 0;
-    }
-
-    #promotion-table-container tbody td:nth-child(4)::before {
-        content: "Grade";
-        font-size: 0.5625rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--tp-text-muted);
-        background: var(--tp-bg);
-        border: 1px solid var(--tp-border);
-        padding: 1px 5px;
-        border-radius: 3px;
-        flex-shrink: 0;
-    }
+    #promotion-table-container tbody td:nth-child(3)::before { content: "Avg: "; font-weight: 600; color: var(--tp-text-muted); }
+    #promotion-table-container tbody td:nth-child(4)::before { content: " · Grade: "; font-weight: 600; color: var(--tp-text-muted); }
 
     #promotion-table-container tbody td:nth-child(4) {
         grid-column: 3;
         grid-row: 2;
         padding-right: var(--tp-space-3);
-        justify-content: flex-end;
+        text-align: right;
     }
 }
 
