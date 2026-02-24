@@ -5,6 +5,18 @@
    ============================================================ */
 
 /* ============================================================
+   SELF-CONTAINED RESET — No dependency on styles.css
+   ============================================================ */
+.admin-main *,
+.admin-main *::before,
+.admin-main *::after,
+.admin-sidebar *,
+.admin-sidebar *::before,
+.admin-sidebar *::after {
+  box-sizing: border-box;
+}
+
+/* ============================================================
    1. CRITICAL: MISSING SPACING TOKEN FIX
    All --space-xs/sm/md/lg/xl/2xl/3xl aliases were undefined,
    causing collapsed spacing throughout the entire portal.
