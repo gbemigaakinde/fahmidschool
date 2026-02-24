@@ -1199,6 +1199,11 @@ table thead {
   animation: modal-bg-in var(--admin-transition-base) ease;
 }
 
+.modal[style*="display: block"],
+.modal[style*="display:block"] {
+  display: block !important;
+}
+
 @keyframes modal-bg-in {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -5123,13 +5128,6 @@ label[for="select-all-pupils"] {
 
 /* ── Overlay: ensure it aligns flex children correctly on mobile ── */
 @media (max-width: 480px) {
-  .modal {
-    padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-end !important;
-    align-items: stretch !important;
-  }
 
   /* Other modals (not the subject one) should still center on mobile */
   #promotion-details-modal,
