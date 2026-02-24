@@ -4545,3 +4545,270 @@ body > div[style*="position:fixed"][style*="z-index"] {
   box-sizing: border-box !important;
   display: block !important;
 }
+
+/* ============================================================
+   ASSIGN SUBJECTS MODAL — COMPLETE FIX PATCH
+   Append to the very bottom of admin-portal.css
+   ============================================================ */
+
+/* ── FIX 1: Modal overlay — single source of truth ───────────
+   The HTML <style> block and admin-portal.css both define .modal.
+   The <style> block wins on specificity (later in cascade).
+   We use the modal ID to assert the correct values.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal {
+  display: none;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  overflow-y: auto !important;
+  padding: 2rem 1.25rem !important;
+  animation: modal-bg-in 200ms ease !important;
+  /* Critical: kill the HTML <style> block's margin:4% auto which
+     was applied to the overlay, not the content box */
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  left: 0 !important;
+  top: 0 !important;
+  display: none; /* JS sets to block — ensure clean starting state */
+}
+
+/* ── FIX 2: Modal content box ───────────────────────────────
+   Three competing max-width values (600px inline, 800px in
+   HTML <style>, unset in admin-portal.css).
+   The inline style on the div wins — we override with !important
+   scoped to this specific modal.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .modal-content {
+  background: var(--admin-surface) !important;
+  border-radius: var(--admin-radius-xl) !important;
+  padding: 2rem !important;
+  max-width: 640px !important;    /* single authoritative value */
+  width: 100% !important;
+  margin: 0 auto !important;      /* kill the 4% top margin from HTML <style> */
+  box-shadow: var(--admin-shadow-xl) !important;
+  position: relative !important;
+  animation: modal-slide-in var(--admin-transition-medium) cubic-bezier(.34, 1.56, .64, 1) !important;
+  box-sizing: border-box !important;
+}
+
+/* ── FIX 3: Heading inside modal ────────────────────────────
+   .admin-main h2 sets margin: 1.5rem 0 1rem !important which
+   adds a big gap above the "Assign Subjects" h2 inside the modal.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .modal-content h2 {
+  margin: 0 0 0.25rem !important;   /* remove the 1.5rem top margin */
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--admin-text-primary) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.25 !important;
+  text-align: left !important;
+}
+
+/* ── FIX 4: Class name subtitle ─────────────────────────────
+   #assignment-class-name was getting .section-description or
+   paragraph overrides, making it look wrong.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal #assignment-class-name {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  color: var(--admin-text-muted) !important;
+  margin: 0.125rem 0 1.5rem !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* ── FIX 5: Subject checkbox container ──────────────────────
+   Defined in BOTH admin-portal.css section 14 AND the HTML
+   <style> block with slightly different values. The HTML block
+   wins. We use a more specific selector to override cleanly.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .subject-checkbox-container,
+#subject-assignment-modal #subject-checkboxes {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)) !important;
+  gap: 0.5rem !important;
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  padding: 0.75rem !important;
+  border: 1.5px solid var(--admin-border) !important;
+  border-radius: var(--admin-radius-md) !important;
+  background: var(--admin-surface-2) !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+/* Scrollbar styling inside checkbox container */
+#subject-assignment-modal .subject-checkbox-container::-webkit-scrollbar,
+#subject-assignment-modal #subject-checkboxes::-webkit-scrollbar {
+  width: 4px;
+}
+#subject-assignment-modal .subject-checkbox-container::-webkit-scrollbar-track,
+#subject-assignment-modal #subject-checkboxes::-webkit-scrollbar-track {
+  background: transparent;
+}
+#subject-assignment-modal .subject-checkbox-container::-webkit-scrollbar-thumb,
+#subject-assignment-modal #subject-checkboxes::-webkit-scrollbar-thumb {
+  background: var(--admin-border);
+  border-radius: 4px;
+}
+
+/* ── FIX 6: Individual checkbox items ───────────────────────
+   Both CSS sources define .subject-checkbox-item identically
+   but the HTML <style> block's version wins and lacks the
+   admin-portal design token references.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .subject-checkbox-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  background: var(--admin-surface) !important;
+  border: 1.5px solid var(--admin-border-soft) !important;
+  border-radius: var(--admin-radius-sm) !important;
+  transition: all var(--admin-transition-fast) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#subject-assignment-modal .subject-checkbox-item:hover {
+  border-color: var(--admin-primary) !important;
+  background: var(--admin-primary-soft) !important;
+  box-shadow: 0 0 0 2px rgba(var(--admin-primary-rgb), 0.08) !important;
+}
+
+/* Checked state */
+#subject-assignment-modal .subject-checkbox-item:has(input:checked) {
+  border-color: var(--admin-primary) !important;
+  background: var(--admin-primary-soft) !important;
+}
+
+#subject-assignment-modal .subject-checkbox-item input[type="checkbox"] {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  accent-color: var(--admin-primary) !important;
+  /* Kill any width:100% from the admin-main input override */
+  min-width: 15px !important;
+  max-width: 15px !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 3px !important;
+}
+
+#subject-assignment-modal .subject-checkbox-item label {
+  cursor: pointer !important;
+  margin: 0 !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  color: var(--admin-text-primary) !important;
+  user-select: none !important;
+  line-height: 1.3 !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* ── FIX 7: Modal action buttons row ────────────────────────
+   .admin-main .form-actions gets padding/border/margin from
+   admin-portal.css section 9. Inside the modal we want cleaner
+   bottom-of-dialog button layout.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .form-actions {
+  display: flex !important;
+  gap: 0.625rem !important;
+  margin-top: 1.5rem !important;
+  padding-top: 1.25rem !important;
+  border-top: 1px solid var(--admin-border) !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+}
+
+#subject-assignment-modal .form-actions .btn {
+  flex: 1 !important;
+  min-width: 120px !important;
+  justify-content: center !important;
+}
+
+/* ── FIX 8: Close button ────────────────────────────────────
+   The HTML <style> block defines .modal-close with mostly the
+   same values as admin-portal.css, but z-index and stacking
+   can cause it to be hidden behind the content.
+   ─────────────────────────────────────────────────────────── */
+#subject-assignment-modal .modal-close {
+  position: absolute !important;
+  top: 1.25rem !important;
+  right: 1.25rem !important;
+  width: 32px !important;
+  height: 32px !important;
+  border: 1.5px solid var(--admin-border) !important;
+  background: var(--admin-surface) !important;
+  border-radius: var(--admin-radius-md) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 1.125rem !important;
+  color: var(--admin-text-muted) !important;
+  transition: all var(--admin-transition-fast) !important;
+  line-height: 1 !important;
+  z-index: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+#subject-assignment-modal .modal-close:hover {
+  background: var(--admin-danger-soft) !important;
+  border-color: #fecaca !important;
+  color: var(--admin-danger) !important;
+}
+
+/* ── FIX 9: Responsive — small screens ──────────────────────
+   On mobile the grid collapses to 1 column, and the overlay
+   needs zero horizontal padding to avoid the content box
+   touching the edges.
+   ─────────────────────────────────────────────────────────── */
+@media (max-width: 680px) {
+  #subject-assignment-modal {
+    padding: 1rem 0.75rem !important;
+    align-items: flex-start !important;
+  }
+
+  #subject-assignment-modal .modal-content {
+    padding: 1.5rem 1.25rem !important;
+    border-radius: var(--admin-radius-lg) !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  #subject-assignment-modal .subject-checkbox-container,
+  #subject-assignment-modal #subject-checkboxes {
+    grid-template-columns: repeat(2, 1fr) !important;
+    max-height: 260px !important;
+  }
+
+  #subject-assignment-modal .form-actions {
+    flex-direction: column !important;
+  }
+
+  #subject-assignment-modal .form-actions .btn {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 400px) {
+  #subject-assignment-modal .subject-checkbox-container,
+  #subject-assignment-modal #subject-checkboxes {
+    grid-template-columns: 1fr !important;
+  }
+}
