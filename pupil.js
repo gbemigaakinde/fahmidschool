@@ -1056,7 +1056,6 @@ async function loadAllPaymentHistory(pupilId) {
                      width: 100%;
                      min-width: 0;
                      box-sizing: border-box;
-                     overflow: hidden;
                  `;
 
                 txns.slice(1).forEach(txn => {
@@ -1087,7 +1086,6 @@ async function loadAllPaymentHistory(pupilId) {
                      olderWrapper.style.width = '100%';
                      olderWrapper.style.minWidth = '0';
                      olderWrapper.style.boxSizing = 'border-box';
-                     olderWrapper.style.overflow = 'hidden';
 
                     const icon = toggleBtn.querySelector('i[data-lucide]');
                     if (expanded) {
