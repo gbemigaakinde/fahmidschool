@@ -989,12 +989,12 @@ async function loadAllPaymentHistory(pupilId) {
                         ${balanceAfter !== null ? `
                         <div style="
                             display: inline-flex; align-items: center; gap: 3px; margin-top: 4px;
-                            padding: 1px 6px; border-radius: 16px; font-size: 12px; font-weight: 600;
-                            line-height: 1.15; white-space: nowrap;
+                            padding: 3px 8px; border-radius: 16px; font-size: 12px; font-weight: 600;
+                            line-height: 1.4; white-space: normal; width: fit-content; flex-wrap: nowrap;
                             background-color: ${balanceAfter <= 0 ? 'rgba(22,163,74,0.08)' : 'rgba(180,83,9,0.08)'};
                             color: ${balanceAfter <= 0 ? '#15803d' : '#a16207'};
                             border: 1px solid ${balanceAfter <= 0 ? 'rgba(22,163,74,0.25)' : 'rgba(180,83,9,0.25)'};
-                        ">
+                         ">
                             <i data-lucide="${balanceAfter <= 0 ? 'check-circle' : 'alert-circle'}" style="width: 12px; height: 12px;"></i>
                             Balance after payment: ₦${Math.max(0, balanceAfter).toLocaleString()}
                             ${balanceAfter <= 0 ? ' · Fully paid' : ''}
