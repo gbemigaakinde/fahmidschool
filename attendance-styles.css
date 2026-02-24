@@ -1,145 +1,1105 @@
-/* ============================================
-   ATTENDANCE TABS & DAILY REGISTER STYLES
-   Add to styles.css (or attendance-styles.css)
-   ============================================ */
+/* ============================================================
+   FAHMID NURSERY & PRIMARY SCHOOL
+   Attendance UI — Redesigned Stylesheet (2026)
+   
+   Replace the existing attendance CSS block with this file.
+   All original IDs and class names preserved.
+   ============================================================ */
 
-/* ── Attendance Tab Buttons ── */
-.attendance-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid #bfdbfe;
-    margin-bottom: var(--space-lg, 1.5rem);
+/* ── Design Tokens ── */
+:root {
+  --att-blue-900:  #0c2a6e;
+  --att-blue-800:  #1565c0;
+  --att-blue-700:  #1976d2;
+  --att-blue-100:  #dbeafe;
+  --att-blue-50:   #eff6ff;
+  --att-teal:      #0891b2;
+
+  --att-green-bg:  #dcfce7;
+  --att-green-fg:  #15803d;
+  --att-red-bg:    #fee2e2;
+  --att-red-fg:    #dc2626;
+  --att-amber-bg:  #fef9c3;
+  --att-amber-fg:  #a16207;
+  --att-gray-bg:   #f3f4f6;
+  --att-gray-fg:   #6b7280;
+
+  --att-radius-sm: 6px;
+  --att-radius-md: 10px;
+  --att-radius-lg: 14px;
+  --att-radius-xl: 20px;
+
+  --att-shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --att-shadow-md: 0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
+  --att-shadow-lg: 0 20px 40px rgba(0,0,0,.14), 0 8px 16px rgba(0,0,0,.08);
+
+  --att-transition: 150ms cubic-bezier(0.4,0,0.2,1);
 }
 
-.attendance-tab {
-    padding: 0.625rem 1.25rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #6b7280;
-    background: #f8fafc;
-    border: 1px solid #bfdbfe;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-right: 4px;
+/* ═══════════════════════════════════════════════
+   CONTEXT HEADER CARD (FIX 4 — new component)
+═══════════════════════════════════════════════ */
+.att-context-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.125rem 1.5rem;
+  background: linear-gradient(135deg, var(--att-blue-800) 0%, var(--att-blue-900) 100%);
+  border-radius: var(--att-radius-lg);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--att-shadow-md);
 }
 
-.attendance-tab:hover {
-    color: #1d4ed8;
-    background: #eff6ff;
+.att-context-header__left h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 .25rem;
+  letter-spacing: -0.01em;
 }
 
-.attendance-tab.active {
-    color: #1d4ed8;
-    background: white;
-    border-color: #bfdbfe;
-    border-bottom: 2px solid white;
-    margin-bottom: -2px;
+.att-context-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
 }
 
-/* ── Register Table ── */
-.attendance-register-table {
-    border: 2px solid #1565c0;
-    font-size: 0.875rem;
+.att-context-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .2rem .625rem;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  background: rgba(255,255,255,.15);
+  color: rgba(255,255,255,.95);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.2);
 }
 
-.attendance-register-table thead tr th {
-    background: #1565c0;
-    color: white;
-    font-weight: 600;
-    padding: 8px 6px;
-    white-space: nowrap;
+.att-context-header__today {
+  text-align: right;
 }
 
-.attendance-register-table tbody tr:nth-child(even) {
-    background: #f8faff;
+.att-today-label {
+  font-size: .6875rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.6);
+  display: block;
 }
 
-.attendance-register-table tbody tr:hover {
-    background: #eff6ff;
+.att-today-date {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
 }
 
-/* Sticky name column on mobile */
-@media (max-width: 768px) {
-    .attendance-register-table td:first-child,
-    .attendance-register-table th:first-child {
-        position: sticky;
-        left: 0;
-        z-index: 2;
-        background: inherit;
-        min-width: 120px;
-        box-shadow: 2px 0 4px rgba(0,0,0,0.08);
-    }
-
-    .attendance-register-table thead th:first-child {
-        background: #1565c0;
-        z-index: 3;
-    }
-}
-
-/* ── Week Navigator ── */
-.week-navigator {
+@media (max-width: 600px) {
+  .att-context-header {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+    padding: 1rem;
+  }
+  .att-context-header__today {
+    text-align: left;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1.25rem;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 0.75rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .att-today-label { margin-right: .25rem; }
 }
 
-/* ── Mark Day Modal ── */
-#mark-day-modal {
-    backdrop-filter: blur(4px);
+/* ═══════════════════════════════════════════════
+   TABS (FIX 1 — remove fragile -2px trick)
+═══════════════════════════════════════════════ */
+.attendance-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: var(--att-blue-50);
+  border: 1px solid var(--att-blue-100);
+  border-radius: var(--att-radius-lg);
+  margin-bottom: 1.5rem;
 }
 
-#mark-day-modal > div {
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-    animation: modalSlideIn 0.2s ease;
+/* FIX 13 — minimum 44px touch target */
+.attendance-tab {
+  flex: 1;
+  padding: .625rem 1rem;
+  min-height: 44px;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--att-gray-fg);
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition:
+    color var(--att-transition),
+    background var(--att-transition),
+    border-color var(--att-transition),
+    box-shadow var(--att-transition);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
 }
 
-@keyframes modalSlideIn {
-    from { opacity: 0; transform: translateY(-20px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+.attendance-tab:hover:not(.active) {
+  color: var(--att-blue-800);
+  background: rgba(255,255,255,.7);
 }
 
-/* Radio button attendance cells */
-#mark-modal-body table tr:nth-child(even) {
-    background: #f8fafc;
+.attendance-tab:focus-visible {
+  outline: 2px solid var(--att-blue-700);
+  outline-offset: 2px;
 }
 
-#mark-modal-body input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #1d4ed8;
+/* FIX 1 — solid active state, no negative margins */
+.attendance-tab.active {
+  color: var(--att-blue-800);
+  background: #fff;
+  border-color: var(--att-blue-100);
+  box-shadow: var(--att-shadow-sm);
 }
 
-/* ── Weekly Summary Panel ── */
+/* ═══════════════════════════════════════════════
+   WEEK NAVIGATOR (FIX 5 — clear visual hierarchy)
+═══════════════════════════════════════════════ */
+.week-navigator {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: .75rem;
+  padding: .875rem 1.125rem;
+  background: #fff;
+  border: 1px solid var(--att-blue-100);
+  border-radius: var(--att-radius-lg);
+  margin-bottom: 1rem;
+  box-shadow: var(--att-shadow-sm);
+}
+
+.week-navigator .btn-nav-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: var(--att-radius-md);
+  background: var(--att-blue-50);
+  border: 1px solid var(--att-blue-100);
+  color: var(--att-blue-800);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--att-transition);
+  flex-shrink: 0;
+}
+
+.week-navigator .btn-nav-primary:hover {
+  background: var(--att-blue-800);
+  color: #fff;
+  border-color: var(--att-blue-800);
+  transform: translateY(-1px);
+  box-shadow: var(--att-shadow-sm);
+}
+
+#week-label {
+  text-align: center;
+  font-weight: 700;
+  font-size: .9375rem;
+  color: var(--att-blue-900);
+  letter-spacing: -0.01em;
+}
+
+/* FIX 5 — "Today" is tertiary */
+.week-navigator .btn-today {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .375rem .875rem;
+  min-height: 44px;
+  border-radius: var(--att-radius-md);
+  background: transparent;
+  border: 1px solid var(--att-blue-100);
+  color: var(--att-blue-700);
+  font-size: .8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--att-transition);
+  white-space: nowrap;
+}
+
+.week-navigator .btn-today:hover {
+  background: var(--att-blue-50);
+  border-color: var(--att-blue-700);
+}
+
+@media (max-width: 600px) {
+  .week-navigator {
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+  }
+  .week-navigator .btn-today {
+    grid-column: 1 / -1;
+    justify-content: center;
+    border-top: 1px solid var(--att-blue-100);
+    margin-top: .25rem;
+    padding-top: .625rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    background: transparent;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   MARK TODAY BUTTON (FIX 6 — overflow safe)
+═══════════════════════════════════════════════ */
+.att-mark-today-wrap {
+  margin-bottom: 1rem;
+}
+
+.att-mark-today-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .625rem;
+  width: 100%;
+  padding: .875rem 1.25rem;
+  min-height: 52px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  border: none;
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition: all var(--att-transition);
+  box-shadow: 0 2px 8px rgba(21,128,61,.3);
+  letter-spacing: -.01em;
+}
+
+.att-mark-today-btn:hover {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(21,128,61,.35);
+}
+
+.att-mark-today-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(21,128,61,.2);
+}
+
+/* FIX 6 — date text truncates safely */
+.att-mark-today-btn .btn-date-label {
+  font-size: .8125rem;
+  font-weight: 500;
+  opacity: .85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* ═══════════════════════════════════════════════
+   TABLE SCROLL CONTAINER (FIX 7 — scroll affordance)
+═══════════════════════════════════════════════ */
+.att-table-scroll-wrap {
+  position: relative;
+  border-radius: var(--att-radius-lg);
+  border: 1px solid var(--att-blue-100);
+  overflow: hidden;
+  box-shadow: var(--att-shadow-sm);
+}
+
+/* Scroll affordance gradient on right edge */
+.att-table-scroll-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,.9));
+  pointer-events: none;
+  border-radius: 0 var(--att-radius-lg) var(--att-radius-lg) 0;
+  transition: opacity var(--att-transition);
+}
+
+/* Hide affordance when scrolled to right end (JS adds .scrolled-end) */
+.att-table-scroll-wrap.scrolled-end::after {
+  opacity: 0;
+}
+
+.att-table-inner {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--att-blue-100) transparent;
+}
+
+.att-table-inner::-webkit-scrollbar {
+  height: 4px;
+}
+.att-table-inner::-webkit-scrollbar-track {
+  background: var(--att-blue-50);
+}
+.att-table-inner::-webkit-scrollbar-thumb {
+  background: var(--att-blue-100);
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════
+   REGISTER TABLE (FIX 2 — remove hardcoded offsets)
+═══════════════════════════════════════════════ */
+.attendance-register-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: .8125rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+/* Sticky name + gender columns — use CSS custom props set by JS */
+.attendance-register-table th.col-name,
+.attendance-register-table td.col-name {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 140px;
+  max-width: 180px;
+  background: inherit;
+}
+
+.attendance-register-table th.col-gen,
+.attendance-register-table td.col-gen {
+  position: sticky;
+  left: var(--att-name-col-width, 140px); /* overridden by JS if needed */
+  z-index: 3;
+  min-width: 36px;
+  background: inherit;
+}
+
+/* Header row */
+.attendance-register-table thead tr th {
+  padding: 10px 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: var(--att-blue-800);
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: none;
+}
+
+.attendance-register-table thead th.col-name {
+  text-align: left;
+  padding-left: 14px;
+  background: var(--att-blue-900);
+  z-index: 4;
+}
+
+.attendance-register-table thead th.col-gen {
+  background: var(--att-blue-900);
+  z-index: 4;
+}
+
+/* Today column highlight */
+.attendance-register-table th.col-today {
+  background: #0d47a1;
+  outline: 3px solid #fbbf24;
+  outline-offset: -3px;
+}
+
+/* Marked day indicator dot */
+.att-day-header-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.att-day-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #86efac;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Body rows */
+.attendance-register-table tbody tr {
+  transition: background var(--att-transition);
+}
+
+.attendance-register-table tbody tr:nth-child(even) td {
+  background: var(--att-blue-50);
+}
+
+.attendance-register-table tbody tr:nth-child(even) td.col-name,
+.attendance-register-table tbody tr:nth-child(even) td.col-gen {
+  background: var(--att-blue-50);
+}
+
+.attendance-register-table tbody tr:hover td {
+  background: #e0f2fe !important;
+}
+
+.attendance-register-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--att-blue-100);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.attendance-register-table td.col-name {
+  text-align: left;
+  padding-left: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: .8125rem;
+  /* Subtle right shadow for depth */
+  box-shadow: 2px 0 6px rgba(0,0,0,.06);
+}
+
+/* Status cells */
+.att-cell-present {
+  background: var(--att-green-bg) !important;
+  color: var(--att-green-fg);
+  font-weight: 800;
+  font-size: .875rem;
+  cursor: pointer;
+  transition: filter var(--att-transition);
+}
+
+.att-cell-present:hover { filter: brightness(.92); }
+
+.att-cell-absent {
+  background: var(--att-red-bg) !important;
+  color: var(--att-red-fg);
+  font-weight: 800;
+  font-size: .875rem;
+  cursor: pointer;
+  transition: filter var(--att-transition);
+}
+
+.att-cell-absent:hover { filter: brightness(.92); }
+
+.att-cell-unmarked {
+  background: var(--att-gray-bg) !important;
+  color: #cbd5e1;
+  font-size: .75rem;
+}
+
+/* Totals columns */
+.att-col-total {
+  background: var(--att-blue-50) !important;
+  font-weight: 700;
+  font-size: .8125rem;
+  color: var(--att-blue-900);
+  border-left: 1px solid var(--att-blue-100) !important;
+}
+
+.att-col-pct-good  { color: var(--att-green-fg) !important; font-weight: 800 !important; }
+.att-col-pct-warn  { color: var(--att-amber-fg) !important; font-weight: 800 !important; }
+.att-col-pct-bad   { color: var(--att-red-fg) !important;   font-weight: 800 !important; }
+
+/* Totals footer row */
+.att-totals-row td {
+  background: #dbeafe !important;
+  font-weight: 700;
+  border-top: 2px solid var(--att-blue-800) !important;
+  color: var(--att-blue-900);
+  font-size: .8125rem;
+}
+
+.att-totals-row td.col-name {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE (FIX 8)
+═══════════════════════════════════════════════ */
+.att-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+.att-empty-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--att-blue-50);
+  border: 2px dashed var(--att-blue-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.att-empty-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.att-empty-sub {
+  font-size: .875rem;
+  color: var(--att-gray-fg);
+  margin: 0;
+  max-width: 280px;
+}
+
+/* ═══════════════════════════════════════════════
+   WEEKLY SUMMARY PANEL (FIX 9)
+═══════════════════════════════════════════════ */
 #weekly-summary-panel {
-    border-radius: 0.75rem;
-    overflow: hidden;
+  margin-top: 0; /* connected to table via border */
+  border-top: 3px solid var(--att-blue-800);
+  border-radius: 0 0 var(--att-radius-lg) var(--att-radius-lg);
+  overflow: hidden;
+  background: var(--att-blue-50);
+  border-left: 1px solid var(--att-blue-100);
+  border-right: 1px solid var(--att-blue-100);
+  border-bottom: 1px solid var(--att-blue-100);
 }
 
-/* ── Print-specific (browser print of register) ── */
+.att-summary-inner {
+  padding: 1.25rem;
+}
+
+.att-summary-title {
+  font-size: .8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--att-blue-800);
+  margin: 0 0 .875rem;
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+}
+
+.att-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: .625rem;
+}
+
+.att-summary-day-card {
+  background: #fff;
+  border: 1px solid var(--att-blue-100);
+  border-radius: var(--att-radius-md);
+  padding: .75rem;
+  text-align: center;
+  box-shadow: var(--att-shadow-sm);
+}
+
+.att-summary-day-label {
+  font-size: .6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--att-blue-700);
+  margin-bottom: .25rem;
+}
+
+.att-summary-day-count {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--att-blue-900);
+  line-height: 1;
+  margin-bottom: .125rem;
+}
+
+.att-summary-day-pct {
+  font-size: .75rem;
+  color: var(--att-gray-fg);
+}
+
+/* ═══════════════════════════════════════════════
+   ACTION ROW (print + future actions)
+═══════════════════════════════════════════════ */
+.att-action-row {
+  display: flex;
+  gap: .75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.att-btn-print {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .625rem 1.125rem;
+  min-height: 44px;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--att-blue-800);
+  background: #fff;
+  border: 1.5px solid var(--att-blue-100);
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition: all var(--att-transition);
+  box-shadow: var(--att-shadow-sm);
+}
+
+.att-btn-print:hover {
+  background: var(--att-blue-50);
+  border-color: var(--att-blue-700);
+  color: var(--att-blue-900);
+  transform: translateY(-1px);
+  box-shadow: var(--att-shadow-md);
+}
+
+/* ═══════════════════════════════════════════════
+   MARK DAY MODAL (FIX 3, 10 — animation + mobile)
+═══════════════════════════════════════════════ */
+
+/* Overlay — use CSS class not inline style for animation */
+#mark-day-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.5);
+  z-index: 1000;
+  display: flex; /* always flex, toggle via .is-open */
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* FIX 3 — visibility toggle via CSS class so animation fires */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+
+#mark-day-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+}
+
+.att-modal-sheet {
+  background: #fff;
+  border-radius: var(--att-radius-xl);
+  max-width: 580px;
+  width: 100%;
+  max-height: 90dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--att-shadow-lg);
+  transform: translateY(24px) scale(.98);
+  transition: transform 220ms cubic-bezier(0.34,1.56,0.64,1), opacity 200ms ease;
+}
+
+#mark-day-modal.is-open .att-modal-sheet {
+  transform: translateY(0) scale(1);
+}
+
+.att-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.att-modal-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.att-modal-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--att-radius-md);
+  background: #f1f5f9;
+  border: none;
+  color: var(--att-gray-fg);
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all var(--att-transition);
+  flex-shrink: 0;
+}
+
+.att-modal-close:hover {
+  background: var(--att-red-bg);
+  color: var(--att-red-fg);
+}
+
+.att-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.att-modal-footer {
+  display: flex;
+  gap: .75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  background: #fafafa;
+}
+
+/* Date picker */
+.att-modal-date-group {
+  margin-bottom: 1rem;
+}
+
+.att-modal-date-group label {
+  display: block;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--att-blue-700);
+  margin-bottom: .375rem;
+}
+
+.att-modal-date-group input[type="date"] {
+  width: 100%;
+  padding: .5625rem .875rem;
+  border: 1.5px solid var(--att-blue-100);
+  border-radius: var(--att-radius-md);
+  font-size: .9375rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color var(--att-transition);
+}
+
+.att-modal-date-group input[type="date"]:focus {
+  outline: none;
+  border-color: var(--att-blue-700);
+  box-shadow: 0 0 0 3px rgba(21,101,192,.15);
+}
+
+/* FIX 11 — Bulk action chips */
+.att-bulk-actions {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+.att-bulk-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  padding: .625rem .875rem;
+  min-height: 44px; /* FIX 11 */
+  font-size: .8125rem;
+  font-weight: 700;
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition: all var(--att-transition);
+  border: none;
+}
+
+.att-bulk-btn-present {
+  background: var(--att-green-bg);
+  color: var(--att-green-fg);
+  border: 1.5px solid #bbf7d0;
+}
+
+.att-bulk-btn-present:hover {
+  background: #bbf7d0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(21,128,61,.2);
+}
+
+.att-bulk-btn-absent {
+  background: var(--att-red-bg);
+  color: var(--att-red-fg);
+  border: 1.5px solid #fecaca;
+}
+
+.att-bulk-btn-absent:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220,38,38,.2);
+}
+
+/* Modal pupil table */
+.att-modal-table-wrap {
+  border: 1px solid #f1f5f9;
+  border-radius: var(--att-radius-md);
+  overflow: hidden;
+}
+
+.att-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.att-modal-table thead th {
+  padding: 8px 12px;
+  font-size: .6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  background: #f8fafc;
+  color: var(--att-gray-fg);
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+}
+
+.att-modal-table thead th:not(:first-child) {
+  text-align: center;
+  width: 70px;
+}
+
+.att-modal-table tbody tr {
+  transition: background var(--att-transition);
+}
+
+.att-modal-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.att-modal-table tbody tr:hover {
+  background: var(--att-blue-50);
+}
+
+.att-modal-table tbody td {
+  padding: 9px 12px;
+  font-size: .875rem;
+  color: #1e293b;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.att-modal-table tbody td:not(:first-child) {
+  text-align: center;
+}
+
+/* Radio inputs — styled and accessible */
+.att-modal-table input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--att-blue-800);
+}
+
+.att-radio-present { accent-color: var(--att-green-fg) !important; }
+.att-radio-absent  { accent-color: var(--att-red-fg)   !important; }
+
+/* Modal save button */
+.att-modal-save-btn {
+  flex: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .75rem 1.25rem;
+  min-height: 48px;
+  font-size: .9375rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--att-blue-700) 0%, var(--att-blue-800) 100%);
+  border: none;
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition: all var(--att-transition);
+  box-shadow: 0 2px 8px rgba(21,101,192,.3);
+}
+
+.att-modal-save-btn:hover {
+  background: linear-gradient(135deg, var(--att-blue-800) 0%, var(--att-blue-900) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(21,101,192,.35);
+}
+
+.att-modal-save-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.att-modal-cancel-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .75rem;
+  min-height: 48px;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--att-gray-fg);
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: var(--att-radius-md);
+  cursor: pointer;
+  transition: all var(--att-transition);
+}
+
+.att-modal-cancel-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+/* FIX 10 — Mobile bottom sheet */
+@media (max-width: 600px) {
+  #mark-day-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .att-modal-sheet {
+    max-width: 100%;
+    border-radius: var(--att-radius-xl) var(--att-radius-xl) 0 0;
+    max-height: 92dvh;
+    transform: translateY(100%);
+  }
+
+  #mark-day-modal.is-open .att-modal-sheet {
+    transform: translateY(0);
+  }
+
+  /* Bottom sheet drag handle */
+  .att-modal-sheet::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin: .875rem auto 0;
+    flex-shrink: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING SKELETON (FIX 12)
+═══════════════════════════════════════════════ */
+@keyframes att-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.att-skeleton {
+  background: linear-gradient(
+    90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 800px 100%;
+  animation: att-shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+.att-skeleton-row {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.att-skeleton-name {
+  height: 14px;
+  border-radius: 4px;
+  flex: 1;
+  max-width: 180px;
+}
+
+.att-skeleton-cell {
+  height: 28px;
+  width: 44px;
+  border-radius: var(--att-radius-sm);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   LEGACY INFO BANNER
+═══════════════════════════════════════════════ */
+.att-legacy-banner {
+  display: flex;
+  gap: .875rem;
+  align-items: flex-start;
+  padding: 1rem 1.125rem;
+  background: #eff6ff;
+  border: 1px solid var(--att-blue-100);
+  border-radius: var(--att-radius-md);
+  margin-bottom: 1.25rem;
+}
+
+.att-legacy-banner-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: .0625rem;
+}
+
+.att-legacy-banner-text strong {
+  display: block;
+  font-size: .875rem;
+  font-weight: 700;
+  color: var(--att-blue-800);
+  margin-bottom: .25rem;
+}
+
+.att-legacy-banner-text p {
+  font-size: .8125rem;
+  color: var(--att-blue-700);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   PRINT OVERRIDES
+═══════════════════════════════════════════════ */
 @media print {
-    .attendance-tabs,
-    .week-navigator,
-    #mark-day-modal,
-    .btn,
-    button {
-        display: none !important;
-    }
+  .attendance-tabs,
+  .week-navigator,
+  .att-mark-today-wrap,
+  .att-action-row,
+  #mark-day-modal,
+  #weekly-summary-panel {
+    display: none !important;
+  }
 
-    .attendance-register-table {
-        font-size: 8pt;
-    }
+  .att-table-scroll-wrap::after { display: none; }
+  .att-table-inner { overflow: visible; }
 
-    .attendance-register-table td,
-    .attendance-register-table th {
-        padding: 3px 4px;
-    }
+  .attendance-register-table {
+    font-size: 8pt;
+  }
+
+  .attendance-register-table td,
+  .attendance-register-table th {
+    padding: 3px 4px;
+  }
 }
