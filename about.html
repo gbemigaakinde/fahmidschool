@@ -1,372 +1,360 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about Fahmid Nursery & Primary School's mission, vision, and commitment to educational excellence.">
-    <title>About Us - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-
-<!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
-
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
-
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Learn about Fahmid Nursery and Primary School — our history, mission, vision, leadership, and the values that guide everything we do.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>About Us — Fahmid Nursery &amp; Primary School</title>
+  <link rel="canonical" href="https://fahmidschool.ng/about.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+  <link rel="apple-touch-icon" href="IMG_4628.jpeg">
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main" class="skip-link">Skip to main content</a>
 
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
-
-        <div class="sidebar-content">
-            <nav>
-                <ul role="list">
-                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
-                    <li><a href="about.html" aria-current="page"><i data-lucide="info"></i> About</a></li>
-                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
-                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
-                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
-                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
-                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-
-        <div class="sidebar-footer">
-            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-                Login to Portal
-            </a>
-        </div>
+<!-- NAV (shared) -->
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html" aria-current="page">About</a></li>
+        <li><a href="academics.html">Academics</a></li>
+        <li><a href="admissions.html">Admissions</a></li>
+        <li><a href="school-life.html">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="hero" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); min-height: 400px;">
-        <div class="hero-content">
-            <h1>About Fahmid School</h1>
-            <p class="lead">
-                Building tomorrow's leaders through excellence in education, character development, and a nurturing learning environment
-            </p>
-        </div>
-    </section>
-
-    <main id="main-content" class="main-content">
-
-        <!-- MISSION & VISION -->
-        <section class="container section">
-            <div class="grid" style="gap: var(--space-12);">
-                <article style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-12); border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg);">
-                    <div style="background: rgba(255,255,255,0.2); width: 70px; height: 70px; border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6);">
-                        <i data-lucide="target" style="width: 36px; height: 36px;"></i>
-                    </div>
-                    <h2 style="color: white; margin-top: 0; margin-bottom: var(--space-4);">Our Mission</h2>
-                    <p style="font-size: var(--text-lg); line-height: 1.8; margin: 0;">
-                        To be the first in providing learning and creativity in the hands of highly trained, loving, caring, and God-fearing teachers in a fun-filled environment.
-                    </p>
-                </article>
-
-                <article style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: white; padding: var(--space-12); border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg);">
-                    <div style="background: rgba(255,255,255,0.2); width: 70px; height: 70px; border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-6);">
-                        <i data-lucide="eye" style="width: 36px; height: 36px;"></i>
-                    </div>
-                    <h2 style="color: white; margin-top: 0; margin-bottom: var(--space-4);">Our Vision</h2>
-                    <p style="font-size: var(--text-lg); line-height: 1.8; margin: 0;">
-                        To be the most referred home of learning that is celebrated for academic and moral excellence in Africa.
-                    </p>
-                </article>
-            </div>
-        </section>
-
-        <!-- CORE VALUES -->
-<section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-    <h2 class="section-title">Our Core Values</h2>
-    <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-        These principles guide everything we do at Fahmid Nursery and Primary School
-    </p>
-
-    <div class="grid">
-        <article class="feature-card animate-on-scroll animate-scaleIn">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-                <i data-lucide="heart"></i>
-            </div>
-            <h3>Love & Care</h3>
-            <p>
-                We show genuine love and care for every child, ensuring they feel safe, supported, and valued at all times.
-            </p>
-        </article>
-
-        <article class="feature-card">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
-                <i data-lucide="user"></i>
-            </div>
-            <h3>Respect for Individual</h3>
-            <p>
-                We respect each child as a unique individual and encourage confidence, self-worth, and personal growth.
-            </p>
-        </article>
-
-        <article class="feature-card">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
-                <i data-lucide="lightbulb"></i>
-            </div>
-            <h3>Continuous Learning & Creativity</h3>
-            <p>
-                We promote continuous learning and creativity, helping pupils think freely and develop lifelong learning skills.
-            </p>
-        </article>
-
-        <article class="feature-card">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
-                <i data-lucide="shield-check"></i>
-            </div>
-            <h3>Integrity</h3>
-            <p>
-                We uphold strong moral values and honesty, guiding pupils to do what is right at all times.
-            </p>
-        </article>
-
-        <article class="feature-card">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);">
-                <i data-lucide="check-circle"></i>
-            </div>
-            <h3>Discipline</h3>
-            <p>
-                We instill discipline through positive guidance, helping pupils develop good behavior and responsibility.
-            </p>
-        </article>
-
-        <article class="feature-card">
-            <div class="feature-icon" style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);">
-                <i data-lucide="users"></i>
-            </div>
-            <h3>Team Work</h3>
-            <p>
-                We encourage teamwork among pupils and staff, fostering cooperation, unity, and shared success.
-            </p>
-        </article>
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="admissions.html" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
-</section>
+  </div>
+</header>
 
-        <!-- HISTORY -->
-<section class="container section">
-    <h2 class="section-title">Our Story</h2>
-    <div style="max-width: 900px; margin: 0 auto;">
-        <div style="background: white; padding: var(--space-12); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
-            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--color-gray-700); margin-bottom: var(--space-6);">
-                In 2006, the school began as a tutorial centre for secondary school students. At the time, the founder was working elsewhere but used every available opportunity to teach and support learners. After work hours and even during short breaks, lessons were held, students were encouraged, and academic gaps were addressed. A manager was later employed to oversee daily activities, but the founder remained actively involved.
-            </p>
-            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--color-gray-700); margin-bottom: var(--space-6);">
-                What began as a small tutorial centre gradually grew. Students showed improvement, parents noticed the results, and the centre became known as Multiple Success Tutorial. During holiday coaching periods, some parents of younger children began to show interest in the teaching methods and asked if their toddlers could also be taught there.
-            </p>
-            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--color-gray-700); margin-bottom: var(--space-6);">
-                Running a full school was not the original plan. The focus then was simply on teaching and making a difference. However, a turning point came when the founder was asked to head an existing school that was facing serious challenges, including the withdrawal of many pupils. The responsibility was demanding, and despite efforts such as meeting parents personally and trying to rebuild trust, progress was limited.
-            </p>
-            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--color-gray-700); margin-bottom: var(--space-6);">
-                This experience led to a crucial decision. Instead of abandoning the vision of quality education, a new path was chosen. In September 2007, a new school site was secured, and operations began independently.
-            </p>
-            <p style="font-size: var(--text-lg); line-height: 1.8; color: var(--color-gray-700); margin: 0;">
-                That decision gave rise to Multiple Success Academy. As the years went by, the school evolved into Fahmid Kiddies Academy and later into Fahmid Nursery and Primary School. Through every stage of growth, one thing has remained unchanged: the commitment to raising well-rounded children. The school focuses not only on academics but also on character, discipline, confidence, and values. Our aim has always been to build a strong foundation for each child and to support their growth in all areas.
-            </p>
-        </div>
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html"><i data-lucide="home" style="width:18px;height:18px;"></i> Home</a>
+  <a href="about.html" aria-current="page"><i data-lucide="info" style="width:18px;height:18px;"></i> About</a>
+  <a href="academics.html"><i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics</a>
+  <a href="admissions.html"><i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions</a>
+  <a href="school-life.html"><i data-lucide="users" style="width:18px;height:18px;"></i> School Life</a>
+  <a href="gallery.html"><i data-lucide="image" style="width:18px;height:18px;"></i> Gallery</a>
+  <a href="news.html"><i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events</a>
+  <a href="contact.html"><i data-lucide="phone" style="width:18px;height:18px;"></i> Contact</a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html"><i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login</a>
+  <div class="nav-mobile-cta">
+    <a href="admissions.html" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <div class="page-hero-bg">
+      <img src="IMG_4628.jpeg" alt="" aria-hidden="true" loading="eager">
     </div>
-</section>
+    <div class="container page-hero-inner">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        <span aria-current="page">About</span>
+      </nav>
+      <h1>About Fahmid School</h1>
+      <p class="page-hero-lead">Our story, mission, values, and the people who make this school exceptional.</p>
+    </div>
+  </div>
 
-        <!-- LEADERSHIP TEAM -->
-        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Leadership Team</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Experienced educators dedicated to your child's success
-            </p>
+  <!-- MISSION & VISION -->
+  <section class="section" aria-labelledby="mission-heading">
+    <div class="container">
+      <div class="grid-2" style="gap: var(--s-8); align-items: start;">
 
-            <div class="grid">
-                <article class="card">
-                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user" style="width: 48px; height: 48px; color: white;"></i>
-                    </div>
-                    <h3>Head Teacher</h3>
-                    <p style="color: var(--color-primary); font-weight: var(--weight-semibold); margin-bottom: var(--space-3);">Mrs. [Name]</p>
-                    <p>
-                        Leading our school with over 15 years of experience in early childhood and primary education, ensuring excellence in all areas.
-                    </p>
-                </article>
-
-                <article class="card">
-                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user" style="width: 48px; height: 48px; color: white;"></i>
-                    </div>
-                    <h3>Academic Coordinator</h3>
-                    <p style="color: var(--color-success); font-weight: var(--weight-semibold); margin-bottom: var(--space-3);">Mr./Mrs. [Name]</p>
-                    <p>
-                        Overseeing curriculum development and implementation to ensure our academic programs meet the highest standards.
-                    </p>
-                </article>
-
-                <article class="card">
-                    <div style="width: 100px; height: 100px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: 50%; margin: 0 auto var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="user" style="width: 48px; height: 48px; color: white;"></i>
-                    </div>
-                    <h3>Student Welfare Officer</h3>
-                    <p style="color: #9C27B0; font-weight: var(--weight-semibold); margin-bottom: var(--space-3);">Mrs. [Name]</p>
-                    <p>
-                        Ensuring the wellbeing, safety, and happiness of every child in our care through dedicated pastoral support.
-                    </p>
-                </article>
-            </div>
-        </section>
-
-        <!-- FACILITIES -->
-        <section class="container section">
-            <h2 class="section-title">Our Facilities</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Modern, safe, and well-equipped learning spaces designed for young learners
-            </p>
-
-            <div class="grid">
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="school" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Bright Classrooms</h3>
-                    <p>Spacious, well-lit classrooms equipped with age-appropriate furniture and learning materials.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="library" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Library</h3>
-                    <p>A collection of age-appropriate books to encourage reading and develop literacy skills.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="play-circle" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Play Areas</h3>
-                    <p>Safe outdoor and indoor play spaces with equipment for physical development and recreation.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="flask-conical" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Science Lab</h3>
-                    <p>Basic laboratory equipment for hands-on science experiments and practical learning.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="utensils" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Cafeteria</h3>
-                    <p>Clean dining area serving nutritious meals and snacks to support healthy growth.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="shield-check" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Security</h3>
-                    <p>Secure premises with controlled access to ensure the safety of all students and staff.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- ACCREDITATION -->
-        <section class="container section">
-            <div style="background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(25, 118, 210, 0.05) 100%); padding: var(--space-16); border-radius: var(--radius-2xl); text-align: center; border: 2px solid rgba(33, 150, 243, 0.1);">
-                <div style="display: flex; align-items: center; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-8);">
-                    <i data-lucide="award" style="width: 48px; height: 48px; color: var(--color-primary);"></i>
-                    <h2 style="margin: 0;">Accredited & Recognized</h2>
-                </div>
-                <p style="font-size: var(--text-lg); max-width: 700px; margin: 0 auto; color: var(--color-gray-700); line-height: 1.8;">
-                    Fahmid Nursery and Primary School is fully registered and approved by the Ministry of Education, meeting all standards for quality education and child safety.
-                </p>
-            </div>
-        </section>
-
-        <!-- CTA SECTION -->
-        <section class="container section cta-section">
-            <h2>Visit Fahmid School</h2>
-            <p class="lead">
-                Experience our nurturing environment and meet our dedicated team firsthand
-            </p>
-            <a href="contact.html" class="btn">Schedule a Tour</a>
-            <a href="admissions.html" class="btn btn-secondary">Learn About Admissions</a>
-        </section>
-
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-links">
-                <a href="about.html">About Us</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="policy.html">School Policy</a>
-            </div>
-
-            <div class="social-links">
-                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                    <i data-lucide="facebook"></i>
-                </a>
-                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                    <i data-lucide="instagram"></i>
-                </a>
-                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                    <i data-lucide="message-circle"></i>
-                </a>
-            </div>
-
-            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+        <div class="reveal" style="background: var(--accent); color: white; padding: var(--s-10); border-radius: var(--radius-2xl);">
+          <div style="width: 52px; height: 52px; background: rgba(255,255,255,0.15); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--s-5);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <h2 id="mission-heading" style="font-size: var(--text-2xl); color: white; margin-bottom: var(--s-4);">Our Mission</h2>
+          <p style="font-size: var(--text-lg); color: rgba(255,255,255,0.88); line-height: 1.75; max-width: 100%;">
+            To be the first in providing learning and creativity in the hands of highly trained, loving, caring, and God-fearing teachers in a fun-filled environment.
+          </p>
         </div>
-    </footer>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+        <div class="reveal reveal-delay-2" style="background: var(--ink-900); color: white; padding: var(--s-10); border-radius: var(--radius-2xl);">
+          <div style="width: 52px; height: 52px; background: rgba(255,255,255,0.08); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--s-5);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h2 style="font-size: var(--text-2xl); color: white; margin-bottom: var(--s-4);">Our Vision</h2>
+          <p style="font-size: var(--text-lg); color: rgba(255,255,255,0.78); line-height: 1.75; max-width: 100%;">
+            To be the most referred home of learning celebrated for academic and moral excellence in Africa.
+          </p>
+        </div>
 
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-    </script>
-    <!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    });
-}
-</script>
+      </div>
+    </div>
+  </section>
+
+  <!-- OUR STORY -->
+  <section class="section section--alt" aria-labelledby="story-heading">
+    <div class="container">
+      <div style="max-width: var(--content-width); margin-inline: auto;">
+        <div class="reveal">
+          <p class="eyebrow">Our Story</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="story-heading">From a Tutorial Centre to a Celebrated School</h2>
+        </div>
+
+        <div class="reveal reveal-delay-1" style="margin-top: var(--s-8);">
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8;">
+            In 2006, the school began as a tutorial centre for secondary school students. At the time, the founder was working elsewhere but used every available opportunity to teach and support learners. After-hours and during short breaks, lessons were held, students were encouraged, and academic gaps were addressed.
+          </p>
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8;">
+            What began as a small tutorial centre gradually grew. Students improved, parents noticed the results, and the centre became known as Multiple Success Tutorial. During holiday coaching periods, parents of younger children began to ask if their toddlers could also be taught there.
+          </p>
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8;">
+            Running a full school was not the original plan. A turning point came when the founder was asked to head an existing school facing serious challenges. Despite efforts to rebuild trust, progress was limited — leading to a decisive moment.
+          </p>
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8;">
+            In September 2007, a new school site was secured and operations began independently. That decision gave rise to Multiple Success Academy, which evolved into Fahmid Kiddies Academy and later into Fahmid Nursery and Primary School.
+          </p>
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8;">
+            Through every stage of growth, one thing has remained unchanged: the commitment to raising well-rounded children — not only academically, but in character, discipline, confidence, and values.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CORE VALUES -->
+  <section class="section" aria-labelledby="values-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">What We Stand For</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="values-heading">Our Core Values</h2>
+        <p class="section-lead">These principles shape how we teach, how we treat our pupils, and how we run our school.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Love &amp; Care</h3>
+          <p>We show genuine love and care for every child, ensuring they feel safe, supported, and valued at all times.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h3>Respect for the Individual</h3>
+          <p>We respect each child as a unique individual and encourage confidence, self-worth, and personal growth.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>Continuous Learning</h3>
+          <p>We promote continuous learning and creativity, helping pupils think freely and develop lifelong learning skills.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Integrity</h3>
+          <p>We uphold strong moral values and honesty, guiding pupils to do what is right in all circumstances.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <h3>Discipline</h3>
+          <p>We instill discipline through positive guidance, helping pupils develop good behaviour and responsibility.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Teamwork</h3>
+          <p>We encourage collaboration among pupils and staff, fostering cooperation, unity, and shared achievement.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEADERSHIP -->
+  <section class="section section--alt" aria-labelledby="leadership-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">The People Behind the School</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="leadership-heading">Our Leadership Team</h2>
+        <p class="section-lead">Experienced educators dedicated to academic excellence and child wellbeing.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card reveal">
+          <div class="card-body" style="text-align:center;">
+            <div style="width: 80px; height: 80px; background: var(--accent-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--s-5); color: var(--accent);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="card-meta">Head Teacher</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">Proprietress</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">Providing visionary leadership with over 18 years of experience in early childhood and primary education.</p>
+          </div>
+        </div>
+        <div class="card reveal reveal-delay-1">
+          <div class="card-body" style="text-align:center;">
+            <div style="width: 80px; height: 80px; background: var(--accent-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--s-5); color: var(--accent);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="card-meta">Academic Coordinator</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">Curriculum Lead</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">Overseeing curriculum design and delivery to ensure our academic programs meet the highest standards.</p>
+          </div>
+        </div>
+        <div class="card reveal reveal-delay-2">
+          <div class="card-body" style="text-align:center;">
+            <div style="width: 80px; height: 80px; background: var(--accent-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--s-5); color: var(--accent);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="card-meta">Student Welfare</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">Welfare Officer</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">Ensuring the wellbeing, safety, and happiness of every child through dedicated pastoral support.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FACILITIES -->
+  <section class="section" aria-labelledby="facilities-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Our Campus</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="facilities-heading">Our Facilities</h2>
+        <p class="section-lead">Modern, safe, and purposefully designed spaces for young learners.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card reveal"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><h3>Bright Classrooms</h3><p>Spacious, well-lit classrooms with age-appropriate furniture and diverse learning materials.</p></div>
+        <div class="feature-card reveal reveal-delay-1"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div><h3>Library</h3><p>A curated collection of age-appropriate books to foster reading and develop strong literacy skills.</p></div>
+        <div class="feature-card reveal reveal-delay-2"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></div><h3>Play Areas</h3><p>Safe outdoor and indoor play spaces with equipment designed for physical and creative development.</p></div>
+        <div class="feature-card reveal"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg></div><h3>Science Lab</h3><p>Hands-on laboratory equipment enabling pupils to explore science through practical experimentation.</p></div>
+        <div class="feature-card reveal reveal-delay-1"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div><h3>Cafeteria</h3><p>Clean dining area serving nutritious meals and snacks to support healthy growth and sustained focus.</p></div>
+        <div class="feature-card reveal reveal-delay-2"><div class="feature-icon-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h3>Secure Premises</h3><p>Controlled access, monitored entrances, and vigilant supervision ensuring total child safety.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCREDITATION -->
+  <section class="section section--alt" aria-label="Accreditation">
+    <div class="container">
+      <div class="reveal" style="background: var(--accent-pale); border: 1px solid rgba(27,58,122,0.12); border-radius: var(--radius-2xl); padding: var(--s-12); text-align: center; max-width: 800px; margin-inline: auto;">
+        <div style="width: 64px; height: 64px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--s-5);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+        </div>
+        <h2 style="font-size: var(--text-2xl); margin-bottom: var(--s-3);">Ministry of Education Accredited</h2>
+        <p style="font-size: var(--text-lg); color: var(--ink-600); max-width: 56ch; margin-inline: auto; max-width: 100%;">
+          Fahmid Nursery and Primary School is fully registered and approved by the Ministry of Education, meeting all established standards for educational quality and child safety.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner" aria-label="Contact call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Come and See Us</h2>
+          <p>Schedule a personal tour and meet our staff. See firsthand why families trust Fahmid School.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="contact.html" class="btn btn-gold btn-lg">Schedule a Tour</a>
+          <a href="admissions.html" class="btn btn-ghost btn-lg">Apply for Admission</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Fahmid School, [Address], Nigeria</span></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg><a href="tel:+2348061427297">+234 806 142 7297</a></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:info@fahmidschool.ng">info@fahmidschool.ng</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <div class="footer-legal">
+        <a href="policy.html">School Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="script.js" defer></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
 </html>
