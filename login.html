@@ -604,29 +604,23 @@
     }
   }
 
-  async function handleLogin(identifier, password) {
-    let email = identifier.trim();
-    const isAdmissionNo = !email.includes('@');
+async function handleLogin(identifier, password) {
+  let email = identifier.trim();
+  const isAdmissionNo = !email.includes('@');
 
-    if (isAdmissionNo) {
-      const found = await getEmailByAdmissionNumber(email);
-      if (!found) {
-        window.showToast('No account found with this admission number.', 'danger');
-        throw new Error('Invalid admission number');
-      }
-      email = found;
+  if (isAdmissionNo) {
+    const found = await getEmailByAdmissionNumber(email);
+    if (!found) {
+      window.showToast('No account found with this admission number.', 'danger');
+      throw new Error('Invalid admission number');
     }
-
-    const cred = await auth.signInWithEmailAndPassword(email, password);
-    const userDoc = await db.collection('users').doc(cred.user.uid).get();
-    if (!userDoc.exists) throw new Error('User data not found');
-
-    const { role } = userDoc.data();
-    window.showToast('Login successful! Redirecting…', 'success');
-
-    const routes = { admin: 'admin.html', teacher: 'teacher.html', pupil: 'pupil.html' };
-    setTimeout(() => { window.location.href = routes[role] || 'index.html'; }, 1000);
+    email = found;
   }
+
+  await auth.signInWithEmailAndPassword(email, password);
+  window.showToast('Login successful! Redirecting…', 'success');
+  setTimeout(() => { window.location.href = 'portal.html'; }, 1000);
+}
 
   document.addEventListener('DOMContentLoaded', () => {
     // Lucide icons
