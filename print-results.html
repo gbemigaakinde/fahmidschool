@@ -743,16 +743,48 @@
         .doc-ft { padding: 5px 14px; }
         .doc-ft__txt, .doc-ft__badge-txt { font-size: 5.5pt; }
 
-        .section, .key, .closing, .doc-ft,
+        /* ── Keep the school header + title strip + Student Profile glued together ── */
+        .doc-hd {
+            page-break-after: avoid;
+        }
+        .doc-title {
+            page-break-before: avoid;
+            page-break-after: avoid;
+        }
+        /* The very first section (Student Profile) must not detach from the title */
+        .doc-body > .section:first-child {
+            page-break-before: avoid;
+        }
+
+        /* ── Small sections: never split internally ── */
+        .key, .closing, .doc-ft,
         .remarks-row, .att-row, .id-grid {
             page-break-inside: avoid;
+        }
+
+        /* ── Non-academic sections: keep whole ── */
+        .section:not(.section--academic) {
+            page-break-inside: avoid;
+        }
+
+        /* ── Academic table: allow natural page breaks, but repeat the header ── */
+        .section--academic {
+            page-break-inside: auto;
+        }
+        .ac-table thead {
+            display: table-header-group; /* header repeats on every page */
+        }
+        .ac-table tbody tr {
+            page-break-inside: avoid;   /* never cut a row in half */
+        }
+        .ac-table .summary-row {
+            page-break-before: avoid;   /* keep summary attached to last data row */
         }
 
         @page {
             size: A4 portrait;
             margin: 8mm 10mm 8mm;
         }
-    }
     </style>
 </head>
 <body>
