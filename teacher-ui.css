@@ -1747,6 +1747,12 @@
         white-space: normal;
     }
 
+    /* ✅ FIX: Suppress "Pupil Name" data-label from being prepended */
+    #pupils-in-class-table tbody td:first-child::before {
+        content: none !important;
+        display: none !important;
+    }
+
     #pupils-in-class-table tbody td:not(:first-child) {
         padding: var(--tp-space-2) var(--tp-space-4);
         font-size: 0.8125rem;
@@ -1766,12 +1772,10 @@
         color: var(--tp-text-muted);
     }
 
-    /* Divider between the two smaller cells */
     #pupils-in-class-table tbody td:nth-child(2) {
         border-right: 1px solid var(--tp-border);
     }
 
-    /* Disable the global responsive-table card flip for this table */
     #pupils-in-class-table tbody tr:hover { background: var(--tp-surface); }
 }
 
