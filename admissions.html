@@ -1,472 +1,467 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Learn about the admissions process, requirements, and how to enroll your child at Fahmid School.">
-    <title>Admissions - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-<!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
-
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
-
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Apply for admission to Fahmid Nursery and Primary School. Learn about our admissions process, requirements, and how to enrol your child.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>Admissions — Fahmid Nursery &amp; Primary School</title>
+  <link rel="canonical" href="https://fahmidschool.ng/admissions.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main" class="skip-link">Skip to main content</a>
 
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
-
-        <div class="sidebar-content">
-            <nav>
-                <ul role="list">
-                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
-                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
-                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
-                    <li><a href="admissions.html" aria-current="page"><i data-lucide="file-text"></i> Admissions</a></li>
-                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
-                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
-                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-
-        <div class="sidebar-footer">
-            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-                Login to Portal
-            </a>
-        </div>
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="academics.html">Academics</a></li>
+        <li><a href="admissions.html" aria-current="page">Admissions</a></li>
+        <li><a href="school-life.html">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
     </nav>
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="#enquiry-form" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
 
-    <!-- HERO SECTION -->
-    <section class="hero" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); min-height: 400px;">
-        <div class="hero-content">
-            <h1>Admissions</h1>
-            <p class="lead">
-                Join the Fahmid family and give your child the foundation for lifelong success
-            </p>
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html"><i data-lucide="home" style="width:18px;height:18px;"></i> Home</a>
+  <a href="about.html"><i data-lucide="info" style="width:18px;height:18px;"></i> About</a>
+  <a href="academics.html"><i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics</a>
+  <a href="admissions.html" aria-current="page"><i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions</a>
+  <a href="school-life.html"><i data-lucide="users" style="width:18px;height:18px;"></i> School Life</a>
+  <a href="gallery.html"><i data-lucide="image" style="width:18px;height:18px;"></i> Gallery</a>
+  <a href="news.html"><i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events</a>
+  <a href="contact.html"><i data-lucide="phone" style="width:18px;height:18px;"></i> Contact</a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html"><i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login</a>
+  <div class="nav-mobile-cta">
+    <a href="#enquiry-form" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
+</nav>
+
+<main id="main">
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <div class="page-hero-bg">
+      <img src="IMG_4628.jpeg" alt="" aria-hidden="true" loading="eager">
+    </div>
+    <div class="container page-hero-inner">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        <span aria-current="page">Admissions</span>
+      </nav>
+      <h1>Admissions</h1>
+      <p class="page-hero-lead">We welcome families who share our belief that every child deserves an exceptional education.</p>
+    </div>
+  </div>
+
+  <!-- ENROLMENT STATUS BANNER -->
+  <div style="background: var(--green-pale); border-bottom: 1px solid rgba(5,150,105,0.2); padding: var(--s-4) 0;">
+    <div class="container" style="display: flex; align-items: center; justify-content: center; gap: var(--s-3); flex-wrap: wrap; text-align: center;">
+      <span style="display: inline-flex; align-items: center; gap: var(--s-2); background: var(--green); color: white; padding: 3px 12px; border-radius: var(--radius-pill); font-size: var(--text-xs); font-weight: var(--w-semibold);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Enrolment Open
+      </span>
+      <span style="font-size: var(--text-sm); color: var(--green); font-weight: var(--w-semibold);">
+        Admissions for the 2026–2027 Academic Year are now open. Limited places available.
+      </span>
+      <a href="#enquiry-form" class="btn btn-primary btn-sm">Apply Today</a>
+    </div>
+  </div>
+
+  <!-- ADMISSION STEPS -->
+  <section class="section" aria-labelledby="process-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">How to Apply</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="process-heading">Our Admissions Process</h2>
+        <p class="section-lead">A straightforward process designed to make joining our school family as easy as possible.</p>
+      </div>
+
+      <div class="steps-list reveal">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-connector"></div>
+          <div class="step-content">
+            <h3>Submit Enquiry</h3>
+            <p>Complete the online enquiry form below or contact us directly by phone.</p>
+          </div>
         </div>
-    </section>
-
-    <main id="main-content" class="main-content">
-
-        <!-- ADMISSIONS OPEN -->
-        <section class="container section">
-            <div style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(69, 160, 73, 0.1) 100%); padding: var(--space-12); border-radius: var(--radius-2xl); text-align: center; border: 2px solid rgba(76, 175, 80, 0.3); margin-bottom: var(--space-16);">
-                <div style="display: inline-flex; align-items: center; gap: var(--space-3); background: var(--color-success); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-full); margin-bottom: var(--space-6); font-weight: var(--weight-semibold);">
-                    <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
-                    <span>Now Accepting Applications</span>
-                </div>
-                <h2 style="margin: 0 0 var(--space-4) 0;">Admissions Currently Open</h2>
-                <p style="font-size: var(--text-lg); max-width: 700px; margin: 0 auto; color: var(--color-gray-700); line-height: 1.8;">
-                    We are currently accepting applications for the new academic session. Limited spaces available across all classes.
-                </p>
-            </div>
-        </section>
-
-        <!-- HOW TO APPLY -->
-        <section class="container section">
-            <h2 class="section-title">How to Apply</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Our admissions process is simple and straightforward
-            </p>
-
-            <div style="max-width: 900px; margin: 0 auto;">
-                <!-- Step 1 -->
-                <article class="animate-on-scroll animate-fadeInUp" style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
-                    <div style="flex-shrink: 0;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">1</span>
-                        </div>
-                    </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-primary);">
-                            <i data-lucide="phone" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
-                            Initial Inquiry
-                        </h3>
-                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
-                            Contact us via phone, WhatsApp, or visit our school to express your interest. Our admissions team will provide you with detailed information about available spaces and next steps.
-                        </p>
-                    </div>
-                </article>
-
-                <!-- Step 2 -->
-                <article class="animate-on-scroll animate-fadeInUp" style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
-                    <div style="flex-shrink: 0;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">2</span>
-                        </div>
-                    </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-success);">
-                            <i data-lucide="school" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
-                            School Tour & Assessment
-                        </h3>
-                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
-                            Schedule a tour to see our facilities and meet our teachers. For primary classes, your child will have a brief, friendly assessment to help us understand their current level and learning needs.
-                        </p>
-                    </div>
-                </article>
-
-                <!-- Step 3 -->
-                <article class="animate-on-scroll animate-fadeInUp" style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
-                    <div style="flex-shrink: 0;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">3</span>
-                        </div>
-                    </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 var(--space-3) 0; color: var(--color-warning);">
-                            <i data-lucide="file-text" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
-                            Complete Registration
-                        </h3>
-                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
-                            Submit required documents and complete the registration form. Pay the registration fee and first term fees to secure your child's place.
-                        </p>
-                    </div>
-                </article>
-
-                <!-- Step 4 -->
-                <article class="animate-on-scroll animate-fadeInUp" style="display: flex; gap: var(--space-8); margin-bottom: var(--space-12); align-items: flex-start;">
-                    <div style="flex-shrink: 0;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                            <span style="color: white; font-size: var(--text-4xl); font-weight: var(--weight-bold);">4</span>
-                        </div>
-                    </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 var(--space-3) 0; color: #9C27B0;">
-                            <i data-lucide="party-popper" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i>
-                            Welcome to Fahmid!
-                        </h3>
-                        <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8; font-size: var(--text-lg);">
-                            Receive your admission pack including uniforms information, school calendar, and parent handbook. Your child is now ready to begin their journey at Fahmid School!
-                        </p>
-                    </div>
-                </article>
-            </div>
-        </section>
-
-        <!-- REQUIREMENTS -->
-        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Required Documents</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Please prepare the following documents for registration
-            </p>
-
-            <div class="grid" style="max-width: 1000px; margin: 0 auto;">
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="file" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Birth Certificate</h3>
-                    <p>Original or certified copy of your child's birth certificate for age verification.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="image" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Passport Photos</h3>
-                    <p>Four recent passport-size photographs of your child on white background.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="clipboard" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Medical Records</h3>
-                    <p>Immunization card and any relevant medical information or special needs documentation.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="school" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Previous School Records</h3>
-                    <p>Last report card and transfer certificate (if transferring from another school).</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="user-check" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Parent/Guardian ID</h3>
-                    <p>Valid identification (National ID, Driver's License, or International Passport).</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="map-pin" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Proof of Address</h3>
-                    <p>Utility bill or any document showing your current residential address.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- AGE REQUIREMENTS -->
-        <section class="container section">
-            <h2 class="section-title">Age Requirements</h2>
-            <div style="max-width: 800px; margin: 0 auto;">
-                <div style="background: white; border-radius: var(--radius-2xl); overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
-                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0 0 var(--space-2) 0;">Pre-Nursery</h3>
-                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Early learners program</p>
-                            </div>
-                            <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
-                                2-3 years
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0 0 var(--space-2) 0;">Nursery 1</h3>
-                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Foundation skills development</p>
-                            </div>
-                            <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
-                                3-4 years
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="padding: var(--space-8); border-bottom: 1px solid var(--color-gray-200);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0 0 var(--space-2) 0;">Nursery 2</h3>
-                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">School readiness preparation</p>
-                            </div>
-                            <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
-                                4-5 years
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="padding: var(--space-8);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin: 0 0 var(--space-2) 0;">Primary 1-6</h3>
-                                <p style="margin: 0; color: var(--color-gray-600); font-size: var(--text-sm);">Full primary education program</p>
-                            </div>
-                            <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); color: white; padding: var(--space-3) var(--space-6); border-radius: var(--radius-lg); font-weight: var(--weight-bold);">
-                                5-11 years
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="background: rgba(33, 150, 243, 0.1); padding: var(--space-6); border-radius: var(--radius-lg); margin-top: var(--space-8); border: 1px solid rgba(33, 150, 243, 0.2);">
-                    <p style="margin: 0; text-align: center; color: var(--color-gray-700); font-size: var(--text-sm);">
-                        <i data-lucide="info" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; color: var(--color-primary);"></i>
-                        <strong>Note:</strong> Age requirements are based on the child's age as of September 1st of the academic year.
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        <!-- FEES -->
-        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Tuition & Fees</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Affordable quality education with flexible payment options
-            </p>
-
-            <div class="grid" style="max-width: 1000px; margin: 0 auto;">
-                <div class="card">
-                    <div style="text-align: center; margin-bottom: var(--space-6);">
-                        <i data-lucide="wallet" style="width: 48px; height: 48px; color: var(--color-primary);"></i>
-                    </div>
-                    <h3>Registration Fee</h3>
-                    <p style="margin-bottom: var(--space-4);">One-time non-refundable fee paid at admission</p>
-                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
-                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Contact us for current rates</span>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div style="text-align: center; margin-bottom: var(--space-6);">
-                        <i data-lucide="calendar" style="width: 48px; height: 48px; color: var(--color-success);"></i>
-                    </div>
-                    <h3>Tuition Fees</h3>
-                    <p style="margin-bottom: var(--space-4);">Termly fees covering instruction and learning materials</p>
-                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
-                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Varies by grade level</span>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div style="text-align: center; margin-bottom: var(--space-6);">
-                        <i data-lucide="shopping-bag" style="width: 48px; height: 48px; color: var(--color-warning);"></i>
-                    </div>
-                    <h3>Additional Costs</h3>
-                    <p style="margin-bottom: var(--space-4);">Uniforms, books, and extracurricular activities</p>
-                    <div style="background: var(--color-gray-100); padding: var(--space-4); border-radius: var(--radius-lg); text-align: center;">
-                        <span style="font-size: var(--text-sm); color: var(--color-gray-600);">Details provided at registration</span>
-                    </div>
-                </div>
-            </div>
-
-            <div style="max-width: 700px; margin: var(--space-12) auto 0; text-align: center;">
-                <p style="color: var(--color-gray-700); margin-bottom: var(--space-6); line-height: 1.8;">
-                    For detailed fee information and payment plans, please contact our admissions office. We offer flexible payment schedules to accommodate different family situations.
-                </p>
-                <a href="contact.html" class="btn">Contact Admissions Office</a>
-            </div>
-        </section>
-
-        <!-- FAQ -->
-        <section class="container section">
-            <h2 class="section-title">Frequently Asked Questions</h2>
-            
-            <div style="max-width: 900px; margin: 0 auto;">
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        Is this a Muslim-only School?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        NO. Our school accommodates both Muslim and Christian pupils. 
-                    </p>
-                </details>
-                
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        When does the academic year start?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        The academic year typically begins in September and runs through July, divided into three terms with breaks for holidays.
-                    </p>
-                </details>
-
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        Can I visit the school before enrolling?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        Absolutely! We encourage all prospective parents to schedule a tour. Contact us to arrange a visit at a convenient time.
-                    </p>
-                </details>
-
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        Do you accept mid-year admissions?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        Yes, we accept students throughout the year subject to space availability. Contact us to check current openings.
-                    </p>
-                </details>
-
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); margin-bottom: var(--space-4); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        What is your class size?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        We maintain small class sizes to ensure personalized attention. Classes typically have 15-20 students with dedicated teachers.
-                    </p>
-                </details>
-
-                <details style="background: white; padding: var(--space-6); border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); cursor: pointer;">
-                    <summary style="font-weight: var(--weight-semibold); font-size: var(--text-lg); list-style: none; display: flex; align-items: center; gap: var(--space-3);">
-                        <i data-lucide="chevron-right" style="width: 20px; height: 20px; color: var(--color-primary); transition: transform 0.3s;"></i>
-                        Do you provide transportation?
-                    </summary>
-                    <p style="margin: var(--space-4) 0 0 var(--space-8); color: var(--color-gray-700); line-height: 1.8;">
-                        School bus services are available for select routes. Please inquire about availability and costs for your area.
-                    </p>
-                </details>
-            </div>
-        </section>
-
-        <!-- CTA SECTION -->
-        <section class="container section cta-section">
-            <h2>Ready to Enroll Your Child?</h2>
-            <p class="lead">
-                Take the first step towards your child's bright future at Fahmid School
-            </p>
-            <a href="contact.html" class="btn">Contact Us Now</a>
-            <a href="index.html" class="btn btn-secondary">Learn More About Us</a>
-        </section>
-
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-links">
-                <a href="about.html">About Us</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="policy.html">School Policy</a>
-            </div>
-
-            <div class="social-links">
-                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                    <i data-lucide="facebook"></i>
-                </a>
-                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                    <i data-lucide="instagram"></i>
-                </a>
-                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                    <i data-lucide="message-circle"></i>
-                </a>
-            </div>
-
-            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-connector"></div>
+          <div class="step-content">
+            <h3>School Tour</h3>
+            <p>Visit us to see our facilities and meet our staff in person.</p>
+          </div>
         </div>
-    </footer>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-connector"></div>
+          <div class="step-content">
+            <h3>Assessment</h3>
+            <p>A brief, relaxed assessment appropriate to your child's age group.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">4</div>
+          <div class="step-connector"></div>
+          <div class="step-content">
+            <h3>Offer Letter</h3>
+            <p>Receive a formal offer of placement if a space is available.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">5</div>
+          <div class="step-connector"></div>
+          <div class="step-content">
+            <h3>Enrol</h3>
+            <p>Complete registration, submit documents, and pay the registration fee.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <!-- YEAR GROUPS & REQUIREMENTS -->
+  <section class="section section--alt" aria-labelledby="requirements-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Entry Requirements</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="requirements-heading">Year Groups &amp; Entry Requirements</h2>
+      </div>
 
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-    </script>
-    <!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    });
-}
-</script>
+      <div class="grid-3 reveal">
+        <div class="card">
+          <div class="card-body">
+            <div class="card-meta">Nursery 1</div>
+            <h3 class="card-title">Ages 2 – 3</h3>
+            <ul style="display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-4);">
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Birth certificate
+              </li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Immunisation record
+              </li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Passport photograph (×4)
+              </li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                Parent/guardian ID
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-meta">Nursery 2 &amp; KG</div>
+            <h3 class="card-title">Ages 3 – 5</h3>
+            <ul style="display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-4);">
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>All Nursery 1 documents</li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Previous school report (if any)</li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Informal readiness assessment</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="card-meta">Primary 1 – 6</div>
+            <h3 class="card-title">Ages 6 – 12</h3>
+            <ul style="display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-4);">
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Birth certificate</li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Last two school reports</li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Passport photographs (×4)</li>
+              <li style="display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--text-sm); color: var(--ink-700);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>Entry assessment (English &amp; Maths)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INQUIRY FORM -->
+  <section class="section" id="enquiry-form" aria-labelledby="form-heading">
+    <div class="container">
+      <div style="max-width: 820px; margin-inline: auto;">
+        <div class="section-header reveal">
+          <p class="eyebrow">Begin the Application</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="form-heading">Admission Enquiry Form</h2>
+          <p class="section-lead">Complete this form and our admissions team will contact you within two working days.</p>
+        </div>
+
+        <form id="admissions-form" class="reveal" novalidate style="background: var(--surface-warm); padding: var(--s-10); border-radius: var(--radius-2xl); border: 1px solid var(--surface-border);">
+          <h3 style="font-size: var(--text-xl); margin-bottom: var(--s-6); padding-bottom: var(--s-4); border-bottom: 1px solid var(--surface-border);">Parent / Guardian Information</h3>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="parent-first-name">First Name <span class="required" aria-label="required">*</span></label>
+              <input type="text" id="parent-first-name" name="parent_first_name" required autocomplete="given-name" placeholder="e.g. Amina">
+            </div>
+            <div class="form-group">
+              <label for="parent-last-name">Last Name <span class="required" aria-label="required">*</span></label>
+              <input type="text" id="parent-last-name" name="parent_last_name" required autocomplete="family-name" placeholder="e.g. Bello">
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="parent-phone">Phone Number <span class="required" aria-label="required">*</span></label>
+              <input type="tel" id="parent-phone" name="parent_phone" required autocomplete="tel" placeholder="e.g. 080 000 0000">
+            </div>
+            <div class="form-group">
+              <label for="parent-email">Email Address</label>
+              <input type="email" id="parent-email" name="parent_email" autocomplete="email" placeholder="e.g. amina@email.com">
+            </div>
+          </div>
+
+          <h3 style="font-size: var(--text-xl); margin: var(--s-8) 0 var(--s-6); padding-top: var(--s-6); border-top: 1px solid var(--surface-border);">Child's Information</h3>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="child-first-name">Child's First Name <span class="required" aria-label="required">*</span></label>
+              <input type="text" id="child-first-name" name="child_first_name" required placeholder="e.g. Ibrahim">
+            </div>
+            <div class="form-group">
+              <label for="child-last-name">Child's Last Name <span class="required" aria-label="required">*</span></label>
+              <input type="text" id="child-last-name" name="child_last_name" required placeholder="e.g. Bello">
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="child-dob">Date of Birth <span class="required" aria-label="required">*</span></label>
+              <input type="date" id="child-dob" name="child_dob" required>
+            </div>
+            <div class="form-group">
+              <label for="year-group">Year Group Applying For <span class="required" aria-label="required">*</span></label>
+              <select id="year-group" name="year_group" required>
+                <option value="" disabled selected>Select year group…</option>
+                <option value="nursery1">Nursery 1 (Ages 2–3)</option>
+                <option value="nursery2">Nursery 2 (Ages 3–4)</option>
+                <option value="kg">Kindergarten / Reception (Ages 4–5)</option>
+                <option value="primary1">Primary 1</option>
+                <option value="primary2">Primary 2</option>
+                <option value="primary3">Primary 3</option>
+                <option value="primary4">Primary 4</option>
+                <option value="primary5">Primary 5</option>
+                <option value="primary6">Primary 6</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="entry-term">Preferred Entry Term <span class="required" aria-label="required">*</span></label>
+            <select id="entry-term" name="entry_term" required>
+              <option value="" disabled selected>Select term…</option>
+              <option value="first-term-2026">First Term — September 2026</option>
+              <option value="second-term-2026">Second Term — January 2027</option>
+              <option value="third-term-2027">Third Term — April 2027</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Additional Information or Questions</label>
+            <textarea id="message" name="message" rows="4" placeholder="Any special requirements, questions, or information you would like us to know…"></textarea>
+          </div>
+
+          <div style="margin-top: var(--s-8);">
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">Submit Admission Enquiry</button>
+            <p style="font-size: var(--text-xs); color: var(--ink-500); text-align: center; margin-top: var(--s-3);">
+              By submitting this form you agree to be contacted by our admissions team. We do not share your details with any third party.
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section section--alt" aria-labelledby="faq-heading">
+    <div class="container">
+      <div style="max-width: 760px; margin-inline: auto;">
+        <div class="section-header section-header--centered reveal">
+          <p class="eyebrow">Common Questions</p>
+          <div class="divider divider--center"></div>
+          <h2 class="section-heading" id="faq-heading">Admissions FAQ</h2>
+        </div>
+
+        <div class="faq-list reveal" role="list">
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              What age can my child start at Fahmid School?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">We welcome children from the age of 2 years into our Nursery 1 class. Our youngest pupils thrive in our nurturing, structured environment. If your child is slightly under or over the standard age range, please contact us to discuss further.</div>
+            </div>
+          </div>
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              Is there an entrance examination for Primary 1?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">For Nursery entry, there is no formal examination — only a brief, informal readiness observation. For Primary 1 and above, we conduct a relaxed assessment in English and Mathematics to ensure the curriculum is appropriate for your child's current level.</div>
+            </div>
+          </div>
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              Are mid-term admissions possible?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">Yes, subject to space availability. We accept applications throughout the year. However, we strongly recommend applying at the beginning of a new academic year or term to minimise disruption to your child's learning.</div>
+            </div>
+          </div>
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              What are the school hours?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">School hours are 7:30 AM to 2:30 PM, Monday to Friday. Our Madrasah Programme for Muslim pupils runs from 4:00 PM to 6:00 PM, Monday to Thursday. Please contact us for the latest holiday schedule and term dates.</div>
+            </div>
+          </div>
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              How do I find out about school fees?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">Fee schedules are provided during your school visit or upon request. Please call us on +234 806 142 7297 or send an email to info@fahmidschool.ng. We will gladly provide a full breakdown of fees and payment schedules.</div>
+            </div>
+          </div>
+
+          <div class="faq-item" role="listitem">
+            <button class="faq-question" aria-expanded="false">
+              Is there a sibling discount?
+              <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-inner">Yes. Families enrolling two or more children receive a sibling discount. Please speak to our admissions office for current details when you visit or enquire.</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="text-align: center; margin-top: var(--s-10);">
+          <p style="color: var(--ink-600); margin-bottom: var(--s-4);">Have a question not answered here?</p>
+          <a href="contact.html" class="btn btn-primary">Contact Admissions</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BANNER -->
+  <section class="cta-banner" aria-label="Apply now call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Your Child's Place Awaits</h2>
+          <p>Spaces fill quickly. Apply now to avoid disappointment and secure your child's future.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="#enquiry-form" class="btn btn-gold btn-lg">Apply Now</a>
+          <a href="tel:+2348061427297" class="btn btn-ghost btn-lg">Call Us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Fahmid School, [Address], Nigeria</span></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg><a href="tel:+2348061427297">+234 806 142 7297</a></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:info@fahmidschool.ng">info@fahmidschool.ng</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <div class="footer-legal"><a href="policy.html">School Policy</a><a href="contact.html">Contact</a></div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="script.js" defer></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
 </html>
