@@ -1166,23 +1166,51 @@ p:not(:last-child) { margin-bottom: 1em; }
 }
 
 /* ----------------------------------------------------------------
-   TESTIMONIALS
+   TESTIMONIALS — INFINITE MARQUEE
    ---------------------------------------------------------------- */
-.testimonials-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+
+/* Outer viewport: hides overflow, sets height */
+.testimonials-marquee {
+  overflow: hidden;
+  /* Fade edges */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+
+/* The moving track — contains two identical sets of cards */
+.testimonials-track {
+  display: flex;
   gap: var(--s-6);
+  width: max-content;
+  animation: marquee-scroll 40s linear infinite;
+  will-change: transform;
 }
 
-@media (min-width: 768px) {
-  .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+/* Pause on hover for readability */
+.testimonials-marquee:hover .testimonials-track {
+  animation-play-state: paused;
 }
 
-@media (min-width: 1024px) {
-  .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
+/* Each card — fixed width so the loop math is exact */
 .testimonial-card {
+  flex: 0 0 360px;
   padding: var(--s-8);
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -1190,6 +1218,14 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
+  /* Subtle lift on hover */
+  transition: box-shadow var(--t-base) var(--ease-out),
+              transform var(--t-base) var(--ease-out);
+}
+
+.testimonial-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
 }
 
 .testimonial-stars {
@@ -1242,6 +1278,25 @@ p:not(:last-child) { margin-bottom: 1em; }
 .testimonial-role {
   font-size: var(--text-xs);
   color: var(--ink-500);
+}
+
+/* Respect reduced motion — show as static grid instead */
+@media (prefers-reduced-motion: reduce) {
+  .testimonials-track {
+    animation: none;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  /* Hide duplicates */
+  .testimonials-track .testimonial-card-clone {
+    display: none;
+  }
+
+  .testimonials-marquee {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 /* ----------------------------------------------------------------
