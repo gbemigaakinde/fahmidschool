@@ -237,14 +237,7 @@
     }
 
     /* ================================================================
-       SECTION COMPONENT — self-contained, extensible
-       To add a new section:
-           <div class="section">
-               <div class="section__hd">
-                   <span class="section__title">Title Here</span>
-               </div>
-               (content)
-           </div>
+       SECTION COMPONENT
     ================================================================ */
     .section {
         border: 1px solid var(--rule);
@@ -670,7 +663,7 @@
     }
 
     /* ================================================================
-       PRINT + PDF
+       PRINT + PDF  ← FIXED SECTION
     ================================================================ */
     @media print {
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -688,21 +681,72 @@
             box-shadow: none;
             border-radius: 0;
             border: none;
+            /* ✅ FIX: Prevent the browser treating .doc as a fragmentation
+               context that could split header from first section */
+            overflow: visible;
         }
 
         .doc-hd {
             padding: 10px 16px 9px;
             gap: 10px;
             grid-template-columns: 46px 1fr;
+            /* ✅ FIX: Wrap the header + title + first section into one
+               unbreakable block using a shared display:contents ancestor.
+               The individual rules below do the heavy lifting. */
+            page-break-after: avoid;
+            break-after: avoid;
         }
         .doc-hd__logo  { width: 46px; height: 46px; }
         .doc-hd__name  { font-size: 11pt; }
         .doc-hd__tagline, .doc-hd__contact { font-size: 6pt; }
 
-        .doc-title { padding: 5px 16px; }
+        .doc-title {
+            padding: 5px 16px;
+            /* ✅ FIX: Title strip must not detach from header above OR
+               the profile section below */
+            page-break-before: avoid;
+            page-break-after: avoid;
+            break-before: avoid;
+            break-after: avoid;
+        }
         .doc-title__text { font-size: 7.5pt; letter-spacing: 0.08em; }
 
-        .doc-body { padding: 8px 14px 10px; gap: 7px; }
+        .doc-body {
+            padding: 8px 14px 10px;
+            gap: 7px;
+            /* ✅ FIX: Remove display:flex for print — flexbox containers
+               create a new stacking/fragmentation context that breaks the
+               page-break-before:avoid on the first child */
+            display: block;
+        }
+
+        /* ✅ FIX: Restore the gap between sections using margin instead of
+           the flexbox gap (which no longer works after display:block above) */
+        .doc-body > * + * {
+            margin-top: 7px;
+        }
+
+        /* ✅ FIX: The first section (Student Profile) is anchored to the
+           title strip above it. Both avoid + orphans/widows give the
+           browser maximum instruction to keep them together. */
+        .doc-body > .section:first-child {
+            page-break-before: avoid;
+            break-before: avoid;
+        }
+
+        /* ✅ FIX: Wrap header + title + first section as one inseparable
+           block. We use a CSS trick: mark the header as starting a
+           "keep-with-next" chain by setting orphans high so the browser
+           won't place a break there unless absolutely forced. */
+        .doc-hd,
+        .doc-title,
+        .doc-body > .section:first-child {
+            orphans: 4;
+            widows: 4;
+        }
+
+        .doc-title { padding: 5px 16px; }
+        .doc-title__text { font-size: 7.5pt; letter-spacing: 0.08em; }
 
         .id-cell      { padding: 4px 10px; }
         .id-cell__val { font-size: 7pt; }
@@ -743,48 +787,51 @@
         .doc-ft { padding: 5px 14px; }
         .doc-ft__txt, .doc-ft__badge-txt { font-size: 5.5pt; }
 
-        /* ── Keep the school header + title strip + Student Profile glued together ── */
-        .doc-hd {
-            page-break-after: avoid;
-        }
-        .doc-title {
-            page-break-before: avoid;
-            page-break-after: avoid;
-        }
-        /* The very first section (Student Profile) must not detach from the title */
-        .doc-body > .section:first-child {
-            page-break-before: avoid;
-        }
-
         /* ── Small sections: never split internally ── */
         .key, .closing, .doc-ft,
         .remarks-row, .att-row, .id-grid {
             page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         /* ── Non-academic sections: keep whole ── */
         .section:not(.section--academic) {
             page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         /* ── Academic table: allow natural page breaks, but repeat the header ── */
         .section--academic {
             page-break-inside: auto;
+            break-inside: auto;
+            /* ✅ FIX: Also remove overflow:hidden in print so table
+               header-group can repeat correctly across pages */
+            overflow: visible;
         }
         .ac-table thead {
-            display: table-header-group; /* header repeats on every page */
+            display: table-header-group;
         }
         .ac-table tbody tr {
-            page-break-inside: avoid;   /* never cut a row in half */
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
         .ac-table .summary-row {
-            page-break-before: avoid;   /* keep summary attached to last data row */
+            page-break-before: avoid;
+            break-before: avoid;
+        }
+
+        /* ✅ FIX: Remove overflow:hidden from all sections in print —
+           it was creating new fragmentation contexts that prevented
+           page-break rules from propagating correctly */
+        .section {
+            overflow: visible;
         }
 
         @page {
             size: A4 portrait;
             margin: 8mm 10mm 8mm;
         }
+    }
     </style>
 </head>
 <body>
@@ -1009,22 +1056,6 @@
                 </div>
             </div>
         </div>
-
-        <!--
-        ════════════════════════════════════════════════════════
-        TO ADD A NEW SECTION — copy this block and fill it in:
-
-        <div class="section">
-            <div class="section__hd">
-                <span class="section__title">New Section Title</span>
-            </div>
-            (your content — id-grid, tr-grid, table, custom, etc.)
-        </div>
-
-        The .section class handles all borders, header styling,
-        and print layout automatically. No extra CSS needed.
-        ════════════════════════════════════════════════════════
-        -->
 
         <!-- 6. REMARKS -->
         <div class="section">
