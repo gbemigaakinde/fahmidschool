@@ -1,372 +1,511 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Explore our comprehensive nursery and primary academic programs designed to nurture young learners.">
-    <title>Academics - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-<!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
-
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
-
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Explore our comprehensive nursery and primary academic programs — designed to nurture curious, confident, and capable young learners at Fahmid School.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>Academics — Fahmid Nursery &amp; Primary School</title>
+  <link rel="canonical" href="https://fahmidschool.ng/academics.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+  <link rel="apple-touch-icon" href="IMG_4628.jpeg">
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main" class="skip-link">Skip to main content</a>
 
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
-
-        <div class="sidebar-content">
-            <nav>
-                <ul role="list">
-                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
-                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
-                    <li><a href="academics.html" aria-current="page"><i data-lucide="book-open"></i> Academics</a></li>
-                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
-                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
-                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
-                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-
-        <div class="sidebar-footer">
-            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-                Login to Portal
-            </a>
-        </div>
+<!-- NAVIGATION -->
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="academics.html" aria-current="page">Academics</a></li>
+        <li><a href="admissions.html">Admissions</a></li>
+        <li><a href="school-life.html">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="hero" style="background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%); min-height: 400px;">
-        <div class="hero-content">
-            <h1>Our Academic Programs</h1>
-            <p class="lead">
-                A comprehensive curriculum designed to build strong foundations and inspire lifelong learning
-            </p>
-        </div>
-    </section>
-
-    <main id="main-content" class="main-content">
-
-        <!-- OVERVIEW SECTION -->
-        <section class="container section">
-            <h2 class="section-title">Academic Excellence at Fahmid</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Our curriculum is carefully designed to provide age-appropriate learning experiences that develop intellectual curiosity, critical thinking, and a love for learning.
-            </p>
-
-            <div class="grid">
-                <article class="feature-card animate-on-scroll animate-slideInLeft">
-                    <div class="feature-icon">
-                        <i data-lucide="book-open"></i>
-                    </div>
-                    <h3>Balanced Curriculum</h3>
-                    <p>
-                        We combine academic rigor with creative expression, ensuring well-rounded development across all subject areas.
-                    </p>
-                </article>
-
-                <article class="feature-card">
-                    <div class="feature-icon">
-                        <i data-lucide="users"></i>
-                    </div>
-                    <h3>Small Class Sizes</h3>
-                    <p>
-                        Our low student-to-teacher ratio ensures personalized attention and support for every child's learning journey.
-                    </p>
-                </article>
-
-                <article class="feature-card">
-                    <div class="feature-icon">
-                        <i data-lucide="trophy"></i>
-                    </div>
-                    <h3>Proven Results</h3>
-                    <p>
-                        Our students consistently achieve excellent results and transition smoothly to secondary education with confidence.
-                    </p>
-                </article>
-            </div>
-        </section>
-
-        <!-- NURSERY PROGRAM -->
-        <section class="container section" id="nursery">
-            <h2 class="section-title">Nursery Program (Ages 2-5)</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Our nursery program provides a warm, nurturing environment where young children develop foundational skills through play-based learning.
-            </p>
-
-            <div class="grid">
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="pen-tool" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Early Literacy</h3>
-                    <p>Introduction to letters, sounds, and simple words through songs, stories, and interactive activities.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="calculator" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Numeracy Skills</h3>
-                    <p>Learning numbers, counting, shapes, and basic mathematical concepts through hands-on exploration.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="palette" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Creative Arts</h3>
-                    <p>Developing creativity and fine motor skills through art, music, and imaginative play activities.</p>
-                </div>
-
-                <div class="card">
-                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="heart" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Social Development</h3>
-                    <p>Building friendships, learning to share, and developing emotional intelligence in a supportive environment.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- PRIMARY PROGRAM -->
-        <section class="container section" id="primary" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Primary Program (Primary 1-6)</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Our primary curriculum builds strong academic foundations while fostering critical thinking, creativity, and character development.
-            </p>
-
-            <div style="max-width: 900px; margin: 0 auto;">
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #2196F3;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="book-text" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">English Language</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">Reading comprehension, writing skills, grammar, vocabulary development, and oral communication through engaging literature and activities.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #4CAF50;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="calculator" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">Mathematics</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">Number operations, problem-solving, mental mathematics, geometry, measurement, and practical application of mathematical concepts.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #9C27B0;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="flask-conical" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">Science</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">Biology, chemistry, and physics concepts through hands-on experiments, observation, and exploration of the natural world.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #FF9800;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="globe" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">Social Studies</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">History, geography, citizenship, and cultural awareness to develop informed, responsible global citizens.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); margin-bottom: var(--space-6); border-left: 4px solid #00BCD4;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="palette" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">Creative Arts</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">Visual arts, music, drama, and crafts to nurture creativity, self-expression, and artistic appreciation.</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border-left: 4px solid #F44336;">
-                    <div style="display: flex; align-items: flex-start; gap: var(--space-6);">
-                        <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i data-lucide="bike" style="color: white; width: 24px; height: 24px;"></i>
-                        </div>
-                        <div>
-                            <h3 style="margin: 0 0 var(--space-3) 0;">Physical Education</h3>
-                            <p style="margin: 0; color: var(--color-gray-700);">Sports, games, and physical activities promoting fitness, teamwork, and healthy lifestyle habits.</p>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </section>
-
-<!-- MADRASAH PROGRAMME -->
-<section class="container section" id="madrasah" style="margin-bottom: var(--space-16);">
-    <h2 class="section-title">Madrasah Programme</h2>
-    <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-        Our Madrasah Programme is an optional after-school programme designed for Muslim pupils who wish to receive structured Islamic education in the school.
-    </p>
-
-    <div class="grid">
-        <div class="card">
-            <div style="background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                <i data-lucide="book" style="color: white; width: 28px; height: 28px;"></i>
-            </div>
-            <h3>Programme Overview</h3>
-            <p>
-                The Madrasah Programme runs within the school and is open to interested Muslim pupils. Participation is voluntary and does not interfere with regular school lessons.
-            </p>
-        </div>
-
-        <div class="card">
-            <div style="background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                <i data-lucide="calendar-days" style="color: white; width: 28px; height: 28px;"></i>
-            </div>
-            <h3>Days of Operation</h3>
-            <p>
-                The programme holds from Monday to Thursday within the school premises after regular school activities.
-            </p>
-        </div>
-
-        <div class="card">
-            <div style="background: linear-gradient(135deg, #F9A825 0%, #F57F17 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                <i data-lucide="clock" style="color: white; width: 28px; height: 28px;"></i>
-            </div>
-            <h3>Time Schedule</h3>
-            <p>
-                Sessions run daily from 4:00 pm to 6:00 pm, allowing pupils to participate conveniently after school hours.
-            </p>
-        </div>
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="admissions.html" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
-</section>
+  </div>
+</header>
 
-        <!-- ASSESSMENT & REPORTING -->
-        <section class="container section">
-            <h2 class="section-title">Assessment & Progress Tracking</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                We use comprehensive assessment methods to monitor each child's progress and provide regular feedback to parents.
-            </p>
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html"><i data-lucide="home" style="width:18px;height:18px;"></i> Home</a>
+  <a href="about.html"><i data-lucide="info" style="width:18px;height:18px;"></i> About</a>
+  <a href="academics.html" aria-current="page"><i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics</a>
+  <a href="admissions.html"><i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions</a>
+  <a href="school-life.html"><i data-lucide="users" style="width:18px;height:18px;"></i> School Life</a>
+  <a href="gallery.html"><i data-lucide="image" style="width:18px;height:18px;"></i> Gallery</a>
+  <a href="news.html"><i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events</a>
+  <a href="contact.html"><i data-lucide="phone" style="width:18px;height:18px;"></i> Contact</a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html"><i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login</a>
+  <div class="nav-mobile-cta">
+    <a href="admissions.html" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
+</nav>
 
-            <div class="grid">
-                <div class="card">
-                    <h3><i data-lucide="clipboard-list" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Continuous Assessment</h3>
-                    <p>Regular classroom observations and evaluations to track daily learning progress and identify areas for support.</p>
-                </div>
+<main id="main">
 
-                <div class="card">
-                    <h3><i data-lucide="file-text" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Termly Reports</h3>
-                    <p>Detailed report cards three times per year showing academic performance, behavior, and personal development.</p>
-                </div>
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <div class="page-hero-bg">
+      <img src="IMG_4628.jpeg" alt="" aria-hidden="true" loading="eager">
+    </div>
+    <div class="container page-hero-inner">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        <span aria-current="page">Academics</span>
+      </nav>
+      <h1>Our Academic Programs</h1>
+      <p class="page-hero-lead">A curriculum built to inspire curiosity, develop strong foundations, and cultivate confident, capable learners from the earliest years.</p>
+    </div>
+  </div>
 
-                <div class="card">
-                    <h3><i data-lucide="users-round" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Parent Meetings</h3>
-                    <p>Regular parent-teacher conferences to discuss progress, celebrate achievements, and address any concerns.</p>
-                </div>
-            
-            <div class="card">
-    <h3> <i data-lucide="award" style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></i> Quizzes & Competitions</h3>
-    <p>Regular quizzes and academic competitions are used to reinforce learning, encourage healthy competition, and assess pupils’ understanding in an engaging and motivating way.</p>
-</div>
-            </div>
-        </section>
-
-        <!-- CTA SECTION -->
-        <section class="container section cta-section">
-            <h2>Discover Our Academic Programs</h2>
-            <p class="lead">
-                Schedule a school tour to see our classrooms in action and learn more about our curriculum
-            </p>
-            <a href="contact.html" class="btn">Schedule a Visit</a>
-            <a href="admissions.html" class="btn btn-secondary">View Admissions</a>
-        </section>
-
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-links">
-                <a href="about.html">About Us</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="policy.html">School Policy</a>
-            </div>
-
-            <div class="social-links">
-                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                    <i data-lucide="facebook"></i>
-                </a>
-                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                    <i data-lucide="instagram"></i>
-                </a>
-                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                    <i data-lucide="message-circle"></i>
-                </a>
-            </div>
-
-            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+  <!-- OVERVIEW -->
+  <section class="section" aria-labelledby="overview-heading">
+    <div class="container">
+      <div class="grid-2" style="gap: var(--s-16); align-items: center;">
+        <div class="reveal">
+          <p class="eyebrow">Academic Philosophy</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="overview-heading">Excellence Starts With the Right Foundation</h2>
+          <p style="font-size: var(--text-lg); color: var(--ink-600); line-height: 1.8; margin-bottom: var(--s-5);">
+            At Fahmid School, we believe that every child is capable of extraordinary things when they are taught well, cared for genuinely, and given the right environment to grow.
+          </p>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.8;">
+            Our curriculum combines academic rigour with creative exploration, structured learning with imaginative play, and high expectations with warm, personalised support. The result is pupils who are not only academically strong, but confident, curious, and well-rounded individuals.
+          </p>
         </div>
-    </footer>
+        <div class="reveal reveal-delay-2">
+          <div class="grid-2" style="gap: var(--s-4);">
+            <div style="background: var(--accent); color: white; padding: var(--s-8); border-radius: var(--radius-xl); text-align: center;">
+              <span style="font-family: var(--font-display); font-size: var(--text-4xl); color: white; display: block; line-height: 1; margin-bottom: var(--s-2);">95%</span>
+              <span style="font-size: var(--text-xs); color: rgba(255,255,255,0.75); font-weight: var(--w-semibold); letter-spacing: 0.06em; text-transform: uppercase;">Exam Pass Rate</span>
+            </div>
+            <div style="background: var(--gold); color: white; padding: var(--s-8); border-radius: var(--radius-xl); text-align: center;">
+              <span style="font-family: var(--font-display); font-size: var(--text-4xl); color: white; display: block; line-height: 1; margin-bottom: var(--s-2);">18+</span>
+              <span style="font-size: var(--text-xs); color: rgba(255,255,255,0.85); font-weight: var(--w-semibold); letter-spacing: 0.06em; text-transform: uppercase;">Years Teaching</span>
+            </div>
+            <div style="background: var(--ink-900); color: white; padding: var(--s-8); border-radius: var(--radius-xl); text-align: center;">
+              <span style="font-family: var(--font-display); font-size: var(--text-4xl); color: white; display: block; line-height: 1; margin-bottom: var(--s-2);">300+</span>
+              <span style="font-size: var(--text-xs); color: rgba(255,255,255,0.6); font-weight: var(--w-semibold); letter-spacing: 0.06em; text-transform: uppercase;">Pupils Enrolled</span>
+            </div>
+            <div style="background: var(--accent-pale); border: 1px solid rgba(27,58,122,0.12); padding: var(--s-8); border-radius: var(--radius-xl); text-align: center;">
+              <span style="font-family: var(--font-display); font-size: var(--text-4xl); color: var(--accent); display: block; line-height: 1; margin-bottom: var(--s-2);">2</span>
+              <span style="font-size: var(--text-xs); color: var(--ink-500); font-weight: var(--w-semibold); letter-spacing: 0.06em; text-transform: uppercase;">Core Programs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+  <!-- KEY FEATURES -->
+  <section class="section section--alt" aria-labelledby="features-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Why Our Approach Works</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="features-heading">Built on Sound Principles</h2>
+        <p class="section-lead">Every element of our academic delivery is intentional, evidence-informed, and centred on the child.</p>
+      </div>
+      <div class="grid-3">
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Small Class Sizes</h3>
+          <p>Our low pupil-to-teacher ratio means every child receives meaningful individual attention and no learner falls through the cracks.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <h3>Balanced Curriculum</h3>
+          <p>Academic rigour and creative expression are given equal weight, producing pupils who think broadly and perform strongly across all subjects.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <h3>Qualified, Dedicated Staff</h3>
+          <p>Our teachers are trained, experienced, and passionate. Professional development is ongoing so our staff continue to grow alongside our pupils.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <h3>Proven Track Record</h3>
+          <p>Our pupils consistently achieve excellent results and gain places in strong secondary schools across the region — year after year.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Structured Routine</h3>
+          <p>Children thrive in predictable, well-organised days. Our timetables carefully balance learning, creative activity, play, and rest.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Character Development</h3>
+          <p>Academic success matters deeply, but so does character. We actively nurture integrity, discipline, respect, and compassion in every pupil.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-    </script>
-    <!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    });
-}
-</script>
+  <!-- NURSERY PROGRAM -->
+  <section class="section" id="nursery" aria-labelledby="nursery-heading">
+    <div class="container">
+
+      <div class="reveal" style="margin-bottom: var(--s-12);">
+        <div style="display: inline-flex; align-items: center; gap: var(--s-3); background: var(--gold-light); border: 1px solid rgba(200,159,77,0.25); border-radius: var(--radius-pill); padding: var(--s-2) var(--s-5); margin-bottom: var(--s-5);">
+          <span style="font-size: var(--text-xs); font-weight: var(--w-semibold); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dark);">Ages 2 – 5</span>
+        </div>
+        <p class="eyebrow">Program One</p>
+        <div class="divider"></div>
+        <h2 class="section-heading" id="nursery-heading">Nursery Program</h2>
+        <p class="section-lead">A warm, stimulating environment where toddlers and pre-schoolers begin their lifelong learning journey through play, exploration, and guided discovery.</p>
+      </div>
+
+      <div class="grid-2" style="gap: var(--s-8); align-items: start; margin-bottom: var(--s-12);">
+        <div class="reveal">
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8; margin-bottom: var(--s-5);">
+            Our nursery program creates a safe and loving setting where very young children feel secure enough to explore, ask questions, and develop at their own pace. Every activity is purposefully designed to build foundational skills while remaining joyful and age-appropriate.
+          </p>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.8;">
+            From their first day, nursery children are welcomed into a structured routine that gives them the confidence and stability they need. Teachers work closely with each child and communicate regularly with parents to ensure continuity of care between home and school.
+          </p>
+        </div>
+        <div class="reveal reveal-delay-2" style="background: var(--accent-pale); border: 1px solid rgba(27,58,122,0.1); border-radius: var(--radius-2xl); padding: var(--s-8);">
+          <h3 style="font-size: var(--text-xl); margin-bottom: var(--s-6); color: var(--ink-900);">What Nursery Children Learn</h3>
+          <div style="display: flex; flex-direction: column; gap: var(--s-4);">
+            <div style="display: flex; align-items: flex-start; gap: var(--s-4); padding: var(--s-4); background: white; border-radius: var(--radius-lg);">
+              <div style="width: 36px; height: 36px; background: var(--accent); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm); margin-bottom: 2px;">Early Literacy</div>
+                <div style="font-size: var(--text-sm); color: var(--ink-600);">Letters, sounds, phonics, and simple word recognition through songs and stories</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: var(--s-4); padding: var(--s-4); background: white; border-radius: var(--radius-lg);">
+              <div style="width: 36px; height: 36px; background: var(--gold); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm); margin-bottom: 2px;">Numeracy Skills</div>
+                <div style="font-size: var(--text-sm); color: var(--ink-600);">Numbers, counting, shapes, patterns, and basic mathematical concepts</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: var(--s-4); padding: var(--s-4); background: white; border-radius: var(--radius-lg);">
+              <div style="width: 36px; height: 36px; background: var(--green); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M17.5 10A4.5 4.5 0 0 0 9 10"/><circle cx="6" cy="14" r="2"/><path d="M9.5 14.5A2.5 2.5 0 0 0 4 15"/><circle cx="17" cy="14" r="2"/><path d="M19 16.5A2.5 2.5 0 0 0 15 15"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm); margin-bottom: 2px;">Social Development</div>
+                <div style="font-size: var(--text-sm); color: var(--ink-600);">Sharing, communication, friendships, and emotional intelligence</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: var(--s-4); padding: var(--s-4); background: white; border-radius: var(--radius-lg);">
+              <div style="width: 36px; height: 36px; background: var(--accent-mid); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm); margin-bottom: 2px;">Creative Arts</div>
+                <div style="font-size: var(--text-sm); color: var(--ink-600);">Art, music, drama, and imaginative play to develop creativity and expression</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIMARY PROGRAM -->
+  <section class="section section--alt" id="primary" aria-labelledby="primary-heading">
+    <div class="container">
+      <div class="reveal" style="margin-bottom: var(--s-12);">
+        <div style="display: inline-flex; align-items: center; gap: var(--s-3); background: rgba(27,58,122,0.08); border: 1px solid rgba(27,58,122,0.15); border-radius: var(--radius-pill); padding: var(--s-2) var(--s-5); margin-bottom: var(--s-5);">
+          <span style="font-size: var(--text-xs); font-weight: var(--w-semibold); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);">Primary 1 – 6</span>
+        </div>
+        <p class="eyebrow">Program Two</p>
+        <div class="divider"></div>
+        <h2 class="section-heading" id="primary-heading">Primary Program</h2>
+        <p class="section-lead">A rigorous and comprehensive curriculum that builds the academic foundations pupils need to excel at secondary school and beyond.</p>
+      </div>
+
+      <div class="grid-2" style="gap: var(--s-8); align-items: start; margin-bottom: var(--s-12);">
+        <div class="reveal">
+          <p style="font-size: var(--text-lg); color: var(--ink-700); line-height: 1.8; margin-bottom: var(--s-5);">
+            Our primary programme covers the full range of subjects required for a strong, well-rounded education. Lessons are engaging and paced appropriately for each class level, with teachers consistently assessing progress to adapt their approach.
+          </p>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.8;">
+            Beyond academics, primary pupils are given opportunities for leadership, competitions, school events, and extracurricular activities that build their confidence and sense of identity. By the time our pupils complete Primary 6, they are well-prepared — academically and personally — for the challenges of secondary education.
+          </p>
+        </div>
+        <div class="reveal reveal-delay-2">
+          <div style="display: flex; flex-direction: column; gap: var(--s-3);">
+            <!-- Subject cards -->
+            <div style="display: flex; align-items: center; gap: var(--s-4); background: white; border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-5); border-left: 4px solid var(--accent);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm);">English Language</div>
+                <div style="font-size: var(--text-xs); color: var(--ink-500);">Reading, writing, grammar, vocabulary &amp; oral communication</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--s-4); background: white; border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-5); border-left: 4px solid var(--green);">
+              <div style="width: 44px; height: 44px; background: var(--green-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--green);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm);">Mathematics</div>
+                <div style="font-size: var(--text-xs); color: var(--ink-500);">Number operations, problem-solving, geometry &amp; mental maths</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--s-4); background: white; border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-5); border-left: 4px solid var(--gold);">
+              <div style="width: 44px; height: 44px; background: var(--gold-light); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--gold-dark);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm);">Basic Science</div>
+                <div style="font-size: var(--text-xs); color: var(--ink-500);">Biology, chemistry &amp; physics through hands-on experiments</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--s-4); background: white; border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-5); border-left: 4px solid var(--amber);">
+              <div style="width: 44px; height: 44px; background: var(--amber-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--amber);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm);">Social Studies</div>
+                <div style="font-size: var(--text-xs); color: var(--ink-500);">History, geography, citizenship &amp; cultural awareness</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--s-4); background: white; border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-5); border-left: 4px solid var(--accent-mid);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent-mid);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <div>
+                <div style="font-weight: var(--w-semibold); color: var(--ink-900); font-size: var(--text-sm);">Creative Arts &amp; Physical Education</div>
+                <div style="font-size: var(--text-xs); color: var(--ink-500);">Visual arts, music, drama, sports &amp; healthy living</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MADRASAH PROGRAMME -->
+  <section class="section" id="madrasah" aria-labelledby="madrasah-heading">
+    <div class="container">
+      <div class="grid-2" style="gap: var(--s-8); align-items: center;">
+        <div class="reveal">
+          <p class="eyebrow">Optional Programme</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="madrasah-heading">Madrasah Programme</h2>
+          <p style="font-size: var(--text-lg); color: var(--ink-600); line-height: 1.8; margin-bottom: var(--s-5);">
+            Our Madrasah Programme is an optional after-school programme offered to Muslim pupils who wish to receive structured Islamic education within the school environment.
+          </p>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.8; margin-bottom: var(--s-6);">
+            Participation is entirely voluntary and does not interfere with any regular school activities. The programme holds Monday to Thursday, from 4:00 pm to 6:00 pm, giving pupils a convenient and structured opportunity to develop their Islamic knowledge alongside their academic studies.
+          </p>
+          <div style="display: flex; flex-wrap: wrap; gap: var(--s-4);">
+            <div class="badge badge-blue" style="font-size: var(--text-sm); padding: var(--s-2) var(--s-4);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Mon – Thu
+            </div>
+            <div class="badge badge-gold" style="font-size: var(--text-sm); padding: var(--s-2) var(--s-4);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              4:00 PM – 6:00 PM
+            </div>
+            <div class="badge badge-green" style="font-size: var(--text-sm); padding: var(--s-2) var(--s-4);">Optional</div>
+          </div>
+        </div>
+        <div class="reveal reveal-delay-2">
+          <div style="background: var(--ink-900); color: white; border-radius: var(--radius-2xl); padding: var(--s-10);">
+            <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.1); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; margin-bottom: var(--s-6);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h3 style="color: white; font-size: var(--text-2xl); margin-bottom: var(--s-5);">Programme Details</h3>
+            <div style="display: flex; flex-direction: column; gap: var(--s-4);">
+              <div style="display: flex; align-items: flex-start; gap: var(--s-3); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: var(--s-4);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,159,77,1)" stroke-width="2" style="flex-shrink:0;margin-top:2px;" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <div>
+                  <div style="font-weight: var(--w-semibold); font-size: var(--text-sm); color: white; margin-bottom: 2px;">Eligibility</div>
+                  <div style="font-size: var(--text-sm); color: rgba(255,255,255,0.65);">Open to all interested Muslim pupils enrolled at Fahmid School</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: var(--s-3); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: var(--s-4);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,159,77,1)" stroke-width="2" style="flex-shrink:0;margin-top:2px;" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <div>
+                  <div style="font-weight: var(--w-semibold); font-size: var(--text-sm); color: white; margin-bottom: 2px;">Schedule</div>
+                  <div style="font-size: var(--text-sm); color: rgba(255,255,255,0.65);">Monday to Thursday, 4:00 pm – 6:00 pm, within school premises</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: var(--s-3); border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: var(--s-4);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,159,77,1)" stroke-width="2" style="flex-shrink:0;margin-top:2px;" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <div>
+                  <div style="font-weight: var(--w-semibold); font-size: var(--text-sm); color: white; margin-bottom: 2px;">Participation</div>
+                  <div style="font-size: var(--text-sm); color: rgba(255,255,255,0.65);">Fully voluntary — does not affect regular school timetable or grades</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: var(--s-3);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,159,77,1)" stroke-width="2" style="flex-shrink:0;margin-top:2px;" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <div>
+                  <div style="font-weight: var(--w-semibold); font-size: var(--text-sm); color: white; margin-bottom: 2px;">Enrolment</div>
+                  <div style="font-size: var(--text-sm); color: rgba(255,255,255,0.65);">Contact the school office to register your child for the programme</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASSESSMENT & REPORTING -->
+  <section class="section section--alt" aria-labelledby="assessment-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">How We Measure Progress</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="assessment-heading">Assessment &amp; Reporting</h2>
+        <p class="section-lead">We use comprehensive, fair assessment methods to monitor every child's progress and provide regular, meaningful feedback to parents.</p>
+      </div>
+      <div class="grid-4" style="gap: var(--s-5);">
+        <div class="feature-card reveal" style="text-align: center;">
+          <div class="feature-icon-wrap" style="margin-inline: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <h3 style="font-size: var(--text-lg);">Continuous Assessment</h3>
+          <p>Daily classroom observations and regular evaluations to track learning progress and identify areas for extra support.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-1" style="text-align: center;">
+          <div class="feature-icon-wrap" style="margin-inline: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3 style="font-size: var(--text-lg);">Termly Reports</h3>
+          <p>Detailed report cards three times per year, covering academic performance, behaviour, and personal development in full.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-2" style="text-align: center;">
+          <div class="feature-icon-wrap" style="margin-inline: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 style="font-size: var(--text-lg);">Parent Meetings</h3>
+          <p>Scheduled parent-teacher conferences each term to discuss progress, celebrate achievements, and address any concerns.</p>
+        </div>
+        <div class="feature-card reveal reveal-delay-3" style="text-align: center;">
+          <div class="feature-icon-wrap" style="margin-inline: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          </div>
+          <h3 style="font-size: var(--text-lg);">Quizzes &amp; Competitions</h3>
+          <p>Regular quizzes and academic competitions reinforce learning, reward effort, and assess understanding in an engaging way.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner" aria-label="Admissions call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Come and See Our Programs in Action</h2>
+          <p>Schedule a school tour and watch our teachers and pupils at work. There's no better way to understand what makes Fahmid special.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="admissions.html" class="btn btn-gold btn-lg">Apply for Admission</a>
+          <a href="contact.html" class="btn btn-ghost btn-lg">Book a School Tour</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</span></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg><a href="tel:+2348061427297">+234 806 142 7297</a></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:fahmidschool@gmail.com">fahmidschool@gmail.com</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <div class="footer-legal">
+        <a href="policy.html">School Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="script.js" defer></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
 </html>
