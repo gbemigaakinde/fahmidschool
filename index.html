@@ -1,444 +1,593 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Fahmid Nursery and Primary School offers quality nursery and primary education in a safe, caring, and structured learning environment.">
-    <title>Home - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#2196F3">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="Fahmid School">
-    
-    <!-- iOS Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Fahmid School">
-    <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-    
-    <!-- Microsoft Meta Tags -->
-    <meta name="msapplication-TileColor" content="#2196F3">
-    <meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Fahmid Nursery and Primary School — A nurturing learning environment committed to academic excellence and character development in Nigeria.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>Fahmid Nursery &amp; Primary School — Excellence in Education</title>
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://fahmidschool.ng/">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Fahmid Nursery & Primary School">
+  <meta property="og:description" content="Building tomorrow's leaders through excellence in education, character, and care.">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+  <link rel="apple-touch-icon" href="IMG_4628.jpeg">
 </head>
 <body>
 
-<a href="#main-content" class="skip-link">Skip to main content</a>
+<!-- Skip link -->
+<a href="#main" class="skip-link">Skip to main content</a>
 
-<button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-    <span class="line1"></span>
-    <span class="line2"></span>
-    <span class="line3"></span>
-</button>
+<!-- ============================================================
+     NAVIGATION
+     ============================================================ -->
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
 
-<nav class="sidebar" id="sidebar" aria-label="Main navigation">
-    <div class="sidebar-header">
-        <div class="logo-text">Fahmid School</div>
+    <!-- Logo -->
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+
+    <!-- Desktop links -->
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html" aria-current="page">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="academics.html">Academics</a></li>
+        <li><a href="admissions.html">Admissions</a></li>
+        <li><a href="school-life.html">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+
+    <!-- Actions -->
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="admissions.html" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
 
-    <div class="sidebar-content">
-        <nav>
-            <ul role="list">
-                <li><a href="index.html" aria-current="page"><i data-lucide="home"></i> Home</a></li>
-                <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
-                <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
-                <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
-                <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
-                <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
-                <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-            </ul>
-        </nav>
-    </div>
+  </div>
+</header>
 
-    <div class="sidebar-footer">
-        <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-            Login to Portal
-        </a>
-    </div>
+<!-- Mobile menu -->
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html" aria-current="page">
+    <i data-lucide="home" style="width:18px;height:18px;"></i> Home
+  </a>
+  <a href="about.html">
+    <i data-lucide="info" style="width:18px;height:18px;"></i> About
+  </a>
+  <a href="academics.html">
+    <i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics
+  </a>
+  <a href="admissions.html">
+    <i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions
+  </a>
+  <a href="school-life.html">
+    <i data-lucide="users" style="width:18px;height:18px;"></i> School Life
+  </a>
+  <a href="gallery.html">
+    <i data-lucide="image" style="width:18px;height:18px;"></i> Gallery
+  </a>
+  <a href="news.html">
+    <i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events
+  </a>
+  <a href="contact.html">
+    <i data-lucide="phone" style="width:18px;height:18px;"></i> Contact
+  </a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html">
+    <i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login
+  </a>
+  <div class="nav-mobile-cta">
+    <a href="admissions.html" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
 </nav>
 
-<!-- HERO SECTION -->
-<section class="hero">
-    <div class="hero-slideshow" aria-hidden="true">
-        <img src="images/pupils/IMG_4611.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4612.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4618.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4614.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4615.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4622.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4617.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4613.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4619.jpeg" alt="Fahmid School pupils">
-        <img src="images/pupils/IMG_4620.jpeg" alt="Fahmid School pupils">
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main id="main">
+
+  <!-- ── HERO ── -->
+  <section class="hero" aria-label="Welcome to Fahmid School">
+    <div class="hero-bg">
+      <img
+        src="IMG_4628.jpeg"
+        alt="Students learning at Fahmid School"
+        loading="eager"
+        fetchpriority="high"
+      >
     </div>
 
-    <div class="hero-content">
-        <h1>Fahmid Nursery and Primary School</h1>
-        <p class="lead">
-            Building strong academic foundations and positive values in a safe, caring, and structured learning environment (for Muslim and Christian pupils).
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-eyebrow">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Ministry Accredited — Est. 2007
+        </div>
+
+        <h1>Where Every Child<br><em>Discovers Their Best</em></h1>
+
+        <p class="hero-lead">
+          Fahmid Nursery and Primary School provides a structured, caring, and academically excellent environment where young learners grow with confidence from their earliest years.
         </p>
-        <a href="admissions.html" class="btn">Enroll Your Child Today</a>
+
+        <div class="hero-actions">
+          <a href="admissions.html" class="btn btn-primary btn-lg">Apply for Admission</a>
+          <a href="about.html" class="btn btn-ghost btn-lg">Learn About Us</a>
+        </div>
+      </div>
     </div>
-</section>
 
-<main id="main-content" class="main-content">
-
-    <!-- WHY CHOOSE US -->
-    <section class="container section">
-        <h2 class="section-title">Why Parents Choose Fahmid</h2>
-        <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-            Excellence in education and character development for every child
-        </p>
-
-        <div class="grid features-grid features-3d">
-    <article class="feature-card animate-on-scroll animate-fadeInUp">
-        <div class="feature-icon floating" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);">
-            <i data-lucide="graduation-cap"></i>
-        </div>
-        <h3>Strong Academic Foundation</h3>
-        <p>
-            We emphasize literacy, numeracy, and critical thinking skills that prepare pupils for steady academic progress and future success.
-        </p>
-    </article>
-
-    <article class="feature-card animate-on-scroll animate-fadeInUp">
-        <div class="feature-icon floating" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
-            <i data-lucide="shield-check"></i>
-        </div>
-        <h3>Safe & Caring Environment</h3>
-        <p>
-            Our school provides a structured, secure, and nurturing atmosphere where every child feels protected, valued, and supported.
-        </p>
-    </article>
-
-    <article class="feature-card animate-on-scroll animate-fadeInUp">
-        <div class="feature-icon floating" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
-            <i data-lucide="users"></i>
-        </div>
-        <h3>Dedicated Teaching Staff</h3>
-        <p>
-            Our experienced teachers are patient, committed, and passionate about guiding pupils with care, discipline, and professionalism.
-        </p>
-    </article>
-
-    <article class="feature-card animate-on-scroll animate-fadeInUp">
-        <div class="feature-icon floating" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
-            <i data-lucide="heart"></i>
-        </div>
-        <h3>Strong Moral Values</h3>
-        <p>
-            We promote discipline, respect, responsibility, and good behaviour as essential parts of every child's education and character.
-        </p>
-    </article>
-
-    <article class="feature-card animate-on-scroll animate-fadeInUp">
-        <div class="feature-icon floating" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);">
-            <i data-lucide="calendar-check"></i>
-        </div>
-        <h3>Well-Structured Programme</h3>
-        <p>
-            Our activities are carefully planned to balance academic learning with creative, social, and physical development.
-        </p>
-    </article>
-</div>
-    </section>
-
-    <!-- PROGRAMMES -->
-<section class="container section programs-section">
-    <h2 class="section-title">Our Programmes</h2>
-    <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto 3rem;">
-        Comprehensive education from preparatory and nursery through primary levels
-    </p>
-
-    <div class="grid">
-
-        <article class="program-card">
-            <div class="program-image">
-                <img src="images/programs/IMG_4638.jpeg" alt="Nursery Section">
-                <div class="program-badge">
-                    <i data-lucide="baby"></i>
-                    Ages 2–5
-                </div>
-            </div>
-
-            <div class="program-content">
-                <h3>Nursery Section</h3>
-                <p>
-                    Our nursery programme focuses on guided play, early literacy, numeracy, and social development in a joyful and supportive learning environment.
-                </p>
-                <a href="academics.html#nursery" class="text-link">
-                    Read More
-                    <i data-lucide="arrow-right"></i>
-                </a>
-            </div>
-        </article>
-
-        <article class="program-card">
-            <div class="program-image">
-                <img src="images/programs/IMG_4639.jpeg" alt="Primary Section">
-                <div class="program-badge">
-                    <i data-lucide="graduation-cap"></i>
-                    Primary 1–6
-                </div>
-            </div>
-
-            <div class="program-content">
-                <h3>Primary Section</h3>
-                <p>
-                    The primary programme delivers a structured curriculum that builds strong academic skills, confidence, discipline, and independent thinking.
-                </p>
-                <a href="academics.html#primary" class="text-link">
-                    Read More
-                    <i data-lucide="arrow-right"></i>
-                </a>
-            </div>
-        </article>
-
+    <div class="hero-scroll-indicator" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      Scroll
     </div>
-</section>
+  </section>
 
-    <!-- QUICK STATS -->
-    <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-10);">
-            <div style="text-align: center;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="users" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-                <h3 style="font-size: var(--text-3xl); margin: 0; color: var(--color-gray-900);">500+</h3>
-                <p style="color: var(--color-gray-600); margin: 0;">Happy Students</p>
-            </div>
-
-            <div style="text-align: center;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="award" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-                <h3 style="font-size: var(--text-3xl); margin: 0; color: var(--color-gray-900);">15+</h3>
-                <p style="color: var(--color-gray-600); margin: 0;">Years Experience</p>
-            </div>
-
-            <div style="text-align: center;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="book-open" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-                <h3 style="font-size: var(--text-3xl); margin: 0; color: var(--color-gray-900);">30+</h3>
-                <p style="color: var(--color-gray-600); margin: 0;">Qualified Teachers</p>
-            </div>
-
-            <div style="text-align: center;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: 50%; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="smile" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-                <h3 style="font-size: var(--text-3xl); margin: 0; color: var(--color-gray-900);">98%</h3>
-                <p style="color: var(--color-gray-600); margin: 0;">Parent Satisfaction</p>
-            </div>
+  <!-- ── TRUST BAR ── -->
+  <div class="trust-bar" aria-label="School statistics">
+    <div class="container">
+      <div class="trust-bar-grid">
+        <div class="trust-item reveal">
+          <span class="trust-number">18+</span>
+          <span class="trust-label">Years of Excellence</span>
         </div>
-    </section>
+        <div class="trust-item reveal reveal-delay-1">
+          <span class="trust-number">300+</span>
+          <span class="trust-label">Pupils Enrolled</span>
+        </div>
+        <div class="trust-item reveal reveal-delay-2">
+          <span class="trust-number">95%</span>
+          <span class="trust-label">Pass Rate</span>
+        </div>
+        <div class="trust-item reveal reveal-delay-3">
+          <span class="trust-number">100%</span>
+          <span class="trust-label">Ministry Approved</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- TESTIMONIALS -->
-    <section class="section testimonials-section">
-        <div class="container">
-            <h2 class="section-title">What Parents Say</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Real experiences from our school community
+  <!-- ── PROGRAMS ── -->
+  <section class="section" aria-labelledby="programs-heading">
+    <div class="container">
+      <div class="section-header reveal">
+        <p class="eyebrow">What We Offer</p>
+        <div class="divider"></div>
+        <h2 class="section-heading" id="programs-heading">Our Academic Programs</h2>
+        <p class="section-lead">
+          From earliest childhood to the completion of primary school, our programs are designed to meet children exactly where they are and help them exceed expectations.
+        </p>
+      </div>
+
+      <div class="program-cards">
+        <!-- Nursery -->
+        <article class="program-card reveal">
+          <div class="program-card-bg">
+            <img src="IMG_4628.jpeg" alt="Nursery children in a learning activity" loading="lazy">
+          </div>
+          <div class="program-card-content">
+            <span class="program-card-age">Ages 2 – 5</span>
+            <h3 class="program-card-title">Nursery Program</h3>
+            <p class="program-card-desc">
+              A warm, stimulating environment where toddlers and pre-schoolers develop early literacy, numeracy, social skills, and a love of learning through play-based exploration.
             </p>
+            <a href="academics.html#nursery" class="program-card-link">
+              Explore program
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </article>
 
-            <div class="testimonials-carousel" data-carousel>
-                <div class="carousel-wrapper">
-                    <div class="carousel-track">
-                        <article class="testimonial">
-                            <div class="testimonial-content">
-                                <p class="quote">
-                                    "Fahmid School has transformed our child's confidence and learning. The teachers are caring, dedicated, and truly invested in each student's success. We couldn't be happier!"
-                                </p>
-                                <p class="author">Mrs. Adebayo</p>
-                                <p class="meta">Parent, Nursery 2</p>
-                            </div>
-                        </article>
+        <!-- Primary -->
+        <article class="program-card reveal reveal-delay-2">
+          <div class="program-card-bg">
+            <img src="IMG_4628.jpeg" alt="Primary school pupils in class" loading="lazy">
+          </div>
+          <div class="program-card-content">
+            <span class="program-card-age">Primary 1 – 6</span>
+            <h3 class="program-card-title">Primary Program</h3>
+            <p class="program-card-desc">
+              A rigorous and balanced curriculum covering English, Mathematics, Sciences, and the Arts. Our pupils transition to secondary school with strong academic foundations and confident character.
+            </p>
+            <a href="academics.html#primary" class="program-card-link">
+              Explore program
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
 
-                        <article class="testimonial">
-                            <div class="testimonial-content">
-                                <p class="quote">
-                                    "The structured environment and dedicated teachers make all the difference. Our son looks forward to school every single day, and we've seen remarkable academic progress."
-                                </p>
-                                <p class="author">Mr. Okonkwo</p>
-                                <p class="meta">Parent, Primary 4</p>
-                            </div>
-                        </article>
-
-                        <article class="testimonial">
-                            <div class="testimonial-content">
-                                <p class="quote">
-                                    "We see real improvement both academically and socially. The school's values align perfectly with ours, and the communication with parents is excellent."
-                                </p>
-                                <p class="author">Mrs. Bello</p>
-                                <p class="meta">Parent, Primary 2</p>
-                            </div>
-                        </article>
-                    </div>
-                </div>
-
-                <button class="carousel-btn prev" aria-label="Previous testimonial">‹</button>
-                <button class="carousel-btn next" aria-label="Next testimonial">›</button>
-
-                <div class="carousel-dots"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- GALLERY TEASER -->
-    <section class="container section gallery-teaser">
-        <h2 class="section-title">Life at Fahmid</h2>
-        <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-            Capturing moments of learning, progress, and joy
+  <!-- ── WHY FAHMID ── -->
+  <section class="section section--alt" aria-labelledby="why-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Why Families Choose Us</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="why-heading">Built on the Right Foundations</h2>
+        <p class="section-lead">
+          Every decision we make — from how we hire teachers to how we design classrooms — is guided by one question: what is best for this child?
         </p>
+      </div>
 
-        <div class="gallery-carousel">
-            <div class="gallery-track">
-                <img src="images/gallery/IMG_4623.jpeg" alt="Students engaged in classroom activities">
-                <img src="images/gallery/IMG_4624.jpeg" alt="Teacher guiding students">
-                <img src="images/gallery/IMG_4625.jpeg" alt="Students working together">
-                <img src="images/gallery/IMG_4626.jpeg" alt="School event celebration">
-                <img src="images/gallery/IMG_4627.jpeg" alt="Cultural day activities">
-                <img src="images/gallery/IMG_4635.jpeg" alt="Year-end ceremony">
-            </div>
+      <div class="grid-3">
+        <div class="feature-card reveal">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Small Class Sizes</h3>
+          <p>Low pupil-to-teacher ratios ensure every child receives the individual attention they deserve. No child is invisible in our classrooms.</p>
         </div>
 
-        <a href="gallery.html" class="btn">View Full Gallery</a>
-    </section>
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <h3>Trained, Dedicated Staff</h3>
+          <p>Our teachers are qualified, experienced, and passionate. We invest in continuous professional development so our staff are always growing too.</p>
+        </div>
 
-    <!-- CTA SECTION -->
-    <section class="container section cta-section">
-        <h2>Join the Fahmid School Community</h2>
-        <p class="lead">
-            Admissions are currently open for the academic session
-        </p>
-        <p style="max-width: 700px; margin: 0 auto var(--space-8); color: var(--color-gray-700);">
-            We welcome parents seeking a caring, disciplined, and academically focused school for their children. Schedule a visit to tour our school environment firsthand.
-        </p>
-        <a href="admissions.html" class="btn">Apply for Admission</a>
-        <a href="contact.html" class="btn btn-secondary">Schedule a Visit</a>
-    </section>
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <h3>Strong Academic Results</h3>
+          <p>Our pupils consistently achieve excellent examination results and earn places in leading secondary schools throughout the region.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-3">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Character Development</h3>
+          <p>Academic achievement matters, but so does character. We actively nurture integrity, respect, discipline, and compassion in every pupil.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Safe &amp; Secure Environment</h3>
+          <p>Controlled access, supervised activities, and a vigilant staff team ensure our pupils are always safe while in our care.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-icon-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Structured Routine</h3>
+          <p>Children thrive in predictable, well-organised days. Our timetables are carefully designed to balance learning, activity, and rest.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TESTIMONIALS ── -->
+  <section class="section" aria-labelledby="testimonials-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Parent Voices</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="testimonials-heading">What Our Families Say</h2>
+      </div>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card reveal">
+          <div class="testimonial-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-quote">"My daughter came home on the first day reciting what she had learned. The teachers are exceptional. This school truly lives up to its reputation."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">A</div>
+            <div>
+              <div class="testimonial-name">Mrs. Adefope</div>
+              <div class="testimonial-role">Parent — Primary 3</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-1">
+          <div class="testimonial-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-quote">"Three of my children have passed through Fahmid School and all three gained admission to excellent secondary schools. This institution is a blessing."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">B</div>
+            <div>
+              <div class="testimonial-name">Mr. Babatunde</div>
+              <div class="testimonial-role">Parent — Alumni Family</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card reveal reveal-delay-2">
+          <div class="testimonial-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <p class="testimonial-quote">"What I appreciate most is the discipline combined with warmth. My son is happy to go to school every morning. That tells you everything."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">O</div>
+            <div>
+              <div class="testimonial-name">Mrs. Okafor</div>
+              <div class="testimonial-role">Parent — Nursery 2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── NEWS ── -->
+  <section class="section section--alt" aria-labelledby="news-heading">
+    <div class="container">
+      <div class="section-header reveal" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:var(--s-4);">
+        <div>
+          <p class="eyebrow">Stay Informed</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="news-heading">Latest News &amp; Events</h2>
+        </div>
+        <a href="news.html" class="btn btn-secondary" style="flex-shrink:0;">View All</a>
+      </div>
+
+      <div class="news-grid">
+        <article class="news-card reveal">
+          <div class="news-card-image">
+            <img src="IMG_4628.jpeg" alt="End of year celebration" loading="lazy">
+          </div>
+          <div class="news-card-body">
+            <time class="news-card-date" datetime="2025-11-20">November 20, 2025</time>
+            <h3 class="news-card-title">End-of-Year Prize Giving Day &amp; Graduation Ceremony</h3>
+            <p class="news-card-excerpt">Join us to celebrate the achievements of our pupils as they close out another remarkable academic year with awards, performances, and graduation.</p>
+            <a href="news.html" class="news-card-link">
+              Read more
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="news-card reveal reveal-delay-1">
+          <div class="news-card-image">
+            <img src="IMG_4628.jpeg" alt="New term admissions open" loading="lazy">
+          </div>
+          <div class="news-card-body">
+            <time class="news-card-date" datetime="2026-01-10">January 10, 2026</time>
+            <h3 class="news-card-title">Admissions Now Open for the 2026 Academic Year</h3>
+            <p class="news-card-excerpt">Enrolment for the new academic year is now open. Spaces are limited. Parents are advised to apply early to secure their child's place.</p>
+            <a href="admissions.html" class="news-card-link">
+              Apply now
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <article class="news-card reveal reveal-delay-2">
+          <div class="news-card-image">
+            <img src="IMG_4628.jpeg" alt="Sports day activities" loading="lazy">
+          </div>
+          <div class="news-card-body">
+            <time class="news-card-date" datetime="2026-02-05">February 5, 2026</time>
+            <h3 class="news-card-title">Annual Inter-House Sports Day — Save the Date</h3>
+            <p class="news-card-excerpt">Our much-anticipated Sports Day brings together pupils, parents, and staff for a day of competition, teamwork, and celebration. All parents are warmly invited.</p>
+            <a href="news.html" class="news-card-link">
+              Read more
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── GALLERY TEASER ── -->
+  <section class="section" aria-labelledby="gallery-heading">
+    <div class="container">
+      <div class="section-header reveal" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:var(--s-4);">
+        <div>
+          <p class="eyebrow">School Life</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="gallery-heading">Life at Fahmid School</h2>
+        </div>
+        <a href="gallery.html" class="btn btn-secondary" style="flex-shrink:0;">View Gallery</a>
+      </div>
+
+      <div class="gallery-grid-home reveal">
+        <div class="gallery-item gallery-item--featured">
+          <img src="IMG_4628.jpeg" alt="Children in the classroom" loading="lazy">
+          <div class="gallery-item-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+        </div>
+        <div class="gallery-item">
+          <img src="IMG_4628.jpeg" alt="Outdoor play activities" loading="lazy">
+          <div class="gallery-item-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+        </div>
+        <div class="gallery-item">
+          <img src="IMG_4628.jpeg" alt="Arts and crafts session" loading="lazy">
+          <div class="gallery-item-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+        </div>
+        <div class="gallery-item">
+          <img src="IMG_4628.jpeg" alt="Assembly morning" loading="lazy">
+          <div class="gallery-item-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+        </div>
+        <div class="gallery-item">
+          <img src="IMG_4628.jpeg" alt="Sports day activities" loading="lazy">
+          <div class="gallery-item-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA BANNER ── -->
+  <section class="cta-banner" aria-label="Admissions call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Begin Your Child's Journey With Us</h2>
+          <p>Admissions for the 2026 academic year are open. Spaces are limited — secure your child's place today.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="admissions.html" class="btn btn-gold btn-lg">Apply for Admission</a>
+          <a href="contact.html" class="btn btn-ghost btn-lg">Book a School Tour</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
 </main>
 
-<footer class="site-footer">
-    <div class="container">
-        <div class="footer-links">
-            <a href="about.html">About Us</a>
-            <a href="academics.html">Academics</a>
-            <a href="admissions.html">Admissions</a>
-            <a href="policy.html">School Policy</a>
-        </div>
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
 
-        <div class="social-links">
-            <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                <i data-lucide="facebook"></i>
-            </a>
-            <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                <i data-lucide="instagram"></i>
-            </a>
-            <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                <i data-lucide="message-circle"></i>
-            </a>
+      <!-- Brand -->
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          </a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </a>
         </div>
+      </div>
 
-        <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <!-- Quick Links -->
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+
+      <!-- Support -->
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact -->
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span>Fahmid School, [Your Address], Nigeria</span>
+        </div>
+        <div class="footer-contact-item">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+          <a href="tel:+2348061427297" class="footer-contact-item">+234 806 142 7297</a>
+        </div>
+        <div class="footer-contact-item">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <a href="mailto:info@fahmidschool.ng">info@fahmidschool.ng</a>
+        </div>
+      </div>
+
+    </div><!-- /footer-grid -->
+
+    <div class="footer-bottom">
+      <p class="footer-copyright">
+        &copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.
+      </p>
+      <div class="footer-legal">
+        <a href="policy.html">School Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
     </div>
+
+  </div>
 </footer>
 
-<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-
-<!-- Install Prompt -->
-<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 9999; max-width: 90%; text-align: center;">
-    <p style="margin: 0 0 12px 0; font-weight: 600; color: #333;">Install Fahmid School App</p>
-    <div style="display: flex; gap: 8px; justify-content: center;">
-        <button id="install-button" style="background: #2196F3; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Install</button>
-        <button id="install-cancel" style="background: #f5f5f5; color: #666; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Later</button>
-    </div>
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Image viewer" aria-modal="true">
+  <button class="lightbox-close" aria-label="Close image viewer">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <img id="lightbox-img" src="" alt="">
 </div>
 
-<script src="script.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-    });
-</script>
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-<!-- PWA Service Worker Registration -->
+<!-- Scripts -->
+<script src="script.js" defer></script>
 <script>
-if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered:', registration.scope);
-                
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            if (confirm('New version available! Reload to update?')) {
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                window.location.reload();
-                            }
-                        }
-                    });
-                });
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-    
-    // Handle controller change
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-    });
-}
-
-// PWA Install Prompt
-let deferredPrompt;
-const installPrompt = document.getElementById('install-prompt');
-const installButton = document.getElementById('install-button');
-const installCancel = document.getElementById('install-cancel');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installPrompt.style.display = 'block';
-});
-
-installButton.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`Install prompt result: ${outcome}`);
-    
-    deferredPrompt = null;
-    installPrompt.style.display = 'none';
-});
-
-installCancel.addEventListener('click', () => {
-    installPrompt.style.display = 'none';
-    deferredPrompt = null;
-});
-
-window.addEventListener('appinstalled', () => {
-    console.log('✓ PWA installed successfully');
-    installPrompt.style.display = 'none';
-    if (window.showToast) {
-        window.showToast('App installed successfully!', 'success');
-    }
-});
+  }
 </script>
+
 </body>
 </html>
