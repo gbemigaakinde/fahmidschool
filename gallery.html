@@ -1,343 +1,561 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="View photos and memories from school events, activities, and daily life at Fahmid School.">
-    <title>Gallery - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-<!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse photos of school life, events, sports days, classroom activities, and special moments at Fahmid Nursery and Primary School.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>Gallery — Fahmid Nursery &amp; Primary School</title>
+  <link rel="canonical" href="https://fahmidschool.ng/gallery.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+  <link rel="apple-touch-icon" href="IMG_4628.jpeg">
+  <style>
+    /* Gallery filter buttons */
+    .gallery-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-3);
+      margin-bottom: var(--s-10);
+    }
 
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
+    .gallery-filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      padding: 0.5rem 1.1rem;
+      background: var(--surface);
+      color: var(--ink-600);
+      border: 1.5px solid var(--surface-border);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      font-weight: var(--w-semibold);
+      cursor: pointer;
+      transition: all var(--t-base) var(--ease-out);
+    }
 
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+    .gallery-filter-btn:hover {
+      border-color: var(--accent-light);
+      color: var(--accent);
+      background: var(--accent-pale);
+    }
 
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+    .gallery-filter-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .gallery-filter-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    /* Gallery grid */
+    .gallery-masonry {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--s-4);
+    }
+
+    @media (min-width: 640px) {
+      .gallery-masonry { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (min-width: 1024px) {
+      .gallery-masonry { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .gallery-thumb {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: var(--surface-alt);
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      display: block;
+      width: 100%;
+    }
+
+    .gallery-thumb::before {
+      content: '';
+      display: block;
+      padding-bottom: 75%;
+    }
+
+    .gallery-thumb img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform var(--t-slow) var(--ease-out);
+    }
+
+    .gallery-thumb:hover img {
+      transform: scale(1.06);
+    }
+
+    .gallery-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13,15,20,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity var(--t-base);
+    }
+
+    .gallery-thumb:hover .gallery-thumb-overlay,
+    .gallery-thumb:focus-visible .gallery-thumb-overlay {
+      opacity: 1;
+    }
+
+    .gallery-thumb-overlay svg {
+      width: 28px;
+      height: 28px;
+      color: white;
+    }
+
+    .gallery-thumb[data-hidden="true"] {
+      display: none;
+    }
+
+    /* Category pill on image */
+    .gallery-cat-pill {
+      position: absolute;
+      top: var(--s-3);
+      left: var(--s-3);
+      background: rgba(13,15,20,0.65);
+      backdrop-filter: blur(4px);
+      color: white;
+      font-size: 10px;
+      font-weight: var(--w-semibold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      z-index: 1;
+      opacity: 0;
+      transition: opacity var(--t-fast);
+    }
+
+    .gallery-thumb:hover .gallery-cat-pill {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main" class="skip-link">Skip to main content</a>
 
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
-
-        <div class="sidebar-content">
-            <nav>
-                <ul role="list">
-                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
-                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
-                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
-                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
-                    <li><a href="school-life.html"><i data-lucide="users"></i> School Life</a></li>
-                    <li><a href="gallery.html" aria-current="page"><i data-lucide="image"></i> Gallery</a></li>
-                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-
-        <div class="sidebar-footer">
-            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-                Login to Portal
-            </a>
-        </div>
+<!-- NAVIGATION -->
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="academics.html">Academics</a></li>
+        <li><a href="admissions.html">Admissions</a></li>
+        <li><a href="school-life.html">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="hero" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); min-height: 400px;">
-        <div class="hero-content">
-            <h1>Our Gallery</h1>
-            <p class="lead">
-                Moments of learning, growth, and joy captured at Fahmid School
-            </p>
-        </div>
-    </section>
-
-    <main id="main-content" class="main-content">
-
-        <!-- GALLERY CATEGORIES -->
-        <section class="container section">
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-16);">
-                <button class="gallery-filter active" data-filter="all" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-primary); background: var(--color-primary); color: white; border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
-                    <i data-lucide="grid-3x3" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                    All Photos
-                </button>
-                <button class="gallery-filter" data-filter="classroom" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
-                    <i data-lucide="book-open" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                    Classroom
-                </button>
-                <button class="gallery-filter" data-filter="events" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
-                    <i data-lucide="party-popper" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                    Events
-                </button>
-                <button class="gallery-filter" data-filter="sports" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
-                    <i data-lucide="trophy" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                    Sports
-                </button>
-                <button class="gallery-filter" data-filter="activities" style="padding: var(--space-3) var(--space-6); border: 2px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: var(--radius-full); font-weight: var(--weight-semibold); cursor: pointer; transition: all 0.3s;">
-                    <i data-lucide="palette" style="width: 18px; height: 18px; margin-right: 6px; vertical-align: middle;"></i>
-                    Activities
-                </button>
-            </div>
-
-            <!-- GALLERY GRID -->
-            <div class="gallery-grid">
-                <!-- Classroom Photos -->
-                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
-                    <img src="images/gallery/IMG_4623.jpeg" alt="Students in classroom learning activity" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
-                    <img src="images/gallery/IMG_4624.jpeg" alt="Teacher with students in class" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
-                    <img src="images/gallery/IMG_4625.jpeg" alt="Students working on assignments" loading="lazy">
-                </button>
-
-                <!-- Events Photos -->
-                <button class="gallery-item" data-category="events" aria-label="View event photo">
-                    <img src="images/gallery/IMG_4626.jpeg" alt="School event celebration" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="events" aria-label="View event photo">
-                    <img src="images/gallery/IMG_4627.jpeg" alt="Cultural day celebration" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="events" aria-label="View event photo">
-                    <img src="images/gallery/IMG_4635.jpeg" alt="End of year ceremony" loading="lazy">
-                </button>
-
-                <!-- Sports Photos -->
-                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
-                    <img src="https://source.unsplash.com/random/400x300/?children-sports" alt="Students participating in sports" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
-                    <img src="https://source.unsplash.com/random/400x300/?kids-running" alt="Sports day activities" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="sports" aria-label="View sports photo">
-                    <img src="https://source.unsplash.com/random/400x300/?children-playing" alt="Outdoor games" loading="lazy">
-                </button>
-
-                <!-- Activities Photos -->
-                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
-                    <img src="https://source.unsplash.com/random/400x300/?art-class" alt="Art and crafts session" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
-                    <img src="https://source.unsplash.com/random/400x300/?kids-painting" alt="Creative art activities" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
-                    <img src="https://source.unsplash.com/random/400x300/?science-kids" alt="Science experiment" loading="lazy">
-                </button>
-
-                <!-- More Mixed Photos -->
-                <button class="gallery-item" data-category="classroom" aria-label="View classroom photo">
-                    <img src="https://source.unsplash.com/random/400x300/?children-reading" alt="Reading time" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="activities" aria-label="View activities photo">
-                    <img src="https://source.unsplash.com/random/400x300/?kids-music" alt="Music class" loading="lazy">
-                </button>
-                <button class="gallery-item" data-category="events" aria-label="View event photo">
-                    <img src="https://source.unsplash.com/random/400x300/?graduation-kids" alt="Graduation ceremony" loading="lazy">
-                </button>
-            </div>
-        </section>
-
-        <!-- PHOTO HIGHLIGHTS -->
-        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Recent Highlights</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Special moments from our school community
-            </p>
-
-            <div class="grid">
-                <article class="card animate-on-scroll animate-fadeInUp">
-                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="trophy" style="width: 64px; height: 64px; color: white;"></i>
-                    </div>
-                    <h3>Sports Day 2025</h3>
-                    <p>Students showcased their athletic talents in our annual sports competition with exciting races and team events.</p>
-                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
-                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
-                        March 2025
-                    </p>
-                </article>
-
-                <article class="card">
-                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="palette" style="width: 64px; height: 64px; color: white;"></i>
-                    </div>
-                    <h3>Art Exhibition</h3>
-                    <p>Our young artists displayed their creative masterpieces in a colorful exhibition celebrating imagination and talent.</p>
-                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
-                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
-                        February 2025
-                    </p>
-                </article>
-
-                <article class="card">
-                    <div style="width: 100%; height: 200px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="book-open" style="width: 64px; height: 64px; color: white;"></i>
-                    </div>
-                    <h3>Reading Week</h3>
-                    <p>A week dedicated to fostering love for reading with story sessions, book fairs, and special author visits.</p>
-                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin: 0;">
-                        <i data-lucide="calendar" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;"></i>
-                        January 2025
-                    </p>
-                </article>
-            </div>
-        </section>
-
-        <!-- VIDEO SECTION -->
-        <section class="container section">
-            <h2 class="section-title">School Life in Motion</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Watch our students learn, play, and grow
-            </p>
-
-            <div style="max-width: 900px; margin: 0 auto;">
-                <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg); border: 1px solid var(--color-gray-200); text-align: center;">
-                    <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; margin: 0 auto var(--space-8); display: flex; align-items: center; justify-content: center;">
-                        <i data-lucide="video" style="width: 60px; height: 60px; color: white;"></i>
-                    </div>
-                    <h3 style="margin-bottom: var(--space-4);">School Tour Video</h3>
-                    <p style="color: var(--color-gray-700); margin-bottom: var(--space-8); line-height: 1.8;">
-                        Take a virtual tour of our school and see what makes Fahmid special. Experience our classrooms, facilities, and vibrant learning environment.
-                    </p>
-                    <button class="btn">
-                        <i data-lucide="play-circle" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: middle;"></i>
-                        Watch Video
-                    </button>
-                    <p style="color: var(--color-gray-500); font-size: var(--text-sm); margin-top: var(--space-4);">Coming Soon</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA SECTION -->
-        <section class="container section cta-section">
-            <h2>Visit Us in Person</h2>
-            <p class="lead">
-                See our beautiful campus and vibrant learning environment firsthand
-            </p>
-            <a href="contact.html" class="btn">Schedule a Tour</a>
-            <a href="about.html" class="btn btn-secondary">Learn About Us</a>
-        </section>
-
-    </main>
-
-    <!-- LIGHTBOX -->
-    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-        <button class="lightbox-close" aria-label="Close image viewer">&times;</button>
-        <img id="lightbox-img" src="" alt="">
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="admissions.html" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
+  </div>
+</header>
 
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-links">
-                <a href="about.html">About Us</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="policy.html">School Policy</a>
-            </div>
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html"><i data-lucide="home" style="width:18px;height:18px;"></i> Home</a>
+  <a href="about.html"><i data-lucide="info" style="width:18px;height:18px;"></i> About</a>
+  <a href="academics.html"><i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics</a>
+  <a href="admissions.html"><i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions</a>
+  <a href="school-life.html"><i data-lucide="users" style="width:18px;height:18px;"></i> School Life</a>
+  <a href="gallery.html" aria-current="page"><i data-lucide="image" style="width:18px;height:18px;"></i> Gallery</a>
+  <a href="news.html"><i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events</a>
+  <a href="contact.html"><i data-lucide="phone" style="width:18px;height:18px;"></i> Contact</a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html"><i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login</a>
+  <div class="nav-mobile-cta">
+    <a href="admissions.html" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
+</nav>
 
-            <div class="social-links">
-                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                    <i data-lucide="facebook"></i>
-                </a>
-                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                    <i data-lucide="instagram"></i>
-                </a>
-                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                    <i data-lucide="message-circle"></i>
-                </a>
-            </div>
+<main id="main">
 
-            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <div class="page-hero-bg">
+      <img src="IMG_4628.jpeg" alt="" aria-hidden="true" loading="eager">
+    </div>
+    <div class="container page-hero-inner">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        <span aria-current="page">Gallery</span>
+      </nav>
+      <h1>Life at Fahmid School</h1>
+      <p class="page-hero-lead">A glimpse into the moments of learning, joy, creativity, and community that make our school special.</p>
+    </div>
+  </div>
+
+  <!-- GALLERY -->
+  <section class="section" aria-labelledby="gallery-heading">
+    <div class="container">
+      <div class="section-header reveal" style="margin-bottom: var(--s-8);">
+        <p class="eyebrow">Photo Gallery</p>
+        <div class="divider"></div>
+        <h2 class="section-heading" id="gallery-heading">Browse Our Gallery</h2>
+        <p class="section-lead">Explore photos from our classrooms, events, activities, and school life throughout the year.</p>
+      </div>
+
+      <!-- FILTER BUTTONS -->
+      <div class="gallery-filters reveal" role="group" aria-label="Filter gallery by category">
+        <button class="gallery-filter-btn active" data-filter="all" aria-pressed="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          All Photos
+        </button>
+        <button class="gallery-filter-btn" data-filter="classroom" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Classroom
+        </button>
+        <button class="gallery-filter-btn" data-filter="events" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Events
+        </button>
+        <button class="gallery-filter-btn" data-filter="sports" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          Sports
+        </button>
+        <button class="gallery-filter-btn" data-filter="activities" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          Activities
+        </button>
+      </div>
+
+      <!-- GALLERY GRID -->
+      <div class="gallery-masonry reveal" id="gallery-grid" role="list">
+
+        <!-- CLASSROOM -->
+        <button class="gallery-thumb" data-category="classroom" role="listitem" aria-label="View: Students engaged in a classroom learning activity">
+          <img src="images/gallery/IMG_4623.jpeg" alt="Students engaged in a classroom learning activity" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Classroom</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="classroom" role="listitem" aria-label="View: Teacher working with students in class">
+          <img src="images/gallery/IMG_4624.jpeg" alt="Teacher working with students in class" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Classroom</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="events" role="listitem" aria-label="View: School celebration event">
+          <img src="images/gallery/IMG_4625.jpeg" alt="School celebration event" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Events</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="classroom" role="listitem" aria-label="View: Pupils working on assignments">
+          <img src="images/gallery/IMG_4626.jpeg" alt="Pupils working on their assignments" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Classroom</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="events" role="listitem" aria-label="View: Cultural day celebration">
+          <img src="images/gallery/IMG_4627.jpeg" alt="Cultural day celebration at school" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Events</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="activities" role="listitem" aria-label="View: Creative art and craft session">
+          <img src="images/gallery/IMG_4628.jpeg" alt="Children in a creative art and craft session" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Activities</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="events" role="listitem" aria-label="View: End of year ceremony">
+          <img src="images/gallery/IMG_4635.jpeg" alt="End of year awards ceremony" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Events</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="sports" role="listitem" aria-label="View: Sports day activities">
+          <img src="IMG_4628.jpeg" alt="Students participating in sports day activities" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Sports</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="sports" role="listitem" aria-label="View: Inter-house competition">
+          <img src="IMG_4628.jpeg" alt="Inter-house sports competition" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Sports</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="activities" role="listitem" aria-label="View: Outdoor play and recreation">
+          <img src="IMG_4628.jpeg" alt="Children enjoying outdoor play and recreation" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Activities</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="classroom" role="listitem" aria-label="View: Reading and literacy time">
+          <img src="IMG_4628.jpeg" alt="Reading and literacy time in class" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Classroom</span>
+        </button>
+
+        <button class="gallery-thumb" data-category="activities" role="listitem" aria-label="View: Music and performance">
+          <img src="IMG_4628.jpeg" alt="Music and performance activities" loading="lazy">
+          <div class="gallery-thumb-overlay" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <span class="gallery-cat-pill">Activities</span>
+        </button>
+
+      </div>
+
+      <!-- No results message (hidden by default) -->
+      <div id="gallery-empty" style="display:none; text-align:center; padding: var(--s-16);">
+        <div style="width:64px;height:64px;background:var(--surface-alt);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--s-5);color:var(--ink-300);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </div>
-    </footer>
+        <p style="font-size:var(--text-lg);color:var(--ink-500);">No photos in this category yet.</p>
+        <p style="font-size:var(--text-sm);color:var(--ink-400);">Check back soon — we're always adding new content.</p>
+      </div>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    </div>
+  </section>
 
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
+  <!-- HIGHLIGHTS -->
+  <section class="section section--alt" aria-labelledby="highlights-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Year in Review</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="highlights-heading">Recent Highlights</h2>
+        <p class="section-lead">A look back at some of the standout moments from the school year.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card reveal">
+          <div style="aspect-ratio: 16/9; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-mid) 100%); display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="card-meta">March 2025</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">Annual Sports Day</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">Students showcased athletic talent in our inter-house competition with exciting races, field events, and team games. A day of healthy competition and school spirit.</p>
+          </div>
+        </div>
+        <div class="card reveal reveal-delay-1">
+          <div style="aspect-ratio: 16/9; background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%); display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="card-meta">February 2025</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">Art &amp; Creativity Exhibition</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">Our young artists displayed their masterpieces in a vibrant exhibition celebrating imagination, colour, and self-expression. Parents and staff were truly impressed.</p>
+          </div>
+        </div>
+        <div class="card reveal reveal-delay-2">
+          <div style="aspect-ratio: 16/9; background: linear-gradient(135deg, var(--ink-800) 0%, var(--ink-900) 100%); display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <div class="card-body">
+            <div class="card-meta">November 2024</div>
+            <h3 class="card-title" style="font-size: var(--text-xl);">End-of-Year Prize Giving &amp; Graduation</h3>
+            <p class="card-text" style="font-size: var(--text-sm);">A proud celebration of academic achievement and personal growth, honouring pupils across all classes and welcoming our Primary 6 class into a new chapter.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-            // Gallery Filter
-            const filterButtons = document.querySelectorAll('.gallery-filter');
-            const galleryItems = document.querySelectorAll('.gallery-item');
+  <!-- CTA -->
+  <section class="cta-banner" aria-label="Visit call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Come and See Us in Person</h2>
+          <p>No photograph captures the full energy of Fahmid School. Schedule a visit and experience it for yourself.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="contact.html" class="btn btn-gold btn-lg">Book a School Tour</a>
+          <a href="admissions.html" class="btn btn-ghost btn-lg">Apply for Admission</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
-            filterButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const filter = button.dataset.filter;
+</main>
 
-                    // Update active button
-                    filterButtons.forEach(btn => {
-                        btn.classList.remove('active');
-                        btn.style.background = 'white';
-                        btn.style.color = 'var(--color-gray-700)';
-                        btn.style.borderColor = 'var(--color-gray-300)';
-                    });
-                    button.classList.add('active');
-                    button.style.background = 'var(--color-primary)';
-                    button.style.color = 'white';
-                    button.style.borderColor = 'var(--color-primary)';
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Image viewer" aria-modal="true">
+  <button class="lightbox-close" aria-label="Close image viewer">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <img id="lightbox-img" src="" alt="">
+</div>
 
-                    // Filter items
-                    galleryItems.forEach(item => {
-                        if (filter === 'all' || item.dataset.category === filter) {
-                            item.style.display = 'block';
-                            setTimeout(() => {
-                                item.style.opacity = '1';
-                                item.style.transform = 'scale(1)';
-                            }, 10);
-                        } else {
-                            item.style.opacity = '0';
-                            item.style.transform = 'scale(0.8)';
-                            setTimeout(() => {
-                                item.style.display = 'none';
-                            }, 300);
-                        }
-                    });
-                });
-            });
+<!-- FOOTER -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</span></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg><a href="tel:+2348061427297">+234 806 142 7297</a></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:fahmidschool@gmail.com">fahmidschool@gmail.com</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <div class="footer-legal">
+        <a href="policy.html">School Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
 
-            // Add transition styles to gallery items
-            galleryItems.forEach(item => {
-                item.style.transition = 'opacity 0.3s, transform 0.3s';
-            });
-        });
-    </script>
-    <!-- PWA Service Worker Registration -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="script.js" defer></script>
 <script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
+  // Gallery filter logic
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterBtns = document.querySelectorAll('.gallery-filter-btn');
+    const thumbs = document.querySelectorAll('.gallery-thumb');
+    const emptyMsg = document.getElementById('gallery-empty');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.dataset.filter;
+
+        // Update button states
+        filterBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+
+        // Show/hide items
+        let visibleCount = 0;
+        thumbs.forEach(thumb => {
+          const match = filter === 'all' || thumb.dataset.category === filter;
+          if (match) {
+            thumb.removeAttribute('data-hidden');
+            thumb.style.display = '';
+            visibleCount++;
+          } else {
+            thumb.dataset.hidden = 'true';
+            thumb.style.display = 'none';
+          }
+        });
+
+        emptyMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+      });
     });
-}
+
+    // Wire gallery thumbs into the existing lightbox system
+    thumbs.forEach(thumb => {
+      const img = thumb.querySelector('img');
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      const closeBtn = document.querySelector('.lightbox-close');
+
+      thumb.addEventListener('click', () => {
+        if (!img) return;
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        closeBtn && closeBtn.focus();
+      });
+
+      thumb.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          thumb.click();
+        }
+      });
+    });
+  });
 </script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
 </html>
