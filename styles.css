@@ -1165,52 +1165,71 @@ p:not(:last-child) { margin-bottom: 1em; }
   transform: translateX(3px);
 }
 
-/* ----------------------------------------------------------------
-   TESTIMONIALS — INFINITE MARQUEE
-   ---------------------------------------------------------------- */
+/* ================================================================
+   TESTIMONIAL MARQUEE FIX — paste these rules into styles.css,
+   replacing the existing "TESTIMONIALS — INFINITE MARQUEE" block
+   ================================================================ */
 
-/* Outer viewport: hides overflow, sets height */
+/* Outer viewport */
 .testimonials-marquee {
   overflow: hidden;
-  /* Fade edges */
+  /* Push the fade-edges further out so cards are fully visible
+     right until they disappear behind the edge */
   -webkit-mask-image: linear-gradient(
     to right,
     transparent 0%,
-    black 8%,
-    black 92%,
+    black 3%,      /* was 8% — was eating into visible cards */
+    black 97%,     /* was 92% */
     transparent 100%
   );
   mask-image: linear-gradient(
     to right,
     transparent 0%,
-    black 8%,
-    black 92%,
+    black 3%,
+    black 97%,
     transparent 100%
   );
 }
 
-/* The moving track — contains two identical sets of cards */
+/* The moving track */
 .testimonials-track {
   display: flex;
   gap: var(--s-6);
+  /* Do NOT set width here — let it be max-content naturally */
   width: max-content;
   animation: marquee-scroll 40s linear infinite;
+  /* Give it a stacking context so compositing is clean */
   will-change: transform;
+  transform: translateZ(0);
 }
 
-/* Pause on hover for readability */
+/* Pause on hover */
 .testimonials-marquee:hover .testimonials-track {
   animation-play-state: paused;
 }
 
+/*
+  KEY FIX: the keyframe must shift by exactly the width of ONE set
+  of cards (Set A), not 50% of the total element width.
+  
+  Because the track contains Set A + Set B (an exact duplicate),
+  translating by -50% moves us from the start of Set A to the start
+  of Set B, which looks identical — creating a seamless loop.
+  
+  This only works correctly when:
+    1. Set A and Set B have identical card count AND identical markup.
+    2. The gap between the last card of Set A and the first card of
+       Set B is the same as the gap between all other cards (which it
+       is, because Flexbox gap is uniform).
+*/
 @keyframes marquee-scroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
 
-/* Each card — fixed width so the loop math is exact */
+/* Individual card */
 .testimonial-card {
-  flex: 0 0 360px;
+  flex: 0 0 360px;           /* fixed width — do not change */
   padding: var(--s-8);
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -1218,9 +1237,10 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
-  /* Subtle lift on hover */
   transition: box-shadow var(--t-base) var(--ease-out),
               transform var(--t-base) var(--ease-out);
+  /* Prevent cards from shrinking or growing */
+  min-width: 0;
 }
 
 .testimonial-card:hover {
@@ -1280,16 +1300,16 @@ p:not(:last-child) { margin-bottom: 1em; }
   color: var(--ink-500);
 }
 
-/* Respect reduced motion — show as static grid instead */
+/* ── Reduced motion: static grid, no clones ── */
 @media (prefers-reduced-motion: reduce) {
   .testimonials-track {
     animation: none;
     flex-wrap: wrap;
     width: 100%;
+    transform: none;
   }
 
-  /* Hide duplicates */
-  .testimonials-track .testimonial-card-clone {
+  .testimonial-card-clone {
     display: none;
   }
 
