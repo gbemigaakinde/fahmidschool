@@ -1,553 +1,701 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Discover daily life, activities, and the sense of community at Fahmid Nursery & Primary School.">
-    <title>School Life - Fahmid Nursery & Primary School</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
-<!-- PWA Manifest -->
-<link rel="manifest" href="/manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Discover daily life, extracurricular activities, annual events, and the vibrant community at Fahmid Nursery and Primary School.">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>School Life — Fahmid Nursery &amp; Primary School</title>
+  <link rel="canonical" href="https://fahmidschool.ng/school-life.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+  <link rel="apple-touch-icon" href="IMG_4628.jpeg">
 
-<!-- PWA Meta Tags -->
-<meta name="theme-color" content="#2196F3">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Fahmid School">
+  <style>
+    /* ── Daily Schedule timeline ── */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
 
-<!-- iOS Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Fahmid School">
-<link rel="apple-touch-icon" href="/IMG_4628.jpeg">
+    .timeline-item {
+      display: flex;
+      gap: var(--s-6);
+      position: relative;
+      padding-bottom: var(--s-8);
+    }
 
-<!-- Microsoft Meta Tags -->
-<meta name="msapplication-TileColor" content="#2196F3">
-<meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
+    .timeline-item:last-child { padding-bottom: 0; }
+
+    .timeline-item:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 27px;
+      top: 56px;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--surface-border), transparent);
+    }
+
+    .timeline-dot {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-md);
+    }
+
+    .timeline-dot svg { width: 22px; height: 22px; color: white; }
+
+    .timeline-body { flex: 1; padding-top: var(--s-2); }
+
+    .timeline-time {
+      font-size: var(--text-xs);
+      font-weight: var(--w-semibold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: var(--s-1);
+    }
+
+    .timeline-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      color: var(--ink-900);
+      margin-bottom: var(--s-3);
+      line-height: 1.3;
+    }
+
+    .timeline-desc {
+      font-size: var(--text-base);
+      color: var(--ink-600);
+      line-height: 1.75;
+    }
+
+    /* ── Annual events ── */
+    .event-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-xl);
+      padding: var(--s-7);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-5);
+      transition: box-shadow var(--t-base) var(--ease-out),
+                  transform var(--t-base) var(--ease-out);
+    }
+
+    .event-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+    }
+
+    .event-card-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .event-card-icon svg { width: 22px; height: 22px; color: white; }
+
+    .event-card-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: var(--ink-900);
+      margin-bottom: var(--s-2);
+    }
+
+    .event-card-desc {
+      font-size: var(--text-sm);
+      color: var(--ink-600);
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* ── Support cards ── */
+    .support-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-xl);
+      padding: var(--s-7);
+      text-align: center;
+      transition: box-shadow var(--t-base) var(--ease-out),
+                  transform var(--t-base) var(--ease-out);
+    }
+
+    .support-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+    }
+
+    .support-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--s-5);
+    }
+
+    .support-card-icon svg { width: 22px; height: 22px; color: white; }
+
+    .support-card h3 { margin-bottom: var(--s-3); }
+
+    .support-card p { font-size: var(--text-sm); color: var(--ink-600); line-height: 1.7; margin: 0; }
+  </style>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
 
-    <button class="hamburger" id="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="line1"></span>
-        <span class="line2"></span>
-        <span class="line3"></span>
-    </button>
+<a href="#main" class="skip-link">Skip to main content</a>
 
-    <nav class="sidebar" id="sidebar" aria-label="Main navigation">
-        <div class="sidebar-header">
-            <div class="logo-text">Fahmid School</div>
-        </div>
-
-        <div class="sidebar-content">
-            <nav>
-                <ul role="list">
-                    <li><a href="index.html"><i data-lucide="home"></i> Home</a></li>
-                    <li><a href="about.html"><i data-lucide="info"></i> About</a></li>
-                    <li><a href="academics.html"><i data-lucide="book-open"></i> Academics</a></li>
-                    <li><a href="admissions.html"><i data-lucide="file-text"></i> Admissions</a></li>
-                    <li><a href="school-life.html" aria-current="page"><i data-lucide="users"></i> School Life</a></li>
-                    <li><a href="gallery.html"><i data-lucide="image"></i> Gallery</a></li>
-                    <li><a href="news.html"><i data-lucide="newspaper"></i> News</a></li>
-                    <li><a href="contact.html"><i data-lucide="phone"></i> Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-
-        <div class="sidebar-footer">
-            <a href="login.html" class="btn" style="width:100%; padding:15px; border-radius:30px; font-size:1.1rem; display:block; text-align:center;">
-                Login to Portal
-            </a>
-        </div>
+<!-- NAVIGATION -->
+<header class="site-nav" id="site-nav" role="banner">
+  <div class="container nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Fahmid School — Home">
+      <div class="nav-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="nav-logo-text">
+        <span class="nav-logo-name">Fahmid School</span>
+        <span class="nav-logo-tagline">Nursery &amp; Primary</span>
+      </div>
+    </a>
+    <nav aria-label="Main navigation">
+      <ul class="nav-links" role="list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="academics.html">Academics</a></li>
+        <li><a href="admissions.html">Admissions</a></li>
+        <li><a href="school-life.html" aria-current="page">School Life</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
     </nav>
-
-    <!-- HERO SECTION -->
-    <section class="hero" style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); min-height: 400px;">
-        <div class="hero-content">
-            <h1>School Life</h1>
-            <p class="lead">
-                Experience the engaging and supportive community that makes Fahmid special
-            </p>
-        </div>
-    </section>
-
-    <main id="main-content" class="main-content">
-
-        <!-- TYPICAL DAY -->
-<section class="container section">
-    <h2 class="section-title">A Day at Fahmid</h2>
-    <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-        Every day is filled with learning, discovery, faith, and growth
-    </p>
-
-    <div style="max-width: 900px; margin: 0 auto;">
-        <!-- Arrival & Assembly -->
-        <article class="animate-on-scroll animate-slideInLeft" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="sunrise" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-warning);">7:40 AM - 8:20 AM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Morning Assembly</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    The school day begins with assembly including prayers, national anthem, announcements, and a motivational message to start the day positively.
-                </p>
-            </div>
-        </article>
-
-        <!-- Sport / Early Activity -->
-        <article class="animate-on-scroll animate-slideInRight" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="dribbble" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-success);">8:20 AM - 8:30 AM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Sports & Physical Activity</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    All pupils participate in short, energizing sports activities (held on Wednesdays and Fridays; other days may include light movement or readiness routines).
-                </p>
-            </div>
-        </article>
-
-        <!-- Morning Lessons -->
-        <article class="animate-on-scroll animate-slideInLeft" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="book-open" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: var(--color-primary);">8:30 AM - 11:20 AM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Morning Academic Lessons</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    Focused classroom instruction in core subjects including English, mathematics, and foundational learning tailored to each class level.
-                </p>
-            </div>
-        </article>
-
-        <!-- Long Break -->
-        <article class="animate-on-scroll animate-slideInRight" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #FFC107 0%, #FFA000 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="utensils" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: #FFC107;">11:20 AM - 11:50 AM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Long Break & Snack</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    Pupils enjoy a nutritious break, snacks, outdoor play, rest, and social time under supervision.
-                </p>
-            </div>
-        </article>
-
-        <!-- Continuation of Lessons -->
-        <article class="animate-on-scroll animate-slideInLeft" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #673AB7 0%, #512DA8 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="book" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: #673AB7;">11:50 AM - 1:10 PM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Continuation of School Activities</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    More lessons, group work, practical activities, and subject continuation to build on morning learning.
-                </p>
-            </div>
-        </article>
-
-        <!-- Solat (Prayer) Observation -->
-        <article class="animate-on-scroll animate-slideInRight" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #3F51B5 0%, #303F9F 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="heart" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: #3F51B5;">1:10 PM - 2:00 PM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Solat (Prayer) Observation</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    Time allocated for Zuhr prayer and reflection that foster discipline, mindfulness, and faith-based values for Muslim pupils.
-                </p>
-            </div>
-        </article>
-
-        <!-- Afternoon Lessons -->
-        <article class="animate-on-scroll animate-slideInLeft" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #009688 0%, #00796B 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="pen-tool" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: #009688;">2:10 PM - 3:10 PM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Afternoon School Lessons</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    Final academic sessions of the day, including reinforcement of concepts, assessments, and interactive learning.
-                </p>
-            </div>
-        </article>
-
-        <!-- Homework & Closing -->
-        <article class="animate-on-scroll animate-slideInRight" style="display: flex; gap: var(--space-6); margin-bottom: var(--space-10); align-items: flex-start;">
-            <div style="flex-shrink: 0;">
-                <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #607D8B 0%, #455A64 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);">
-                    <i data-lucide="home" style="width: 40px; height: 40px; color: white;"></i>
-                </div>
-            </div>
-            <div style="flex: 1;">
-                <h3 style="margin: 0 0 var(--space-2) 0; color: #607D8B;">3:10 PM - 3:30 PM</h3>
-                <h4 style="margin: 0 0 var(--space-3) 0; font-size: var(--text-xl);">Homework Assignment & Dismissal</h4>
-                <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                    Teachers assign and explain homework (3:10 PM – 3:25 PM). School closes at 3:30 PM with safe, organized dismissal.
-                </p>
-            </div>
-        </article>
+    <div class="nav-actions">
+      <a href="login.html" class="nav-portal-link">Portal Login</a>
+      <a href="admissions.html" class="btn btn-primary btn-sm">Apply Now</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="nav-mobile-menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
-</section>
+  </div>
+</header>
 
-        <!-- EXTRACURRICULAR ACTIVITIES -->
-<section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-    <h2 class="section-title">Extracurricular Activities</h2>
-    <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-        Engaging programs that build confidence, communication, thinking skills and values
-    </p>
+<div class="nav-mobile-overlay" id="nav-overlay" aria-hidden="true"></div>
+<nav class="nav-mobile-menu" id="nav-mobile-menu" aria-label="Mobile navigation">
+  <a href="index.html"><i data-lucide="home" style="width:18px;height:18px;"></i> Home</a>
+  <a href="about.html"><i data-lucide="info" style="width:18px;height:18px;"></i> About</a>
+  <a href="academics.html"><i data-lucide="book-open" style="width:18px;height:18px;"></i> Academics</a>
+  <a href="admissions.html"><i data-lucide="file-text" style="width:18px;height:18px;"></i> Admissions</a>
+  <a href="school-life.html" aria-current="page"><i data-lucide="users" style="width:18px;height:18px;"></i> School Life</a>
+  <a href="gallery.html"><i data-lucide="image" style="width:18px;height:18px;"></i> Gallery</a>
+  <a href="news.html"><i data-lucide="newspaper" style="width:18px;height:18px;"></i> News &amp; Events</a>
+  <a href="contact.html"><i data-lucide="phone" style="width:18px;height:18px;"></i> Contact</a>
+  <div class="nav-mobile-divider"></div>
+  <a href="login.html"><i data-lucide="log-in" style="width:18px;height:18px;"></i> Portal Login</a>
+  <div class="nav-mobile-cta">
+    <a href="admissions.html" class="btn btn-primary" style="width:100%;justify-content:center;">Apply Now</a>
+  </div>
+</nav>
 
-    <div class="grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-8);">
-        
-        <!-- Sports -->
-        <article class="feature-card animate-on-scroll animate-scaleIn">
-            <div class="feature-icon floating" style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);">
-                <i data-lucide="trophy"></i>
-            </div>
-            <h3>Sports & Physical Activities</h3>
-            <p>
-                Pupils enjoy fun physical activities and team games from time to time. 
-                Everyone looks forward to our annual Inter-House Sports event — a highlight of the year full of excitement, participation and school spirit.
-            </p>
-        </article>
+<main id="main">
 
-        <!-- Drama -->
-        <article class="feature-card animate-on-scroll animate-scaleIn">
-            <div class="feature-icon floating" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
-                <i data-lucide="drama"></i>
-            </div>
-            <h3>Drama</h3>
-            <p>
-                Occasional drama activities give children the chance to act, express themselves, work together and build confidence in a joyful and supportive setting.
-            </p>
-        </article>
-
-        <!-- Sign Language -->
-        <article class="feature-card animate-on-scroll animate-scaleIn">
-            <div class="feature-icon floating" style="background: linear-gradient(135deg, #3F51B5 0%, #303F9F 100%);">
-                <i data-lucide="hand"></i>
-            </div>
-            <h3>Sign Language</h3>
-            <p>
-                Regular weekly sessions teach basic sign language, helping pupils develop inclusive communication skills and greater awareness of others.
-            </p>
-        </article>
-
-        <!-- Coding -->
-        <article class="feature-card animate-on-scroll animate-scaleIn">
-            <div class="feature-icon floating" style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%);">
-                <i data-lucide="code"></i>
-            </div>
-            <h3>Coding</h3>
-            <p>
-                Weekly coding classes introduce logical thinking, problem-solving and basic programming in a fun, age-appropriate way.
-            </p>
-        </article>
-
-        <!-- Language & Communication block (spans wider) -->
-        <article class="feature-card animate-on-scroll animate-scaleIn" style="grid-column: 1 / -1; max-width: 780px; margin: 0 auto;">
-            <div class="feature-icon floating" style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);">
-                <i data-lucide="message-circle"></i>
-            </div>
-            <h3>Communication, Diction & French</h3>
-            <p style="text-align: center; max-width: 680px; margin: 0 auto;">
-                Weekly dedicated sessions in <strong>Diction</strong> (clear speaking), <strong>Communication Skills</strong> (confident expression) and <strong>French</strong> help pupils speak more clearly, express ideas effectively and begin learning a second language.
-            </p>
-        </article>
-
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <div class="page-hero-bg">
+      <img src="IMG_4628.jpeg" alt="" aria-hidden="true" loading="eager">
     </div>
-</section>
+    <div class="container page-hero-inner">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="index.html">Home</a>
+        <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        <span aria-current="page">School Life</span>
+      </nav>
+      <h1>School Life</h1>
+      <p class="page-hero-lead">Experience the engaging, supportive, and faith-centred community that makes Fahmid a place where children truly thrive.</p>
+    </div>
+  </div>
 
-        <!-- SPECIAL EVENTS -->
-        <section class="container section">
-            <h2 class="section-title">Annual Events & Celebrations</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                Creating memorable experiences throughout the school year
-            </p>
+  <!-- ── A DAY AT FAHMID ── -->
+  <section class="section" aria-labelledby="day-heading">
+    <div class="container">
+      <div class="grid-2" style="gap: var(--s-16); align-items: start;">
 
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="calendar-check" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Resumption Day</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        New academic session begins with welcome activities, class assignments, and orientation for new students and parents.
-                    </p>
-                </article>
+        <!-- Left: intro -->
+        <div class="reveal">
+          <p class="eyebrow">Daily Rhythm</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="day-heading">A Day at Fahmid</h2>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.75; margin-bottom: var(--s-6);">
+            Every school day follows a structured, balanced routine that weaves together academic learning, physical activity, spiritual practice, and social development.
+          </p>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.75; margin-bottom: var(--s-8);">
+            This consistent rhythm gives pupils a sense of security and purpose, helping them get the very best out of each day.
+          </p>
 
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="flag" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Independence Day</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        Celebrating Nigerian independence with cultural displays, traditional attire, patriotic songs, and learning about national heritage.
-                    </p>
-                </article>
-
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="gift" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Children's Day</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        A special day dedicated to our students with games, entertainment, gifts, and fun activities celebrating childhood.
-                    </p>
-                </article>
-
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="globe" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Cultural Day</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        Students showcase Nigeria's diverse cultures through traditional dress, food, dance, and presentations about different ethnic groups.
-                    </p>
-                </article>
-
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="trophy" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Sports Day</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        Annual athletics competition with races, relay events, and team sports. Houses compete for trophies and bragging rights!
-                    </p>
-                </article>
-
-                <article class="animate-on-scroll animate-fadeInUp" style="background: white; padding: var(--space-8); border-radius: var(--radius-xl); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); transition: all 0.3s;">
-                    <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6);">
-                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center;">
-                            <i data-lucide="graduation-cap" style="width: 28px; height: 28px; color: white;"></i>
-                        </div>
-                        <h3 style="margin: 0;">Graduation Ceremony</h3>
-                    </div>
-                    <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                        Celebrating Primary 6 graduates as they complete their journey at Fahmid and prepare for secondary school.
-                    </p>
-                </article>
+          <!-- At-a-glance hours panel -->
+          <div style="background: var(--accent-pale); border: 1px solid rgba(27,58,122,0.12); border-radius: var(--radius-xl); padding: var(--s-7);">
+            <h3 style="font-size: var(--text-base); color: var(--ink-900); margin-bottom: var(--s-4);">School Hours</h3>
+            <div style="display: flex; flex-direction: column; gap: var(--s-3);">
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--ink-600);">Gates open</span>
+                <span style="font-weight: var(--w-semibold); color: var(--ink-900);">7:30 AM</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--ink-600);">Assembly begins</span>
+                <span style="font-weight: var(--w-semibold); color: var(--ink-900);">7:40 AM</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--ink-600);">Long break</span>
+                <span style="font-weight: var(--w-semibold); color: var(--ink-900);">11:20 – 11:50 AM</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: var(--text-sm);">
+                <span style="color: var(--ink-600);">School closes</span>
+                <span style="font-weight: var(--w-semibold); color: var(--ink-900);">3:30 PM</span>
+              </div>
             </div>
-        </section>
-
-        <!-- STUDENT SUPPORT -->
-        <section class="container section" style="background: var(--color-gray-50); padding: var(--space-20) var(--space-6); border-radius: var(--radius-2xl); margin-bottom: var(--space-16);">
-            <h2 class="section-title">Pupil Support & Wellbeing</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                We prioritize each child's emotional, social, and physical wellbeing
-            </p>
-
-            <div class="grid">
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="heart" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Pastoral Care</h3>
-                    <p>Dedicated staff provide emotional support, conflict resolution, and guidance to ensure every child feels safe and valued.</p>
-                </div>
-
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="stethoscope" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Health Services</h3>
-                    <p>Basic first aid available in the school with trained staff to handle minor injuries and health concerns during school hours.</p>
-                </div>
-
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="apple" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Nutrition</h3>
-                    <p>Healthy meal options and snacks available. We promote good eating habits and ensure pupils have nutritious food.</p>
-                </div>
-
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="users-round" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Anti-Bullying</h3>
-                    <p>Zero-tolerance policy for bullying with clear procedures for reporting and addressing any concerns promptly and effectively.</p>
-                </div>
-
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="graduation-cap" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Learning Support</h3>
-                    <p>Additional help for pupils who need extra support in specific subjects through remedial classes and one-on-one attention.</p>
-                </div>
-
-                <div class="card animate-on-scroll animate-fadeInUp">
-                    <div style="background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%); width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-4);">
-                        <i data-lucide="shield-check" style="color: white; width: 28px; height: 28px;"></i>
-                    </div>
-                    <h3>Safety & Security</h3>
-                    <p>Secure environment with controlled access, supervision during all activities, and emergency procedures to keep pupils safe.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- PARENT INVOLVEMENT -->
-        <section class="container section">
-            <h2 class="section-title">Parent Partnership</h2>
-            <p class="lead" style="text-align: center; max-width: 800px; margin: 0 auto var(--space-12);">
-                We believe in strong collaboration between school and home
-            </p>
-
-            <div style="max-width: 900px; margin: 0 auto;">
-                <div style="background: white; padding: var(--space-10); border-radius: var(--radius-2xl); box-shadow: var(--shadow-md); border: 1px solid var(--color-gray-200);">
-                    <div class="grid" style="gap: var(--space-10);">
-                        <article class="animate-on-scroll animate-slideInRight">
-                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
-                                <i data-lucide="calendar-days" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
-                                <h3 style="margin: 0;">Regular Communication</h3>
-                            </div>
-                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                                Termly and spontaneous updates, progress reports, and open channels for parents to discuss their child's development with teachers.
-                            </p>
-                        </article>
-
-                        <article class="animate-on-scroll animate-slideInRight">
-                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
-                                <i data-lucide="users" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
-                                <h3 style="margin: 0;">Parent-Teacher Meetings</h3>
-                            </div>
-                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                                Termly conferences to discuss academic progress, behaviour, and ways parents can support learning at home.
-                            </p>
-                        </article>
-
-                        <article class="animate-on-scroll animate-slideInRight">
-                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
-                                <i data-lucide="heart-handshake" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
-                                <h3 style="margin: 0;">Volunteer Opportunities</h3>
-                            </div>
-                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                                Parents are welcome to volunteer for school events, field trips, and special activities throughout the year.
-                            </p>
-                        </article>
-
-                        <article class="animate-on-scroll animate-slideInRight">
-                            <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
-                                <i data-lucide="message-square" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
-                                <h3 style="margin: 0;">Pupil/Parent Portal</h3>
-                            </div>
-                            <p style="margin: 0; color: var(--color-gray-700); line-height: 1.8;">
-                                Access grades, attendance records, school announcements, and communicate with teachers through our online portal.
-                            </p>
-                        </article>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA SECTION -->
-        <section class="container section cta-section">
-            <h2>Experience School Life at Fahmid</h2>
-            <p class="lead">
-                See our vibrant community in action with a personal tour
-            </p>
-            <a href="contact.html" class="btn">Schedule a Visit</a>
-            <a href="gallery.html" class="btn btn-secondary">View Photo Gallery</a>
-        </section>
-
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <div class="footer-links">
-                <a href="about.html">About Us</a>
-                <a href="academics.html">Academics</a>
-                <a href="admissions.html">Admissions</a>
-                <a href="policy.html">School Policy</a>
-            </div>
-
-            <div class="social-links">
-                <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener" aria-label="Facebook">
-                    <i data-lucide="facebook"></i>
-                </a>
-                <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener" aria-label="Instagram">
-                    <i data-lucide="instagram"></i>
-                </a>
-                <a href="https://wa.me/2348061427297" target="_blank" rel="noopener" aria-label="WhatsApp">
-                    <i data-lucide="message-circle"></i>
-                </a>
-            </div>
-
-            <p>&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+          </div>
         </div>
-    </footer>
 
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+        <!-- Right: timeline -->
+        <div class="reveal reveal-delay-1">
+          <div class="timeline">
 
-    <script src="script.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-    </script>
-    <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Add hover effects to event cards
-    document.querySelectorAll('article[style*="background: white"]').forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-4px)';
-            this.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.1)';
-        });
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = 'var(--shadow-sm)';
-        });
-    });
-});
-</script>
-<!-- PWA Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✓ Service Worker registered');
-            })
-            .catch(error => {
-                console.error('Service Worker registration failed:', error);
-            });
-    });
-}
-</script>
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #D97706;">7:40 AM – 8:20 AM</div>
+                <div class="timeline-title">Morning Assembly</div>
+                <p class="timeline-desc">The day begins with prayers, the national anthem, school announcements, and a motivational message to set a positive tone.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #16A34A;">8:20 AM – 8:30 AM</div>
+                <div class="timeline-title">Sports &amp; Physical Activity</div>
+                <p class="timeline-desc">Energising physical activities for all pupils, with full sports sessions on Wednesdays and Fridays, and light movement routines on other days.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: var(--accent);">8:30 AM – 11:20 AM</div>
+                <div class="timeline-title">Morning Academic Lessons</div>
+                <p class="timeline-desc">Focused classroom instruction in core subjects — English, Mathematics, and foundational learning tailored to each class level.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #FCD34D, #F59E0B);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #D97706;">11:20 AM – 11:50 AM</div>
+                <div class="timeline-title">Long Break &amp; Snack</div>
+                <p class="timeline-desc">Pupils enjoy nutritious snacks, outdoor play, rest, and social time in a supervised environment.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #7C3AED, #6D28D9);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #7C3AED;">11:50 AM – 1:10 PM</div>
+                <div class="timeline-title">Continuation of School Activities</div>
+                <p class="timeline-desc">More lessons, group work, practical activities, and subject continuation to build on morning learning.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #3B82F6, #2563EB);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #2563EB;">1:10 PM – 2:00 PM</div>
+                <div class="timeline-title">Ṣalāt (Prayer) Observation</div>
+                <p class="timeline-desc">Dedicated time for Zuhr prayer and quiet reflection, fostering discipline, mindfulness, and faith-based values.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #0D9488, #0F766E);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #0F766E;">2:10 PM – 3:10 PM</div>
+                <div class="timeline-title">Afternoon Lessons</div>
+                <p class="timeline-desc">Final academic sessions of the day, including concept reinforcement, assessments, and interactive learning activities.</p>
+              </div>
+            </div>
+
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background: linear-gradient(135deg, #64748B, #475569);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
+              <div class="timeline-body">
+                <div class="timeline-time" style="color: #475569;">3:10 PM – 3:30 PM</div>
+                <div class="timeline-title">Homework &amp; Dismissal</div>
+                <p class="timeline-desc">Teachers assign and explain homework. School closes at 3:30 PM with safe, organised dismissal for all pupils.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── EXTRACURRICULAR ── -->
+  <section class="section section--alt" aria-labelledby="extra-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Beyond the Classroom</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="extra-heading">Extracurricular Activities</h2>
+        <p class="section-lead">Enriching programmes that develop confidence, communication, creativity, and lifelong values in every child.</p>
+      </div>
+
+      <div class="grid-3" style="gap: var(--s-6);">
+
+        <div class="feature-card reveal">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          </div>
+          <h3>Sports &amp; Physical Activities</h3>
+          <p>Fun physical activities and team games throughout the year, with our annual Inter-House Sports Day as the most-anticipated highlight — full of competition, school spirit, and celebration.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-1">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20v-2"/><path d="M22 20v-8"/></svg>
+          </div>
+          <h3>Drama</h3>
+          <p>Occasional drama sessions give children the chance to act, express themselves, and collaborate in a joyful and supportive setting — building confidence and creativity.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-2">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #3B82F6, #2563EB);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          </div>
+          <h3>Sign Language</h3>
+          <p>Weekly sessions teach basic sign language, helping pupils develop inclusive communication skills and a greater awareness and respect for others.</p>
+        </div>
+
+        <div class="feature-card reveal">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Coding</h3>
+          <p>Weekly coding classes introduce logical thinking, problem-solving, and basic programming concepts in a fun and age-appropriate way that prepares pupils for a digital future.</p>
+        </div>
+
+        <div class="feature-card reveal reveal-delay-1" style="grid-column: span 2;">
+          <div class="feature-card-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Communication, Diction &amp; French</h3>
+          <p>Weekly dedicated sessions in <strong>Diction</strong> (clear speaking), <strong>Communication Skills</strong> (confident, expressive delivery), and <strong>French</strong> help pupils articulate ideas clearly, express themselves effectively, and take their first steps in learning a second language — preparing them for a world beyond school.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ANNUAL EVENTS ── -->
+  <section class="section" aria-labelledby="events-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Marking the Year</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="events-heading">Annual Events &amp; Celebrations</h2>
+        <p class="section-lead">Memorable moments that bring our whole school community together throughout the year.</p>
+      </div>
+
+      <div class="grid-3" style="gap: var(--s-5);">
+
+        <div class="event-card reveal">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Resumption Day</div>
+            <p class="event-card-desc">New term begins with welcome activities, class assignments, and orientation for new pupils and their families.</p>
+          </div>
+        </div>
+
+        <div class="event-card reveal reveal-delay-1">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Independence Day</div>
+            <p class="event-card-desc">Celebrating Nigerian independence with cultural displays, traditional attire, patriotic songs, and lessons on national heritage.</p>
+          </div>
+        </div>
+
+        <div class="event-card reveal reveal-delay-2">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Children's Day</div>
+            <p class="event-card-desc">A special day dedicated entirely to our pupils — games, entertainment, gifts, and fun activities that celebrate the joy of childhood.</p>
+          </div>
+        </div>
+
+        <div class="event-card reveal">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Cultural Day</div>
+            <p class="event-card-desc">Pupils showcase Nigeria's rich diversity through traditional dress, food, dance, and presentations about different ethnic groups and traditions.</p>
+          </div>
+        </div>
+
+        <div class="event-card reveal reveal-delay-1">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Inter-House Sports Day</div>
+            <p class="event-card-desc">Annual athletics competition with races, relay events, and team sports. Houses compete fiercely for trophies in a day full of school spirit.</p>
+          </div>
+        </div>
+
+        <div class="event-card reveal reveal-delay-2">
+          <div class="event-card-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          </div>
+          <div>
+            <div class="event-card-title">Graduation Ceremony</div>
+            <p class="event-card-desc">A proud celebration as Primary 6 pupils complete their Fahmid journey and prepare to embark on the next chapter at secondary school.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PUPIL SUPPORT ── -->
+  <section class="section section--alt" aria-labelledby="support-heading">
+    <div class="container">
+      <div class="section-header section-header--centered reveal">
+        <p class="eyebrow">Holistic Wellbeing</p>
+        <div class="divider divider--center"></div>
+        <h2 class="section-heading" id="support-heading">Pupil Support &amp; Wellbeing</h2>
+        <p class="section-lead">We prioritise each child's emotional, social, and physical wellbeing — because happy children learn better.</p>
+      </div>
+
+      <div class="grid-3" style="gap: var(--s-5);">
+
+        <div class="support-card reveal">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Pastoral Care</h3>
+          <p>Dedicated staff provide emotional support, conflict resolution, and personal guidance so every child feels safe, seen, and valued within our school community.</p>
+        </div>
+
+        <div class="support-card reveal reveal-delay-1">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <h3>Health Services</h3>
+          <p>Basic first aid is available at all times, with trained staff on hand to handle minor injuries and health concerns during school hours.</p>
+        </div>
+
+        <div class="support-card reveal reveal-delay-2">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></svg>
+          </div>
+          <h3>Nutrition</h3>
+          <p>Healthy meal options and snacks are available. We promote good eating habits and ensure every pupil has access to nutritious food each day.</p>
+        </div>
+
+        <div class="support-card reveal">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Anti-Bullying</h3>
+          <p>A zero-tolerance policy for bullying, with clear and transparent procedures for reporting and addressing any concerns promptly and effectively.</p>
+        </div>
+
+        <div class="support-card reveal reveal-delay-1">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          </div>
+          <h3>Learning Support</h3>
+          <p>Additional help for pupils who need extra support through remedial classes, targeted revision, and one-on-one teacher attention outside of regular lessons.</p>
+        </div>
+
+        <div class="support-card reveal reveal-delay-2">
+          <div class="support-card-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Safety &amp; Security</h3>
+          <p>A secure campus with controlled access, active supervision during all activities, and clear emergency procedures to keep every pupil safe at all times.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PARENT PARTNERSHIP ── -->
+  <section class="section" aria-labelledby="parents-heading">
+    <div class="container">
+      <div class="grid-2" style="gap: var(--s-16); align-items: center;">
+
+        <div class="reveal">
+          <p class="eyebrow">Working Together</p>
+          <div class="divider"></div>
+          <h2 class="section-heading" id="parents-heading">Parent Partnership</h2>
+          <p style="font-size: var(--text-base); color: var(--ink-600); line-height: 1.75; margin-bottom: var(--s-8);">
+            We believe that children thrive when school and home work closely together. That's why we maintain open, regular, and meaningful communication with every family.
+          </p>
+          <a href="contact.html" class="btn btn-primary" style="margin-right: var(--s-3);">Get in Touch</a>
+          <a href="login.html" class="btn btn-secondary">Parent Portal</a>
+        </div>
+
+        <div class="reveal reveal-delay-1">
+          <div style="display: flex; flex-direction: column; gap: var(--s-5);">
+
+            <div style="display: flex; align-items: flex-start; gap: var(--s-5); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-6);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <div>
+                <h3 style="font-size: var(--text-base); margin-bottom: var(--s-2);">Regular Communication</h3>
+                <p style="font-size: var(--text-sm); color: var(--ink-600); margin: 0; line-height: 1.7;">Termly progress reports and open channels for parents to discuss their child's development at any time.</p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; gap: var(--s-5); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-6);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div>
+                <h3 style="font-size: var(--text-base); margin-bottom: var(--s-2);">Parent-Teacher Meetings</h3>
+                <p style="font-size: var(--text-sm); color: var(--ink-600); margin: 0; line-height: 1.7;">Termly conferences to discuss academic progress, behaviour, and how parents can best support learning at home.</p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; gap: var(--s-5); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-6);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div>
+                <h3 style="font-size: var(--text-base); margin-bottom: var(--s-2);">Volunteer Opportunities</h3>
+                <p style="font-size: var(--text-sm); color: var(--ink-600); margin: 0; line-height: 1.7;">Parents are warmly welcome to volunteer for school events, field trips, and special activities throughout the year.</p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; gap: var(--s-5); background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--radius-xl); padding: var(--s-6);">
+              <div style="width: 44px; height: 44px; background: var(--accent-pale); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              </div>
+              <div>
+                <h3 style="font-size: var(--text-base); margin-bottom: var(--s-2);">Parent &amp; Pupil Portal</h3>
+                <p style="font-size: var(--text-sm); color: var(--ink-600); margin: 0; line-height: 1.7;">Access grades, attendance, announcements, and communicate directly with teachers through our secure online portal.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-banner" aria-label="Visit us call to action">
+    <div class="container">
+      <div class="cta-banner-inner">
+        <div class="cta-banner-text reveal">
+          <h2>Experience School Life for Yourself</h2>
+          <p>Book a personal tour and see our vibrant community in action — we'd love to welcome you.</p>
+        </div>
+        <div class="cta-banner-actions reveal reveal-delay-2">
+          <a href="contact.html" class="btn btn-gold btn-lg">Schedule a Visit</a>
+          <a href="gallery.html" class="btn btn-ghost btn-lg">View Photo Gallery</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">Fahmid School</div>
+        <p class="footer-brand-desc">Fahmid Nursery and Primary School — committed to academic excellence and the holistic development of every child since 2007.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://instagram.com/fahmidschool" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+          <a href="https://wa.me/2348061427297" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="academics.html">Academics</a></li>
+          <li><a href="admissions.html">Admissions</a></li>
+          <li><a href="school-life.html">School Life</a></li>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="news.html">News &amp; Events</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Information</div>
+        <ul class="footer-links-list" role="list">
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="policy.html">School Policy</a></li>
+          <li><a href="login.html">Parent Portal</a></li>
+          <li><a href="login.html">Staff Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Contact</div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</span></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg><a href="tel:+2348061427297">+234 806 142 7297</a></div>
+        <div class="footer-contact-item"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:fahmidschool@gmail.com">fahmidschool@gmail.com</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copyright">&copy; <span id="copyright-year"></span> Fahmid Nursery and Primary School. All rights reserved.</p>
+      <div class="footer-legal">
+        <a href="policy.html">School Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="script.js" defer></script>
+<script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
 </html>
