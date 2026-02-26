@@ -2024,19 +2024,6 @@ select { cursor: pointer; }
   color: var(--ink-600);
 }
 
-.footer-legal {
-  display: flex;
-  gap: var(--s-4);
-}
-
-.footer-legal a {
-  font-size: var(--text-xs);
-  color: var(--ink-600);
-  transition: color var(--t-fast);
-}
-
-.footer-legal a:hover { color: var(--ink-300); }
-
 /* ----------------------------------------------------------------
    TOAST NOTIFICATIONS (preserved utility)
    ---------------------------------------------------------------- */
