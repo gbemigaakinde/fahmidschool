@@ -350,19 +350,15 @@ p:not(:last-child) { margin-bottom: 1em; }
 .nav-logo-icon {
   width: 36px;
   height: 36px;
-  background: var(--accent);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: var(--pp-r-sm);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.nav-logo-icon svg {
-  width: 20px;
-  height: 20px;
-  color: white;
-  stroke: white;
+.nav-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .nav-logo-text {
