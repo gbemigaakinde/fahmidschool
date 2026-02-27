@@ -17,7 +17,10 @@
   <link rel="apple-touch-icon" href="IMG_4628.jpeg">
 
   <style>
-    /* Policy page layout */
+    /* ============================================================
+       POLICY PAGE — SCREEN STYLES
+       ============================================================ */
+
     .policy-layout {
       display: grid;
       grid-template-columns: 1fr;
@@ -118,7 +121,7 @@
       color: white;
     }
 
-    /* Last updated bar */
+    /* Meta bar */
     .policy-meta-bar {
       display: flex;
       flex-wrap: wrap;
@@ -371,117 +374,181 @@
       }
     }
 
-   @media print {
-  .policy-sidebar,
-  .toc-toggle,
-  .toc-mobile-panel,
-  .print-btn,
-  .cta-banner,
-  .page-hero {
-    display: none !important;
-  }
+    /* Print header — hidden on screen */
+    .print-doc-header {
+      display: none;
+    }
 
-  body::before {
-    content: '';
-    display: block;
-    height: 6px;
-    background: #1B3A7A;
-    margin-bottom: 0;
-  }
+    /* ============================================================
+       PRINT STYLES
+       ============================================================ */
+    @media print {
 
-  body::after {
-    content: '';
-    display: block;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: #C89F4D;
-  }
+      /* Hide screen-only elements */
+      .policy-sidebar,
+      .toc-toggle,
+      .toc-mobile-panel,
+      .print-btn,
+      .cta-banner,
+      .page-hero,
+      .site-nav,
+      .nav-mobile-menu,
+      .nav-mobile-overlay,
+      .site-footer,
+      #toast-container,
+      .policy-meta-bar {
+        display: none !important;
+      }
 
-  .section {
-    padding-top: 0 !important;
-  }
+      /* Show the print letterhead */
+      .print-doc-header {
+        display: block !important;
+      }
 
-  .section::before {
-    content: '';
-    display: block;
-    height: 6px;
-    background: #1B3A7A;
-    width: 100%;
-    margin-bottom: 2rem;
-  }
+      /* Reset body */
+      body {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 10.5pt;
+        color: #1C1F2A;
+        background: white;
+        margin: 0;
+        padding: 0;
+      }
 
-  .section::after {
-    content: 'FAHMID NURSERY & PRIMARY SCHOOL';
-    display: block;
-    text-align: center;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 9pt;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    color: #6B7490;
-    margin-bottom: 0.25rem;
-  }
+      /* Section padding reset */
+      .section {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
 
-  .print-doc-header {
-    display: block !important;
-  }
-}
+      /* Single column layout */
+      .policy-layout {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+      }
 
-.print-doc-header {
-  display: none;
-}
+      /* Fix reveal opacity */
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+      }
 
-  .policy-layout {
-    grid-template-columns: 1fr;
-  }
+      /* Policy sections */
+      .policy-section {
+        page-break-inside: avoid;
+        margin-bottom: 1.8rem;
+        padding-bottom: 1.8rem;
+        border-bottom: 1px solid #D8DAE4;
+      }
 
-  .policy-section {
-    page-break-inside: avoid;
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-  }
+      .policy-section:last-child {
+        border-bottom: none;
+      }
 
-  .policy-section-icon {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
+      /* Section headings */
+      .policy-section-header {
+        margin-bottom: 0.75rem;
+        gap: 0.6rem;
+      }
 
-  .policy-meta-bar {
-    display: flex;
-    border: 1px solid #ccc;
-    margin-bottom: 1.5rem;
-  }
+      .policy-section-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
 
-  .policy-body p,
-  .policy-body li {
-    color: #1C1F2A !important;
-    opacity: 1 !important;
-  }
+      .policy-section-icon svg {
+        width: 16px;
+        height: 16px;
+      }
 
-  .policy-highlight,
-  .policy-alert {
-    border-left: 4px solid #1B3A7A;
-    background: #f0f4ff !important;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
+      .policy-section-number {
+        font-size: 7.5pt;
+        color: #C89F4D !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
 
-  .policy-section h2 {
-    color: #1B3A7A !important;
-    font-size: 1.4rem;
-  }
+      .policy-section h2 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 14pt;
+        color: #1B3A7A !important;
+        line-height: 1.2;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
 
-  .policy-body h3 {
-    color: #0D0F14 !important;
-  }
+      .policy-body h3 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 11pt;
+        color: #0D0F14 !important;
+        margin-top: 0.9rem;
+        margin-bottom: 0.3rem;
+      }
 
-  body {
-    font-size: 11pt;
-  }
-}
+      .policy-body p {
+        font-size: 10pt;
+        color: #1C1F2A !important;
+        line-height: 1.65;
+        margin-bottom: 0.4rem;
+      }
+
+      .policy-body ul li,
+      .policy-body ol li {
+        font-size: 10pt;
+        color: #1C1F2A !important;
+        line-height: 1.6;
+      }
+
+      .policy-body ul li::before {
+        background: #C89F4D !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .policy-body ol li::before {
+        color: #1B3A7A !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .policy-highlight {
+        background: #EAF0FD !important;
+        border-left: 3px solid #1B3A7A !important;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.6rem;
+        border-radius: 0 4px 4px 0;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .policy-highlight p {
+        font-size: 9.5pt;
+        color: #1C1F2A !important;
+      }
+
+      .policy-alert {
+        background: #FEF3C7 !important;
+        border-left: 3px solid #C89F4D !important;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.6rem;
+        border-radius: 0 4px 4px 0;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .policy-alert p {
+        font-size: 9.5pt;
+        color: #92400E !important;
+      }
+
+      /* Page footer line on every page */
+      @page {
+        margin: 18mm 16mm 22mm 16mm;
+      }
+    }
   </style>
 </head>
 <body>
@@ -556,24 +623,40 @@
   <section class="section" aria-label="School policies">
     <div class="container">
 
+      <!-- ======================================================
+           PRINT LETTERHEAD — hidden on screen, visible in print
+           ====================================================== -->
       <div class="print-doc-header">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 2px solid #1B3A7A;">
-          <div>
-            <div style="font-family:'DM Serif Display',serif; font-size:22pt; color:#1B3A7A; line-height:1.1;">Fahmid Nursery &amp; Primary School</div>
-            <div style="font-family:'DM Sans',sans-serif; font-size:9pt; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#C89F4D; margin-top:4px;">18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</div>
-          </div>
-          <div style="text-align:right; font-family:'DM Sans',sans-serif; font-size:9pt; color:#6B7490; line-height:1.8;">
-            <div><strong style="color:#1B3A7A;">OFFICIAL SCHOOL POLICY DOCUMENT</strong></div>
-            <div>Last Reviewed: January 2026</div>
-            <div>Next Review: January 2027</div>
-          </div>
-        </div>
-        <div style="text-align:center; margin-bottom:1.5rem;">
-          <div style="font-family:'DM Serif Display',serif; font-size:18pt; color:#0D0F14; margin-bottom:4px;">School Policy</div>
-          <div style="width:48px; height:3px; background:#C89F4D; margin:0 auto;"></div>
-        </div>
-      </div>
 
+        <!-- Top accent bar -->
+        <div style="height:6px; background:#1B3A7A; margin-bottom:0; print-color-adjust:exact; -webkit-print-color-adjust:exact;"></div>
+        <div style="height:3px; background:#C89F4D; margin-bottom:1.5rem; print-color-adjust:exact; -webkit-print-color-adjust:exact;"></div>
+
+        <!-- Letterhead row -->
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1rem;">
+          <div>
+            <div style="font-family:'DM Serif Display',serif; font-size:20pt; color:#1B3A7A; line-height:1.1; print-color-adjust:exact; -webkit-print-color-adjust:exact;">Fahmid Nursery &amp; Primary School</div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:8.5pt; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#C89F4D; margin-top:5px; print-color-adjust:exact; -webkit-print-color-adjust:exact;">18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:8.5pt; color:#6B7490; margin-top:2px;">info@fahmidschool.ng</div>
+          </div>
+          <div style="text-align:right; font-family:'DM Sans',sans-serif; font-size:9pt; color:#4B5268; line-height:1.9;">
+            <div style="font-weight:700; color:#1B3A7A; letter-spacing:0.05em; text-transform:uppercase; font-size:8pt; print-color-adjust:exact; -webkit-print-color-adjust:exact;">Official Policy Document</div>
+            <div>Last Reviewed: <strong style="color:#1C1F2A;">January 2026</strong></div>
+            <div>Next Review Due: <strong style="color:#1C1F2A;">January 2027</strong></div>
+            <div>Approved by: <strong style="color:#1C1F2A;">School Management</strong></div>
+          </div>
+        </div>
+
+        <!-- Document title block -->
+        <div style="border-top:1.5px solid #D8DAE4; border-bottom:1.5px solid #D8DAE4; padding:0.75rem 0; margin-bottom:1.5rem; text-align:center;">
+          <div style="font-family:'DM Serif Display',serif; font-size:16pt; color:#0D0F14; letter-spacing:-0.01em; print-color-adjust:exact; -webkit-print-color-adjust:exact;">School Policy Handbook</div>
+          <div style="font-family:'DM Sans',sans-serif; font-size:8.5pt; color:#6B7490; margin-top:3px; letter-spacing:0.06em; text-transform:uppercase;">Nursery &amp; Primary — All Policies</div>
+        </div>
+
+      </div>
+      <!-- end .print-doc-header -->
+
+      <!-- Screen meta bar -->
       <div class="policy-meta-bar">
         <div class="policy-meta-item">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -592,7 +675,6 @@
           Print Policies
         </button>
       </div>
-
 
       <div class="policy-layout">
 
