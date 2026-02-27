@@ -615,11 +615,9 @@
         .doc-title { padding: 6px 16px; }
         .doc-body  { padding: 10px 12px 16px; gap: 10px; }
 
-        /* identity: single column */
-        .id-grid { grid-template-columns: 1fr; }
-        .id-cell  { border-right: none; }
-        .id-cell:nth-last-child(-n+2) { border-bottom: 1px solid var(--rule); }
-        .id-cell:last-child           { border-bottom: none; }
+        /* id-grid: keep 2-col on mobile, tighten padding */
+        .id-cell { padding: 6px 8px; }
+        .id-cell__val { font-size: var(--text-xs); }
 
         /* academic: horizontal scroll */
         .section--academic { overflow-x: auto; }
@@ -681,8 +679,6 @@
             box-shadow: none;
             border-radius: 0;
             border: none;
-            /* ✅ FIX: Prevent the browser treating .doc as a fragmentation
-               context that could split header from first section */
             overflow: visible;
         }
 
@@ -690,9 +686,6 @@
             padding: 10px 16px 9px;
             gap: 10px;
             grid-template-columns: 46px 1fr;
-            /* ✅ FIX: Wrap the header + title + first section into one
-               unbreakable block using a shared display:contents ancestor.
-               The individual rules below do the heavy lifting. */
             page-break-after: avoid;
             break-after: avoid;
         }
@@ -702,8 +695,6 @@
 
         .doc-title {
             padding: 5px 16px;
-            /* ✅ FIX: Title strip must not detach from header above OR
-               the profile section below */
             page-break-before: avoid;
             page-break-after: avoid;
             break-before: avoid;
@@ -714,30 +705,18 @@
         .doc-body {
             padding: 8px 14px 10px;
             gap: 7px;
-            /* ✅ FIX: Remove display:flex for print — flexbox containers
-               create a new stacking/fragmentation context that breaks the
-               page-break-before:avoid on the first child */
             display: block;
         }
 
-        /* ✅ FIX: Restore the gap between sections using margin instead of
-           the flexbox gap (which no longer works after display:block above) */
         .doc-body > * + * {
             margin-top: 7px;
         }
 
-        /* ✅ FIX: The first section (Student Profile) is anchored to the
-           title strip above it. Both avoid + orphans/widows give the
-           browser maximum instruction to keep them together. */
         .doc-body > .section:first-child {
             page-break-before: avoid;
             break-before: avoid;
         }
 
-        /* ✅ FIX: Wrap header + title + first section as one inseparable
-           block. We use a CSS trick: mark the header as starting a
-           "keep-with-next" chain by setting orphans high so the browser
-           won't place a break there unless absolutely forced. */
         .doc-hd,
         .doc-title,
         .doc-body > .section:first-child {
@@ -804,8 +783,6 @@
         .section--academic {
             page-break-inside: auto;
             break-inside: auto;
-            /* ✅ FIX: Also remove overflow:hidden in print so table
-               header-group can repeat correctly across pages */
             overflow: visible;
         }
         .ac-table thead {
@@ -820,9 +797,6 @@
             break-before: avoid;
         }
 
-        /* ✅ FIX: Remove overflow:hidden from all sections in print —
-           it was creating new fragmentation contexts that prevented
-           page-break rules from propagating correctly */
         .section {
             overflow: visible;
         }
