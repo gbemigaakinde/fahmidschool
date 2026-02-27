@@ -2558,119 +2558,219 @@ async function loadPromotionPeriodStatus() {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────────────────────── */
+
+let _resultApprovalsTab = 'pending'; // 'pending' | 'approved'
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN LOADER  (replaces existing loadResultApprovals)
+───────────────────────────────────────────────────────────────────────────── */
+
 /**
- * ✅ FIXED: Load result approvals with correct pupil count from submissions
+ * Entry point — renders tab bar then delegates to the correct sub-loader.
  */
 async function loadResultApprovals() {
-    console.log('📋 Loading result approvals...');
-    
-    const tbody = document.getElementById('result-approvals-table');
-    const noApprovalsMsg = document.getElementById('no-approvals-message');
-    
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
-    
-    try {
-        // ✅ Get all pending submissions
-        const submissionsSnap = await db.collection('result_submissions')
-            .where('status', '==', 'pending')
-            .orderBy('submittedAt', 'desc')
-            .get();
-        
-        tbody.innerHTML = '';
+  console.log('📋 Loading result approvals...');
 
-if (submissionsSnap.empty) {
-    if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
-    // Hide bulk bar if visible
-    const existingBulkBar = document.getElementById('results-bulk-action-bar');
-    if (existingBulkBar) existingBulkBar.style.display = 'none';
-    return;
+  // ── Ensure tab bar exists ──────────────────────────────────────────────────
+  _ensureTabBar();
+
+  // ── Delegate ──────────────────────────────────────────────────────────────
+  if (_resultApprovalsTab === 'approved') {
+    await _loadApprovedResults();
+  } else {
+    await _loadPendingResults();
+  }
 }
 
-if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+/* ─────────────────────────────────────────────────────────────────────────────
+   TAB BAR
+───────────────────────────────────────────────────────────────────────────── */
 
-// Inject bulk action bar if not already present
-let bulkBar = document.getElementById('results-bulk-action-bar');
-if (!bulkBar) {
-    bulkBar = document.createElement('div');
-    bulkBar.id = 'results-bulk-action-bar';
-    bulkBar.style.cssText = 'display:flex; gap:var(--space-md); align-items:center; flex-wrap:wrap; margin-bottom:var(--space-md); padding:var(--space-md); background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-md);';
-    bulkBar.innerHTML = `
+function _ensureTabBar() {
+  // Look for an existing controls container or create one before the table
+  let controls = document.getElementById('result-approvals-tab-bar');
+
+  if (controls) return; // Already injected
+
+  // Find the section root — try the section element first, then fall back
+  const section = document.getElementById('result-approvals');
+  if (!section) return;
+
+  controls = document.createElement('div');
+  controls.id = 'result-approvals-tab-bar';
+  controls.style.cssText = `
+    display: flex;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-lg);
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0;
+  `;
+
+  controls.innerHTML = `
+    <button
+      id="tab-btn-pending"
+      onclick="switchResultApprovalsTab('pending')"
+      style="${_tabBtnStyle(true)}">
+      ⏳ Pending Approvals
+    </button>
+    <button
+      id="tab-btn-approved"
+      onclick="switchResultApprovalsTab('approved')"
+      style="${_tabBtnStyle(false)}">
+      ✅ Approved Results
+    </button>
+  `;
+
+  // Insert before the first child of the section
+  section.insertBefore(controls, section.firstChild);
+}
+
+function _tabBtnStyle(active) {
+  return active
+    ? `
+      padding: 8px 20px;
+      border: none;
+      border-bottom: 3px solid #00B2FF;
+      background: transparent;
+      color: #00B2FF;
+      font-weight: 700;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      margin-bottom: -2px;
+    `
+    : `
+      padding: 8px 20px;
+      border: none;
+      border-bottom: 3px solid transparent;
+      background: transparent;
+      color: #64748b;
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      margin-bottom: -2px;
+    `;
+}
+
+/**
+ * Called by tab buttons.
+ */
+async function switchResultApprovalsTab(tab) {
+  _resultApprovalsTab = tab;
+
+  // Update button styles
+  const pendingBtn  = document.getElementById('tab-btn-pending');
+  const approvedBtn = document.getElementById('tab-btn-approved');
+  if (pendingBtn)  pendingBtn.style.cssText  = _tabBtnStyle(tab === 'pending');
+  if (approvedBtn) approvedBtn.style.cssText = _tabBtnStyle(tab === 'approved');
+
+  await loadResultApprovals();
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PENDING TAB  (original logic, preserved exactly)
+───────────────────────────────────────────────────────────────────────────── */
+
+async function _loadPendingResults() {
+  const tbody = document.getElementById('result-approvals-table');
+  const noApprovalsMsg = document.getElementById('no-approvals-message');
+
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading approvals...</td></tr>';
+
+  try {
+    const submissionsSnap = await db.collection('result_submissions')
+      .where('status', '==', 'pending')
+      .orderBy('submittedAt', 'desc')
+      .get();
+
+    tbody.innerHTML = '';
+
+    if (submissionsSnap.empty) {
+      if (noApprovalsMsg) noApprovalsMsg.style.display = 'block';
+      const existingBulkBar = document.getElementById('results-bulk-action-bar');
+      if (existingBulkBar) existingBulkBar.style.display = 'none';
+      return;
+    }
+
+    if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+
+    // Inject bulk bar
+    let bulkBar = document.getElementById('results-bulk-action-bar');
+    if (!bulkBar) {
+      bulkBar = document.createElement('div');
+      bulkBar.id = 'results-bulk-action-bar';
+      bulkBar.style.cssText = 'display:flex; gap:var(--space-md); align-items:center; flex-wrap:wrap; margin-bottom:var(--space-md); padding:var(--space-md); background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-md);';
+      bulkBar.innerHTML = `
         <label style="display:flex; align-items:center; gap:var(--space-xs); cursor:pointer; font-weight:600;">
-            <input type="checkbox" id="select-all-results" onchange="toggleAllResultsSelection(this)">
-            Select All
+          <input type="checkbox" id="select-all-results" onchange="toggleAllResultsSelection(this)">
+          Select All
         </label>
         <button id="approve-selected-results-btn" class="btn btn-success" disabled
             onclick="approveAllPendingResults()" style="font-size:var(--text-sm);">
-            ✓ Approve Selected
+          ✓ Approve Selected
         </button>
         <button id="approve-all-results-btn" class="btn btn-primary"
             onclick="(function(){ document.querySelectorAll('.result-submission-checkbox').forEach(cb => cb.checked=false); approveAllPendingResults(); })()"
             style="font-size:var(--text-sm);">
-            ✓ Approve All Pending
+          ✓ Approve All Pending
         </button>
-    `;
-    tbody.closest('table').parentElement.insertBefore(bulkBar, tbody.closest('table'));
-} else {
-    bulkBar.style.display = 'flex';
-    // Reset select-all
-    const selectAll = document.getElementById('select-all-results');
-    if (selectAll) selectAll.checked = false;
-}
-        
-        // ✅ Process each submission
-        for (const submissionDoc of submissionsSnap.docs) {
-            const submissionData = submissionDoc.data();
-            const submissionId = submissionDoc.id;
-            
-            const teacherName = submissionData.teacherName || 'Unknown';
-            const className = submissionData.className || '-';
-            const subject = submissionData.subject || '-';
-            const term = submissionData.term || '-';
-            const session = submissionData.session || '-';
-            
-            const submittedDate = submissionData.submittedAt 
-                ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB')
-                : '-';
-            
-            // ✅ CRITICAL FIX: Count pupils from draft results
-            let pupilCount = 0;
-            
-            try {
-                const draftsSnap = await db.collection('results_draft')
-                    .where('classId', '==', submissionData.classId)
-                    .where('term', '==', term)
-                    .where('subject', '==', subject)
-                    .where('session', '==', session)
-                    .get();
-                
-                // Count unique pupils
-                const uniquePupils = new Set();
-                draftsSnap.forEach(doc => {
-                    const pupilId = doc.data().pupilId;
-                    if (pupilId) uniquePupils.add(pupilId);
-                });
-                
-                pupilCount = uniquePupils.size;
-                
-            } catch (draftError) {
-                console.error('Error counting draft results:', draftError);
-                pupilCount = 0;
-            }
-            
-            // ✅ Show warning if no pupils found
-            const pupilCountDisplay = pupilCount > 0 
-                ? pupilCount 
-                : `<span style="color: #dc3545; font-weight: 600;">0 ⚠️</span>`;
-            
-  const tr = document.createElement('tr');
-    tr.dataset.submissionId = submissionId;           // ← ADD THIS LINE
-    tr.innerHTML = `
+      `;
+      tbody.closest('table').parentElement.insertBefore(bulkBar, tbody.closest('table'));
+    } else {
+      bulkBar.style.display = 'flex';
+      const selectAll = document.getElementById('select-all-results');
+      if (selectAll) selectAll.checked = false;
+    }
+
+    for (const submissionDoc of submissionsSnap.docs) {
+      const submissionData = submissionDoc.data();
+      const submissionId   = submissionDoc.id;
+
+      const teacherName  = submissionData.teacherName  || 'Unknown';
+      const className    = submissionData.className    || '-';
+      const subject      = submissionData.subject      || '-';
+      const term         = submissionData.term         || '-';
+      const session      = submissionData.session      || '-';
+
+      const submittedDate = submissionData.submittedAt
+        ? submissionData.submittedAt.toDate().toLocaleDateString('en-GB')
+        : '-';
+
+      // Count pupils from draft results
+      let pupilCount = 0;
+      try {
+        const draftsSnap = await db.collection('results_draft')
+          .where('classId', '==', submissionData.classId)
+          .where('term',    '==', term)
+          .where('subject', '==', subject)
+          .where('session', '==', session)
+          .get();
+
+        const uniquePupils = new Set();
+        draftsSnap.forEach(doc => {
+          const pid = doc.data().pupilId;
+          if (pid) uniquePupils.add(pid);
+        });
+        pupilCount = uniquePupils.size;
+      } catch (e) {
+        pupilCount = 0;
+      }
+
+      const pupilCountDisplay = pupilCount > 0
+        ? pupilCount
+        : `<span style="color:#dc3545; font-weight:600;">0 ⚠️</span>`;
+
+      const tr = document.createElement('tr');
+      tr.dataset.submissionId = submissionId;
+      tr.innerHTML = `
         <td data-label="Select" style="text-align:center;">
-            <input type="checkbox" class="result-submission-checkbox"
-                   data-submission-id="${submissionId}"
-                   onchange="updateResultsBulkButtons()">
+          <input type="checkbox" class="result-submission-checkbox"
+                 data-submission-id="${submissionId}"
+                 onchange="updateResultsBulkButtons()">
         </td>
         <td data-label="Teacher">${teacherName}</td>
         <td data-label="Class">${className}</td>
@@ -2678,51 +2778,326 @@ if (!bulkBar) {
         <td data-label="Term">${term}</td>
         <td data-label="Pupils" style="text-align:center;">${pupilCountDisplay}</td>
         <td data-label="Submitted">${submittedDate}</td>
+        <td data-label="Status"><span class="status-pending">Pending</span></td>
+        <td data-label="Actions">
+          <button
+            id="preview-btn-${submissionId}"
+            class="btn-small btn-secondary"
+            onclick="toggleResultPreview(
+              '${submissionId}',
+              '${submissionData.classId}',
+              '${term}',
+              '${subject}',
+              '${session}',
+              '${className}'
+            )">
+            🔍 Preview
+          </button>
+          ${pupilCount > 0 ? `
+            <button class="btn-small btn-success" onclick="approveResultSubmission('${submissionId}')">
+              ✓ Approve
+            </button>
+            <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+              ✗ Reject
+            </button>
+          ` : `
+            <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
+              ✗ Reject (No Data)
+            </button>
+            <span style="font-size:0.75rem; color:#dc3545; display:block; margin-top:4px;">
+              ⚠️ No draft results found
+            </span>
+          `}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    console.log(`✓ Loaded ${submissionsSnap.size} pending submissions`);
+
+  } catch (error) {
+    console.error('❌ Error loading pending approvals:', error);
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
+    window.showToast?.('Failed to load result approvals', 'danger');
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   APPROVED TAB  (new)
+───────────────────────────────────────────────────────────────────────────── */
+
+async function _loadApprovedResults() {
+  const tbody = document.getElementById('result-approvals-table');
+  const noApprovalsMsg = document.getElementById('no-approvals-message');
+
+  if (!tbody) return;
+
+  // Hide bulk bar — not needed for approved view
+  const bulkBar = document.getElementById('results-bulk-action-bar');
+  if (bulkBar) bulkBar.style.display = 'none';
+  if (noApprovalsMsg) noApprovalsMsg.style.display = 'none';
+
+  tbody.innerHTML = '<tr><td colspan="9" class="table-loading">Loading approved results...</td></tr>';
+
+  try {
+    const submissionsSnap = await db.collection('result_submissions')
+      .where('status', '==', 'approved')
+      .orderBy('approvedAt', 'desc')
+      .get();
+
+    tbody.innerHTML = '';
+
+    if (submissionsSnap.empty) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
+            <div style="font-size:2rem; margin-bottom:var(--space-md);">✅</div>
+            <p style="font-weight:600;">No approved results yet.</p>
+            <p style="font-size:var(--text-sm);">Results will appear here once you approve pending submissions.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    for (const submissionDoc of submissionsSnap.docs) {
+      const d  = submissionDoc.data();
+      const id = submissionDoc.id;
+
+      const approvedDate = d.approvedAt
+        ? d.approvedAt.toDate().toLocaleDateString('en-GB')
+        : '-';
+
+      const submittedDate = d.submittedAt
+        ? d.submittedAt.toDate().toLocaleDateString('en-GB')
+        : '-';
+
+      const resultsPublished = d.resultsPublished ?? '—';
+
+      const tr = document.createElement('tr');
+      tr.dataset.submissionId = id;
+      tr.innerHTML = `
+        <td data-label="Select">—</td>
+        <td data-label="Teacher">${d.teacherName  || 'Unknown'}</td>
+        <td data-label="Class">${d.className    || '-'}</td>
+        <td data-label="Subject">${d.subject      || '-'}</td>
+        <td data-label="Term">${d.term         || '-'}</td>
+        <td data-label="Pupils" style="text-align:center;">${resultsPublished}</td>
+        <td data-label="Submitted">${submittedDate}</td>
         <td data-label="Status">
-            <span class="status-pending">Pending</span>
+          <span style="
+            background:#16a34a;
+            color:white;
+            padding:3px 10px;
+            border-radius:999px;
+            font-size:var(--text-xs);
+            font-weight:700;
+          ">Approved ${approvedDate}</span>
         </td>
         <td data-label="Actions">
-            <button
-                id="preview-btn-${submissionId}"
-                class="btn-small btn-secondary"
-                onclick="toggleResultPreview(
-                    '${submissionId}',
-                    '${submissionData.classId}',
-                    '${term}',
-                    '${subject}',
-                    '${session}',
-                    '${className}'
-                )">
-                🔍 Preview
-            </button>
-            ${pupilCount > 0 ? `
-                <button class="btn-small btn-success" onclick="approveResultSubmission('${submissionId}')">
-                    ✓ Approve
-                </button>
-                <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
-                    ✗ Reject
-                </button>
-            ` : `
-                <button class="btn-small btn-danger" onclick="rejectResultSubmission('${submissionId}')">
-                    ✗ Reject (No Data)
-                </button>
-                <span style="font-size: 0.75rem; color: #dc3545; display: block; margin-top: 4px;">
-                    ⚠️ No draft results found
-                </span>
-            `}
+          <button
+            id="preview-btn-${id}"
+            class="btn-small btn-secondary"
+            onclick="toggleResultPreview(
+              '${id}',
+              '${d.classId}',
+              '${d.term}',
+              '${d.subject}',
+              '${d.session}',
+              '${d.className}'
+            )">
+            🔍 Preview
+          </button>
+          <button
+            class="btn-small btn-warning"
+            style="background:#f59e0b; color:white; border:none;"
+            onclick="unlockApprovedResult('${id}')">
+            🔓 Unlock
+          </button>
         </td>
-    `;
-    tbody.appendChild(tr);
-        }
-        
-        console.log(`✓ Loaded ${submissionsSnap.size} pending submissions`);
-        
-    } catch (error) {
-        console.error('❌ Error loading result approvals:', error);
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--color-danger);">Error loading approvals</td></tr>';
-        window.showToast?.('Failed to load result approvals', 'danger');
+      `;
+      tbody.appendChild(tr);
     }
+
+    console.log(`✓ Loaded ${submissionsSnap.size} approved submissions`);
+
+  } catch (error) {
+    console.error('❌ Error loading approved results:', error);
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--color-danger);">Error loading approved results</td></tr>';
+    window.showToast?.('Failed to load approved results', 'danger');
+  }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   UNLOCK  (new core function)
+───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Unlock an approved submission so the teacher can re-edit and resubmit.
+ *
+ * Steps:
+ *  1. Confirm with admin.
+ *  2. Move result_submissions doc back to 'rejected' with a clear reason
+ *     so the teacher portal surfaces the rejection and allows editing.
+ *  3. Set every corresponding approved result in the `results` collection
+ *     back to status:'draft' — this hides them from pupils immediately.
+ *  4. Reload the approved tab.
+ */
+async function unlockApprovedResult(submissionId) {
+  if (!confirm(
+    '🔓 UNLOCK APPROVED RESULTS?\n\n' +
+    'This will:\n' +
+    '• Hide these results from pupils immediately\n' +
+    '• Allow the teacher to edit and resubmit\n' +
+    '• Require you to re-approve after resubmission\n\n' +
+    'Continue?'
+  )) return;
+
+  const reason = prompt(
+    'Optional: Enter a reason for the teacher\n(e.g. "Scores need correction for pupil X"):'
+  ) ?? 'Results unlocked by admin for correction';
+
+  const unlockBtn = document.querySelector(
+    `tr[data-submission-id="${submissionId}"] .btn-warning`
+  );
+
+  if (unlockBtn) {
+    unlockBtn.disabled   = true;
+    unlockBtn.innerHTML  = '<span class="btn-loading">Unlocking…</span>';
+  }
+
+  try {
+    // ── 1. Read submission to get classId / term / subject / session ────────
+    const submissionRef = db.collection('result_submissions').doc(submissionId);
+    const submissionDoc = await submissionRef.get();
+
+    if (!submissionDoc.exists) {
+      window.showToast?.('Submission not found', 'danger');
+      return;
+    }
+
+    const { classId, term, subject, session, className, teacherName } = submissionDoc.data();
+
+    // ── 2. Build encoded session for result doc ID pattern ─────────────────
+    const encodedSession = (session || '').replace(/\//g, '-');
+
+    // ── 3. Find all approved results for this submission ───────────────────
+    //    Results are stored as: {pupilId}_{encodedSession}_{term}_{subject}
+    //    We query by classId + term + subject and filter by session client-side.
+    const approvedResultsSnap = await db.collection('results')
+      .where('classId', '==', classId)
+      .where('term',    '==', term)
+      .where('subject', '==', subject)
+      .get();
+
+    const matchingResults = [];
+    approvedResultsSnap.forEach(doc => {
+      if (doc.data().session === session) {
+        matchingResults.push(doc);
+      }
+    });
+
+    console.log(`🔓 Unlocking ${matchingResults.length} results for ${subject} / ${term} / ${session}`);
+
+    // ── 4. Batch: revert results to 'draft', revert submission to 'rejected' 
+    const BATCH_LIMIT = 400;
+    let   batch       = db.batch();
+    let   batchCount  = 0;
+
+    for (const resultDoc of matchingResults) {
+      batch.update(resultDoc.ref, {
+        status:        'draft',
+        unlockedAt:    firebase.firestore.FieldValue.serverTimestamp(),
+        unlockedBy:    auth.currentUser.uid,
+        unlockReason:  reason.trim() || 'Unlocked by admin',
+      });
+
+      batchCount++;
+
+      if (batchCount >= BATCH_LIMIT) {
+        await batch.commit();
+        batch      = db.batch();
+        batchCount = 0;
+      }
+    }
+
+    // Revert the submission doc
+    batch.update(submissionRef, {
+      status:          'rejected',
+      rejectedBy:      auth.currentUser.uid,
+      rejectedAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: reason.trim() || 'Results unlocked by admin for correction',
+      // Store unlock metadata separately so teacher portal can show it clearly
+      unlockedByAdmin: true,
+      unlockReason:    reason.trim() || 'Results unlocked by admin for correction',
+      unlockedAt:      firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    batchCount++;
+
+    // Commit remaining operations
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    // ── 5. Audit log ────────────────────────────────────────────────────────
+    await db.collection('audit_log').add({
+      action:           'unlock_results',
+      collection:       'result_submissions',
+      documentId:       submissionId,
+      changes: {
+        subject,
+        term,
+        session,
+        className,
+        teacherName,
+        resultsReverted: matchingResults.length,
+        reason:          reason.trim() || 'No reason given',
+      },
+      performedBy:      auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp:        firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent:        navigator.userAgent,
+    });
+
+    window.showToast?.(
+      `✅ Results unlocked!\n\n` +
+      `• ${matchingResults.length} result(s) hidden from pupils\n` +
+      `• Teacher can now re-edit and resubmit\n` +
+      `• Reason sent to teacher: "${reason.trim() || 'Results unlocked by admin for correction'}"`,
+      'success',
+      8000
+    );
+
+    // Reload approved tab (the row should disappear — it's now 'rejected')
+    await loadResultApprovals();
+
+  } catch (error) {
+    console.error('❌ Error unlocking results:', error);
+    window.showToast?.(`Failed to unlock results: ${error.message}`, 'danger', 8000);
+
+    if (unlockBtn) {
+      unlockBtn.disabled  = false;
+      unlockBtn.innerHTML = '🔓 Unlock';
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL EXPORTS
+───────────────────────────────────────────────────────────────────────────── */
+
+window.loadResultApprovals      = loadResultApprovals;
+window.switchResultApprovalsTab = switchResultApprovalsTab;
+window.unlockApprovedResult     = unlockApprovedResult;
+
+// Keep existing exports that the rest of admin.js references
+window.approveResultSubmission  = approveResultSubmission;
+window.rejectResultSubmission   = rejectResultSubmission;
+
+console.log('✅ admin-results-unlock-patch.js loaded');
+console.log('   • Pending tab: unchanged approval/rejection flow');
+console.log('   • Approved tab: view all approved results + 🔓 Unlock button');
+console.log('   • unlockApprovedResult(): reverts results to draft, submission to rejected');
 
 /**
  * ✅ FIXED: Approve results - REMOVED SESSION FILTER
