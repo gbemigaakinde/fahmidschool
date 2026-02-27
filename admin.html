@@ -1858,7 +1858,7 @@
          Pure UI behavior — zero business logic touched.
          All original functionality (admin.js, firebase-init.js, etc.) unchanged.
     ═══════════════════════════════════════════════ -->
-    <script>
+<script>
 (function() {
     'use strict';
 
@@ -1922,78 +1922,55 @@
         });
     });
 
-    /* ─── 3. HAMBURGER TOGGLE ─────────────────────────── */
-    function initHamburger() {
-        const hamburger = document.getElementById('hamburger');
-        const sidebar   = document.getElementById('admin-sidebar');
-        if (!hamburger || !sidebar) return;
+    /* ─── 3. CARD ENTRANCE ANIMATION ─────────────────── */
+    function initCardAnimations() {
+        if (!window.MutationObserver) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-        hamburger.addEventListener('click', function() {
-            const isOpen = sidebar.classList.toggle('active');
-            this.classList.toggle('active', isOpen);
-            this.setAttribute('aria-expanded', String(isOpen));
-        });
+        let _animating = false;
 
-        document.addEventListener('click', function(e) {
-            if (window.innerWidth > 1024) return;
-            if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
-                sidebar.classList.remove('active');
-                hamburger.classList.remove('active');
-                hamburger.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-
-    /* ─── 4. CARD ENTRANCE ANIMATION ─────────────────── */
-    // AFTER — uses a flag to break the loop
-function initCardAnimations() {
-    if (!window.MutationObserver) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let _animating = false;
-
-    const observer = new MutationObserver(function(mutations) {
-        if (_animating) return;
-        mutations.forEach(function(m) {
-            if (m.type === 'attributes' && m.attributeName === 'style') {
-                const el = m.target;
-                if (el.style.display !== 'none' && el.classList.contains('admin-card')) {
-                    _animating = true;
-                    el.style.animation = 'none';
-                    el.offsetHeight;
-                    el.style.animation = 'card-fade-in 300ms cubic-bezier(.4,0,.2,1) both';
-                    setTimeout(function() { _animating = false; }, 350);
+        const observer = new MutationObserver(function(mutations) {
+            if (_animating) return;
+            mutations.forEach(function(m) {
+                if (m.type === 'attributes' && m.attributeName === 'style') {
+                    const el = m.target;
+                    if (el.style.display !== 'none' && el.classList.contains('admin-card')) {
+                        _animating = true;
+                        el.style.animation = 'none';
+                        el.offsetHeight;
+                        el.style.animation = 'card-fade-in 300ms cubic-bezier(.4,0,.2,1) both';
+                        setTimeout(function() { _animating = false; }, 350);
+                    }
                 }
-            }
+            });
         });
-    });
 
-    document.querySelectorAll('.admin-card[style]').forEach(function(card) {
-        observer.observe(card, { attributes: true, attributeFilter: ['style'] });
-    });
-}
-
-// Live date display on dashboard
-function updateDashboardDate() {
-  var el = document.getElementById('dashboard-date-text');
-  if (!el) return;
-  var now = new Date();
-  el.textContent = now.toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
-}
-updateDashboardDate();
-
-// Strip any background from dashboard count elements
-['teacher-count','pupil-count','class-count','announce-count'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) {
-        el.style.background = 'none';
-        el.style.webkitTextFillColor = '#ffffff';
+        document.querySelectorAll('.admin-card[style]').forEach(function(card) {
+            observer.observe(card, { attributes: true, attributeFilter: ['style'] });
+        });
     }
-});
 
-    /* ─── 5. LUCIDE ICON RE-INIT ──────────────────────── */
+    // Live date display on dashboard
+    function updateDashboardDate() {
+        var el = document.getElementById('dashboard-date-text');
+        if (!el) return;
+        var now = new Date();
+        el.textContent = now.toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+    }
+    updateDashboardDate();
+
+    // Strip any background from dashboard count elements
+    ['teacher-count','pupil-count','class-count','announce-count'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.style.background = 'none';
+            el.style.webkitTextFillColor = '#ffffff';
+        }
+    });
+
+    /* ─── 4. LUCIDE ICON RE-INIT ──────────────────────── */
     function reinitIcons() {
         if (typeof lucide !== 'undefined') {
             try { lucide.createIcons(); } catch(e) {}
@@ -2001,7 +1978,7 @@ updateDashboardDate();
     }
     window.reinitAdminIcons = reinitIcons;
 
-    /* ─── 6. KEYBOARD ESCAPE — CLOSE MODALS ────────────── */
+    /* ─── 5. KEYBOARD ESCAPE — CLOSE MODALS ────────────── */
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
         const openModal = document.querySelector('.modal[style*="block"]');
@@ -2010,7 +1987,7 @@ updateDashboardDate();
         if (closeBtn) closeBtn.click();
     });
 
-    /* ─── 7. SECTION SCROLL TO TOP ────────────────────── */
+    /* ─── 6. SECTION SCROLL TO TOP ────────────────────── */
     const mainEl = document.getElementById('main-content');
     document.querySelectorAll('.sidebar-link[data-section]').forEach(function(link) {
         link.addEventListener('click', function() {
@@ -2019,9 +1996,7 @@ updateDashboardDate();
     });
 
     /* ─── INIT — run immediately since script is at bottom of body ── */
-    // DOM is already parsed when inline script at bottom of body runs
     initSidebarGroups();
-    initHamburger();
     initCardAnimations();
     reinitIcons();
 
@@ -2029,7 +2004,6 @@ updateDashboardDate();
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             initSidebarGroups();
-            initHamburger();
             initCardAnimations();
             reinitIcons();
         });
@@ -2050,12 +2024,8 @@ updateDashboardDate();
         });
     }
     </script>
- <script>
-/* INPUT BLUR ZOOM RESET
-   Add to the bottom of admin.html inside the existing inline
-   <script> block, or as a separate script before </body>.
-*/
-
+    <script>
+/* INPUT BLUR ZOOM RESET */
 (function () {
   'use strict';
 
@@ -2068,20 +2038,16 @@ updateDashboardDate();
     var original = viewport.getAttribute('content');
     if (!original) return;
 
-    /* Step 1: set maximum-scale=1 to snap viewport back */
     viewport.setAttribute(
       'content',
       'width=device-width, initial-scale=1, maximum-scale=1'
     );
 
-    /* Step 2: restore original content on next frame
-       so pinch-zoom still works after reset */
     requestAnimationFrame(function () {
       viewport.setAttribute('content', original);
     });
   }
 
-  /* Attach via event delegation so future inputs also work */
   document.addEventListener(
     'blur',
     function (e) {
@@ -2090,7 +2056,7 @@ updateDashboardDate();
       }
     },
     true
-  ); /* capture phase */
+  );
 
 })();
 </script>
