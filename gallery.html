@@ -491,17 +491,19 @@
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 <script src="script.js" defer></script>
 <script>
-  // Gallery filter logic
   document.addEventListener('DOMContentLoaded', () => {
     const filterBtns = document.querySelectorAll('.gallery-filter-btn');
-    const thumbs = document.querySelectorAll('.gallery-thumb');
-    const emptyMsg = document.getElementById('gallery-empty');
+    const thumbs     = document.querySelectorAll('.gallery-thumb');
+    const emptyMsg   = document.getElementById('gallery-empty');
+    const lightbox   = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const closeBtn   = document.querySelector('.lightbox-close');
 
+    /* ── Filter logic ── */
     filterBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const filter = btn.dataset.filter;
 
-        // Update button states
         filterBtns.forEach(b => {
           b.classList.remove('active');
           b.setAttribute('aria-pressed', 'false');
@@ -509,7 +511,6 @@
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
 
-        // Show/hide items
         let visibleCount = 0;
         thumbs.forEach(thumb => {
           const match = filter === 'all' || thumb.dataset.category === filter;
@@ -527,28 +528,48 @@
       });
     });
 
-    // Wire gallery thumbs into the existing lightbox system
+    /* ── Lightbox open/close ── */
+    function openLightbox(src, alt) {
+      lightboxImg.src = src;
+      lightboxImg.alt = alt;
+      lightbox.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      closeBtn && closeBtn.focus();
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('active');
+      document.body.style.overflow = '';
+      lightboxImg.src = '';
+    }
+
+    // Wire each thumbnail to open the lightbox
     thumbs.forEach(thumb => {
       const img = thumb.querySelector('img');
-      const lightbox = document.getElementById('lightbox');
-      const lightboxImg = document.getElementById('lightbox-img');
-      const closeBtn = document.querySelector('.lightbox-close');
+      if (!img) return;
 
-      thumb.addEventListener('click', () => {
-        if (!img) return;
-        lightboxImg.src = img.src;
-        lightboxImg.alt = img.alt;
-        lightbox.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        closeBtn && closeBtn.focus();
-      });
-
+      thumb.addEventListener('click', () => openLightbox(img.src, img.alt));
       thumb.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          thumb.click();
+          openLightbox(img.src, img.alt);
         }
       });
+    });
+
+    // Close button — wired ONCE, here, not inside the thumbnail loop
+    closeBtn && closeBtn.addEventListener('click', closeLightbox);
+
+    // Click the dark backdrop to close
+    lightbox && lightbox.addEventListener('click', e => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    // Escape key to close
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+        closeLightbox();
+      }
     });
   });
 </script>
