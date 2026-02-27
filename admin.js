@@ -2727,6 +2727,7 @@ if (!bulkBar) {
 /**
  * ✅ FIXED: Approve results - REMOVED SESSION FILTER
  * Uses only classId + term + subject (3 fields = no index required)
+ * ✅ IDEMPOTENCY GUARD: Transaction prevents duplicate approvals on double-click
  */
 async function approveResultSubmission(submissionId) {
     if (!confirm(
@@ -2739,21 +2740,67 @@ async function approveResultSubmission(submissionId) {
     )) {
         return;
     }
-    
+
     try {
-        // Get submission details
-        const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
-        
-        if (!submissionDoc.exists) {
-            window.showToast?.('Submission not found', 'danger');
-            return;
+        // ✅ IDEMPOTENCY GUARD: Atomically check status and mark as 'approving'
+        // This blocks any second click from proceeding past this point
+        const submissionRef = db.collection('result_submissions').doc(submissionId);
+        let submissionData;
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const submissionDoc = await transaction.get(submissionRef);
+
+                if (!submissionDoc.exists) {
+                    throw new Error('SUBMISSION_NOT_FOUND');
+                }
+
+                const data = submissionDoc.data();
+
+                if (data.status === 'approved') {
+                    throw new Error('ALREADY_APPROVED');
+                }
+
+                if (data.status !== 'pending') {
+                    throw new Error(`INVALID_STATUS:${data.status}`);
+                }
+
+                // Atomically mark as 'approving' — any concurrent click will
+                // hit the INVALID_STATUS branch above and be rejected
+                transaction.update(submissionRef, {
+                    status: 'approving',
+                    approvingBy: auth.currentUser.uid,
+                    approvingStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                submissionData = data;
+            });
+        } catch (txError) {
+            if (txError.message === 'ALREADY_APPROVED') {
+                window.showToast?.('This submission has already been approved.', 'info', 5000);
+                await loadResultApprovals();
+                return;
+            }
+            if (txError.message === 'SUBMISSION_NOT_FOUND') {
+                window.showToast?.('Submission not found.', 'danger');
+                return;
+            }
+            if (txError.message?.startsWith('INVALID_STATUS')) {
+                const currentStatus = txError.message.split(':')[1];
+                window.showToast?.(
+                    `Cannot approve — submission status is "${currentStatus}". It may already be processing.`,
+                    'warning',
+                    6000
+                );
+                return;
+            }
+            throw txError;
         }
-        
-        const submissionData = submissionDoc.data();
+
         const { classId, term, subject, session } = submissionData;
-        
+
         console.log('📋 Approving submission:', { classId, term, subject, session });
-        
+
         // ✅ CRITICAL FIX: Query WITHOUT session filter (only 3 fields)
         // This avoids the composite index requirement
         const draftsSnap = await db.collection('results_draft')
@@ -2762,8 +2809,10 @@ async function approveResultSubmission(submissionId) {
             .where('subject', '==', subject)
             // ❌ REMOVED: .where('session', '==', session)
             .get();
-        
+
         if (draftsSnap.empty) {
+            // Roll back to 'pending' so admin can try again after teacher saves results
+            await submissionRef.update({ status: 'pending' });
             window.showToast?.(
                 '⚠️ No draft results found for this submission.\n\n' +
                 'The teacher may not have saved any results yet.',
@@ -2772,9 +2821,9 @@ async function approveResultSubmission(submissionId) {
             );
             return;
         }
-        
+
         console.log(`✓ Found ${draftsSnap.size} draft results to publish`);
-        
+
         // ✅ Verify session matches (client-side filter for safety)
         const validDrafts = [];
         draftsSnap.forEach(draftDoc => {
@@ -2783,8 +2832,10 @@ async function approveResultSubmission(submissionId) {
                 validDrafts.push(draftDoc);
             }
         });
-        
+
         if (validDrafts.length === 0) {
+            // Roll back to 'pending'
+            await submissionRef.update({ status: 'pending' });
             window.showToast?.(
                 '⚠️ Draft results found but session mismatch.\n\n' +
                 `Expected: ${session}\n` +
@@ -2794,22 +2845,21 @@ async function approveResultSubmission(submissionId) {
             );
             return;
         }
-        
+
         console.log(`✓ Validated ${validDrafts.length} drafts for session ${session}`);
-        
+
         // ✅ Copy results from draft to FINAL collection
         const batch = db.batch();
         let copiedCount = 0;
-        
+
         validDrafts.forEach(draftDoc => {
             const draftData = draftDoc.data();
             const pupilId = draftData.pupilId;
-            
-            // Create final result document
-             const encodedSession = session.replace(/\//g, '-');
-             const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
+
+            const encodedSession = session.replace(/\//g, '-');
+            const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
             const finalRef = db.collection('results').doc(finalDocId);
-            
+
             // ✅ Copy ALL data from draft, mark as approved
             batch.set(finalRef, {
                 ...draftData,
@@ -2818,35 +2868,51 @@ async function approveResultSubmission(submissionId) {
                 approvedBy: auth.currentUser.uid,
                 publishedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            
+
             copiedCount++;
         });
-        
-        // ✅ Update submission status
-        batch.update(db.collection('result_submissions').doc(submissionId), {
+
+        // ✅ Update submission status to fully approved
+        batch.update(submissionRef, {
             status: 'approved',
             approvedBy: auth.currentUser.uid,
             approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
             resultsPublished: copiedCount
         });
-        
+
         // ✅ Commit all changes atomically
         await batch.commit();
-        
+
         console.log(`✅ Published ${copiedCount} results to final collection`);
-        
+
         window.showToast?.(
             `✓ Results approved and published!\n\n` +
             `${copiedCount} pupil result(s) are now VISIBLE to pupils.`,
             'success',
             8000
         );
-        
+
         // Reload the approvals list
         await loadResultApprovals();
-        
+
     } catch (error) {
         console.error('❌ Error approving results:', error);
+
+        // ✅ Roll back 'approving' status so the submission doesn't get stuck
+        try {
+            const currentDoc = await db.collection('result_submissions').doc(submissionId).get();
+            if (currentDoc.exists && currentDoc.data().status === 'approving') {
+                await db.collection('result_submissions').doc(submissionId).update({
+                    status: 'pending',
+                    approvingBy: firebase.firestore.FieldValue.delete(),
+                    approvingStartedAt: firebase.firestore.FieldValue.delete()
+                });
+                console.log('↩️ Rolled back approving → pending after error');
+            }
+        } catch (rollbackError) {
+            console.error('❌ Rollback failed:', rollbackError.message);
+        }
+
         window.showToast?.(
             `Failed to approve results: ${error.message}`,
             'danger',
@@ -11709,28 +11775,60 @@ async function approveAllPendingResults() {
  * Internal: approve one submission without UI refresh or confirm dialog.
  * Mirrors approveResultSubmission() exactly, minus the confirm + reload.
  */
-async function _approveSubmissionSilently(submissionId, submissionData) {
+async function _approveSubmissionSilently(submissionId, submissionDataHint) {
+  const submissionRef = db.collection('result_submissions').doc(submissionId);
+  let submissionData;
+
+  // ✅ IDEMPOTENCY GUARD — same as approveResultSubmission
+  try {
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(submissionRef);
+
+      if (!doc.exists) throw new Error('SUBMISSION_NOT_FOUND');
+
+      const data = doc.data();
+
+      if (data.status === 'approved') throw new Error('ALREADY_APPROVED');
+
+      if (data.status !== 'pending') throw new Error(`INVALID_STATUS:${data.status}`);
+
+      transaction.update(submissionRef, {
+        status: 'approving',
+        approvingBy: auth.currentUser.uid,
+        approvingStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      submissionData = data;
+    });
+  } catch (txError) {
+    if (txError.message === 'ALREADY_APPROVED') {
+      console.log(`⏭️ Submission ${submissionId} already approved, skipping`);
+      return; // Not a failure — treat as success for bulk count
+    }
+    throw txError;
+  }
+
   const { classId, term, subject, session } = submissionData;
 
   const draftsSnap = await db.collection('results_draft')
     .where('classId', '==', classId)
-    .where('term', '==', term)
+    .where('term',    '==', term)
     .where('subject', '==', subject)
     .get();
 
   if (draftsSnap.empty) {
+    // Roll back before throwing
+    await submissionRef.update({ status: 'pending' });
     throw new Error(`No draft results found for submission ${submissionId}`);
   }
 
-  // Client-side session filter (same as existing approval)
   const validDrafts = [];
-  draftsSnap.forEach(draftDoc => {
-    if (draftDoc.data().session === session) {
-      validDrafts.push(draftDoc);
-    }
+  draftsSnap.forEach(doc => {
+    if (doc.data().session === session) validDrafts.push(doc);
   });
 
   if (validDrafts.length === 0) {
+    await submissionRef.update({ status: 'pending' });
     throw new Error(`Session mismatch for submission ${submissionId}`);
   }
 
@@ -11739,27 +11837,24 @@ async function _approveSubmissionSilently(submissionId, submissionData) {
 
   validDrafts.forEach(draftDoc => {
     const draftData = draftDoc.data();
-    const pupilId = draftData.pupilId;
+    const encodedSession = session.replace(/\//g, '-');
+    const finalDocId = `${draftData.pupilId}_${encodedSession}_${term}_${subject}`;
 
-    const encodedSession = submissionData.session.replace(/\//g, '-');
-    const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
-    const finalRef = db.collection('results').doc(finalDocId);
-
-    batch.set(finalRef, {
+    batch.set(db.collection('results').doc(finalDocId), {
       ...draftData,
-      status: 'approved',
-      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      approvedBy: auth.currentUser.uid,
+      status:      'approved',
+      approvedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      approvedBy:  auth.currentUser.uid,
       publishedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     copiedCount++;
   });
 
-  batch.update(db.collection('result_submissions').doc(submissionId), {
-    status: 'approved',
-    approvedBy: auth.currentUser.uid,
-    approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  batch.update(submissionRef, {
+    status:           'approved',
+    approvedBy:       auth.currentUser.uid,
+    approvedAt:       firebase.firestore.FieldValue.serverTimestamp(),
     resultsPublished: copiedCount
   });
 
