@@ -552,21 +552,19 @@ const finance = {
       }
 
       // Pupil was (or may have been) enrolled but has no docs.
-      // FIX 4: Use calculateCurrentOutstanding recursively on Third Term
-      // so that term's own arrears are included.
-      console.log(`     ℹ️ Recalculating Third Term of ${session} as session balance proxy`);
-      try {
-        const outstanding = await this.calculateCurrentOutstanding(
-          pupilId, session, 'Third Term'
-        );
-        const fallback = outstanding.balance || 0;
-        console.log(`     ✓ Fallback recalculated: ₦${fallback.toLocaleString()}`);
-        return fallback;
-      } catch (fallbackError) {
-        console.error(`     ❌ Final fallback failed:`, fallbackError.message);
-      }
+// Use _recalculateTermBalance for Third Term — this resolves historical
+// class and fee from payment_transactions, preventing promotion from
+// corrupting prior-session arrears calculations.
+console.log(`     ℹ️ Recalculating Third Term of ${session} as session balance proxy`);
+try {
+  const fallback = await this._recalculateTermBalance(pupilId, session, 'Third Term');
+  console.log(`     ✓ Fallback recalculated: ₦${fallback.toLocaleString()}`);
+  return fallback;
+} catch (fallbackError) {
+  console.error(`     ❌ Final fallback failed:`, fallbackError.message);
+}
 
-      return 0;
+return 0;
 
     } catch (error) {
       console.error('❌ [FINANCE] Error in calculateSessionBalanceSafe:', error);
@@ -578,9 +576,12 @@ const finance = {
  * ═══════════════════════════════════════════════════════════
  * HELPER: Recalculate a single term's balance from fee structure
  * ═══════════════════════════════════════════════════════════
- * Used when a payment doc is missing — reconstructs what the
- * pupil actually owes for ONE term from source data.
- * Does NOT cascade arrears — returns only that term's own balance.
+ * FIXES APPLIED:
+ * - Uses historical classId from payment_transactions (prevents promotion
+ *   from retroactively altering prior-term fee calculations)
+ * - Uses historical baseFee from payment_transactions when available
+ *   (prevents fee structure changes from retroactively altering balances)
+ * - Falls back to current pupil class + live fee only when no history exists
  */
 async _recalculateTermBalance(pupilId, session, term) {
   try {
@@ -590,20 +591,62 @@ async _recalculateTermBalance(pupilId, session, term) {
     if (!pupilDoc.exists) return 0;
 
     const pupilData = pupilDoc.data();
-    const classId = this.getClassIdSafely(pupilData);
-    if (!classId) {
-      console.warn('     ⚠️ No classId — returning 0');
-      return 0;
+
+    // ── HISTORICAL RESOLUTION: class and fee at time of term ────────────────
+    // Check payment_transactions for any prior payment in this term.
+    // This record contains the classId and baseFee that were in effect then.
+    let resolvedClassId = null;
+    let resolvedBaseFee = null;
+
+    try {
+      const txSnap = await db.collection('payment_transactions')
+        .where('pupilId', '==', pupilId)
+        .where('session', '==', session)
+        .where('term', '==', term)
+        .orderBy('paymentDate', 'asc')
+        .limit(1)
+        .get();
+
+      if (!txSnap.empty) {
+        const firstTx = txSnap.docs[0].data();
+
+        if (firstTx.classId) {
+          resolvedClassId = firstTx.classId;
+          console.log(`     ✓ Using historical classId from transaction: ${resolvedClassId}`);
+        }
+
+        if (typeof firstTx.baseFee === 'number' && firstTx.baseFee > 0) {
+          resolvedBaseFee = firstTx.baseFee;
+          console.log(`     ✓ Using historical baseFee from transaction: ₦${resolvedBaseFee.toLocaleString()}`);
+        }
+      }
+    } catch (txError) {
+      console.warn('     ⚠️ Could not read payment_transactions for historical snapshot:', txError.message);
     }
 
-    const feeDoc = await db.collection('fee_structures').doc(`fee_${classId}`).get();
-    if (!feeDoc.exists) {
-      console.warn('     ⚠️ No fee structure — returning 0');
-      return 0;
+    // ── FALLBACK: current pupil class (only if no history exists) ────────────
+    if (!resolvedClassId) {
+      resolvedClassId = this.getClassIdSafely(pupilData);
+      if (!resolvedClassId) {
+        console.warn('     ⚠️ No classId available (historical or current) — returning 0');
+        return 0;
+      }
+      console.log(`     ℹ️ No historical class found — using current class: ${resolvedClassId}`);
     }
 
-    const baseFee = Math.round(Number(feeDoc.data().total) || 0);
-    const amountDue = this.calculateAdjustedFee(pupilData, baseFee, term);
+    // ── FEE RESOLUTION ────────────────────────────────────────────────────────
+    if (resolvedBaseFee === null) {
+      const feeDoc = await db.collection('fee_structures').doc(`fee_${resolvedClassId}`).get();
+      if (!feeDoc.exists) {
+        console.warn('     ⚠️ No fee structure for resolved class — returning 0');
+        return 0;
+      }
+      resolvedBaseFee = Math.round(Number(feeDoc.data().total) || 0);
+      console.log(`     ℹ️ No historical fee found — using current fee structure: ₦${resolvedBaseFee.toLocaleString()}`);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const amountDue = this.calculateAdjustedFee(pupilData, resolvedBaseFee, term);
 
     // Check if there are any payments against this term even without a summary doc
     const encodedSession = session.replace(/\//g, '-');
