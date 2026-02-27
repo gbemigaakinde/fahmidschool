@@ -372,22 +372,62 @@
     }
 
     @media print {
-      .policy-sidebar,
-      .toc-toggle,
-      .toc-mobile-panel,
-      .print-btn,
-      .cta-banner {
-        display: none !important;
-      }
+  .policy-sidebar,
+  .toc-toggle,
+  .toc-mobile-panel,
+  .print-btn,
+  .cta-banner {
+    display: none !important;
+  }
 
-      .policy-layout {
-        grid-template-columns: 1fr;
-      }
+  .policy-layout {
+    grid-template-columns: 1fr;
+  }
 
-      .policy-section {
-        page-break-inside: avoid;
-      }
-    }
+  .policy-section {
+    page-break-inside: avoid;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .policy-section-icon {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .policy-meta-bar {
+    display: flex;
+    border: 1px solid #ccc;
+    margin-bottom: 1.5rem;
+  }
+
+  .policy-body p,
+  .policy-body li {
+    color: #1C1F2A !important;
+    opacity: 1 !important;
+  }
+
+  .policy-highlight,
+  .policy-alert {
+    border-left: 4px solid #1B3A7A;
+    background: #f0f4ff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .policy-section h2 {
+    color: #1B3A7A !important;
+    font-size: 1.4rem;
+  }
+
+  .policy-body h3 {
+    color: #0D0F14 !important;
+  }
+
+  body {
+    font-size: 11pt;
+  }
+}
   </style>
 </head>
 <body>
