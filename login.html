@@ -37,9 +37,7 @@
     }
 
     @media (min-width: 1024px) {
-      .login-page {
-        grid-template-columns: 1fr 1fr;
-      }
+      .login-page { grid-template-columns: 1fr 1fr; }
     }
 
     /* Left panel — branding */
@@ -79,10 +77,7 @@
       background: rgba(255,255,255,0.03);
     }
 
-    .login-brand-content {
-      position: relative;
-      z-index: 1;
-    }
+    .login-brand-content { position: relative; z-index: 1; }
 
     .login-brand-logo {
       display: flex;
@@ -180,7 +175,7 @@
     .login-back:hover { color: var(--accent); }
     .login-back svg { width: 16px; height: 16px; }
 
-    /* Mobile logo (visible on small screens) */
+    /* Mobile logo */
     .login-mobile-logo {
       display: flex;
       align-items: center;
@@ -216,12 +211,14 @@
       font-size: var(--text-3xl);
       color: var(--ink-900);
       margin-bottom: var(--s-2);
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
     .login-subtitle {
       font-size: var(--text-base);
       color: var(--ink-500);
       margin-bottom: var(--s-8);
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
     /* Tabs */
@@ -231,6 +228,7 @@
       border-radius: var(--radius-pill);
       padding: 4px;
       margin-bottom: var(--s-8);
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
 
     .login-tab {
@@ -251,26 +249,6 @@
       background: var(--surface);
       color: var(--accent);
       box-shadow: var(--shadow-sm);
-    }
-
-    /* Form fields */
-    .login-form .form-group { margin-bottom: var(--s-5); }
-
-    .login-form label {
-      display: flex;
-      align-items: center;
-      gap: var(--s-2);
-      font-size: var(--text-sm);
-      font-weight: var(--w-semibold);
-      color: var(--ink-700);
-      margin-bottom: var(--s-2);
-    }
-
-    .login-form label svg {
-      width: 15px;
-      height: 15px;
-      color: var(--ink-400);
-      flex-shrink: 0;
     }
 
     /* Submit button */
@@ -303,9 +281,7 @@
       transform: none;
     }
 
-    .login-submit.loading {
-      color: transparent;
-    }
+    .login-submit.loading { color: transparent; }
 
     .login-submit.loading::after {
       content: '';
@@ -323,7 +299,46 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Forgot password */
+    /* ── PASSWORD TOGGLE ── */
+    .password-field-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-field-wrap input { padding-right: 3rem; }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-400);
+      border-radius: var(--radius-md);
+      transition: color var(--t-fast), background var(--t-fast);
+      padding: 0;
+    }
+
+    .password-toggle:hover {
+      color: var(--accent);
+      background: var(--accent-pale);
+    }
+
+    .password-toggle svg {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+
+    /* ── FORGOT PASSWORD LINK ── */
     .login-forgot {
       display: block;
       text-align: center;
@@ -339,6 +354,191 @@
     }
 
     .login-forgot:hover { color: var(--accent-hover); }
+
+    /* ── PANELS CONTAINER — clip & slide ── */
+    .auth-panels-container {
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Each panel uses a common slide transition */
+    .auth-panel {
+      width: 100%;
+      transition: opacity 0.35s cubic-bezier(0.4,0,0.2,1),
+                  transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* Outgoing login panel — slides left */
+    .auth-panel.slide-out-left {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-32px);
+    }
+
+    /* Incoming reset panel — starts from right, lands centre */
+    .auth-panel.slide-in-right {
+      animation: slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+
+    /* Reverse: reset slides out right, login slides in from left */
+    .auth-panel.slide-out-right {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(32px);
+    }
+
+    .auth-panel.slide-in-left {
+      animation: slideInLeft 0.35s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(32px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-32px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── FORGOT PASSWORD PANEL ── */
+    #panel-forgot {
+      display: none;
+    }
+
+    .forgot-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      font-size: var(--text-sm);
+      font-weight: var(--w-medium);
+      color: var(--ink-500);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-body);
+      padding: 0;
+      margin-bottom: var(--s-6);
+      transition: color var(--t-fast);
+    }
+
+    .forgot-back-btn:hover { color: var(--accent); }
+    .forgot-back-btn svg { width: 16px; height: 16px; }
+
+    .forgot-icon-wrap {
+      width: 56px;
+      height: 56px;
+      background: var(--accent-pale);
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--s-5);
+      color: var(--accent);
+    }
+
+    .forgot-icon-wrap svg { width: 26px; height: 26px; }
+
+    .forgot-heading {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      color: var(--ink-900);
+      margin-bottom: var(--s-2);
+    }
+
+    .forgot-subtext {
+      font-size: var(--text-sm);
+      color: var(--ink-500);
+      line-height: 1.65;
+      margin-bottom: var(--s-6);
+      max-width: 38ch;
+    }
+
+    /* ── SUCCESS STATE for reset ── */
+    .forgot-success {
+      display: none;
+      text-align: center;
+      padding: var(--s-6) 0;
+    }
+
+    .forgot-success-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--green-pale);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--s-5);
+      color: var(--green);
+    }
+
+    .forgot-success-icon svg { width: 28px; height: 28px; }
+
+    .forgot-success h3 {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      color: var(--ink-900);
+      margin-bottom: var(--s-3);
+    }
+
+    .forgot-success p {
+      font-size: var(--text-sm);
+      color: var(--ink-600);
+      line-height: 1.7;
+      margin-bottom: var(--s-6);
+    }
+
+    .forgot-success-email {
+      display: inline-block;
+      font-weight: var(--w-semibold);
+      color: var(--accent);
+    }
+
+    .forgot-success-back {
+      width: 100%;
+      padding: 0.875rem var(--s-6);
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: var(--w-semibold);
+      cursor: pointer;
+      transition: all var(--t-base) var(--ease-out);
+    }
+
+    .forgot-success-back:hover {
+      background: var(--accent-pale);
+      transform: translateY(-1px);
+    }
+
+    /* form group for login form */
+    .login-form .form-group { margin-bottom: var(--s-5); }
+
+    .login-form label {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      font-size: var(--text-sm);
+      font-weight: var(--w-semibold);
+      color: var(--ink-700);
+      margin-bottom: var(--s-2);
+    }
+
+    .login-form label svg {
+      width: 15px;
+      height: 15px;
+      color: var(--ink-400);
+      flex-shrink: 0;
+    }
 
     /* Registration locked panel */
     .reg-locked {
@@ -417,65 +617,20 @@
       border-top: 1px solid var(--surface-border);
     }
 
-    .login-footer p {
+    .login-footer p { font-size: var(--text-xs); color: var(--ink-400); }
+
+    /* Error styling */
+    input.input-error { border-color: var(--red) !important; }
+    input.input-error:focus { box-shadow: 0 0 0 3px rgba(185,28,28,0.12) !important; }
+
+    /* Hint text under email field */
+    .field-hint {
+      display: block;
       font-size: var(--text-xs);
       color: var(--ink-400);
+      margin-top: var(--s-2);
+      line-height: 1.5;
     }
-
-    /* Error styling on inputs */
-    input.input-error {
-      border-color: var(--red) !important;
-    }
-
-    input.input-error:focus {
-      box-shadow: 0 0 0 3px rgba(185,28,28,0.12) !important;
-    }
-    
-    /* ── PASSWORD FIELD TOGGLE ── */
-.password-field-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.password-field-wrap input {
-  padding-right: 3rem; /* make room for the button */
-}
-
-.password-toggle {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-400);
-  border-radius: var(--radius-md);
-  transition: color var(--t-fast), background var(--t-fast);
-  padding: 0;
-}
-
-.password-toggle:hover {
-  color: var(--accent);
-  background: var(--accent-pale);
-}
-
-.password-toggle:focus-visible {
-  outline: 2px solid var(--accent-light);
-  outline-offset: 2px;
-}
-
-.password-toggle svg {
-  width: 18px;
-  height: 18px;
-  pointer-events: none;
-}
   </style>
 </head>
 <body>
@@ -487,7 +642,7 @@
     <div class="login-brand-content">
       <a href="index.html" class="login-brand-logo">
         <div class="nav-logo-icon">
-           <img src="IMG_4629.png" alt="Fahmid School logo">
+          <img src="IMG_4629.png" alt="Fahmid School logo">
         </div>
         <span class="login-brand-logo-name">Fahmid School</span>
       </a>
@@ -514,7 +669,7 @@
   <div class="login-form-panel">
     <div class="login-form-wrap">
 
-      <!-- Back link -->
+      <!-- Back to home link -->
       <a href="index.html" class="login-back">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         Back to Home
@@ -528,70 +683,130 @@
         <span class="login-mobile-logo-name">Fahmid School</span>
       </div>
 
-      <!-- Headings -->
+      <!-- ── HEADINGS — animated on state change ── -->
       <h2 class="login-title" id="auth-heading">Welcome Back</h2>
       <p class="login-subtitle" id="auth-subheading">Sign in to access your portal</p>
 
-      <!-- Tabs -->
-      <div class="login-tabs" role="tablist" aria-label="Authentication mode">
+      <!-- ── TABS — hidden when in reset view ── -->
+      <div class="login-tabs" id="auth-tabs" role="tablist" aria-label="Authentication mode">
         <button class="login-tab active" id="tab-login" role="tab" aria-selected="true" aria-controls="panel-login" onclick="switchMode('login')">Login</button>
         <button class="login-tab" id="tab-register" role="tab" aria-selected="false" aria-controls="panel-register" onclick="switchMode('register')">Register</button>
       </div>
 
-      <!-- LOGIN PANEL -->
-      <div id="panel-login" role="tabpanel" aria-labelledby="tab-login">
-        <form class="login-form" id="login-form" novalidate>
-          <div class="form-group">
-            <label for="login-identifier">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Email or Admission Number <span class="required" aria-hidden="true">*</span>
-            </label>
-            <input type="text" id="login-identifier" name="identifier" placeholder="email@example.com or admission number" required aria-required="true" autocomplete="username">
-          </div>
-          <div class="form-group">
-  <label for="login-password">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    Password <span class="required" aria-hidden="true">*</span>
-  </label>
-  <div class="password-field-wrap">
-    <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
-    <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
-      <!-- Eye icon (shown when password is hidden) -->
-      <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <!-- Eye-off icon (shown when password is visible) -->
-      <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-        <line x1="1" y1="1" x2="23" y2="23"/>
-      </svg>
-    </button>
-  </div>
-</div>
-          <button type="submit" class="login-submit" id="login-btn">Sign In</button>
-          <button type="button" class="login-forgot" id="forgot-btn">Forgot your password?</button>
-        </form>
-      </div>
+      <!-- ── PANELS CONTAINER (clipping box for slide transitions) ── -->
+      <div class="auth-panels-container" id="auth-panels-container">
 
-      <!-- REGISTER PANEL (locked) -->
-      <div id="panel-register" role="tabpanel" aria-labelledby="tab-register" style="display: none;">
-        <div class="reg-locked">
-          <div class="reg-locked-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-          <h3>Registration is Currently Locked</h3>
-          <p>Portal accounts are set up by the school administrator. Please contact the school office to have your account created.</p>
-          <div class="reg-locked-contact">
-            <div class="reg-locked-contact-label">Contact the Administrator</div>
-            <a href="tel:+2348061427297">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
-              +234 806 142 7297
-            </a>
+        <!-- LOGIN PANEL -->
+        <div id="panel-login" class="auth-panel" role="tabpanel" aria-labelledby="tab-login">
+          <form class="login-form" id="login-form" novalidate>
+            <div class="form-group">
+              <label for="login-identifier">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Email or Admission Number <span class="required" aria-hidden="true">*</span>
+              </label>
+              <input type="text" id="login-identifier" name="identifier" placeholder="email@example.com or admission number" required aria-required="true" autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label for="login-password">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Password <span class="required" aria-hidden="true">*</span>
+              </label>
+              <div class="password-field-wrap">
+                <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
+                <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
+                  <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button type="submit" class="login-submit" id="login-btn">Sign In</button>
+            <!-- Forgot password — now a clean inline link, no popup -->
+            <button type="button" class="login-forgot" id="forgot-btn" onclick="showForgotPanel()">Forgot your password?</button>
+          </form>
+        </div>
+
+        <!-- REGISTER PANEL (locked) -->
+        <div id="panel-register" class="auth-panel" role="tabpanel" aria-labelledby="tab-register" style="display: none;">
+          <div class="reg-locked">
+            <div class="reg-locked-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h3>Registration is Currently Locked</h3>
+            <p>Portal accounts are set up by the school administrator. Please contact the school office to have your account created.</p>
+            <div class="reg-locked-contact">
+              <div class="reg-locked-contact-label">Contact the Administrator</div>
+              <a href="tel:+2348061427297">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.59 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+                +234 806 142 7297
+              </a>
+            </div>
           </div>
         </div>
+
+        <!-- ── FORGOT PASSWORD PANEL ── -->
+        <div id="panel-forgot" class="auth-panel" role="region" aria-label="Password reset">
+
+          <!-- Back to login -->
+          <button type="button" class="forgot-back-btn" onclick="hideForgotPanel()" aria-label="Back to login">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Back to Login
+          </button>
+
+          <!-- Reset form (shown by default in this panel) -->
+          <div id="forgot-form-wrap">
+            <div class="forgot-icon-wrap">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <h3 class="forgot-heading">Reset your password</h3>
+            <p class="forgot-subtext">Enter the email address linked to your portal account. We'll send a reset link to your inbox.</p>
+
+            <form id="forgot-form" novalidate>
+              <div class="form-group" style="margin-bottom: var(--s-2);">
+                <label for="forgot-email">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;color:var(--ink-400);flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Email address <span class="required" aria-hidden="true">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="forgot-email"
+                  name="email"
+                  placeholder="email@example.com"
+                  required
+                  aria-required="true"
+                  autocomplete="email"
+                >
+                <span class="field-hint">This must be the email registered with your portal account.</span>
+              </div>
+
+              <button type="submit" class="login-submit" id="forgot-submit-btn" style="margin-top: var(--s-6);">
+                Send Reset Link
+              </button>
+            </form>
+          </div>
+
+          <!-- Success state (shown after email is sent) -->
+          <div class="forgot-success" id="forgot-success">
+            <div class="forgot-success-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h3>Check your inbox</h3>
+            <p>A password reset link has been sent to<br><span class="forgot-success-email" id="forgot-sent-to"></span></p>
+            <p style="color: var(--ink-400); font-size: var(--text-xs); margin-bottom: var(--s-6);">Didn't receive it? Check your spam folder or contact the school office.</p>
+            <button type="button" class="forgot-success-back" onclick="hideForgotPanel()">Back to Login</button>
+          </div>
+
+        </div>
+        <!-- /panel-forgot -->
+
       </div>
+      <!-- /auth-panels-container -->
 
       <!-- Footer -->
       <div class="login-footer">
@@ -610,31 +825,149 @@
 <script>
   'use strict';
 
-  let currentMode = 'login';
+  /* ──────────────────────────────────────────────
+     STATE & HELPERS
+  ────────────────────────────────────────────── */
+  let currentMode = 'login'; // 'login' | 'register'
+  let inForgotPanel = false;
 
+  const heading    = document.getElementById('auth-heading');
+  const subheading = document.getElementById('auth-subheading');
+  const tabs       = document.getElementById('auth-tabs');
+
+  /* ──────────────────────────────────────────────
+     TAB SWITCHING (login / register)
+  ────────────────────────────────────────────── */
   function switchMode(mode) {
+    if (inForgotPanel) return; // guard: don't switch tabs while in reset view
     currentMode = mode;
 
-    // Update tabs
     document.getElementById('tab-login').classList.toggle('active', mode === 'login');
     document.getElementById('tab-register').classList.toggle('active', mode === 'register');
     document.getElementById('tab-login').setAttribute('aria-selected', mode === 'login');
     document.getElementById('tab-register').setAttribute('aria-selected', mode === 'register');
 
-    // Show/hide panels
-    document.getElementById('panel-login').style.display = mode === 'login' ? 'block' : 'none';
+    document.getElementById('panel-login').style.display    = mode === 'login'    ? 'block' : 'none';
     document.getElementById('panel-register').style.display = mode === 'register' ? 'block' : 'none';
+    document.getElementById('panel-forgot').style.display   = 'none';
 
-    // Update headings
     if (mode === 'login') {
-      document.getElementById('auth-heading').textContent = 'Welcome Back';
-      document.getElementById('auth-subheading').textContent = 'Sign in to access your portal';
+      heading.textContent    = 'Welcome Back';
+      subheading.textContent = 'Sign in to access your portal';
     } else {
-      document.getElementById('auth-heading').textContent = 'Create an Account';
-      document.getElementById('auth-subheading').textContent = 'Registration is managed by the school';
+      heading.textContent    = 'Create an Account';
+      subheading.textContent = 'Registration is managed by the school';
     }
   }
 
+  /* ──────────────────────────────────────────────
+     FORGOT PASSWORD PANEL — SHOW
+  ────────────────────────────────────────────── */
+  function showForgotPanel() {
+    inForgotPanel = true;
+
+    // Animate headings out gently
+    heading.style.opacity    = '0';
+    heading.style.transform  = 'translateY(-8px)';
+    subheading.style.opacity = '0';
+
+    // Hide tabs with a fade
+    tabs.style.opacity   = '0';
+    tabs.style.transform = 'translateY(-4px)';
+    tabs.style.pointerEvents = 'none';
+
+    // Hide the active login/register panel with a slide-left exit
+    const activePanel = currentMode === 'login'
+      ? document.getElementById('panel-login')
+      : document.getElementById('panel-register');
+
+    // Set container height to current panel height before transition
+    const container = document.getElementById('auth-panels-container');
+    container.style.height = container.offsetHeight + 'px';
+
+    activePanel.classList.add('slide-out-left');
+
+    // Bring in the forgot panel from the right
+    const forgotPanel = document.getElementById('panel-forgot');
+    forgotPanel.style.display = 'block';
+
+    // Reset success state (in case user comes back)
+    document.getElementById('forgot-form-wrap').style.display = 'block';
+    document.getElementById('forgot-success').style.display = 'none';
+    document.getElementById('forgot-email').value = '';
+    document.getElementById('forgot-email').classList.remove('input-error');
+
+    forgotPanel.classList.remove('slide-in-right', 'slide-out-right');
+    void forgotPanel.offsetWidth; // force reflow
+    forgotPanel.classList.add('slide-in-right');
+
+    // After transition: release fixed height, clean up exit class
+    setTimeout(() => {
+      activePanel.style.display = 'none';
+      activePanel.classList.remove('slide-out-left');
+      container.style.height = '';
+
+      // Update headings to reset context
+      heading.textContent    = 'Forgot Password';
+      subheading.textContent = 'We'll send a reset link to your inbox';
+      heading.style.opacity    = '1';
+      heading.style.transform  = '';
+      subheading.style.opacity = '1';
+
+      // Focus the email input
+      document.getElementById('forgot-email').focus();
+    }, 380);
+  }
+
+  /* ──────────────────────────────────────────────
+     FORGOT PASSWORD PANEL — HIDE (back to login)
+  ────────────────────────────────────────────── */
+  function hideForgotPanel() {
+    inForgotPanel = false;
+
+    const forgotPanel = document.getElementById('panel-forgot');
+    const loginPanel  = document.getElementById('panel-login');
+
+    // Animate headings out
+    heading.style.opacity    = '0';
+    heading.style.transform  = 'translateY(-8px)';
+    subheading.style.opacity = '0';
+
+    // Slide forgot panel out to the right
+    forgotPanel.classList.remove('slide-in-right');
+    forgotPanel.classList.add('slide-out-right');
+
+    // Bring login panel in from the left
+    loginPanel.style.display = 'block';
+    loginPanel.classList.remove('slide-in-left');
+    void loginPanel.offsetWidth;
+    loginPanel.classList.add('slide-in-left');
+
+    // Restore tabs
+    tabs.style.opacity       = '1';
+    tabs.style.transform     = '';
+    tabs.style.pointerEvents = '';
+
+    setTimeout(() => {
+      forgotPanel.style.display = 'none';
+      forgotPanel.classList.remove('slide-out-right');
+      loginPanel.classList.remove('slide-in-left');
+
+      // Restore headings
+      heading.textContent    = 'Welcome Back';
+      subheading.textContent = 'Sign in to access your portal';
+      heading.style.opacity    = '1';
+      heading.style.transform  = '';
+      subheading.style.opacity = '1';
+
+      // Reset mode back to login tab
+      currentMode = 'login';
+    }, 380);
+  }
+
+  /* ──────────────────────────────────────────────
+     ADMISSION NUMBER LOOKUP
+  ────────────────────────────────────────────── */
   async function getEmailByAdmissionNumber(admissionNo) {
     try {
       const snapshot = await db.collection('pupils')
@@ -649,120 +982,152 @@
     }
   }
 
-async function handleLogin(identifier, password) {
-  let email = identifier.trim();
-  const isAdmissionNo = !email.includes('@');
+  /* ──────────────────────────────────────────────
+     LOGIN HANDLER
+  ────────────────────────────────────────────── */
+  async function handleLogin(identifier, password) {
+    let email = identifier.trim();
+    const isAdmissionNo = !email.includes('@');
 
-  if (isAdmissionNo) {
-    const found = await getEmailByAdmissionNumber(email);
-    if (!found) {
-      window.showToast('No account found with this admission number.', 'danger');
-      throw new Error('Invalid admission number');
+    if (isAdmissionNo) {
+      const found = await getEmailByAdmissionNumber(email);
+      if (!found) {
+        window.showToast('No account found with this admission number.', 'danger');
+        throw new Error('Invalid admission number');
+      }
+      email = found;
     }
-    email = found;
+
+    await auth.signInWithEmailAndPassword(email, password);
+    window.showToast('Login successful! Redirecting…', 'success');
+    setTimeout(() => { window.location.href = 'portal.html'; }, 1000);
   }
 
-  await auth.signInWithEmailAndPassword(email, password);
-  window.showToast('Login successful! Redirecting…', 'success');
-  setTimeout(() => {
-    window.location.href = 'portal.html';
-  }, 1000);
-}
+  /* ──────────────────────────────────────────────
+     DOM READY
+  ────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Lucide icons
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+    document.getElementById('copyright-year').textContent = new Date().getFullYear();
 
-  const form = document.getElementById('login-form');
-  const btn = document.getElementById('login-btn');
-  const identifierInput = document.getElementById('login-identifier');
-  const passwordInput = document.getElementById('login-password');
+    const loginForm     = document.getElementById('login-form');
+    const loginBtn      = document.getElementById('login-btn');
+    const identifierInput = document.getElementById('login-identifier');
+    const passwordInput   = document.getElementById('login-password');
 
-  // Password visibility toggle
-  const passwordToggle = document.getElementById('password-toggle');
-  const eyeIcon = passwordToggle.querySelector('.icon-eye');
-  const eyeOffIcon = passwordToggle.querySelector('.icon-eye-off');
+    /* ── Password visibility toggle ── */
+    const passwordToggle = document.getElementById('password-toggle');
+    const eyeIcon    = passwordToggle.querySelector('.icon-eye');
+    const eyeOffIcon = passwordToggle.querySelector('.icon-eye-off');
 
-  passwordToggle.addEventListener('click', () => {
-    const isHidden = passwordInput.type === 'password';
-    passwordInput.type = isHidden ? 'text' : 'password';
-    eyeIcon.style.display = isHidden ? 'none' : '';
-    eyeOffIcon.style.display = isHidden ? '' : 'none';
-    passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-    passwordToggle.setAttribute('aria-pressed', String(isHidden));
-  });
+    passwordToggle.addEventListener('click', () => {
+      const isHidden = passwordInput.type === 'password';
+      passwordInput.type   = isHidden ? 'text' : 'password';
+      eyeIcon.style.display    = isHidden ? 'none' : '';
+      eyeOffIcon.style.display = isHidden ? '' : 'none';
+      passwordToggle.setAttribute('aria-label',   isHidden ? 'Hide password' : 'Show password');
+      passwordToggle.setAttribute('aria-pressed', String(isHidden));
+    });
 
-  // Forgot password
-  document.getElementById('forgot-btn').addEventListener('click', () => {
-    const email = prompt('Enter your email address to receive a reset link:');
-    if (!email) return;
+    /* ── Login form submit ── */
+    loginForm.addEventListener('submit', async e => {
+      e.preventDefault();
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      window.showToast('Please enter a valid email address.', 'warning');
-      return;
-    }
+      const identifier = identifierInput.value.trim();
+      const password   = passwordInput.value;
+      let valid = true;
 
-    auth.sendPasswordResetEmail(email)
-      .then(() => window.showToast('Password reset email sent. Check your inbox.', 'success', 6000))
-      .catch(() => window.showToast('Unable to send reset email. Please contact the school.', 'danger'));
-  });
-
-  // Form submit
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-
-    const identifier = identifierInput.value.trim();
-    const password = passwordInput.value;
-
-    let valid = true;
-
-    if (!identifier) {
-      identifierInput.classList.add('input-error');
-      window.showToast('Please enter your email or admission number.', 'warning');
-      valid = false;
-    } else {
-      identifierInput.classList.remove('input-error');
-    }
-
-    if (!password || password.length < 6) {
-      passwordInput.classList.add('input-error');
-      window.showToast('Please enter your password (at least 6 characters).', 'warning');
-      valid = false;
-    } else {
-      passwordInput.classList.remove('input-error');
-    }
-
-    if (!valid) return;
-
-    btn.disabled = true;
-    btn.classList.add('loading');
-
-    try {
-      await handleLogin(identifier, password);
-    } catch (err) {
-      console.error('Login error:', err);
-
-      let msg = 'Login failed. Please check your details and try again.';
-      if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
-      if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please try again.';
-      if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a moment and try again.';
-
-      if (err.message !== 'Invalid admission number') {
-        window.showToast(msg, 'danger');
+      if (!identifier) {
+        identifierInput.classList.add('input-error');
+        window.showToast('Please enter your email or admission number.', 'warning');
+        valid = false;
+      } else {
+        identifierInput.classList.remove('input-error');
       }
-    } finally {
-      btn.disabled = false;
-      btn.classList.remove('loading');
-    }
-  });
 
-  // Clear error styling on input
-  [identifierInput, passwordInput].forEach(input => {
-    input.addEventListener('input', () => {
-      input.classList.remove('input-error');
+      if (!password || password.length < 6) {
+        passwordInput.classList.add('input-error');
+        window.showToast('Please enter your password (at least 6 characters).', 'warning');
+        valid = false;
+      } else {
+        passwordInput.classList.remove('input-error');
+      }
+
+      if (!valid) return;
+
+      loginBtn.disabled = true;
+      loginBtn.classList.add('loading');
+
+      try {
+        await handleLogin(identifier, password);
+      } catch (err) {
+        console.error('Login error:', err);
+        let msg = 'Login failed. Please check your details and try again.';
+        if (err.code === 'auth/user-not-found')      msg = 'No account found with this email.';
+        if (err.code === 'auth/wrong-password')       msg = 'Incorrect password. Please try again.';
+        if (err.code === 'auth/too-many-requests')    msg = 'Too many attempts. Please wait and try again.';
+        if (err.message !== 'Invalid admission number') window.showToast(msg, 'danger');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.classList.remove('loading');
+      }
+    });
+
+    /* ── Forgot password form submit ── */
+    const forgotForm      = document.getElementById('forgot-form');
+    const forgotEmailInput = document.getElementById('forgot-email');
+    const forgotBtn       = document.getElementById('forgot-submit-btn');
+
+    forgotForm.addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const email = forgotEmailInput.value.trim();
+
+      if (!email) {
+        forgotEmailInput.classList.add('input-error');
+        window.showToast('Please enter your email address.', 'warning');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        forgotEmailInput.classList.add('input-error');
+        window.showToast('Please enter a valid email address.', 'warning');
+        return;
+      }
+
+      forgotEmailInput.classList.remove('input-error');
+      forgotBtn.disabled = true;
+      forgotBtn.classList.add('loading');
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+
+        // Show inline success state
+        document.getElementById('forgot-sent-to').textContent = email;
+        document.getElementById('forgot-form-wrap').style.display = 'none';
+        document.getElementById('forgot-success').style.display   = 'block';
+
+      } catch (err) {
+        console.error('Password reset error:', err);
+        // Firebase returns an error even for non-existent emails on some configs.
+        // Show a neutral message so we don't leak account existence.
+        window.showToast(
+          'If this email is registered, a reset link has been sent. Check your inbox.',
+          'info',
+          6000
+        );
+      } finally {
+        forgotBtn.disabled = false;
+        forgotBtn.classList.remove('loading');
+      }
+    });
+
+    /* ── Clear error styling on input ── */
+    [identifierInput, passwordInput, forgotEmailInput].forEach(input => {
+      input.addEventListener('input', () => input.classList.remove('input-error'));
     });
   });
-});
 </script>
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
