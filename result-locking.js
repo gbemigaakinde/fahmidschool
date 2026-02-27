@@ -254,67 +254,104 @@ async submitForApproval(classId, term, subject, session, teacherUid, teacherName
 },
 
   /**
- * ✅ FIXED: Admin approval COPIES draft results to production collection
- * This is the ONLY action that makes results visible to pupils
+ * ✅ FIXED: Idempotent result approval — safe against double-click and concurrent requests
+ * Uses a Firestore transaction to check submission status before writing.
+ * Will not re-approve an already-approved submission.
  */
 async approveResults(submissionId, adminUid) {
   try {
-    const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
-    
-    if (!submissionDoc.exists) {
-      return { success: false, message: 'Submission not found' };
-    }
-    
-    const data = submissionDoc.data();
-    const { classId, className, term, subject, session } = data;
-    
-    // ✅ STEP 1: Get all draft results for this submission
+    const submissionRef = db.collection('result_submissions').doc(submissionId);
+
+    // ── STEP 1: Idempotency check inside a transaction ───────────────────────
+    // Read-then-write inside a transaction prevents two concurrent approvals
+    // from both proceeding past the status check.
+    let submissionData = null;
+
+    await db.runTransaction(async (transaction) => {
+      const submissionDoc = await transaction.get(submissionRef);
+
+      if (!submissionDoc.exists) {
+        throw new Error('Submission not found');
+      }
+
+      const data = submissionDoc.data();
+
+      // ✅ IDEMPOTENCY GUARD: Reject if already approved
+      if (data.status === 'approved') {
+        throw new Error('ALREADY_APPROVED');
+      }
+
+      // ✅ GUARD: Only approve pending submissions
+      if (data.status !== 'pending') {
+        throw new Error(`Cannot approve submission with status: ${data.status}`);
+      }
+
+      // Mark as 'approving' atomically — any concurrent request will now see
+      // a non-pending status and be rejected
+      transaction.update(submissionRef, {
+        status: 'approving',
+        approvingBy: adminUid,
+        approvingStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      submissionData = data;
+    });
+
+    // ── STEP 2: Get draft results ─────────────────────────────────────────────
+    const { classId, className, term, subject, session } = submissionData;
+
     const draftResults = await db.collection('results_draft')
       .where('session', '==', session)
       .where('term', '==', term)
       .where('subject', '==', subject)
-      .where('teacherId', '==', data.teacherUid)
+      .where('teacherId', '==', submissionData.teacherUid)
       .get();
-    
+
     if (draftResults.empty) {
-      return { 
-        success: false, 
-        message: 'No draft results found to approve' 
+      // Roll back the 'approving' status so admin can retry
+      await submissionRef.update({
+        status: 'pending',
+        approvingBy: null,
+        approvingStartedAt: null
+      });
+      return {
+        success: false,
+        message: 'No draft results found to approve'
       };
     }
-    
-    // ✅ STEP 2: Copy draft results to PRODUCTION collection (visible to pupils)
+
+    // ── STEP 3: Copy drafts to production + finalise submission + lock ────────
     const batch = db.batch();
-    
+
     draftResults.forEach(draftDoc => {
       const draftData = draftDoc.data();
       const pupilId = draftData.pupilId;
-      
-      // Create document ID for production results
+
       const prodDocId = `${pupilId}_${term}_${subject}`;
       const prodRef = db.collection('results').doc(prodDocId);
-      
-      // Copy data to production with approval metadata
+
       batch.set(prodRef, {
         ...draftData,
-        status: 'approved', // ✅ Mark as approved
+        status: 'approved',
         approvedBy: adminUid,
         approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
         publishedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     });
-    
-    // ✅ STEP 3: Update submission status
-    batch.update(submissionDoc.ref, {
+
+    // Finalise submission status
+    batch.update(submissionRef, {
       status: 'approved',
       approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      approvedBy: adminUid
+      approvedBy: adminUid,
+      approvingBy: null,
+      approvingStartedAt: null
     });
-    
-    // ✅ STEP 4: Lock the results
+
+    // Lock the results
     const lockId = `${classId}_${session}_${term}_${subject}`;
     const lockRef = db.collection('result_locks').doc(lockId);
-    
+
     batch.set(lockRef, {
       classId,
       className,
@@ -326,18 +363,25 @@ async approveResults(submissionId, adminUid) {
       lockedBy: adminUid,
       reason: 'Admin approved and locked'
     });
-    
-    // ✅ STEP 5: Commit all changes atomically
+
     await batch.commit();
-    
+
     console.log(`✅ Results approved and published: ${className} - ${term} - ${subject}`);
-    
-    return { 
-      success: true, 
-      message: 'Results approved and published to pupils successfully' 
+
+    return {
+      success: true,
+      message: 'Results approved and published to pupils successfully'
     };
-    
+
   } catch (error) {
+    if (error.message === 'ALREADY_APPROVED') {
+      console.log('ℹ️ approveResults: submission already approved — no action taken');
+      return {
+        success: false,
+        message: 'These results have already been approved.'
+      };
+    }
+
     console.error('Error approving results:', error);
     return { success: false, error: error.message };
   }
