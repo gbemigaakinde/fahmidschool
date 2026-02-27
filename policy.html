@@ -371,14 +371,68 @@
       }
     }
 
-    @media print {
+   @media print {
   .policy-sidebar,
   .toc-toggle,
   .toc-mobile-panel,
   .print-btn,
-  .cta-banner {
+  .cta-banner,
+  .page-hero {
     display: none !important;
   }
+
+  body::before {
+    content: '';
+    display: block;
+    height: 6px;
+    background: #1B3A7A;
+    margin-bottom: 0;
+  }
+
+  body::after {
+    content: '';
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #C89F4D;
+  }
+
+  .section {
+    padding-top: 0 !important;
+  }
+
+  .section::before {
+    content: '';
+    display: block;
+    height: 6px;
+    background: #1B3A7A;
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+
+  .section::after {
+    content: 'FAHMID NURSERY & PRIMARY SCHOOL';
+    display: block;
+    text-align: center;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9pt;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: #6B7490;
+    margin-bottom: 0.25rem;
+  }
+
+  .print-doc-header {
+    display: block !important;
+  }
+}
+
+.print-doc-header {
+  display: none;
+}
 
   .policy-layout {
     grid-template-columns: 1fr;
@@ -501,6 +555,24 @@
 
   <section class="section" aria-label="School policies">
     <div class="container">
+
+      <div class="print-doc-header">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 2px solid #1B3A7A;">
+          <div>
+            <div style="font-family:'DM Serif Display',serif; font-size:22pt; color:#1B3A7A; line-height:1.1;">Fahmid Nursery &amp; Primary School</div>
+            <div style="font-family:'DM Sans',sans-serif; font-size:9pt; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#C89F4D; margin-top:4px;">18 Shittu Street, Adura Bus Stop, Alagbado, Ifako-Ijaiye, Lagos</div>
+          </div>
+          <div style="text-align:right; font-family:'DM Sans',sans-serif; font-size:9pt; color:#6B7490; line-height:1.8;">
+            <div><strong style="color:#1B3A7A;">OFFICIAL SCHOOL POLICY DOCUMENT</strong></div>
+            <div>Last Reviewed: January 2026</div>
+            <div>Next Review: January 2027</div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-bottom:1.5rem;">
+          <div style="font-family:'DM Serif Display',serif; font-size:18pt; color:#0D0F14; margin-bottom:4px;">School Policy</div>
+          <div style="width:48px; height:3px; background:#C89F4D; margin:0 auto;"></div>
+        </div>
+      </div>
 
       <div class="policy-meta-bar">
         <div class="policy-meta-item">
