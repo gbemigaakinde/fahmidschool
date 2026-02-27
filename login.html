@@ -842,7 +842,6 @@
       if (snapshot.empty) return null;
       return snapshot.docs[0].data().email;
     } catch (err) {
-      console.error('Admission number lookup failed:', err);
       throw err;
     }
   }
@@ -937,7 +936,6 @@
         document.getElementById('forgot-form-wrap').style.display = 'none';
         document.getElementById('forgot-success').style.display = 'block';
       } catch (err) {
-        console.error('Password reset error:', err);
         window.showToast('Something went wrong. Please try again or contact the school.', 'danger');
       } finally {
         submitBtn.disabled = false;
@@ -978,7 +976,6 @@
       try {
         await handleLogin(identifier, password);
       } catch (err) {
-        console.error('Login error:', err);
 
         let msg = 'Login failed. Please check your details and try again.';
         if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
