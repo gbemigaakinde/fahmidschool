@@ -919,13 +919,26 @@
       submitBtn.classList.add('loading');
 
       try {
+        // Check email exists in Firestore before sending reset link
+        const snapshot = await db.collection('pupils')
+          .where('email', '==', email)
+          .limit(1)
+          .get();
+
+        if (snapshot.empty) {
+          emailInput.classList.add('input-error');
+          window.showToast('No account found with this email address.', 'danger');
+          return;
+        }
+
+        // Email confirmed — send the reset link
         await auth.sendPasswordResetEmail(email);
         document.getElementById('forgot-sent-to').textContent = email;
         document.getElementById('forgot-form-wrap').style.display = 'none';
         document.getElementById('forgot-success').style.display = 'block';
       } catch (err) {
         console.error('Password reset error:', err);
-        window.showToast('Unable to send reset email. Please contact the school.', 'danger');
+        window.showToast('Something went wrong. Please try again or contact the school.', 'danger');
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
