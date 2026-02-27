@@ -430,6 +430,52 @@
     input.input-error:focus {
       box-shadow: 0 0 0 3px rgba(185,28,28,0.12) !important;
     }
+    
+    /* ── PASSWORD FIELD TOGGLE ── */
+.password-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field-wrap input {
+  padding-right: 3rem; /* make room for the button */
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-400);
+  border-radius: var(--radius-md);
+  transition: color var(--t-fast), background var(--t-fast);
+  padding: 0;
+}
+
+.password-toggle:hover {
+  color: var(--accent);
+  background: var(--accent-pale);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
   </style>
 </head>
 <body>
@@ -503,12 +549,27 @@
             <input type="text" id="login-identifier" name="identifier" placeholder="email@example.com or admission number" required aria-required="true" autocomplete="username">
           </div>
           <div class="form-group">
-            <label for="login-password">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Password <span class="required" aria-hidden="true">*</span>
-            </label>
-            <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
-          </div>
+  <label for="login-password">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Password <span class="required" aria-hidden="true">*</span>
+  </label>
+  <div class="password-field-wrap">
+    <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
+    <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
+      <!-- Eye icon (shown when password is hidden) -->
+      <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <!-- Eye-off icon (shown when password is visible) -->
+      <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+      </svg>
+    </button>
+  </div>
+</div>
           <button type="submit" class="login-submit" id="login-btn">Sign In</button>
           <button type="button" class="login-forgot" id="forgot-btn">Forgot your password?</button>
         </form>
@@ -603,82 +664,105 @@ async function handleLogin(identifier, password) {
 
   await auth.signInWithEmailAndPassword(email, password);
   window.showToast('Login successful! Redirecting…', 'success');
-  setTimeout(() => { window.location.href = 'portal.html'; }, 1000);
+  setTimeout(() => {
+    window.location.href = 'portal.html';
+  }, 1000);
 }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // Lucide icons
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+document.addEventListener('DOMContentLoaded', () => {
+  // Lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    const form = document.getElementById('login-form');
-    const btn = document.getElementById('login-btn');
-    const identifierInput = document.getElementById('login-identifier');
-    const passwordInput = document.getElementById('login-password');
+  const form = document.getElementById('login-form');
+  const btn = document.getElementById('login-btn');
+  const identifierInput = document.getElementById('login-identifier');
+  const passwordInput = document.getElementById('login-password');
 
-    // Forgot password
-    document.getElementById('forgot-btn').addEventListener('click', () => {
-      const email = prompt('Enter your email address to receive a reset link:');
-      if (!email) return;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        window.showToast('Please enter a valid email address.', 'warning');
-        return;
+  // Password visibility toggle
+  const passwordToggle = document.getElementById('password-toggle');
+  const eyeIcon = passwordToggle.querySelector('.icon-eye');
+  const eyeOffIcon = passwordToggle.querySelector('.icon-eye-off');
+
+  passwordToggle.addEventListener('click', () => {
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    eyeIcon.style.display = isHidden ? 'none' : '';
+    eyeOffIcon.style.display = isHidden ? '' : 'none';
+    passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    passwordToggle.setAttribute('aria-pressed', String(isHidden));
+  });
+
+  // Forgot password
+  document.getElementById('forgot-btn').addEventListener('click', () => {
+    const email = prompt('Enter your email address to receive a reset link:');
+    if (!email) return;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      window.showToast('Please enter a valid email address.', 'warning');
+      return;
+    }
+
+    auth.sendPasswordResetEmail(email)
+      .then(() => window.showToast('Password reset email sent. Check your inbox.', 'success', 6000))
+      .catch(() => window.showToast('Unable to send reset email. Please contact the school.', 'danger'));
+  });
+
+  // Form submit
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const identifier = identifierInput.value.trim();
+    const password = passwordInput.value;
+
+    let valid = true;
+
+    if (!identifier) {
+      identifierInput.classList.add('input-error');
+      window.showToast('Please enter your email or admission number.', 'warning');
+      valid = false;
+    } else {
+      identifierInput.classList.remove('input-error');
+    }
+
+    if (!password || password.length < 6) {
+      passwordInput.classList.add('input-error');
+      window.showToast('Please enter your password (at least 6 characters).', 'warning');
+      valid = false;
+    } else {
+      passwordInput.classList.remove('input-error');
+    }
+
+    if (!valid) return;
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+      await handleLogin(identifier, password);
+    } catch (err) {
+      console.error('Login error:', err);
+
+      let msg = 'Login failed. Please check your details and try again.';
+      if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
+      if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please try again.';
+      if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a moment and try again.';
+
+      if (err.message !== 'Invalid admission number') {
+        window.showToast(msg, 'danger');
       }
-      auth.sendPasswordResetEmail(email)
-        .then(() => window.showToast('Password reset email sent. Check your inbox.', 'success', 6000))
-        .catch(() => window.showToast('Unable to send reset email. Please contact the school.', 'danger'));
-    });
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  });
 
-    // Form submit
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const identifier = identifierInput.value.trim();
-      const password = passwordInput.value;
-
-      // Simple validation
-      let valid = true;
-
-      if (!identifier) {
-        identifierInput.classList.add('input-error');
-        window.showToast('Please enter your email or admission number.', 'warning');
-        valid = false;
-      } else {
-        identifierInput.classList.remove('input-error');
-      }
-
-      if (!password || password.length < 6) {
-        passwordInput.classList.add('input-error');
-        window.showToast('Please enter your password (at least 6 characters).', 'warning');
-        valid = false;
-      } else {
-        passwordInput.classList.remove('input-error');
-      }
-
-      if (!valid) return;
-
-      btn.disabled = true;
-      btn.classList.add('loading');
-
-      try {
-        await handleLogin(identifier, password);
-      } catch (err) {
-        console.error('Login error:', err);
-        let msg = 'Login failed. Please check your details and try again.';
-        if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
-        if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please try again.';
-        if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a moment and try again.';
-        if (err.message !== 'Invalid admission number') window.showToast(msg, 'danger');
-      } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
-      }
-    });
-
-    // Clear error styling on input
-    [identifierInput, passwordInput].forEach(input => {
-      input.addEventListener('input', () => input.classList.remove('input-error'));
+  // Clear error styling on input
+  [identifierInput, passwordInput].forEach(input => {
+    input.addEventListener('input', () => {
+      input.classList.remove('input-error');
     });
   });
+});
 </script>
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
