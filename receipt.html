@@ -32,7 +32,6 @@
       --rule:       #D1D9E0;
       --serif:      'Playfair Display', Georgia, serif;
       --sans:       'DM Sans', system-ui, sans-serif;
-      --mono:       'DM Sans', system-ui, sans-serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,7 +46,6 @@
       print-color-adjust: exact;
     }
 
-    /* ── Print button ─────────────────────────────────────────────────────── */
     .print-btn {
       position: fixed;
       top: 1.2rem; right: 1.2rem;
@@ -76,7 +74,6 @@
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
 
-    /* ── Card ─────────────────────────────────────────────────────────────── */
     .receipt {
       max-width: 600px;
       margin: 0 auto;
@@ -87,13 +84,11 @@
         0 2px 8px rgba(0,0,0,0.06);
     }
 
-    /* ── Top accent bar ───────────────────────────────────────────────────── */
     .accent-bar {
       height: 4px;
       background: linear-gradient(90deg, var(--ink) 0%, var(--ink) 55%, var(--accent) 55%, var(--accent) 100%);
     }
 
-    /* ── Header ───────────────────────────────────────────────────────────── */
     .receipt__header {
       display: flex;
       align-items: center;
@@ -153,7 +148,6 @@
       margin-top: 0.15rem;
     }
 
-    /* ── Divider rules ────────────────────────────────────────────────────── */
     .h-rule {
       height: 1px;
       background: var(--rule);
@@ -166,12 +160,28 @@
       margin: 0;
     }
 
-    /* ── Body ─────────────────────────────────────────────────────────────── */
     .receipt__body {
       padding: 1.4rem 1.75rem;
+      position: relative;
     }
 
-    /* ── Meta row ─────────────────────────────────────────────────────────── */
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      object-fit: cover;
+      opacity: 0.055;
+      pointer-events: none;
+      user-select: none;
+      z-index: 0;
+    }
+
+    .receipt__body > * { position: relative; z-index: 1; }
+
     .meta-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -203,12 +213,8 @@
       line-height: 1.2;
     }
 
-    .meta-cell--receipt .meta-cell__value {
-      color: var(--accent);
-      font-size: 0.48rem;
-    }
+    .meta-cell--receipt .meta-cell__value { color: var(--accent); }
 
-    /* ── Student section ──────────────────────────────────────────────────── */
     .section-head {
       font-size: 0.47rem;
       font-weight: 600;
@@ -244,7 +250,6 @@
 
     .field__value--class { font-size: 0.7rem; }
 
-    /* ── Payment section ──────────────────────────────────────────────────── */
     .payment-section {
       border-top: 1.5px solid var(--ink);
       padding-top: 0.7rem;
@@ -273,7 +278,6 @@
       color: var(--ink);
     }
 
-    /* ── Amount hero ──────────────────────────────────────────────────────── */
     .amount-hero {
       display: flex;
       align-items: baseline;
@@ -303,7 +307,6 @@
       margin-right: 0.05em;
     }
 
-    /* ── Balance strip ────────────────────────────────────────────────────── */
     .balance-strip {
       display: flex;
       align-items: center;
@@ -328,7 +331,6 @@
       color: var(--accent-dk);
     }
 
-    /* ── Notes ────────────────────────────────────────────────────────────── */
     .notes-block {
       padding: 0.55rem 0.85rem;
       background: var(--paper);
@@ -339,7 +341,6 @@
     }
     .notes-block strong { color: var(--ink); font-weight: 600; }
 
-    /* ── Signatures ───────────────────────────────────────────────────────── */
     .signature-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -365,7 +366,6 @@
       text-align: center;
     }
 
-    /* ── Footer ───────────────────────────────────────────────────────────── */
     .receipt__footer {
       padding: 0.75rem 1.75rem;
       border-top: 1px solid var(--rule);
@@ -397,13 +397,11 @@
       flex-shrink: 0;
     }
 
-    /* ── Bottom accent bar ────────────────────────────────────────────────── */
     .accent-bar--bottom {
       height: 3px;
       background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 30%, var(--ink) 30%, var(--ink) 100%);
     }
 
-    /* ── Mobile ───────────────────────────────────────────────────────────── */
     @media (max-width: 480px) {
       body { padding: 0 0 4rem; }
       .receipt { box-shadow: none; }
@@ -423,13 +421,11 @@
       .print-btn { bottom: 1rem; right: 1rem; top: auto; }
     }
 
-    /* ── Print ────────────────────────────────────────────────────────────── */
     @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
 
     @media print {
       body { background: white !important; padding: 0 !important; }
       .print-btn { display: none !important; }
-
       .receipt {
         max-width: none !important;
         width: 100% !important;
@@ -437,31 +433,26 @@
         border: 0.5pt solid #ccc !important;
         page-break-inside: avoid;
       }
-
       .accent-bar {
         background: #111 !important;
         height: 3pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-
       .accent-bar--bottom {
         background: #888 !important;
         height: 2pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-
       .receipt__header { padding: 9pt 12pt 8pt !important; }
       .receipt__logo { width: 36pt !important; height: 36pt !important; }
       .receipt__school-name { font-size: 10pt !important; }
       .receipt__school-contact { font-size: 6.5pt !important; }
       .receipt__doc-type strong { font-size: 11pt !important; }
       .receipt__doc-type span { font-size: 5.5pt !important; }
-
       .receipt__body { padding: 9pt 12pt !important; }
       .h-rule { margin: 0 12pt !important; }
-
       .meta-row {
         background: #f5f5f5 !important;
         -webkit-print-color-adjust: exact;
@@ -471,25 +462,17 @@
       .meta-cell { padding: 1.5pt 3pt !important; border-right-color: #ccc !important; }
       .meta-cell__label { font-size: 4.5pt !important; }
       .meta-cell__value { font-size: 5.5pt !important; }
-
       .section-head { font-size: 4.5pt !important; margin-bottom: 2pt !important; }
       .field__label { font-size: 4.5pt !important; }
       .field__value { font-size: 7pt !important; }
       .student-grid { margin-bottom: 6pt !important; }
-
       .payment-section { padding-top: 5pt !important; margin-bottom: 5pt !important; }
       .payment-row { padding: 2.5pt 0 !important; }
       .payment-row__label { font-size: 7pt !important; }
       .payment-row__value { font-size: 7pt !important; }
-
-      .amount-hero {
-        padding: 2.5pt 0 !important;
-        background: none !important;
-        margin-bottom: 0 !important;
-      }
+      .amount-hero { padding: 2.5pt 0 !important; background: none !important; margin-bottom: 0 !important; }
       .amount-hero__label { font-size: 7pt !important; color: #3D3D3D !important; }
       .amount-hero__amount { font-size: 8pt !important; color: #0A0A0A !important; }
-
       .balance-strip {
         background: #e8f4fb !important;
         border-color: #a0c8e0 !important;
@@ -500,13 +483,10 @@
       }
       .balance-strip__label { font-size: 6pt !important; color: #005B8A !important; }
       .balance-strip__value { font-size: 8pt !important; color: #005B8A !important; }
-
       .notes-block { font-size: 6.5pt !important; padding: 3pt 6pt !important; }
-
       .signature-section { padding-top: 7pt !important; }
       .sig-block__line { height: 26pt !important; margin-bottom: 2.5pt !important; }
       .sig-block__label { font-size: 6pt !important; }
-
       .receipt__footer {
         background: #f5f5f5 !important;
         padding: 4pt 12pt !important;
@@ -515,6 +495,13 @@
       }
       .footer__note { font-size: 6pt !important; }
       .footer__timestamp { font-size: 5.5pt !important; }
+      .watermark {
+        width: 180pt !important;
+        height: 180pt !important;
+        opacity: 0.05 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
   </style>
 </head>
@@ -530,7 +517,6 @@
 
       <div class="accent-bar"></div>
 
-      <!-- Header -->
       <header class="receipt__header">
         <img class="receipt__logo" src="IMG_4628.jpeg" alt="Fahmid School Logo">
         <div class="receipt__school-info">
@@ -548,10 +534,10 @@
 
       <div class="h-rule h-rule--thick"></div>
 
-      <!-- Body -->
       <div class="receipt__body">
 
-        <!-- Meta strip -->
+        <img class="watermark" src="IMG_4628.jpeg" alt="" aria-hidden="true">
+
         <dl class="meta-row" aria-label="Receipt reference">
           <div class="meta-cell meta-cell--receipt">
             <dt class="meta-cell__label">Receipt No.</dt>
@@ -571,7 +557,6 @@
           </div>
         </dl>
 
-        <!-- Student info -->
         <section aria-label="Student information">
           <p class="section-head">Pupil Information</p>
           <div class="student-grid">
@@ -586,32 +571,25 @@
           </div>
         </section>
 
-        <!-- Payment details -->
         <section class="payment-section" aria-label="Payment details">
           <p class="section-head">Payment Details</p>
-
           <div class="payment-row">
             <span class="payment-row__label">Payment Method</span>
             <span class="payment-row__value" id="payment-method">&#8212;</span>
           </div>
-
           <div class="amount-hero">
             <span class="amount-hero__label">Amount Paid</span>
             <span class="amount-hero__amount"><sup>&#8358;</sup><span id="amount-paid-display">0.00</span></span>
           </div>
-
           <div class="balance-strip" aria-label="Outstanding balance">
             <span class="balance-strip__label">Outstanding Balance</span>
             <span class="balance-strip__value" id="balance-remaining">&#8358;0.00</span>
           </div>
-
           <div class="notes-block" id="notes-row" style="display:none;" role="note">
             <strong>Note:</strong> <span id="payment-notes">&#8212;</span>
           </div>
-
         </section>
 
-        <!-- Signatures -->
         <section class="signature-section" aria-label="Signatures">
           <div class="sig-block">
             <div class="sig-block__line"></div>
@@ -625,7 +603,6 @@
 
       </div>
 
-      <!-- Footer -->
       <footer class="receipt__footer">
         <p class="footer__note">
           <strong>Official Receipt &#8212; Retain for your records.</strong>
@@ -639,7 +616,6 @@
     </article>
   </main>
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
@@ -647,54 +623,50 @@
   <script src="finance.js"></script>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const receiptNo = urlParams.get('receipt');
+    var urlParams = new URLSearchParams(window.location.search);
+    var receiptNo = urlParams.get('receipt');
 
     if (!receiptNo) {
       alert('No receipt number provided');
       window.close();
     }
 
-    async function loadReceiptData() {
-      try {
-        await new Promise((resolve, reject) => {
-          const maxWait = 10000;
-          const startTime = Date.now();
-          const checkReady = setInterval(() => {
-            if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
-              if (auth.currentUser) { clearInterval(checkReady); resolve(); return; }
-              auth.onAuthStateChanged(user => {
-                if (user) { clearInterval(checkReady); resolve(); }
-                else if (Date.now() - startTime > maxWait) {
-                  clearInterval(checkReady);
-                  console.warn('Proceeding without authentication (timeout)');
-                  resolve();
-                }
-              });
-            } else if (Date.now() - startTime > maxWait) {
-              clearInterval(checkReady);
-              reject(new Error('Firebase initialization timeout'));
-            }
-          }, 100);
-        });
-
-        const doc = await db.collection('payment_transactions').doc(receiptNo).get();
-
+    function loadReceiptData() {
+      new Promise(function(resolve, reject) {
+        var maxWait = 10000;
+        var startTime = Date.now();
+        var checkReady = setInterval(function() {
+          if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+            if (auth.currentUser) { clearInterval(checkReady); resolve(); return; }
+            auth.onAuthStateChanged(function(user) {
+              if (user) { clearInterval(checkReady); resolve(); }
+              else if (Date.now() - startTime > maxWait) {
+                clearInterval(checkReady);
+                resolve();
+              }
+            });
+          } else if (Date.now() - startTime > maxWait) {
+            clearInterval(checkReady);
+            reject(new Error('Firebase initialization timeout'));
+          }
+        }, 100);
+      }).then(function() {
+        return db.collection('payment_transactions').doc(receiptNo).get();
+      }).then(function(doc) {
         if (!doc.exists) {
           alert('Receipt not found or you do not have permission to view it');
           return;
         }
 
-        const data = doc.data();
+        var data = doc.data();
+        var actualPaymentDate = data.paymentDate ? data.paymentDate.toDate() : new Date();
 
-        const actualPaymentDate = data.paymentDate ? data.paymentDate.toDate() : new Date();
-
-        const paymentDateFormatted = actualPaymentDate.toLocaleDateString('en-GB', {
+        var paymentDateFormatted = actualPaymentDate.toLocaleDateString('en-GB', {
           year: 'numeric', month: 'long', day: 'numeric',
           hour: '2-digit', minute: '2-digit', hour12: true
         });
 
-        const generatedDate = new Date().toLocaleDateString('en-GB', {
+        var generatedDate = new Date().toLocaleDateString('en-GB', {
           year: 'numeric', month: 'long', day: 'numeric',
           hour: '2-digit', minute: '2-digit', hour12: true
         });
@@ -706,7 +678,7 @@
         document.getElementById('receipt-term').textContent    = data.term;
         document.getElementById('receipt-date').textContent    = paymentDateFormatted;
 
-        const amountFormatted = Number(data.amountPaid).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        var amountFormatted = Number(data.amountPaid).toLocaleString('en-NG', { minimumFractionDigits: 2 });
         document.getElementById('amount-paid-display').textContent = amountFormatted;
         document.getElementById('payment-method').textContent      = data.paymentMethod || 'Cash';
 
@@ -715,7 +687,7 @@
           document.getElementById('notes-row').style.display   = 'block';
         }
 
-        let displayBalance = 0;
+        var displayBalance = 0;
         if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
           displayBalance = Number(data.balanceAfter);
         } else if (data.totalDue !== undefined && data.totalPaidAfter !== undefined) {
@@ -730,11 +702,11 @@
           '\u20A6' + displayBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
         document.getElementById('generated-date').textContent = generatedDate;
 
-        setTimeout(() => window.print(), 1000);
+        setTimeout(function() { window.print(); }, 1000);
 
-      } catch (error) {
+      }).catch(function(error) {
         console.error('Receipt error:', error);
-        let errorMsg = 'Failed to load receipt.';
+        var errorMsg = 'Failed to load receipt.';
         if (error.code === 'permission-denied') {
           errorMsg += ' You do not have permission to view this receipt.';
         } else if (error.code === 'unavailable') {
@@ -743,13 +715,12 @@
           errorMsg += ' ' + error.message;
         }
         alert(errorMsg);
-      }
+      });
     }
 
     loadReceiptData();
   </script>
 
-  <!-- PWA Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
