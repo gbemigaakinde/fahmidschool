@@ -1048,10 +1048,10 @@
     </div>
 
     <div class="pp-hero__actions">
-      <a href="print-results.html" class="pp-action-btn pp-action-btn--outline">
-        <i data-lucide="printer" aria-hidden="true"></i>
+     <button class="pp-action-btn pp-action-btn--outline" onclick="openPrintReport()">
+     <i data-lucide="printer" aria-hidden="true"></i>
         Print Report
-      </a>
+     </button>
       <button class="pp-action-btn pp-action-btn--solid" onclick="scrollToSection('pp-fees')">
         <i data-lucide="credit-card" aria-hidden="true"></i>
         Fee Balance
@@ -1204,10 +1204,10 @@
     </div>
 
     <div class="pp-card__footer">
-      <a href="print-results.html" class="pp-btn pp-btn--primary">
-        <i data-lucide="printer" aria-hidden="true"></i>
-        View &amp; Print Report Card
-      </a>
+<button class="pp-btn pp-btn--primary" onclick="openPrintReport()">
+  <i data-lucide="printer" aria-hidden="true"></i>
+  View &amp; Print Report Card
+</button>
     </div>
 
   </section>
@@ -1325,6 +1325,16 @@ function scrollToSection(id) {
 window.scrollToFees    = () => scrollToSection('fee-balance-section');
 window.scrollToSection = scrollToSection;
 
+/* ── Session-aware print navigation ─────────────────────────── */
+function openPrintReport() {
+  const select = document.getElementById('pupil-session-select');
+  const selected = select ? select.value : 'current';
+  const url = selected && selected !== 'current'
+    ? `print-results.html?session=${encodeURIComponent(selected)}`
+    : 'print-results.html';
+  window.location.href = url;
+}
+window.openPrintReport = openPrintReport;
 
 /* ── getElementById proxy ────────────────────────────────────── */
 (function () {
