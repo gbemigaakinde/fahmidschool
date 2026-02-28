@@ -6,45 +6,42 @@
   <title>Payment Receipt — Fahmid School</title>
   <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#005B8A">
+  <meta name="theme-color" content="#0A0A0A">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="Fahmid School">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Fahmid School">
   <link rel="apple-touch-icon" href="/IMG_4628.jpeg">
-  <meta name="msapplication-TileColor" content="#005B8A">
-  <meta name="msapplication-TileImage" content="/IMG_4628.jpeg">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --blue:       #0077B6;
-      --blue-dark:  #005B8A;
-      --blue-light: #E8F4FB;
-      --ink:        #111827;
-      --ink-mid:    #374151;
-      --ink-muted:  #6B7280;
-      --rule:       #D1D5DB;
-      --rule-lt:    #E5E7EB;
-      --surface:    #F8FAFC;
+      --ink:        #0A0A0A;
+      --ink-mid:    #3D3D3D;
+      --ink-muted:  #8A8A8A;
+      --ink-faint:  #C4C4C4;
+      --accent:     #C8963E;
+      --accent-lt:  #F5ECD8;
+      --paper:      #FAFAF8;
       --white:      #FFFFFF;
-      --sans:       'IBM Plex Sans', system-ui, sans-serif;
-      --mono:       'IBM Plex Mono', 'Courier New', monospace;
+      --rule:       #E2E2DF;
+      --serif:      'Playfair Display', Georgia, serif;
+      --sans:       'DM Sans', system-ui, sans-serif;
+      --mono:       'DM Mono', 'Courier New', monospace;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── Screen shell ─────────────────────────────────────────────────────── */
     body {
-      background: #DDE1E8;
+      background: #EBEBEA;
       font-family: var(--sans);
       font-size: 13px;
       color: var(--ink);
-      padding: 1.5rem 1rem 3.5rem;
+      padding: 2.5rem 1rem 4rem;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -52,304 +49,325 @@
     /* ── Print button ─────────────────────────────────────────────────────── */
     .print-btn {
       position: fixed;
-      top: 1rem; right: 1rem;
+      top: 1.2rem; right: 1.2rem;
       z-index: 100;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.45rem 0.9rem;
-      background: var(--blue);
+      gap: 0.5rem;
+      padding: 0.55rem 1.1rem;
+      background: var(--ink);
       color: #fff;
       font-family: var(--sans);
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       border: none;
-      border-radius: 3px;
+      border-radius: 2px;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transition: background 0.15s;
+      transition: background 0.2s, transform 0.1s;
     }
-    .print-btn:hover { background: var(--blue-dark); }
+    .print-btn:hover { background: #2a2a2a; transform: translateY(-1px); }
+    .print-btn:active { transform: translateY(0); }
     .print-btn svg {
-      width: 13px; height: 13px;
+      width: 12px; height: 12px;
       fill: none; stroke: currentColor;
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
 
-    /* ── Receipt card ─────────────────────────────────────────────────────── */
+    /* ── Card ─────────────────────────────────────────────────────────────── */
     .receipt {
-      max-width: 620px;
+      max-width: 600px;
       margin: 0 auto;
       background: var(--white);
-      border: 1px solid #BEC4CE;
-      box-shadow: 0 3px 18px rgba(0,0,0,0.09);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.06),
+        0 8px 40px rgba(0,0,0,0.12),
+        0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ── Top accent bar ───────────────────────────────────────────────────── */
+    .accent-bar {
+      height: 4px;
+      background: linear-gradient(90deg, var(--ink) 0%, var(--ink) 55%, var(--accent) 55%, var(--accent) 100%);
     }
 
     /* ── Header ───────────────────────────────────────────────────────────── */
     .receipt__header {
-      display: grid;
-      grid-template-columns: 52px 1fr;
-      gap: 0 0.9rem;
+      display: flex;
       align-items: center;
-      padding: 0.85rem 1.2rem 0.75rem;
-      border-bottom: 2.5px solid var(--blue);
+      gap: 1rem;
+      padding: 1.5rem 1.75rem 1.25rem;
     }
 
-    /* School logo image */
     .receipt__logo {
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       object-fit: cover;
-      border: 1.5px solid var(--blue-light);
-      display: block;
       flex-shrink: 0;
+      border: 2px solid var(--rule);
     }
 
+    .receipt__school-info { flex: 1; }
+
     .receipt__school-name {
-      font-size: 0.9rem;
+      font-family: var(--serif);
+      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--blue-dark);
-      letter-spacing: 0.015em;
+      color: var(--ink);
+      letter-spacing: 0.01em;
       line-height: 1.2;
-      text-transform: uppercase;
     }
 
     .receipt__school-contact {
-      margin-top: 0.2rem;
-      font-size: 0.68rem;
+      margin-top: 0.3rem;
+      font-size: 0.67rem;
       color: var(--ink-muted);
-      line-height: 1.5;
+      line-height: 1.6;
+      font-weight: 400;
     }
 
-    /* ── Title band ───────────────────────────────────────────────────────── */
-    .receipt__title-band {
-      background: var(--blue);
-      padding: 0.32rem 1.2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .receipt__doc-type {
+      text-align: right;
+      flex-shrink: 0;
     }
 
-    .receipt__title-band h2 {
-      font-size: 0.63rem;
-      font-weight: 700;
-      letter-spacing: 0.16em;
+    .receipt__doc-type span {
+      display: block;
+      font-size: 0.57rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.9);
+      color: var(--ink-muted);
     }
 
-    .receipt__doc-label {
-      font-size: 0.6rem;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
+    .receipt__doc-type strong {
+      display: block;
+      font-family: var(--serif);
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--ink);
+      line-height: 1;
+      margin-top: 0.15rem;
+    }
+
+    /* ── Divider rule ─────────────────────────────────────────────────────── */
+    .h-rule {
+      height: 1px;
+      background: var(--rule);
+      margin: 0 1.75rem;
+    }
+
+    .h-rule--thick {
+      height: 1.5px;
+      background: var(--ink);
+      margin: 0;
     }
 
     /* ── Body ─────────────────────────────────────────────────────────────── */
     .receipt__body {
-      padding: 0.85rem 1.2rem;
+      padding: 1.4rem 1.75rem;
     }
 
-    /* ── Meta strip (Receipt No / Date / Session / Term) ─────────────────── */
-    .receipt__meta {
+    /* ── Meta row ─────────────────────────────────────────────────────────── */
+    .meta-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      background: var(--surface);
+      gap: 0;
+      margin-bottom: 1.4rem;
+      background: var(--paper);
       border: 1px solid var(--rule);
-      border-radius: 3px;
-      overflow: hidden;
-      margin-bottom: 0.75rem;
     }
 
     .meta-cell {
-      padding: 0.4rem 0.6rem;
+      padding: 0.6rem 0.8rem;
       border-right: 1px solid var(--rule);
     }
     .meta-cell:last-child { border-right: none; }
 
     .meta-cell__label {
-      font-size: 0.58rem;
+      font-size: 0.57rem;
       font-weight: 600;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--ink-muted);
-      margin-bottom: 0.18rem;
+      margin-bottom: 0.25rem;
     }
 
     .meta-cell__value {
-      font-size: 0.73rem;
+      font-size: 0.72rem;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.2;
     }
 
-    .meta-cell--primary .meta-cell__value {
+    .meta-cell--receipt .meta-cell__value {
       font-family: var(--mono);
-      font-size: 0.74rem;
-      color: var(--blue-dark);
+      color: var(--accent);
+      font-size: 0.73rem;
     }
 
-    /* ── Section label ────────────────────────────────────────────────────── */
-    .section-label {
-      font-size: 0.58rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
+    /* ── Student section ──────────────────────────────────────────────────── */
+    .section-head {
+      font-size: 0.57rem;
+      font-weight: 600;
+      letter-spacing: 0.13em;
       text-transform: uppercase;
-      color: var(--blue);
-      border-bottom: 1px solid var(--rule-lt);
-      padding-bottom: 0.25rem;
-      margin-bottom: 0.55rem;
+      color: var(--ink-muted);
+      margin-bottom: 0.7rem;
     }
 
-    /* ── Student block ────────────────────────────────────────────────────── */
-    .student-block {
+    .student-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0 1.5rem;
-      margin-bottom: 0.75rem;
+      gap: 0 2rem;
+      margin-bottom: 1.4rem;
     }
 
-    .field { display: flex; flex-direction: column; gap: 0.15rem; }
+    .field { display: flex; flex-direction: column; gap: 0.2rem; }
 
     .field__label {
       font-size: 0.6rem;
-      font-weight: 600;
+      font-weight: 500;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--ink-muted);
     }
 
     .field__value {
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: var(--ink);
-      line-height: 1.25;
-    }
-
-    /* ── Divider ──────────────────────────────────────────────────────────── */
-    .section-divider {
-      border: none;
-      border-top: 1px solid var(--rule-lt);
-      margin: 0.65rem 0;
-    }
-
-    /* ── Payment table ────────────────────────────────────────────────────── */
-    .payment-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
-    }
-
-    .payment-table td {
-      padding: 0.35rem 0;
-      border-bottom: 1px dashed var(--rule-lt);
-      vertical-align: middle;
-    }
-
-    .payment-table tr:last-child td { border-bottom: none; }
-
-    .col-label {
-      color: var(--ink-mid);
-      font-weight: 500;
-      width: 62%;
-    }
-
-    .col-value {
-      text-align: right;
-      font-family: var(--mono);
-      font-weight: 600;
-      color: var(--ink);
-      white-space: nowrap;
-    }
-
-    .row-divider td { padding: 0; border: none; }
-    .row-divider td span {
-      display: block;
-      height: 1.5px;
-      background: var(--rule);
-      margin: 0.2rem 0;
-    }
-
-    .row-total td {
-      border-bottom: none;
-      border-top: 2px solid var(--blue);
-      padding-top: 0.45rem;
-    }
-
-    .row-total .col-label {
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: var(--blue-dark);
-    }
-
-    .row-total .col-value {
       font-size: 1rem;
-      font-weight: 700;
-      color: var(--blue-dark);
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.2;
     }
 
-    /* ── Balance block ────────────────────────────────────────────────────── */
-    .balance-block {
+    .field__value--class {
+      font-size: 0.88rem;
+    }
+
+    /* ── Payment section ──────────────────────────────────────────────────── */
+    .payment-section {
+      border-top: 1.5px solid var(--ink);
+      padding-top: 1.1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .payment-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .payment-row:last-child { border-bottom: none; }
+
+    .payment-row__label {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: var(--ink-mid);
+    }
+
+    .payment-row__value {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Amount hero ──────────────────────────────────────────────────────── */
+    .amount-hero {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 0.5rem;
-      padding: 0.45rem 0.75rem;
-      background: var(--surface);
-      border: 1px solid var(--rule);
-      border-radius: 3px;
+      padding: 1rem 1.2rem;
+      background: var(--ink);
+      margin-bottom: 0.75rem;
     }
 
-    .balance-block__label {
-      font-size: 0.68rem;
+    .amount-hero__label {
+      font-size: 0.6rem;
       font-weight: 600;
-      color: var(--ink-mid);
-      letter-spacing: 0.03em;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
     }
 
-    .balance-block__value {
-      font-family: var(--mono);
-      font-size: 0.92rem;
+    .amount-hero__amount {
+      font-family: var(--serif);
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .amount-hero__amount sup {
+      font-size: 0.9rem;
       font-weight: 700;
-      color: var(--ink);
+      vertical-align: super;
+      margin-right: 0.1em;
+      font-family: var(--sans);
+    }
+
+    /* ── Balance strip ────────────────────────────────────────────────────── */
+    .balance-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1.2rem;
+      background: var(--accent-lt);
+      border: 1px solid #E8D4A8;
+      margin-bottom: 0.75rem;
+    }
+
+    .balance-strip__label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #7A5C1E;
+    }
+
+    .balance-strip__value {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #7A5C1E;
     }
 
     /* ── Notes ────────────────────────────────────────────────────────────── */
     .notes-block {
-      margin-top: 0.45rem;
-      padding: 0.4rem 0.7rem;
-      background: #FFFBEB;
-      border-left: 2.5px solid #F59E0B;
-      border-radius: 0 3px 3px 0;
-      font-size: 0.73rem;
+      padding: 0.55rem 0.85rem;
+      background: var(--paper);
+      border-left: 2px solid var(--ink-faint);
+      font-size: 0.72rem;
       color: var(--ink-mid);
+      line-height: 1.5;
     }
-    .notes-block strong { color: var(--ink); }
+    .notes-block strong { color: var(--ink); font-weight: 600; }
 
-    /* ── Signature section ────────────────────────────────────────────────── */
+    /* ── Signatures ───────────────────────────────────────────────────────── */
     .signature-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0 2rem;
-      margin-top: 0.75rem;
+      gap: 0 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--rule);
     }
 
     .sig-block { display: flex; flex-direction: column; }
 
     .sig-block__line {
-      height: 36px;
+      height: 38px;
       border-bottom: 1px solid var(--ink);
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.4rem;
     }
 
     .sig-block__label {
-      font-size: 0.62rem;
-      font-weight: 600;
+      font-size: 0.6rem;
+      font-weight: 500;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--ink-muted);
@@ -358,174 +376,156 @@
 
     /* ── Footer ───────────────────────────────────────────────────────────── */
     .receipt__footer {
-      padding: 0.55rem 1.2rem;
-      border-top: 1px solid var(--rule-lt);
+      padding: 0.75rem 1.75rem;
+      border-top: 1px solid var(--rule);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.75rem;
-      background: var(--surface);
+      gap: 1rem;
+      background: var(--paper);
     }
 
     .footer__note {
-      font-size: 0.63rem;
+      font-size: 0.62rem;
       color: var(--ink-muted);
-      line-height: 1.45;
+      line-height: 1.5;
     }
 
     .footer__note strong {
-      color: var(--ink-mid);
       display: block;
+      font-weight: 600;
+      color: var(--ink-mid);
+      margin-bottom: 0.1rem;
     }
 
     .footer__timestamp {
       font-family: var(--mono);
-      font-size: 0.6rem;
-      color: var(--ink-muted);
+      font-size: 0.58rem;
+      color: var(--ink-faint);
       white-space: nowrap;
       text-align: right;
       flex-shrink: 0;
     }
 
+    /* ── Bottom accent bar ────────────────────────────────────────────────── */
+    .accent-bar--bottom {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 30%, var(--ink) 30%, var(--ink) 100%);
+    }
+
     /* ── Mobile ───────────────────────────────────────────────────────────── */
     @media (max-width: 480px) {
-      body { padding: 0 0 3rem; }
-      .receipt { border-left: none; border-right: none; box-shadow: none; }
-      .receipt__header { padding: 0.75rem 0.9rem 0.65rem; }
-      .receipt__body { padding: 0.75rem 0.9rem; }
-      .receipt__meta { grid-template-columns: 1fr 1fr; }
+      body { padding: 0 0 4rem; }
+      .receipt { box-shadow: none; }
+      .receipt__header { padding: 1.2rem 1.1rem 1rem; }
+      .receipt__body { padding: 1.1rem; }
+      .h-rule { margin: 0 1.1rem; }
+      .meta-row { grid-template-columns: 1fr 1fr; }
       .meta-cell:nth-child(2) { border-right: none; }
       .meta-cell:nth-child(3),
       .meta-cell:nth-child(4) { border-top: 1px solid var(--rule); }
       .meta-cell:nth-child(4) { border-right: none; }
-      .student-block { grid-template-columns: 1fr; gap: 0.6rem; }
-      .signature-section { grid-template-columns: 1fr; gap: 1rem; }
-      .receipt__footer { flex-direction: column; align-items: flex-start; padding: 0.65rem 0.9rem; }
-      .footer__timestamp { text-align: left; }
-      .print-btn { bottom: 0.75rem; right: 0.75rem; top: auto; }
+      .student-grid { grid-template-columns: 1fr; gap: 0.8rem; }
+      .signature-section { grid-template-columns: 1fr; gap: 1.2rem; }
+      .receipt__footer { flex-direction: column; align-items: flex-start; padding: 0.75rem 1.1rem; }
+      .receipt__doc-type { display: none; }
+      .print-btn { bottom: 1rem; right: 1rem; top: auto; }
     }
 
     /* ── Print ────────────────────────────────────────────────────────────── */
-    @page {
-      size: A4;
-      margin: 14mm 13mm 16mm 13mm;
-    }
+    @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
 
     @media print {
-      body {
-        background: white !important;
-        padding: 0 !important;
-        font-size: 9pt !important;
-        color: #000 !important;
-      }
-
+      body { background: white !important; padding: 0 !important; }
       .print-btn { display: none !important; }
 
       .receipt {
         max-width: none !important;
         width: 100% !important;
-        border: 1pt solid #000 !important;
         box-shadow: none !important;
+        border: 0.5pt solid #ccc !important;
         page-break-inside: avoid;
       }
 
-      /* header */
-      .receipt__header {
-        padding: 7pt 10pt 6pt !important;
-        border-bottom: 2pt solid #000 !important;
-        grid-template-columns: 40pt 1fr !important;
-      }
-
-      .receipt__logo {
-        width: 40pt !important;
-        height: 40pt !important;
-        border-color: #ccc !important;
-      }
-
-      .receipt__school-name { color: #000 !important; font-size: 9pt !important; }
-      .receipt__school-contact { color: #444 !important; font-size: 7pt !important; }
-
-      /* title band */
-      .receipt__title-band {
+      .accent-bar {
         background: #111 !important;
-        padding: 3.5pt 10pt !important;
+        height: 3pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      .receipt__title-band h2,
-      .receipt__doc-label { color: #fff !important; font-size: 6.5pt !important; }
 
-      /* body */
-      .receipt__body { padding: 8pt 10pt !important; }
+      .accent-bar--bottom {
+        background: #888 !important;
+        height: 2pt !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
 
-      /* meta */
-      .receipt__meta {
+      .receipt__header { padding: 9pt 12pt 8pt !important; }
+      .receipt__logo { width: 36pt !important; height: 36pt !important; }
+      .receipt__school-name { font-size: 10pt !important; }
+      .receipt__school-contact { font-size: 6.5pt !important; }
+      .receipt__doc-type strong { font-size: 11pt !important; }
+      .receipt__doc-type span { font-size: 5.5pt !important; }
+
+      .receipt__body { padding: 9pt 12pt !important; }
+      .h-rule { margin: 0 12pt !important; }
+
+      .meta-row {
         background: #f5f5f5 !important;
-        border: 0.5pt solid #aaa !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        margin-bottom: 6pt !important;
+        margin-bottom: 8pt !important;
       }
-      .meta-cell { border-right: 0.5pt solid #aaa !important; padding: 3.5pt 5pt !important; }
-      .meta-cell__label { font-size: 6pt !important; color: #555 !important; }
-      .meta-cell__value { font-size: 7.5pt !important; color: #000 !important; }
+      .meta-cell { padding: 3.5pt 5pt !important; border-right-color: #ccc !important; }
+      .meta-cell__label { font-size: 5.5pt !important; }
+      .meta-cell__value { font-size: 7pt !important; }
 
-      .section-label { color: #000 !important; border-bottom-color: #bbb !important; font-size: 6pt !important; padding-bottom: 2pt !important; margin-bottom: 4pt !important; }
+      .section-head { font-size: 5.5pt !important; margin-bottom: 4pt !important; }
+      .field__label { font-size: 5.5pt !important; }
+      .field__value { font-size: 9.5pt !important; }
+      .student-grid { margin-bottom: 8pt !important; }
 
-      .student-block { margin-bottom: 0 !important; }
-      .field__label { font-size: 6pt !important; color: #555 !important; }
-      .field__value { font-size: 9pt !important; color: #000 !important; }
+      .payment-section { padding-top: 6pt !important; margin-bottom: 6pt !important; }
+      .payment-row { padding: 3pt 0 !important; }
+      .payment-row__label { font-size: 7.5pt !important; }
+      .payment-row__value { font-size: 7.5pt !important; }
 
-      .section-divider { margin: 5pt 0 !important; }
-
-      .payment-table { font-size: 8pt !important; }
-      .payment-table td { padding: 2.5pt 0 !important; border-bottom-color: #ddd !important; }
-      .col-label { color: #111 !important; }
-      .col-value { color: #000 !important; }
-
-      .row-total td { border-top: 1.5pt solid #000 !important; padding-top: 3pt !important; }
-      .row-total .col-label { font-size: 8pt !important; color: #000 !important; }
-      .row-total .col-value { font-size: 9.5pt !important; color: #000 !important; }
-
-      .balance-block {
-        background: #f5f5f5 !important;
-        border: 0.5pt solid #aaa !important;
-        padding: 3.5pt 6pt !important;
-        margin-top: 4pt !important;
+      .amount-hero {
+        background: #111 !important;
+        padding: 7pt 9pt !important;
+        margin-bottom: 5pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      .balance-block__label { font-size: 7pt !important; color: #333 !important; }
-      .balance-block__value { font-size: 9pt !important; color: #000 !important; }
+      .amount-hero__label { font-size: 5.5pt !important; color: rgba(255,255,255,0.6) !important; }
+      .amount-hero__amount { font-size: 16pt !important; color: white !important; }
 
-      .notes-block {
-        font-size: 7pt !important;
-        padding: 3pt 6pt !important;
-        margin-top: 3pt !important;
-        background: #fffbe8 !important;
+      .balance-strip {
+        background: #f9f3e8 !important;
+        border-color: #d4b87a !important;
+        padding: 4pt 9pt !important;
+        margin-bottom: 5pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
+      .balance-strip__label { font-size: 6pt !important; }
+      .balance-strip__value { font-size: 8.5pt !important; }
 
-      .signature-section { margin-top: 6pt !important; }
-      .sig-block__line { height: 30pt !important; border-bottom: 0.75pt solid #000 !important; margin-bottom: 3pt !important; }
-      .sig-block__label { font-size: 6.5pt !important; color: #333 !important; }
+      .notes-block { font-size: 6.5pt !important; padding: 3pt 6pt !important; }
+
+      .signature-section { padding-top: 7pt !important; }
+      .sig-block__line { height: 26pt !important; margin-bottom: 2.5pt !important; }
+      .sig-block__label { font-size: 6pt !important; }
 
       .receipt__footer {
         background: #f5f5f5 !important;
-        padding: 4pt 10pt !important;
-        border-top: 0.5pt solid #ccc !important;
+        padding: 4pt 12pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      .footer__note { font-size: 6.5pt !important; color: #444 !important; }
-      .footer__note strong { color: #222 !important; }
-      .footer__timestamp { font-size: 6pt !important; color: #555 !important; }
-
-      .receipt__meta,
-      .payment-section,
-      .signature-section,
-      .receipt__footer { page-break-inside: avoid; }
+      .footer__note { font-size: 6pt !important; }
+      .footer__timestamp { font-size: 5.5pt !important; }
     }
   </style>
 </head>
@@ -533,36 +533,38 @@
 
   <button class="print-btn" onclick="window.print()" aria-label="Print receipt">
     <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-    Print Receipt
+    Print
   </button>
 
   <main>
     <article class="receipt" role="main" aria-label="Payment Receipt">
 
+      <div class="accent-bar"></div>
+
       <!-- Header -->
       <header class="receipt__header">
         <img class="receipt__logo" src="IMG_4628.jpeg" alt="Fahmid School Logo">
-        <div>
+        <div class="receipt__school-info">
           <h1 class="receipt__school-name">Fahmid Nursery &amp; Primary School</h1>
           <p class="receipt__school-contact">
             18 Shittu Street, Adura Bus Stop, Alagbado, Lagos State<br>
-            Tel: +234 806 142 7297 &nbsp;&bull;&nbsp; fahmidschool@gmail.com
+            +234 806 142 7297 &nbsp;·&nbsp; fahmidschool@gmail.com
           </p>
+        </div>
+        <div class="receipt__doc-type">
+          <span>Official</span>
+          <strong>Receipt</strong>
         </div>
       </header>
 
-      <!-- Title band -->
-      <div class="receipt__title-band" aria-hidden="true">
-        <h2>Official Payment Receipt</h2>
-        <span class="receipt__doc-label">Keep for your records</span>
-      </div>
+      <div class="h-rule h-rule--thick"></div>
 
       <!-- Body -->
       <div class="receipt__body">
 
-        <!-- Receipt meta -->
-        <dl class="receipt__meta" aria-label="Receipt reference">
-          <div class="meta-cell meta-cell--primary">
+        <!-- Meta strip -->
+        <dl class="meta-row" aria-label="Receipt reference">
+          <div class="meta-cell meta-cell--receipt">
             <dt class="meta-cell__label">Receipt No.</dt>
             <dd class="meta-cell__value" id="receipt-no">—</dd>
           </div>
@@ -582,66 +584,56 @@
 
         <!-- Student info -->
         <section aria-label="Student information">
-          <p class="section-label">Pupil Information</p>
-          <div class="student-block">
+          <p class="section-head">Pupil Information</p>
+          <div class="student-grid">
             <div class="field">
               <span class="field__label">Full Name</span>
               <span class="field__value" id="student-name">—</span>
             </div>
             <div class="field">
               <span class="field__label">Class</span>
-              <span class="field__value" id="student-class">—</span>
+              <span class="field__value field__value--class" id="student-class">—</span>
             </div>
           </div>
         </section>
 
-        <hr class="section-divider">
-
         <!-- Payment details -->
         <section class="payment-section" aria-label="Payment details">
-          <p class="section-label">Payment Details</p>
+          <p class="section-head">Payment Details</p>
 
-          <table class="payment-table" role="presentation">
-            <tbody>
-              <tr>
-                <td class="col-label">Amount Paid</td>
-                <td class="col-value" id="amount-paid">₦0.00</td>
-              </tr>
-              <tr>
-                <td class="col-label">Payment Method</td>
-                <td class="col-value" id="payment-method">—</td>
-              </tr>
-              <tr class="row-divider" aria-hidden="true">
-                <td><span></span></td><td><span></span></td>
-              </tr>
-              <tr class="row-total">
-                <td class="col-label">Total Paid This Transaction</td>
-                <td class="col-value" id="amount-paid-total">₦0.00</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="balance-block" aria-label="Outstanding balance">
-            <span class="balance-block__label">Outstanding Balance</span>
-            <span class="balance-block__value" id="balance-remaining">₦0.00</span>
+          <div class="payment-row">
+            <span class="payment-row__label">Payment Method</span>
+            <span class="payment-row__value" id="payment-method">—</span>
           </div>
 
+          <!-- Amount hero block -->
+          <div class="amount-hero">
+            <span class="amount-hero__label">Amount Paid</span>
+            <span class="amount-hero__amount"><sup>₦</sup><span id="amount-paid-display">0.00</span></span>
+          </div>
+
+          <!-- Balance -->
+          <div class="balance-strip" aria-label="Outstanding balance">
+            <span class="balance-strip__label">Outstanding Balance</span>
+            <span class="balance-strip__value" id="balance-remaining">₦0.00</span>
+          </div>
+
+          <!-- Notes -->
           <div class="notes-block" id="notes-row" style="display:none;" role="note">
             <strong>Note:</strong> <span id="payment-notes">—</span>
           </div>
-        </section>
 
-        <hr class="section-divider">
+        </section>
 
         <!-- Signatures -->
         <section class="signature-section" aria-label="Signatures">
           <div class="sig-block">
             <div class="sig-block__line"></div>
-            <p class="sig-block__label">Received By (School Official)</p>
+            <p class="sig-block__label">School Official</p>
           </div>
           <div class="sig-block">
             <div class="sig-block__line"></div>
-            <p class="sig-block__label">Parent / Guardian Signature</p>
+            <p class="sig-block__label">Parent / Guardian</p>
           </div>
         </section>
 
@@ -650,11 +642,13 @@
       <!-- Footer -->
       <footer class="receipt__footer">
         <p class="footer__note">
-          <strong>This is an official receipt.</strong>
-          Retain this document for your records. For queries, contact the school bursar.
+          <strong>Official Receipt — Retain for your records.</strong>
+          For queries, contact the school bursar at the address above.
         </p>
         <p class="footer__timestamp">Generated: <span id="generated-date">—</span></p>
       </footer>
+
+      <div class="accent-bar accent-bar--bottom"></div>
 
     </article>
   </main>
@@ -710,13 +704,6 @@
 
         const data = doc.data();
         console.log('✓ Receipt data loaded:', data.receiptNo);
-        console.log('📊 Transaction data:', {
-          amountPaid: data.amountPaid,
-          balanceBefore: data.balanceBefore,
-          balanceAfter: data.balanceAfter,
-          totalDue: data.totalDue,
-          totalPaidAfter: data.totalPaidAfter
-        });
 
         const actualPaymentDate = data.paymentDate ? data.paymentDate.toDate() : new Date();
 
@@ -737,42 +724,31 @@
         document.getElementById('receipt-term').textContent    = data.term;
         document.getElementById('receipt-date').textContent    = paymentDateFormatted;
 
-        const amountFormatted = `₦${Number(data.amountPaid).toLocaleString()}`;
-        document.getElementById('amount-paid').textContent       = amountFormatted;
-        document.getElementById('amount-paid-total').textContent = amountFormatted;
-        document.getElementById('payment-method').textContent    = data.paymentMethod || 'Cash';
+        const amountFormatted = Number(data.amountPaid).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        document.getElementById('amount-paid-display').textContent = amountFormatted;
+        document.getElementById('payment-method').textContent      = data.paymentMethod || 'Cash';
 
         if (data.notes) {
           document.getElementById('payment-notes').textContent = data.notes;
           document.getElementById('notes-row').style.display   = 'block';
         }
 
-        // ✅ UNCHANGED: Balance calculation logic (original)
         let displayBalance = 0;
-
         if (data.balanceAfter !== undefined && data.balanceAfter !== null) {
           displayBalance = Number(data.balanceAfter);
-          console.log('✓ Using stored balanceAfter:', displayBalance);
         } else if (data.totalDue !== undefined && data.totalPaidAfter !== undefined) {
           displayBalance = Number(data.totalDue) - Number(data.totalPaidAfter);
-          console.log('⚠️ Calculated from totalDue - totalPaidAfter:', displayBalance);
         } else if (data.balanceBefore !== undefined && data.amountPaid !== undefined) {
           displayBalance = Number(data.balanceBefore) - Number(data.amountPaid);
-          console.log('⚠️ Calculated from balanceBefore - amountPaid:', displayBalance);
-        } else {
-          console.error('❌ Cannot determine balance - all fields missing');
-          displayBalance = 0;
         }
 
         displayBalance = Math.max(0, displayBalance);
 
-        document.getElementById('balance-remaining').textContent = `₦${displayBalance.toLocaleString()}`;
-        document.getElementById('generated-date').textContent    = generatedDate;
+        document.getElementById('balance-remaining').textContent =
+          '₦' + displayBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        document.getElementById('generated-date').textContent = generatedDate;
 
         console.log('✅ Receipt loaded successfully');
-        console.log(`   Payment made: ${paymentDateFormatted}`);
-        console.log(`   Balance shown: ₦${displayBalance.toLocaleString()}`);
-        console.log(`   Receipt generated: ${generatedDate}`);
 
         setTimeout(() => window.print(), 1000);
 
