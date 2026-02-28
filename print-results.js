@@ -6,9 +6,10 @@
  * - Generate dynamic termly report card
  * - Pull live pupil bio, class, teacher, subjects
  * - Reflect admin changes instantly
+ * - Support session parameter from pupil portal (?session=2023/2024)
  *
- * Version: 6.2.0 - ACADEMIC RESULTS LOADING FIXED
- * Date: 2026-01-10
+ * Version: 6.3.0 - SESSION URL PARAMETER SUPPORT
+ * Date: 2026-02-28
  */
  
 'use strict';
@@ -23,9 +24,22 @@ let currentSettings = {
 };
 
 /* ===============================
+   READ SESSION FROM URL (NEW)
+================================ */
+
+/**
+ * Returns the session from the URL ?session= param, or null if absent/current.
+ * e.g. print-results.html?session=2023%2F2024 → "2023/2024"
+ */
+function getSessionFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('session');
+    return (s && s !== 'current') ? s : null;
+}
+
+/* ===============================
    INITIALIZATION WITH PROPER ORDER
 ================================ */
-// Add initialization state flag
 let isInitialized = false;
 
 checkRole('pupil')
@@ -33,27 +47,36 @@ checkRole('pupil')
         try {
             console.log('=== Starting Report Card Initialization ===');
             
-            // STEP 1: Load settings FIRST
+            // STEP 1: Load settings FIRST (gives us current session as default)
             console.log('Step 1: Loading settings...');
             await fetchSchoolSettings();
             console.log('✓ Settings loaded:', currentSettings);
+
+            // STEP 2: Override session if URL param is present (NEW)
+            const urlSession = getSessionFromUrl();
+            if (urlSession) {
+                console.log('✓ Session override from URL param:', urlSession);
+                currentSettings.session = urlSession;
+                // For historical sessions we do NOT show/update resumption date
+                currentSettings.resumptionDate = '-';
+            }
             
-            // STEP 2: Load pupil profile SECOND
+            // STEP 3: Load pupil profile
             console.log('Step 2: Loading pupil profile...');
             await fetchPupilProfile(user.uid);
             console.log('✓ Profile loaded for:', pupilProfile?.name);
             
-            // STEP 3: Setup UI THIRD
+            // STEP 4: Setup UI
             console.log('Step 3: Setting up UI...');
             setupTermSelector();
             updateReportHeader();
             console.log('✓ UI ready');
             
-            // STEP 4: Mark as initialized BEFORE loading data
+            // STEP 5: Mark as initialized BEFORE loading data
             isInitialized = true;
             console.log('✓ Initialization complete, ready to load data');
             
-            // STEP 5: Load report data LAST
+            // STEP 6: Load report data LAST
             console.log('Step 4: Loading report data...');
             await loadReportData();
             console.log('✓ Report data loaded');
@@ -250,7 +273,12 @@ function updateReportHeader() {
 
     setText('current-session', currentSettings.session || '-');
 
-    if (currentSettings.resumptionDate?.toDate) {
+    // Only show resumption date for current session
+    const urlSession = getSessionFromUrl();
+    if (urlSession) {
+        // Historical session — no resumption date shown
+        setText('resumption-date', '-');
+    } else if (currentSettings.resumptionDate?.toDate) {
         setText(
             'resumption-date',
             currentSettings.resumptionDate
@@ -759,4 +787,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('✓ print-results.js ready (v6.2.0 - ACADEMIC RESULTS FIXED)');
+console.log('✓ print-results.js ready (v6.3.0 - SESSION URL PARAMETER SUPPORT)');
