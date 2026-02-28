@@ -24,11 +24,12 @@
       --ink-mid:    #3D3D3D;
       --ink-muted:  #8A8A8A;
       --ink-faint:  #C4C4C4;
-      --accent:     #C8963E;
-      --accent-lt:  #F5ECD8;
-      --paper:      #FAFAF8;
+      --accent:     #0077B6;
+      --accent-dk:  #005B8A;
+      --accent-lt:  #E8F4FB;
+      --paper:      #F7FAFD;
       --white:      #FFFFFF;
-      --rule:       #E2E2DF;
+      --rule:       #D1D9E0;
       --serif:      'Playfair Display', Georgia, serif;
       --sans:       'DM Sans', system-ui, sans-serif;
       --mono:       'DM Mono', 'Courier New', monospace;
@@ -152,7 +153,7 @@
       margin-top: 0.15rem;
     }
 
-    /* ── Divider rule ─────────────────────────────────────────────────────── */
+    /* ── Divider rules ────────────────────────────────────────────────────── */
     .h-rule {
       height: 1px;
       background: var(--rule);
@@ -175,28 +176,28 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 0;
-      margin-bottom: 1.4rem;
+      margin-bottom: 0.85rem;
       background: var(--paper);
       border: 1px solid var(--rule);
     }
 
     .meta-cell {
-      padding: 0.6rem 0.8rem;
+      padding: 0.22rem 0.45rem;
       border-right: 1px solid var(--rule);
     }
     .meta-cell:last-child { border-right: none; }
 
     .meta-cell__label {
-      font-size: 0.57rem;
+      font-size: 0.47rem;
       font-weight: 600;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--ink-muted);
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.1rem;
     }
 
     .meta-cell__value {
-      font-size: 0.72rem;
+      font-size: 0.57rem;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.2;
@@ -205,30 +206,30 @@
     .meta-cell--receipt .meta-cell__value {
       font-family: var(--mono);
       color: var(--accent);
-      font-size: 0.73rem;
+      font-size: 0.57rem;
     }
 
     /* ── Student section ──────────────────────────────────────────────────── */
     .section-head {
-      font-size: 0.57rem;
+      font-size: 0.47rem;
       font-weight: 600;
       letter-spacing: 0.13em;
       text-transform: uppercase;
       color: var(--ink-muted);
-      margin-bottom: 0.7rem;
+      margin-bottom: 0.3rem;
     }
 
     .student-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0 2rem;
-      margin-bottom: 1.4rem;
+      margin-bottom: 0.9rem;
     }
 
-    .field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .field { display: flex; flex-direction: column; gap: 0.08rem; }
 
     .field__label {
-      font-size: 0.6rem;
+      font-size: 0.47rem;
       font-weight: 500;
       letter-spacing: 0.07em;
       text-transform: uppercase;
@@ -236,42 +237,42 @@
     }
 
     .field__value {
-      font-size: 1rem;
+      font-size: 0.7rem;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.2;
     }
 
     .field__value--class {
-      font-size: 0.88rem;
+      font-size: 0.7rem;
     }
 
     /* ── Payment section ──────────────────────────────────────────────────── */
     .payment-section {
       border-top: 1.5px solid var(--ink);
-      padding-top: 1.1rem;
-      margin-bottom: 1.1rem;
+      padding-top: 0.7rem;
+      margin-bottom: 0.75rem;
     }
 
     .payment-row {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      padding: 0.55rem 0;
+      padding: 0.35rem 0;
       border-bottom: 1px solid var(--rule);
     }
 
     .payment-row:last-child { border-bottom: none; }
 
     .payment-row__label {
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 400;
       color: var(--ink-mid);
     }
 
     .payment-row__value {
       font-family: var(--mono);
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       font-weight: 500;
       color: var(--ink);
       letter-spacing: 0.02em;
@@ -280,34 +281,32 @@
     /* ── Amount hero ──────────────────────────────────────────────────────── */
     .amount-hero {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
-      padding: 1rem 1.2rem;
-      background: var(--ink);
-      margin-bottom: 0.75rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 0;
     }
 
     .amount-hero__label {
-      font-size: 0.6rem;
-      font-weight: 600;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.5);
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--ink-mid);
     }
 
     .amount-hero__amount {
-      font-family: var(--serif);
-      font-size: 1.8rem;
-      font-weight: 900;
-      color: var(--white);
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
       line-height: 1;
     }
 
     .amount-hero__amount sup {
-      font-size: 0.9rem;
-      font-weight: 700;
+      font-size: 0.65rem;
+      font-weight: 600;
       vertical-align: super;
-      margin-right: 0.1em;
+      margin-right: 0.05em;
       font-family: var(--sans);
     }
 
@@ -316,25 +315,25 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.65rem 1.2rem;
+      padding: 0.45rem 1rem;
       background: var(--accent-lt);
-      border: 1px solid #E8D4A8;
-      margin-bottom: 0.75rem;
+      border: 1px solid #B3D7EC;
+      margin-bottom: 0.5rem;
     }
 
     .balance-strip__label {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       font-weight: 600;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #7A5C1E;
+      color: var(--accent-dk);
     }
 
     .balance-strip__value {
       font-family: var(--mono);
-      font-size: 0.9rem;
+      font-size: 0.82rem;
       font-weight: 500;
-      color: #7A5C1E;
+      color: var(--accent-dk);
     }
 
     /* ── Notes ────────────────────────────────────────────────────────────── */
@@ -353,20 +352,20 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0 3rem;
-      padding-top: 1.2rem;
+      padding-top: 0.8rem;
       border-top: 1px solid var(--rule);
     }
 
     .sig-block { display: flex; flex-direction: column; }
 
     .sig-block__line {
-      height: 38px;
+      height: 30px;
       border-bottom: 1px solid var(--ink);
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.3rem;
     }
 
     .sig-block__label {
-      font-size: 0.6rem;
+      font-size: 0.57rem;
       font-weight: 500;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -477,40 +476,38 @@
         print-color-adjust: exact;
         margin-bottom: 8pt !important;
       }
-      .meta-cell { padding: 3.5pt 5pt !important; border-right-color: #ccc !important; }
-      .meta-cell__label { font-size: 5.5pt !important; }
-      .meta-cell__value { font-size: 7pt !important; }
+      .meta-cell { padding: 1.5pt 3pt !important; border-right-color: #ccc !important; }
+      .meta-cell__label { font-size: 4.5pt !important; }
+      .meta-cell__value { font-size: 5.5pt !important; }
 
-      .section-head { font-size: 5.5pt !important; margin-bottom: 4pt !important; }
-      .field__label { font-size: 5.5pt !important; }
-      .field__value { font-size: 9.5pt !important; }
-      .student-grid { margin-bottom: 8pt !important; }
+      .section-head { font-size: 4.5pt !important; margin-bottom: 2pt !important; }
+      .field__label { font-size: 4.5pt !important; }
+      .field__value { font-size: 7pt !important; }
+      .student-grid { margin-bottom: 6pt !important; }
 
-      .payment-section { padding-top: 6pt !important; margin-bottom: 6pt !important; }
-      .payment-row { padding: 3pt 0 !important; }
-      .payment-row__label { font-size: 7.5pt !important; }
-      .payment-row__value { font-size: 7.5pt !important; }
+      .payment-section { padding-top: 5pt !important; margin-bottom: 5pt !important; }
+      .payment-row { padding: 2.5pt 0 !important; }
+      .payment-row__label { font-size: 7pt !important; }
+      .payment-row__value { font-size: 7pt !important; }
 
       .amount-hero {
-        background: #111 !important;
-        padding: 7pt 9pt !important;
-        margin-bottom: 5pt !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        padding: 2.5pt 0 !important;
+        background: none !important;
+        margin-bottom: 0 !important;
       }
-      .amount-hero__label { font-size: 5.5pt !important; color: rgba(255,255,255,0.6) !important; }
-      .amount-hero__amount { font-size: 16pt !important; color: white !important; }
+      .amount-hero__label { font-size: 7pt !important; color: #3D3D3D !important; }
+      .amount-hero__amount { font-size: 8pt !important; color: #0A0A0A !important; }
 
       .balance-strip {
-        background: #f9f3e8 !important;
-        border-color: #d4b87a !important;
-        padding: 4pt 9pt !important;
-        margin-bottom: 5pt !important;
+        background: #e8f4fb !important;
+        border-color: #a0c8e0 !important;
+        padding: 3.5pt 8pt !important;
+        margin-bottom: 4pt !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      .balance-strip__label { font-size: 6pt !important; }
-      .balance-strip__value { font-size: 8.5pt !important; }
+      .balance-strip__label { font-size: 6pt !important; color: #005B8A !important; }
+      .balance-strip__value { font-size: 8pt !important; color: #005B8A !important; }
 
       .notes-block { font-size: 6.5pt !important; padding: 3pt 6pt !important; }
 
@@ -609,13 +606,13 @@
           <!-- Amount hero block -->
           <div class="amount-hero">
             <span class="amount-hero__label">Amount Paid</span>
-            <span class="amount-hero__amount"><sup>₦</sup><span id="amount-paid-display">0.00</span></span>
+            <span class="amount-hero__amount"><sup>&#8358;</sup><span id="amount-paid-display">0.00</span></span>
           </div>
 
           <!-- Balance -->
           <div class="balance-strip" aria-label="Outstanding balance">
             <span class="balance-strip__label">Outstanding Balance</span>
-            <span class="balance-strip__value" id="balance-remaining">₦0.00</span>
+            <span class="balance-strip__value" id="balance-remaining">&#8358;0.00</span>
           </div>
 
           <!-- Notes -->
@@ -745,7 +742,7 @@
         displayBalance = Math.max(0, displayBalance);
 
         document.getElementById('balance-remaining').textContent =
-          '₦' + displayBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+          '\u20A6' + displayBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
         document.getElementById('generated-date').textContent = generatedDate;
 
         console.log('✅ Receipt loaded successfully');
