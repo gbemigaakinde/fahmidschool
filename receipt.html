@@ -74,14 +74,45 @@
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
 
+    /* ─── RECEIPT CARD: must be position:relative so watermark anchors to it ─── */
     .receipt {
       max-width: 600px;
       margin: 0 auto;
       background: var(--white);
+      position: relative;          /* ← CRITICAL: watermark anchors here */
+      overflow: hidden;            /* ← CRITICAL: clips watermark to card edges */
       box-shadow:
         0 0 0 1px rgba(0,0,0,0.06),
         0 8px 40px rgba(0,0,0,0.12),
         0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ─── WATERMARK: absolutely positioned over entire receipt card ─── */
+    .watermark {
+      position: absolute;          /* taken out of flow — NEVER pushes content */
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;                  /* large enough to be a true watermark */
+      max-width: 460px;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      opacity: 0.06;
+      pointer-events: none;
+      user-select: none;
+      z-index: 0;                  /* sits behind everything */
+    }
+
+    /* ─── Everything inside receipt sits ABOVE the watermark ─── */
+    .accent-bar,
+    .receipt__header,
+    .h-rule,
+    .receipt__body,
+    .receipt__footer,
+    .accent-bar--bottom {
+      position: relative;
+      z-index: 1;
     }
 
     .accent-bar {
@@ -161,29 +192,12 @@
     }
 
     .receipt__body {
-  padding: 1.4rem 1.75rem;
-  position: relative;
-  overflow: hidden;
-}
+      padding: 1.4rem 1.75rem;
+      /* NOTE: position:relative and z-index:1 set above via grouped rule */
+    }
 
-    .watermark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 70%;
-  max-width: 380px;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  object-fit: cover;
-  opacity: 0.055;
-  pointer-events: none;
-  user-select: none;
-  z-index: 0;
-}
-
-    .receipt__body > * { position: relative; z-index: 1; }
+    /* ─── Remove old .watermark block from receipt__body — it's gone ─── */
+    /* ─── Remove old z-index:1 override on receipt__body > * — not needed ─── */
 
     .meta-row {
       display: grid;
@@ -422,6 +436,7 @@
       .signature-section { grid-template-columns: 1fr; gap: 1.2rem; }
       .receipt__footer { flex-direction: row; align-items: center; padding: 0.75rem 1.1rem; }
       .print-btn { bottom: 1rem; right: 1rem; top: auto; }
+      .watermark { width: 90%; }
     }
 
     @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
@@ -435,6 +450,19 @@
         box-shadow: none !important;
         border: 0.5pt solid #ccc !important;
         page-break-inside: avoid;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      .watermark {
+        width: 80% !important;
+        max-width: none !important;
+        opacity: 0.055 !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
       .accent-bar {
         background: #111 !important;
@@ -498,14 +526,6 @@
       }
       .footer__note { font-size: 6pt !important; }
       .footer__timestamp { font-size: 5.5pt !important; }
-      .watermark {
-  width: 70% !important;
-  max-width: 380px !important;
-  height: auto !important;
-  opacity: 0.05 !important;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
     }
   </style>
 </head>
@@ -518,6 +538,10 @@
 
   <main>
     <article class="receipt" role="main" aria-label="Payment Receipt">
+
+      <!-- WATERMARK: moved here, directly inside .receipt (not inside .receipt__body) -->
+      <!-- This ensures it is positioned relative to the full card and NEVER affects flow -->
+      <img class="watermark" src="IMG_4628.jpeg" alt="" aria-hidden="true">
 
       <div class="accent-bar"></div>
 
@@ -539,8 +563,6 @@
       <div class="h-rule h-rule--thick"></div>
 
       <div class="receipt__body">
-
-        <img class="watermark" src="IMG_4628.jpeg" alt="" aria-hidden="true">
 
         <dl class="meta-row" aria-label="Receipt reference">
           <div class="meta-cell meta-cell--receipt">
