@@ -42,6 +42,27 @@ function getSessionFromUrl() {
 ================================ */
 let isInitialized = false;
 
+/* ===============================
+   DUAL-ROLE AUTH HELPER
+================================ */
+async function _checkRoleForPrintResults_v2() {
+  return new Promise((resolve, reject) => {
+    firebase.auth().onAuthStateChanged(async user => {
+      if (!user) { reject(new Error('Not logged in')); return; }
+      try {
+        await window.checkRole('admin');
+        resolve(user);
+      } catch {
+        try {
+          await window.checkRole('pupil');
+          resolve(user);
+        } catch (err) {
+          reject(err);
+        }
+      }
+    });
+  });
+}
 _checkRoleForPrintResults_v2()
   .then(async user => {
 
