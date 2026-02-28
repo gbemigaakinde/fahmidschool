@@ -303,7 +303,7 @@
     ================================================================ */
     .id-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
     }
     .id-cell {
         padding: 7px 12px;
@@ -314,8 +314,8 @@
         gap: 1px;
         min-width: 0;
     }
-    .id-cell:nth-child(even)      { border-right: none; }
-    .id-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .id-cell:nth-child(3n)        { border-right: none; }
+    .id-cell:nth-last-child(-n+3) { border-bottom: none; }
     .id-cell:last-child           { border-bottom: none; }
 
     .id-cell__lbl {
@@ -706,19 +706,20 @@
             box-shadow: none;
             border-radius: 0;
             border: none;
-            overflow: hidden !important;   /* keep watermark clipped in print */
+            overflow: visible !important;  /* must be visible so fixed watermark isn't clipped */
             position: relative !important;
         }
 
-        /* Watermark in print */
+        /* Watermark in print: position:fixed repeats on every page automatically */
         .watermark {
-            position: absolute !important;
+            position: fixed !important;
             top: 50% !important;
             left: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 80% !important;
+            width: 70% !important;
             max-width: none !important;
             opacity: 0.05 !important;
+            z-index: 0 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -877,7 +878,7 @@
         <div>
             <div class="doc-hd__name">Fahmid Nursery &amp; Primary School</div>
             <div class="doc-hd__tagline">Academic Excellence — Our Duty, Our Right.</div>
-            <div class="doc-hd__contact">18 Shittu Street, Adura Bus Stop, Lagos &nbsp;·&nbsp; +2348061427297 &nbsp;·&nbsp; fahmidschool@gmail.com</div>
+            <div class="doc-hd__contact">18 Shittu Street, Adura Bus Stop, Lagos &nbsp;·&nbsp; +2348061427297 &nbsp;·&nbsp; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="117770797c78756272797e7e7d51767c70787d3f727e7c">[email&#160;protected]</a></div>
         </div>
     </div>
 
