@@ -42,53 +42,90 @@ function getSessionFromUrl() {
 ================================ */
 let isInitialized = false;
 
-checkRole('pupil')
-    .then(async user => {
-        try {
-            console.log('=== Starting Report Card Initialization ===');
-            
-            // STEP 1: Load settings FIRST (gives us current session as default)
-            console.log('Step 1: Loading settings...');
-            await fetchSchoolSettings();
-            console.log('✓ Settings loaded:', currentSettings);
+_checkRoleForPrintResults_v2()
+  .then(async user => {
 
-            // STEP 2: Override session if URL param is present (NEW)
-            const urlSession = getSessionFromUrl();
-            if (urlSession) {
-                console.log('✓ Session override from URL param:', urlSession);
-                currentSettings.session = urlSession;
-                // For historical sessions we do NOT show/update resumption date
-                currentSettings.resumptionDate = '-';
-            }
-            
-            // STEP 3: Load pupil profile
-            console.log('Step 2: Loading pupil profile...');
-            await fetchPupilProfile(user.uid);
-            console.log('✓ Profile loaded for:', pupilProfile?.name);
-            
-            // STEP 4: Setup UI
-            console.log('Step 3: Setting up UI...');
-            setupTermSelector();
-            updateReportHeader();
-            console.log('✓ UI ready');
-            
-            // STEP 5: Mark as initialized BEFORE loading data
-            isInitialized = true;
-            console.log('✓ Initialization complete, ready to load data');
-            
-            // STEP 6: Load report data LAST
-            console.log('Step 4: Loading report data...');
-            await loadReportData();
-            console.log('✓ Report data loaded');
-            
-            console.log('=== Report Card Initialization Complete ===');
-            
-        } catch (error) {
-            console.error('=== Initialization failed ===', error);
-            window.showToast?.('Failed to load report card. Please refresh.', 'danger');
-        }
-    })
-    .catch(() => window.location.href = 'login.html');
+    // ── Determine pupilId ──────────────────────────────────────────────────
+    const urlParams  = new URLSearchParams(window.location.search);
+    const urlPupilId = urlParams.get('pupilId');
+    const urlSession = urlParams.get('session'); // optional override
+
+    const userDoc  = await db_pr.collection('users').doc(user.uid).get();
+    const userRole = userDoc.exists ? userDoc.data().role : 'pupil';
+    const isAdmin  = userRole === 'admin';
+
+    if (isAdmin) {
+      if (!urlPupilId) {
+        document.body.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;
+                      justify-content:center;min-height:80vh;font-family:sans-serif;
+                      color:#374151;text-align:center;padding:2rem;">
+            <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
+            <h2 style="margin:0 0 .5rem;">No Pupil Selected</h2>
+            <p style="color:#6b7280;margin-bottom:1.5rem;">
+              Use the <strong>View Results</strong> section in the admin portal
+              and click <em>Open Full Report / Print</em>.
+            </p>
+            <a href="admin.html"
+               style="background:#00B2FF;color:white;padding:.6rem 1.4rem;
+                      border-radius:6px;text-decoration:none;font-weight:600;">
+              ← Back to Admin Portal
+            </a>
+          </div>`;
+        return;
+      }
+      currentPupilId = urlPupilId;
+    } else {
+      currentPupilId = user.uid;
+    }
+
+    // ── Admin overlay bar ─────────────────────────────────────────────────
+    if (isAdmin) {
+      const bar = document.createElement('div');
+      bar.id = 'admin-view-bar';
+      bar.style.cssText =
+        'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+        'background:#1e40af;color:white;padding:10px 20px;' +
+        'display:flex;align-items:center;justify-content:space-between;' +
+        'font-family:sans-serif;font-size:14px;font-weight:600;' +
+        'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+      bar.innerHTML = `
+        <span>🔐 Admin View</span>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <button onclick="window.print()"
+            style="background:rgba(255,255,255,.2);border:none;color:white;
+                   padding:6px 14px;border-radius:4px;cursor:pointer;
+                   font-weight:600;font-size:13px;">🖨️ Print</button>
+          <a href="admin.html"
+            style="background:rgba(255,255,255,.2);color:white;
+                   padding:6px 14px;border-radius:4px;text-decoration:none;
+                   font-weight:600;font-size:13px;">← Back to Admin</a>
+        </div>`;
+      document.body.insertBefore(bar, document.body.firstChild);
+      document.body.style.paddingTop = '48px';
+      const ps = document.createElement('style');
+      ps.textContent =
+        '@media print{#admin-view-bar{display:none!important}' +
+        'body{padding-top:0!important}}';
+      document.head.appendChild(ps);
+    }
+
+    // ── Continue with the rest of print-results.js as-is ─────────────────
+    // currentPupilId is already set, so existing fetchPupilProfile and loadReportData calls work
+    await fetchSchoolSettings();
+    const sessionOverride = getSessionFromUrl();
+    if (sessionOverride) currentSettings.session = sessionOverride;
+    await fetchPupilProfile(currentPupilId);
+    setupTermSelector();
+    updateReportHeader();
+    isInitialized = true;
+    await loadReportData();
+
+  })
+  .catch(err => {
+    console.error('Authentication failed:', err);
+    window.location.href = 'index.html';
+  });
 
 /* ===============================
    FETCH SCHOOL SETTINGS
