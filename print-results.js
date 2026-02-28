@@ -48,17 +48,27 @@ let isInitialized = false;
 async function _checkRoleForPrintResults_v2() {
   return new Promise((resolve, reject) => {
     firebase.auth().onAuthStateChanged(async user => {
-      if (!user) { reject(new Error('Not logged in')); return; }
+      if (!user) {
+        window.location.href = 'index.html';
+        reject(new Error('Not logged in'));
+        return;
+      }
       try {
-        await window.checkRole('admin');
-        resolve(user);
-      } catch {
-        try {
-          await window.checkRole('pupil');
-          resolve(user);
-        } catch (err) {
-          reject(err);
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+          window.location.href = 'index.html';
+          reject(new Error('User profile not found'));
+          return;
         }
+        const role = userDoc.data().role;
+        if (role === 'admin' || role === 'pupil') {
+          resolve(user);
+        } else {
+          window.location.href = 'index.html';
+          reject(new Error('Insufficient permissions'));
+        }
+      } catch (err) {
+        reject(err);
       }
     });
   });
