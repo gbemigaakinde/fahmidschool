@@ -11,7 +11,6 @@
  * Version: 6.3.0 - SESSION URL PARAMETER SUPPORT
  * Date: 2026-02-28
  */
- 
 'use strict';
 
 let currentPupilId = null;
@@ -23,14 +22,8 @@ let currentSettings = {
     resumptionDate: '-'
 };
 
-/* ===============================
-   READ SESSION FROM URL (NEW)
-================================ */
+let isInitialized = false;
 
-/**
- * Returns the session from the URL ?session= param, or null if absent/current.
- * e.g. print-results.html?session=2023%2F2024 → "2023/2024"
- */
 function getSessionFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const s = params.get('session');
@@ -38,136 +31,104 @@ function getSessionFromUrl() {
 }
 
 /* ===============================
-   INITIALIZATION WITH PROPER ORDER
-================================ */
-let isInitialized = false;
-
-/* ===============================
-   DUAL-ROLE AUTH HELPER
-================================ */
-async function checkRoleForPrintResults() {
-  const user = firebase.auth().currentUser;
-  if (!user) {
-    window.location.href = 'index.html';
-    throw new Error('Not logged in');
-  }
-
-  const userDoc = await db.collection('users').doc(user.uid).get();
-  if (!userDoc.exists) {
-    window.location.href = 'index.html';
-    throw new Error('User profile not found');
-  }
-
-  const role = userDoc.data().role;
-  if (role !== 'admin' && role !== 'pupil') {
-    window.location.href = 'index.html';
-    throw new Error('Insufficient permissions');
-  }
-
-  return { user, role };
-}
-/* ===============================
    DUAL-ROLE AUTH & INITIALIZATION
 ================================ */
 
-async function initPrintResults() {
-  try {
-    const user = firebase.auth().currentUser;
-    if (!user) {
-      window.location.href = 'index.html';
-      return;
-    }
+function initPrintResultsWrapper() {
+    firebase.auth().onAuthStateChanged(async user => {
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
+        }
 
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    if (!userDoc.exists) {
-      window.location.href = 'index.html';
-      return;
-    }
+        try {
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (!userDoc.exists) {
+                window.location.href = 'index.html';
+                return;
+            }
 
-    const userRole = userDoc.data().role;
-    if (userRole !== 'admin' && userRole !== 'pupil') {
-      window.location.href = 'index.html';
-      return;
-    }
+            const userRole = userDoc.data().role;
+            if (userRole !== 'admin' && userRole !== 'pupil') {
+                window.location.href = 'index.html';
+                return;
+            }
 
-    const isAdmin = userRole === 'admin';
+            const isAdmin = userRole === 'admin';
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlPupilId = urlParams.get('pupilId');
+            currentPupilId = isAdmin ? urlPupilId || null : user.uid;
 
-    // ── Determine pupilId ───────────────────────────────
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlPupilId = urlParams.get('pupilId');
-    currentPupilId = isAdmin ? urlPupilId || null : user.uid;
+            if (isAdmin && !currentPupilId) {
+                document.body.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;
+                                justify-content:center;min-height:80vh;font-family:sans-serif;
+                                color:#374151;text-align:center;padding:2rem;">
+                      <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
+                      <h2 style="margin:0 0 .5rem;">No Pupil Selected</h2>
+                      <p style="color:#6b7280;margin-bottom:1.5rem;">
+                        Use the <strong>View Results</strong> section in the admin portal
+                        and click <em>Open Full Report / Print</em>.
+                      </p>
+                      <a href="admin.html"
+                         style="background:#00B2FF;color:white;padding:.6rem 1.4rem;
+                                border-radius:6px;text-decoration:none;font-weight:600;">
+                        ← Back to Admin Portal
+                      </a>
+                    </div>`;
+                return;
+            }
 
-    if (isAdmin && !currentPupilId) {
-      document.body.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;
-                    justify-content:center;min-height:80vh;font-family:sans-serif;
-                    color:#374151;text-align:center;padding:2rem;">
-          <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
-          <h2 style="margin:0 0 .5rem;">No Pupil Selected</h2>
-          <p style="color:#6b7280;margin-bottom:1.5rem;">
-            Use the <strong>View Results</strong> section in the admin portal
-            and click <em>Open Full Report / Print</em>.
-          </p>
-          <a href="admin.html"
-             style="background:#00B2FF;color:white;padding:.6rem 1.4rem;
-                    border-radius:6px;text-decoration:none;font-weight:600;">
-            ← Back to Admin Portal
-          </a>
-        </div>`;
-      return;
-    }
+            if (isAdmin) {
+                const bar = document.createElement('div');
+                bar.id = 'admin-view-bar';
+                bar.style.cssText =
+                  'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+                  'background:#1e40af;color:white;padding:10px 20px;' +
+                  'display:flex;align-items:center;justify-content:space-between;' +
+                  'font-family:sans-serif;font-size:14px;font-weight:600;' +
+                  'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+                bar.innerHTML = `
+                  <span>🔐 Admin View</span>
+                  <div style="display:flex;gap:12px;align-items:center;">
+                    <button onclick="window.print()"
+                      style="background:rgba(255,255,255,.2);border:none;color:white;
+                             padding:6px 14px;border-radius:4px;cursor:pointer;
+                             font-weight:600;font-size:13px;">🖨️ Print</button>
+                    <a href="admin.html"
+                      style="background:rgba(255,255,255,.2);color:white;
+                             padding:6px 14px;border-radius:4px;text-decoration:none;
+                             font-weight:600;font-size:13px;">← Back to Admin</a>
+                  </div>`;
+                document.body.insertBefore(bar, document.body.firstChild);
+                document.body.style.paddingTop = '48px';
+                const ps = document.createElement('style');
+                ps.textContent =
+                  '@media print{#admin-view-bar{display:none!important}' +
+                  'body{padding-top:0!important}}';
+                document.head.appendChild(ps);
+            }
 
-    // ── Admin overlay bar ───────────────────────────────
-    if (isAdmin) {
-      const bar = document.createElement('div');
-      bar.id = 'admin-view-bar';
-      bar.style.cssText =
-        'position:fixed;top:0;left:0;right:0;z-index:9999;' +
-        'background:#1e40af;color:white;padding:10px 20px;' +
-        'display:flex;align-items:center;justify-content:space-between;' +
-        'font-family:sans-serif;font-size:14px;font-weight:600;' +
-        'box-shadow:0 2px 8px rgba(0,0,0,.25);';
-      bar.innerHTML = `
-        <span>🔐 Admin View</span>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <button onclick="window.print()"
-            style="background:rgba(255,255,255,.2);border:none;color:white;
-                   padding:6px 14px;border-radius:4px;cursor:pointer;
-                   font-weight:600;font-size:13px;">🖨️ Print</button>
-          <a href="admin.html"
-            style="background:rgba(255,255,255,.2);color:white;
-                   padding:6px 14px;border-radius:4px;text-decoration:none;
-                   font-weight:600;font-size:13px;">← Back to Admin</a>
-        </div>`;
-      document.body.insertBefore(bar, document.body.firstChild);
-      document.body.style.paddingTop = '48px';
-      const ps = document.createElement('style');
-      ps.textContent =
-        '@media print{#admin-view-bar{display:none!important}' +
-        'body{padding-top:0!important}}';
-      document.head.appendChild(ps);
-    }
+            await fetchSchoolSettings();
 
-    // ── Continue initialization ─────────────────────────
-    await fetchSchoolSettings();
+            const sessionOverride = getSessionFromUrl();
+            if (sessionOverride) currentSettings.session = sessionOverride;
 
-    const sessionOverride = getSessionFromUrl();
-    if (sessionOverride) currentSettings.session = sessionOverride;
+            await fetchPupilProfile(currentPupilId);
+            setupTermSelector();
+            updateReportHeader();
+            isInitialized = true;
+            await loadReportData();
 
-    await fetchPupilProfile(currentPupilId);
-    setupTermSelector();
-    updateReportHeader();
-    isInitialized = true;
-    await loadReportData();
-
-  } catch (err) {
-    console.error('Print results initialization failed:', err);
-    window.location.href = 'index.html';
-  }
+        } catch (err) {
+            console.error('Print results initialization failed:', err);
+            window.location.href = 'index.html';
+        }
+    });
 }
 
-// Initialize on page load
-initPrintResults();
+// Call this wrapper once
+initPrintResultsWrapper();
 
 /* ===============================
    FETCH SCHOOL SETTINGS
