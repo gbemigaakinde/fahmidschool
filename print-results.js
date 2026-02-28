@@ -45,72 +45,79 @@ let isInitialized = false;
 /* ===============================
    DUAL-ROLE AUTH HELPER
 ================================ */
-async function _checkRoleForPrintResults_v2() {
-  return new Promise((resolve, reject) => {
-    firebase.auth().onAuthStateChanged(async user => {
-      if (!user) {
-        window.location.href = 'index.html';
-        reject(new Error('Not logged in'));
-        return;
-      }
-      try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-          window.location.href = 'index.html';
-          reject(new Error('User profile not found'));
-          return;
-        }
-        const role = userDoc.data().role;
-        if (role === 'admin' || role === 'pupil') {
-          resolve(user);
-        } else {
-          window.location.href = 'index.html';
-          reject(new Error('Insufficient permissions'));
-        }
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
+async function checkRoleForPrintResults() {
+  const user = firebase.auth().currentUser;
+  if (!user) {
+    window.location.href = 'index.html';
+    throw new Error('Not logged in');
+  }
+
+  const userDoc = await db.collection('users').doc(user.uid).get();
+  if (!userDoc.exists) {
+    window.location.href = 'index.html';
+    throw new Error('User profile not found');
+  }
+
+  const role = userDoc.data().role;
+  if (role !== 'admin' && role !== 'pupil') {
+    window.location.href = 'index.html';
+    throw new Error('Insufficient permissions');
+  }
+
+  return { user, role };
 }
-_checkRoleForPrintResults_v2()
-  .then(async user => {
+/* ===============================
+   DUAL-ROLE AUTH & INITIALIZATION
+================================ */
 
-    // ── Determine pupilId ──────────────────────────────────────────────────
-    const urlParams  = new URLSearchParams(window.location.search);
-    const urlPupilId = urlParams.get('pupilId');
-    const urlSession = urlParams.get('session'); // optional override
-
-    const userDoc  = await db_pr.collection('users').doc(user.uid).get();
-    const userRole = userDoc.exists ? userDoc.data().role : 'pupil';
-    const isAdmin  = userRole === 'admin';
-
-    if (isAdmin) {
-      if (!urlPupilId) {
-        document.body.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;
-                      justify-content:center;min-height:80vh;font-family:sans-serif;
-                      color:#374151;text-align:center;padding:2rem;">
-            <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
-            <h2 style="margin:0 0 .5rem;">No Pupil Selected</h2>
-            <p style="color:#6b7280;margin-bottom:1.5rem;">
-              Use the <strong>View Results</strong> section in the admin portal
-              and click <em>Open Full Report / Print</em>.
-            </p>
-            <a href="admin.html"
-               style="background:#00B2FF;color:white;padding:.6rem 1.4rem;
-                      border-radius:6px;text-decoration:none;font-weight:600;">
-              ← Back to Admin Portal
-            </a>
-          </div>`;
-        return;
-      }
-      currentPupilId = urlPupilId;
-    } else {
-      currentPupilId = user.uid;
+async function initPrintResults() {
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
     }
 
-    // ── Admin overlay bar ─────────────────────────────────────────────────
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const userRole = userDoc.data().role;
+    if (userRole !== 'admin' && userRole !== 'pupil') {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const isAdmin = userRole === 'admin';
+
+    // ── Determine pupilId ───────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPupilId = urlParams.get('pupilId');
+    currentPupilId = isAdmin ? urlPupilId || null : user.uid;
+
+    if (isAdmin && !currentPupilId) {
+      document.body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;
+                    justify-content:center;min-height:80vh;font-family:sans-serif;
+                    color:#374151;text-align:center;padding:2rem;">
+          <div style="font-size:3rem;margin-bottom:1rem;">🔍</div>
+          <h2 style="margin:0 0 .5rem;">No Pupil Selected</h2>
+          <p style="color:#6b7280;margin-bottom:1.5rem;">
+            Use the <strong>View Results</strong> section in the admin portal
+            and click <em>Open Full Report / Print</em>.
+          </p>
+          <a href="admin.html"
+             style="background:#00B2FF;color:white;padding:.6rem 1.4rem;
+                    border-radius:6px;text-decoration:none;font-weight:600;">
+            ← Back to Admin Portal
+          </a>
+        </div>`;
+      return;
+    }
+
+    // ── Admin overlay bar ───────────────────────────────
     if (isAdmin) {
       const bar = document.createElement('div');
       bar.id = 'admin-view-bar';
@@ -141,22 +148,26 @@ _checkRoleForPrintResults_v2()
       document.head.appendChild(ps);
     }
 
-    // ── Continue with the rest of print-results.js as-is ─────────────────
-    // currentPupilId is already set, so existing fetchPupilProfile and loadReportData calls work
+    // ── Continue initialization ─────────────────────────
     await fetchSchoolSettings();
+
     const sessionOverride = getSessionFromUrl();
     if (sessionOverride) currentSettings.session = sessionOverride;
+
     await fetchPupilProfile(currentPupilId);
     setupTermSelector();
     updateReportHeader();
     isInitialized = true;
     await loadReportData();
 
-  })
-  .catch(err => {
-    console.error('Authentication failed:', err);
+  } catch (err) {
+    console.error('Print results initialization failed:', err);
     window.location.href = 'index.html';
-  });
+  }
+}
+
+// Initialize on page load
+initPrintResults();
 
 /* ===============================
    FETCH SCHOOL SETTINGS
