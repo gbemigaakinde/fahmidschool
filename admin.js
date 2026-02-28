@@ -4141,7 +4141,16 @@ function renderResultsDisplay(results, container) {
         
         container.appendChild(summaryCard);
     }
-    
+
+  // Print / Full Report button (admin view)
+    const printBtn = document.createElement('a');
+    printBtn.href = `print-results.html?pupilId=${currentResultsPupilId}&session=${encodeURIComponent(currentResultsSession)}`;
+    printBtn.target = '_blank';
+    printBtn.rel = 'noopener noreferrer';
+    printBtn.className = 'btn';
+    printBtn.style.cssText = 'display:inline-block; margin-top:var(--space-xl); margin-right:var(--space-md); background:#00B2FF; color:white; text-decoration:none;';
+    printBtn.innerHTML = '🖨️ Open Full Report / Print';
+    container.appendChild(printBtn);
     // Show session comparison button
     const comparisonBtn = document.createElement('button');
     comparisonBtn.className = 'btn';
