@@ -148,6 +148,7 @@
 
     /* ================================================================
        DOCUMENT SHELL
+       position:relative + overflow:hidden are CRITICAL for watermark
     ================================================================ */
     .doc {
         max-width: 720px;
@@ -155,7 +156,38 @@
         background: var(--paper);
         border-radius: var(--radius);
         box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.07);
-        overflow: hidden;
+        position: relative;     /* watermark anchors to this */
+        overflow: hidden;       /* clips watermark to card bounds */
+    }
+
+    /* ================================================================
+       WATERMARK
+       Absolute, centered over the full .doc card, behind all content
+    ================================================================ */
+    .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        max-width: 520px;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: contain;
+        opacity: 0.055;
+        pointer-events: none;
+        user-select: none;
+        z-index: 0;
+    }
+
+    /* All direct children of .doc must sit above the watermark */
+    .doc-hd,
+    .doc-title,
+    .doc-body,
+    .closing,
+    .doc-ft {
+        position: relative;
+        z-index: 1;
     }
 
     /* ================================================================
@@ -168,7 +200,6 @@
         grid-template-columns: 56px 1fr;
         gap: 14px;
         align-items: center;
-        position: relative;
     }
     .doc-hd::after {
         content: '';
@@ -615,15 +646,12 @@
         .doc-title { padding: 6px 16px; }
         .doc-body  { padding: 10px 12px 16px; gap: 10px; }
 
-        /* id-grid: keep 2-col on mobile, tighten padding */
         .id-cell { padding: 6px 8px; }
         .id-cell__val { font-size: var(--text-xs); }
 
-        /* academic: horizontal scroll */
         .section--academic { overflow-x: auto; }
         .ac-table { min-width: 420px; }
 
-        /* traits: 2-col */
         .tr-grid { grid-template-columns: repeat(2, 1fr); }
         .tr-item:nth-child(3n)        { border-right: 1px solid var(--rule); }
         .tr-item:nth-child(2n)        { border-right: none; }
@@ -631,16 +659,16 @@
         .tr-item:nth-last-child(-n+2) { border-bottom: none; }
         .tr-item:last-child           { border-bottom: none; }
 
-        /* remarks: stack */
         .remarks-row { grid-template-columns: 1fr; }
         .remark-blk  { border-right: none; border-bottom: 1px solid var(--rule); }
         .remark-blk:last-child { border-bottom: none; }
 
-        /* closing: stack */
         .closing { grid-template-columns: 1fr; padding: 14px 16px; gap: 16px; }
         .resump  { order: -1; }
 
         .doc-ft { flex-direction: column; gap: 4px; text-align: center; padding: 8px 16px; }
+
+        .watermark { width: 90%; }
     }
 
     /* ================================================================
@@ -651,7 +679,6 @@
         .doc-hd   { padding: 14px 20px 12px; }
         .closing  { padding: 10px 20px; }
 
-        /* 2-col traits on tablet */
         .tr-grid { grid-template-columns: repeat(2, 1fr); }
         .tr-item:nth-child(3n)        { border-right: 1px solid var(--rule); }
         .tr-item:nth-child(2n)        { border-right: none; }
@@ -661,7 +688,7 @@
     }
 
     /* ================================================================
-       PRINT + PDF  ← FIXED SECTION
+       PRINT + PDF
     ================================================================ */
     @media print {
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -679,7 +706,21 @@
             box-shadow: none;
             border-radius: 0;
             border: none;
-            overflow: visible;
+            overflow: hidden !important;   /* keep watermark clipped in print */
+            position: relative !important;
+        }
+
+        /* Watermark in print */
+        .watermark {
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 80% !important;
+            max-width: none !important;
+            opacity: 0.05 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .doc-hd {
@@ -724,9 +765,6 @@
             widows: 4;
         }
 
-        .doc-title { padding: 5px 16px; }
-        .doc-title__text { font-size: 7.5pt; letter-spacing: 0.08em; }
-
         .id-cell      { padding: 4px 10px; }
         .id-cell__val { font-size: 7pt; }
         .id-cell__lbl { font-size: 6pt; }
@@ -748,7 +786,7 @@
         .tr-item__lbl { font-size: 7pt; }
         .trait-value  { font-size: 8pt; }
 
-        /* force 3-col in print regardless of screen breakpoint */
+        /* force 3-col in print */
         .tr-grid { grid-template-columns: repeat(3, 1fr); }
         .tr-item:nth-child(2n)        { border-right: 1px solid var(--rule); }
         .tr-item:nth-child(3n)        { border-right: none; }
@@ -766,20 +804,17 @@
         .doc-ft { padding: 5px 14px; }
         .doc-ft__txt, .doc-ft__badge-txt { font-size: 5.5pt; }
 
-        /* ── Small sections: never split internally ── */
         .key, .closing, .doc-ft,
         .remarks-row, .att-row, .id-grid {
             page-break-inside: avoid;
             break-inside: avoid;
         }
 
-        /* ── Non-academic sections: keep whole ── */
         .section:not(.section--academic) {
             page-break-inside: avoid;
             break-inside: avoid;
         }
 
-        /* ── Academic table: allow natural page breaks, but repeat the header ── */
         .section--academic {
             page-break-inside: auto;
             break-inside: auto;
@@ -830,6 +865,9 @@
 
 <!-- DOCUMENT -->
 <div class="doc">
+
+    <!-- WATERMARK: direct child of .doc, absolutely positioned, never affects flow -->
+    <img class="watermark" src="IMG_4629.png" alt="" aria-hidden="true">
 
     <!-- HEADER -->
     <div class="doc-hd">
