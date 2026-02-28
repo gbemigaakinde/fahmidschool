@@ -16,7 +16,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -32,7 +32,7 @@
       --rule:       #D1D9E0;
       --serif:      'Playfair Display', Georgia, serif;
       --sans:       'DM Sans', system-ui, sans-serif;
-      --mono:       'DM Mono', 'Courier New', monospace;
+      --mono:       'DM Sans', system-ui, sans-serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -182,13 +182,13 @@
     }
 
     .meta-cell {
-      padding: 0.22rem 0.45rem;
+      padding: 0.18rem 0.3rem;
       border-right: 1px solid var(--rule);
     }
     .meta-cell:last-child { border-right: none; }
 
     .meta-cell__label {
-      font-size: 0.47rem;
+      font-size: 0.4rem;
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -197,16 +197,15 @@
     }
 
     .meta-cell__value {
-      font-size: 0.57rem;
+      font-size: 0.48rem;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.2;
     }
 
     .meta-cell--receipt .meta-cell__value {
-      font-family: var(--mono);
       color: var(--accent);
-      font-size: 0.57rem;
+      font-size: 0.48rem;
     }
 
     /* ── Student section ──────────────────────────────────────────────────── */
@@ -243,9 +242,7 @@
       line-height: 1.2;
     }
 
-    .field__value--class {
-      font-size: 0.7rem;
-    }
+    .field__value--class { font-size: 0.7rem; }
 
     /* ── Payment section ──────────────────────────────────────────────────── */
     .payment-section {
@@ -271,11 +268,9 @@
     }
 
     .payment-row__value {
-      font-family: var(--mono);
       font-size: 0.72rem;
       font-weight: 500;
       color: var(--ink);
-      letter-spacing: 0.02em;
     }
 
     /* ── Amount hero ──────────────────────────────────────────────────────── */
@@ -295,7 +290,6 @@
     }
 
     .amount-hero__amount {
-      font-family: var(--mono);
       font-size: 0.95rem;
       font-weight: 600;
       color: var(--ink);
@@ -307,7 +301,6 @@
       font-weight: 600;
       vertical-align: super;
       margin-right: 0.05em;
-      font-family: var(--sans);
     }
 
     /* ── Balance strip ────────────────────────────────────────────────────── */
@@ -330,7 +323,6 @@
     }
 
     .balance-strip__value {
-      font-family: var(--mono);
       font-size: 0.82rem;
       font-weight: 500;
       color: var(--accent-dk);
@@ -398,7 +390,6 @@
     }
 
     .footer__timestamp {
-      font-family: var(--mono);
       font-size: 0.58rem;
       color: var(--ink-faint);
       white-space: nowrap;
@@ -419,14 +410,16 @@
       .receipt__header { padding: 1.2rem 1.1rem 1rem; }
       .receipt__body { padding: 1.1rem; }
       .h-rule { margin: 0 1.1rem; }
-      .meta-row { grid-template-columns: 1fr 1fr; }
-      .meta-cell:nth-child(2) { border-right: none; }
+      .meta-row { grid-template-columns: repeat(4, 1fr); }
+      .meta-cell:nth-child(2) { border-right: 1px solid var(--rule); }
       .meta-cell:nth-child(3),
-      .meta-cell:nth-child(4) { border-top: 1px solid var(--rule); }
-      .meta-cell:nth-child(4) { border-right: none; }
-      .student-grid { grid-template-columns: 1fr; gap: 0.8rem; }
+      .meta-cell:nth-child(4) { border-top: none; }
+      .meta-cell { padding: 0.18rem 0.3rem; }
+      .meta-cell__label { font-size: 0.4rem; }
+      .meta-cell__value { font-size: 0.48rem; }
+      .student-grid { grid-template-columns: 1fr 1fr; gap: 0 1rem; }
       .signature-section { grid-template-columns: 1fr; gap: 1.2rem; }
-      .receipt__footer { flex-direction: column; align-items: flex-start; padding: 0.75rem 1.1rem; }
+      .receipt__footer { flex-direction: row; align-items: center; padding: 0.75rem 1.1rem; }
       .print-btn { bottom: 1rem; right: 1rem; top: auto; }
     }
 
@@ -562,19 +555,19 @@
         <dl class="meta-row" aria-label="Receipt reference">
           <div class="meta-cell meta-cell--receipt">
             <dt class="meta-cell__label">Receipt No.</dt>
-            <dd class="meta-cell__value" id="receipt-no">—</dd>
+            <dd class="meta-cell__value" id="receipt-no">&#8212;</dd>
           </div>
           <div class="meta-cell">
             <dt class="meta-cell__label">Date</dt>
-            <dd class="meta-cell__value" id="receipt-date">—</dd>
+            <dd class="meta-cell__value" id="receipt-date">&#8212;</dd>
           </div>
           <div class="meta-cell">
             <dt class="meta-cell__label">Session</dt>
-            <dd class="meta-cell__value" id="receipt-session">—</dd>
+            <dd class="meta-cell__value" id="receipt-session">&#8212;</dd>
           </div>
           <div class="meta-cell">
             <dt class="meta-cell__label">Term</dt>
-            <dd class="meta-cell__value" id="receipt-term">—</dd>
+            <dd class="meta-cell__value" id="receipt-term">&#8212;</dd>
           </div>
         </dl>
 
@@ -584,11 +577,11 @@
           <div class="student-grid">
             <div class="field">
               <span class="field__label">Full Name</span>
-              <span class="field__value" id="student-name">—</span>
+              <span class="field__value" id="student-name">&#8212;</span>
             </div>
             <div class="field">
               <span class="field__label">Class</span>
-              <span class="field__value field__value--class" id="student-class">—</span>
+              <span class="field__value field__value--class" id="student-class">&#8212;</span>
             </div>
           </div>
         </section>
@@ -599,24 +592,21 @@
 
           <div class="payment-row">
             <span class="payment-row__label">Payment Method</span>
-            <span class="payment-row__value" id="payment-method">—</span>
+            <span class="payment-row__value" id="payment-method">&#8212;</span>
           </div>
 
-          <!-- Amount hero block -->
           <div class="amount-hero">
             <span class="amount-hero__label">Amount Paid</span>
             <span class="amount-hero__amount"><sup>&#8358;</sup><span id="amount-paid-display">0.00</span></span>
           </div>
 
-          <!-- Balance -->
           <div class="balance-strip" aria-label="Outstanding balance">
             <span class="balance-strip__label">Outstanding Balance</span>
             <span class="balance-strip__value" id="balance-remaining">&#8358;0.00</span>
           </div>
 
-          <!-- Notes -->
           <div class="notes-block" id="notes-row" style="display:none;" role="note">
-            <strong>Note:</strong> <span id="payment-notes">—</span>
+            <strong>Note:</strong> <span id="payment-notes">&#8212;</span>
           </div>
 
         </section>
@@ -638,10 +628,10 @@
       <!-- Footer -->
       <footer class="receipt__footer">
         <p class="footer__note">
-          <strong>Official Receipt — Retain for your records.</strong>
+          <strong>Official Receipt &#8212; Retain for your records.</strong>
           For queries, contact the school bursar at the address above.
         </p>
-        <p class="footer__timestamp">Generated: <span id="generated-date">—</span></p>
+        <p class="footer__timestamp">Generated: <span id="generated-date">&#8212;</span></p>
       </footer>
 
       <div class="accent-bar accent-bar--bottom"></div>
@@ -677,7 +667,7 @@
                 if (user) { clearInterval(checkReady); resolve(); }
                 else if (Date.now() - startTime > maxWait) {
                   clearInterval(checkReady);
-                  console.warn('⚠️ Proceeding without authentication (timeout)');
+                  console.warn('Proceeding without authentication (timeout)');
                   resolve();
                 }
               });
@@ -688,18 +678,14 @@
           }, 100);
         });
 
-        console.log('✓ Firebase ready, querying receipt...');
-
         const doc = await db.collection('payment_transactions').doc(receiptNo).get();
 
         if (!doc.exists) {
           alert('Receipt not found or you do not have permission to view it');
-          console.error('Receipt query returned empty');
           return;
         }
 
         const data = doc.data();
-        console.log('✓ Receipt data loaded:', data.receiptNo);
 
         const actualPaymentDate = data.paymentDate ? data.paymentDate.toDate() : new Date();
 
@@ -744,12 +730,10 @@
           '\u20A6' + displayBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
         document.getElementById('generated-date').textContent = generatedDate;
 
-        console.log('✅ Receipt loaded successfully');
-
         setTimeout(() => window.print(), 1000);
 
       } catch (error) {
-        console.error('❌ Receipt error:', error);
+        console.error('Receipt error:', error);
         let errorMsg = 'Failed to load receipt.';
         if (error.code === 'permission-denied') {
           errorMsg += ' You do not have permission to view this receipt.';
@@ -768,10 +752,10 @@
   <!-- PWA Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js')
-          .then(() => console.log('✓ Service Worker registered'))
-          .catch(err => console.error('Service Worker registration failed:', err));
+          .then(function() { console.log('Service Worker registered'); })
+          .catch(function(err) { console.error('Service Worker registration failed:', err); });
       });
     }
   </script>
