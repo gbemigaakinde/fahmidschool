@@ -666,77 +666,106 @@ let secondaryApp = null;
     
     // CRITICAL FIX: Expose function to window IMMEDIATELY
     window.createSecondaryUser = async function(email, password) {
-      console.log(`📝 createSecondaryUser called for: ${email}`);
-      
-      // Validate current user
-      if (!auth.currentUser) {
-        const error = new Error('Not authenticated');
-        console.error('❌ createSecondaryUser error:', error);
-        throw error;
-      }
-      
-      console.log(`✓ Current admin: ${auth.currentUser.email}`);
-      
-      // Verify admin role
-      try {
-        const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
-        if (!userDoc.exists) {
-          throw new Error('Admin profile not found');
-        }
-        if (userDoc.data().role !== 'admin') {
-          throw new Error('Unauthorized: Admin access required');
-        }
-        console.log('✓ Admin role verified');
-      } catch (error) {
-        console.error('❌ Admin verification failed:', error);
-        throw error;
-      }
-      
-      // Validate secondary auth
-      if (!secondaryAuth) {
-        const error = new Error('Secondary auth not initialized');
-        console.error('❌ Secondary auth error:', error);
-        throw error;
-      }
-      
-      console.log('📧 Creating user account...');
-      
-      // Create user with secondary auth
-      try {
-        const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-        console.log(`✓ User created: ${userCredential.user.uid}`);
-        
-        // Send password reset email
-        console.log('📨 Sending password reset email...');
-        await secondaryAuth.sendPasswordResetEmail(email);
-        console.log('✓ Password reset email sent');
-        
-        // Sign out secondary auth (keep admin signed in)
-        await secondaryAuth.signOut();
-        console.log('✓ Secondary auth signed out');
-        
-        return userCredential.user.uid;
-      } catch (error) {
-        console.error('❌ User creation failed:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        throw error;
-      }
-    };
-    
-    console.log('✅ createSecondaryUser exposed to window');
-    
-  } catch (error) {
-    console.error('❌ CRITICAL: Secondary auth initialization failed:', error);
-    
-    // Create fallback function that shows clear error
-    window.createSecondaryUser = async function() {
-      throw new Error(
-        'Secondary authentication system failed to initialize. ' +
-        'Please refresh the page. If problem persists, check Firebase configuration.'
-      );
-    };
+  console.log(`📝 createSecondaryUser called for: ${email}`);
+
+  // Validate current user
+  if (!auth.currentUser) {
+    const error = new Error('Not authenticated');
+    console.error('❌ createSecondaryUser error:', error);
+    throw error;
   }
+
+  console.log(`✓ Current admin: ${auth.currentUser.email}`);
+
+  // Verify admin role
+  try {
+    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+    if (!userDoc.exists) {
+      throw new Error('Admin profile not found');
+    }
+    if (userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized: Admin access required');
+    }
+    console.log('✓ Admin role verified');
+  } catch (error) {
+    console.error('❌ Admin verification failed:', error);
+    throw error;
+  }
+
+  // Validate secondary auth
+  if (!secondaryAuth) {
+    const error = new Error('Secondary auth not initialized');
+    console.error('❌ Secondary auth error:', error);
+    throw error;
+  }
+
+  // FIX: Clear any stale session from a previous failed attempt
+  try {
+    if (secondaryAuth.currentUser) {
+      console.warn('⚠️ Secondary auth had stale session, clearing before proceeding');
+      await secondaryAuth.signOut();
+    }
+  } catch (cleanupError) {
+    console.warn('⚠️ Could not clear stale secondary session:', cleanupError.message);
+  }
+
+  console.log('📧 Creating user account...');
+
+  let newUid = null;
+
+  try {
+    const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    
+    // FIX: Capture UID immediately — never rely on secondaryAuth.currentUser later
+    newUid = userCredential.user.uid;
+    console.log(`✓ User created: ${newUid}`);
+
+    // FIX: Send password reset email as non-fatal — a network blip should not
+    // orphan the Auth account or leave secondaryAuth signed in
+    try {
+      console.log('📨 Sending password reset email...');
+      await secondaryAuth.sendPasswordResetEmail(email);
+      console.log('✓ Password reset email sent');
+    } catch (emailError) {
+      // Non-fatal — user was created successfully, admin can resend manually
+      console.warn('⚠️ Password reset email failed (non-fatal):', emailError.message);
+    }
+
+    // Always sign out secondary auth regardless of email result
+    await secondaryAuth.signOut();
+    console.log('✓ Secondary auth signed out');
+
+    return newUid;
+
+  } catch (error) {
+    console.error('❌ User creation failed:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+
+    // FIX: Always clean up secondary auth session on any failure
+    try {
+      await secondaryAuth.signOut();
+    } catch (cleanupError) {
+      console.warn('⚠️ Cleanup signOut failed:', cleanupError.message);
+    }
+
+    throw error;
+  }
+};
+
+console.log('✅ createSecondaryUser exposed to window');
+
+} catch (error) {
+  console.error('❌ CRITICAL: Secondary auth initialization failed:', error);
+
+  // Fallback function that shows clear error
+  window.createSecondaryUser = async function() {
+    throw new Error(
+      'Secondary authentication system failed to initialize. ' +
+      'Please refresh the page. If problem persists, check Firebase configuration.'
+    );
+  };
+}
 })();
 
 /* =====================================================
