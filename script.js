@@ -433,6 +433,104 @@ function announceToScreenReader(message, priority = 'polite') {
 
 window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
+function initTypingHeadline() {
+  const el = document.querySelector('.hero h1 .typed-word');
+  if (!el) return;
+
+  // Remove cursor after animation completes
+  // delay (0.5s) + typing (1.3s) + a tiny buffer = 2s
+  setTimeout(() => el.classList.add('type-done'), 2000);
+}
+
+function initCountUp() {
+  const els = document.querySelectorAll('.trust-number[data-target]');
+  if (!els.length) return;
+
+  function easeOutQuad(t) { return t * (2 - t); }
+
+  function animateCount(el) {
+    if (el.dataset.counted) return;
+    el.dataset.counted = '1';
+
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const duration = 1800;
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = Math.min(now - start, duration);
+      const progress = easeOutQuad(elapsed / duration);
+      const current = Math.round(progress * target);
+      el.textContent = current + suffix;
+      if (elapsed < duration) {
+        requestAnimationFrame(tick);
+      } else {
+        el.textContent = target + suffix;
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        animateCount(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  els.forEach(el => {
+    el.textContent = '0' + (el.dataset.suffix || '');
+    observer.observe(el);
+  });
+
+  console.log('✓ Count-up initialized');
+}
+
+function initTestimonialMarquee() {
+  const track = document.querySelector('.testimonials-track');
+  if (!track) return;
+
+  // Bail if reduced motion is preferred
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Collect the original (Set A) cards
+  const setA = Array.from(track.children);
+
+  // Remove any previously hard-coded clones (class="testimonial-card-clone")
+  track.querySelectorAll('.testimonial-card-clone').forEach(el => el.remove());
+
+  // Clone Set A → Set B and append
+  setA.forEach(card => {
+    const clone = card.cloneNode(true);
+    clone.classList.add('testimonial-card-clone');
+    clone.setAttribute('aria-hidden', 'true');
+    track.appendChild(clone);
+  });
+
+  // After two paint frames (ensures layout is stable), measure Set A
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const gap = parseFloat(getComputedStyle(track).gap) || 24;
+      let setWidth = 0;
+
+      setA.forEach(card => {
+        setWidth += card.getBoundingClientRect().width + gap;
+      });
+
+      // Store pixel value — no rounding ambiguity
+      track.style.setProperty('--set-width', `${setWidth}px`);
+
+      // Tune speed: ~85px/s feels natural for testimonial cards
+      const duration = Math.max(20, Math.round(setWidth / 85));
+      track.style.setProperty('--marquee-duration', `${duration}s`);
+
+      console.log(`✓ Marquee: set-width=${setWidth.toFixed(1)}px, duration=${duration}s`);
+    });
+  });
+}
+
 /* ================================================================
    KEYBOARD NAVIGATION ACCESSIBILITY
    ================================================================ */
@@ -484,6 +582,9 @@ document.addEventListener('DOMContentLoaded', () => {
   try { initContactForm(); }       catch (e) { console.error('Contact form:', e); }
   try { initAdmissionsForm(); }    catch (e) { console.error('Admissions form:', e); }
   try { initSmoothScroll(); }      catch (e) { console.error('Smooth scroll:', e); }
+  try { initTypingHeadline(); }      catch (e) { console.error('Typing:', e); }
+  try { initCountUp(); }             catch (e) { console.error('CountUp:', e); }
+  try { initTestimonialMarquee(); }  catch (e) { console.error('Marquee:', e); }
 
   // Initialize Lucide icons
   if (typeof lucide !== 'undefined') {
