@@ -500,7 +500,6 @@ window.addEventListener('unhandledrejection', e => console.error('Unhandled reje
    ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🏫 Fahmid School — Initializing v3.1');
 
   setCopyrightYear();
   initKeyboardNavigation();
@@ -518,5 +517,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  console.log('✓ Initialization complete');
 });
