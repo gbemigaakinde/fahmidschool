@@ -39,7 +39,7 @@ try {
     synchronizeTabs: true 
   })
     .then(() => {
-      console.log('✓ Offline persistence enabled');
+
     })
     .catch((err) => {
       if (err.code === 'failed-precondition') {
@@ -129,8 +129,6 @@ window.auth.onAuthStateChanged(user => {
     }
   }
 });
-
-console.log(`✓ Session timeout configured: ${SESSION_TIMEOUT_MS / 1000 / 60} minutes`);
 
 // ============================================
 // ERROR MESSAGES - DEFINED ONCE
@@ -389,8 +387,6 @@ window.getAllTeachers = async function() {
   }
 };
 
-console.log('✓ Firebase initialized (shared v3.1.0 - FIXED)');
-
 /**
  * Network retry helper with exponential backoff
  * @param {Function} operation - Async function to retry
@@ -488,8 +484,6 @@ window.firestoreDelete = async function(ref, operationName = 'Delete document') 
     return window.retryWithBackoff(() => ref.delete(), 2, operationName); // fewer retries for delete
 };
 
-console.log('✓ Network retry helpers loaded');
-
 /* =====================================================
    SESSION ENCODING UTILITIES
 ===================================================== */
@@ -527,5 +521,3 @@ window.generateFeeStructureDocId = function(classId, session, term) {
   const encodedSession = window.encodeSession(session);
   return `${classId}_${encodedSession}_${term}`;
 };
-
-console.log('✓ Session encoding utilities loaded');
