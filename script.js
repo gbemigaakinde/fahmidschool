@@ -77,17 +77,23 @@ function initScrollReveal() {
   console.log('✓ Scroll reveal initialized');
 }
 
-/* ================================================================
-   FIX: TYPING HEADLINE
-   Requires <em class="typed-word"> in the hero h1.
-   ================================================================ */
+/*/*
+  In script.js, replace initTypingHeadline() with this.
+  The animation is now pure CSS (clip-path), so JS only needs
+  to handle the reduced-motion preference gracefully.
+*/
 
 function initTypingHeadline() {
-  const el = document.querySelector('.hero h1 .typed-word');
-  if (!el) return;
-  // Remove blinking cursor once animation completes (delay 0.5s + type 1.3s + buffer)
-  setTimeout(() => el.classList.add('type-done'), 2100);
-  console.log('✓ Typing headline initialized');
+  const line2 = document.querySelector('.hero h1 .hero-line-2');
+  if (!line2) return;
+
+  // If user prefers reduced motion, skip the animation entirely
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    line2.style.clipPath = 'inset(0 0% 0 0)';
+    line2.style.animation = 'none';
+  }
+
+  console.log('✓ Hero headline initialized');
 }
 
 /* ================================================================
