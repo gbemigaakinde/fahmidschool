@@ -1,20 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Main JavaScript — v3.0
- *
- * PRESERVED UTILITY FUNCTIONS (unchanged):
- * - showToast
- * - showLoading / hideLoading
- * - retryOperation
- * - FahmidUtils (debounce, throttle, announceToScreenReader)
- *
- * NEW / REBUILT:
- * - Navigation (sticky scroll, mobile menu)
- * - Scroll reveal animations
- * - FAQ accordion
- * - Gallery lightbox
- * - Form handling
- * - Copyright year
+ * Main JavaScript — v3.1
+ * Full replacement for script.js — includes all UI fixes.
  */
 
 'use strict';
@@ -31,21 +18,11 @@ function initNavigation() {
 
   if (!nav) return;
 
-  // Sticky scroll effect
-  let lastScrollY = 0;
   const onScroll = throttle(() => {
-    const y = window.scrollY;
-    if (y > 20) {
-      nav.classList.add('scrolled');
-    } else {
-      nav.classList.remove('scrolled');
-    }
-    lastScrollY = y;
+    nav.classList.toggle('scrolled', window.scrollY > 20);
   }, 50);
-
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  // Mobile menu toggle
   if (!toggle || !mobileMenu) return;
 
   function openMenu() {
@@ -63,23 +40,13 @@ function initNavigation() {
   }
 
   toggle.addEventListener('click', () => {
-    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-    isOpen ? closeMenu() : openMenu();
+    toggle.getAttribute('aria-expanded') === 'true' ? closeMenu() : openMenu();
   });
 
   overlay && overlay.addEventListener('click', closeMenu);
-
-  mobileMenu.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', closeMenu);
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeMenu();
-  });
-
-  window.addEventListener('resize', debounce(() => {
-    if (window.innerWidth >= 1024) closeMenu();
-  }, 200));
+  mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+  window.addEventListener('resize', debounce(() => { if (window.innerWidth >= 1024) closeMenu(); }, 200));
 
   console.log('✓ Navigation initialized');
 }
@@ -92,27 +59,138 @@ function initScrollReveal() {
   const elements = document.querySelectorAll('.reveal');
   if (!elements.length) return;
 
-  // Check if reduced motion is preferred
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (prefersReducedMotion) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     elements.forEach(el => el.classList.add('revealed'));
     return;
   }
 
-  const observer = new IntersectionObserver(
-    entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('revealed');
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-  );
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
   elements.forEach(el => observer.observe(el));
   console.log('✓ Scroll reveal initialized');
+}
+
+/* ================================================================
+   FIX: TYPING HEADLINE
+   Requires <em class="typed-word"> in the hero h1.
+   ================================================================ */
+
+function initTypingHeadline() {
+  const el = document.querySelector('.hero h1 .typed-word');
+  if (!el) return;
+  // Remove blinking cursor once animation completes (delay 0.5s + type 1.3s + buffer)
+  setTimeout(() => el.classList.add('type-done'), 2100);
+  console.log('✓ Typing headline initialized');
+}
+
+/* ================================================================
+   FIX: COUNT-UP — trust bar numbers animate from 0
+   Requires data-target and data-suffix on .trust-number elements.
+   ================================================================ */
+
+function initCountUp() {
+  const els = document.querySelectorAll('.trust-number[data-target]');
+  if (!els.length) return;
+
+  function easeOutQuad(t) { return t * (2 - t); }
+
+  function animateCount(el) {
+    if (el.dataset.counted) return;
+    el.dataset.counted = '1';
+
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const duration = 1800;
+    const start = performance.now();
+
+    function tick(now) {
+      const elapsed = Math.min(now - start, duration);
+      const current = Math.round(easeOutQuad(elapsed / duration) * target);
+      el.textContent = current + suffix;
+      if (elapsed < duration) {
+        requestAnimationFrame(tick);
+      } else {
+        el.textContent = target + suffix;
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        animateCount(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  els.forEach(el => {
+    // Start at 0 so the count-up is visible from the beginning
+    el.textContent = '0' + (el.dataset.suffix || '');
+    observer.observe(el);
+  });
+
+  console.log('✓ Count-up initialized');
+}
+
+/* ================================================================
+   FIX: TESTIMONIAL MARQUEE — pixel-perfect seamless loop
+   - Removes any old hard-coded clones
+   - Clones Set A dynamically
+   - Measures exact pixel width after paint
+   - Sets --set-width as a CSS custom property (no rounding drift)
+   ================================================================ */
+
+function initTestimonialMarquee() {
+  const track = document.getElementById('testimonials-track') ||
+                document.querySelector('.testimonials-track');
+  if (!track) return;
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  // Remove any previously hard-coded clone cards
+  track.querySelectorAll('.testimonial-card-clone').forEach(el => el.remove());
+
+  // Collect original Set A cards
+  const setA = Array.from(track.children);
+  if (!setA.length) return;
+
+  // Clone Set A → Set B
+  setA.forEach(card => {
+    const clone = card.cloneNode(true);
+    clone.classList.add('testimonial-card-clone');
+    clone.setAttribute('aria-hidden', 'true');
+    track.appendChild(clone);
+  });
+
+  // After two paint frames (guarantees stable layout), measure Set A
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const gap = parseFloat(getComputedStyle(track).gap) || 24;
+      let setWidth = 0;
+      setA.forEach(card => {
+        setWidth += card.getBoundingClientRect().width + gap;
+      });
+
+      // Apply exact pixel width — eliminates sub-pixel drift
+      track.style.setProperty('--set-width', `${setWidth}px`);
+
+      // ~85px/s feels smooth for testimonial cards
+      const duration = Math.max(20, Math.round(setWidth / 85));
+      track.style.setProperty('--marquee-duration', `${duration}s`);
+
+      console.log(`✓ Marquee: ${setWidth.toFixed(0)}px / ${duration}s`);
+    });
+  });
 }
 
 /* ================================================================
@@ -129,21 +207,17 @@ function initFAQ() {
     if (!question || !answer) return;
 
     question.setAttribute('aria-expanded', 'false');
-    answer.id = answer.id || `faq-answer-${Math.random().toString(36).substr(2, 9)}`;
+    answer.id = answer.id || `faq-${Math.random().toString(36).substr(2, 8)}`;
     question.setAttribute('aria-controls', answer.id);
 
     question.addEventListener('click', () => {
       const isOpen = item.classList.contains('open');
-
-      // Close all others
       faqItems.forEach(other => {
         if (other !== item && other.classList.contains('open')) {
           other.classList.remove('open');
           other.querySelector('.faq-question')?.setAttribute('aria-expanded', 'false');
         }
       });
-
-      // Toggle current
       item.classList.toggle('open', !isOpen);
       question.setAttribute('aria-expanded', String(!isOpen));
     });
@@ -181,30 +255,19 @@ function initGalleryLightbox() {
   galleryItems.forEach(item => {
     const img = item.querySelector('img');
     if (!img) return;
-
     item.setAttribute('role', 'button');
     item.tabIndex = 0;
     item.setAttribute('aria-label', `View larger: ${img.alt || 'Gallery image'}`);
-
     item.addEventListener('click', () => openLightbox(img.src, img.alt));
     item.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openLightbox(img.src, img.alt);
-      }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(img.src, img.alt); }
     });
   });
 
-  lightbox.addEventListener('click', e => {
-    if (e.target === lightbox) closeLightbox();
-  });
-
+  lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
   closeBtn?.addEventListener('click', closeLightbox);
-
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && lightbox.classList.contains('active')) {
-      closeLightbox();
-    }
+    if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
   });
 
   console.log('✓ Gallery lightbox initialized');
@@ -220,27 +283,17 @@ function initContactForm() {
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
-
     const submitBtn = form.querySelector('[type="submit"]');
-    const originalText = submitBtn?.textContent || 'Send Message';
-
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending…';
-    }
-
+    const original = submitBtn?.textContent || 'Send Message';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending…'; }
     try {
-      // Simulate network request (replace with actual endpoint)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(r => setTimeout(r, 1500));
       showToast('Thank you! Your message has been sent. We will be in touch shortly.', 'success', 6000);
       form.reset();
-    } catch (err) {
+    } catch {
       showToast('Sorry, something went wrong. Please try again or call us directly.', 'danger', 6000);
     } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = original; }
     }
   });
 
@@ -257,43 +310,32 @@ function initAdmissionsForm() {
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
-
     const submitBtn = form.querySelector('[type="submit"]');
-    const originalText = submitBtn?.textContent || 'Submit Enquiry';
-
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Submitting…';
-    }
-
+    const original = submitBtn?.textContent || 'Submit Enquiry';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(r => setTimeout(r, 1500));
       showToast('Enquiry submitted! Our admissions team will contact you within 2 working days.', 'success', 8000);
       form.reset();
-    } catch (err) {
+    } catch {
       showToast('Submission failed. Please call us directly or try again.', 'danger', 6000);
     } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = original; }
     }
   });
 }
 
 /* ================================================================
-   SMOOTH SCROLL (preserved)
+   SMOOTH SCROLL
    ================================================================ */
 
 function initSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+    anchor.addEventListener('click', function (e) {
       const href = this.getAttribute('href');
       if (!href || href === '#' || href.startsWith('#/')) return;
-
       const target = document.getElementById(href.substring(1));
       if (!target) return;
-
       e.preventDefault();
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (history.pushState) history.pushState(null, '', href);
@@ -313,15 +355,13 @@ function setCopyrightYear() {
 }
 
 /* ================================================================
-   TOAST NOTIFICATIONS (PRESERVED — unchanged from original)
+   TOAST NOTIFICATIONS (preserved)
    ================================================================ */
 
-window.showToast = function(message, type = 'info', duration = 3000) {
+window.showToast = function (message, type = 'info', duration = 3000) {
   if (!document.body) {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        window.showToast(message, type, duration);
-      }, { once: true });
+      document.addEventListener('DOMContentLoaded', () => window.showToast(message, type, duration), { once: true });
     }
     return;
   }
@@ -362,10 +402,10 @@ window.showToast = function(message, type = 'info', duration = 3000) {
 };
 
 /* ================================================================
-   LOADING INDICATOR (PRESERVED — unchanged)
+   LOADING INDICATOR (preserved)
    ================================================================ */
 
-window.showLoading = function(elementId, message = 'Loading…') {
+window.showLoading = function (elementId, message = 'Loading…') {
   const el = document.getElementById(elementId);
   if (el) {
     el.innerHTML = `
@@ -377,47 +417,39 @@ window.showLoading = function(elementId, message = 'Loading…') {
   }
 };
 
-window.hideLoading = function(elementId) {
+window.hideLoading = function (elementId) {
   const el = document.getElementById(elementId);
   if (el) el.innerHTML = '';
 };
 
 /* ================================================================
-   NETWORK RETRY HELPER (PRESERVED — unchanged)
+   RETRY HELPER (preserved)
    ================================================================ */
 
-window.retryOperation = async function(operation, maxRetries = 3) {
+window.retryOperation = async function (operation, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await operation();
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      console.log(`Retry ${i + 1}/${maxRetries}…`);
       await new Promise(r => setTimeout(r, 1000 * (i + 1)));
     }
   }
 };
 
 /* ================================================================
-   UTILITY FUNCTIONS (PRESERVED — unchanged)
+   UTILITY FUNCTIONS
    ================================================================ */
 
 function debounce(fn, delay) {
   let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(null, args), delay);
-  };
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn.apply(null, args), delay); };
 }
 
 function throttle(fn, limit) {
   let locked = false;
   return (...args) => {
-    if (!locked) {
-      fn.apply(null, args);
-      locked = true;
-      setTimeout(() => (locked = false), limit);
-    }
+    if (!locked) { fn.apply(null, args); locked = true; setTimeout(() => (locked = false), limit); }
   };
 }
 
@@ -433,106 +465,8 @@ function announceToScreenReader(message, priority = 'polite') {
 
 window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
-function initTypingHeadline() {
-  const el = document.querySelector('.hero h1 .typed-word');
-  if (!el) return;
-
-  // Remove cursor after animation completes
-  // delay (0.5s) + typing (1.3s) + a tiny buffer = 2s
-  setTimeout(() => el.classList.add('type-done'), 2000);
-}
-
-function initCountUp() {
-  const els = document.querySelectorAll('.trust-number[data-target]');
-  if (!els.length) return;
-
-  function easeOutQuad(t) { return t * (2 - t); }
-
-  function animateCount(el) {
-    if (el.dataset.counted) return;
-    el.dataset.counted = '1';
-
-    const target = parseFloat(el.dataset.target);
-    const suffix = el.dataset.suffix || '';
-    const duration = 1800;
-    const start = performance.now();
-
-    function tick(now) {
-      const elapsed = Math.min(now - start, duration);
-      const progress = easeOutQuad(elapsed / duration);
-      const current = Math.round(progress * target);
-      el.textContent = current + suffix;
-      if (elapsed < duration) {
-        requestAnimationFrame(tick);
-      } else {
-        el.textContent = target + suffix;
-      }
-    }
-    requestAnimationFrame(tick);
-  }
-
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        animateCount(entry.target);
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.5 });
-
-  els.forEach(el => {
-    el.textContent = '0' + (el.dataset.suffix || '');
-    observer.observe(el);
-  });
-
-  console.log('✓ Count-up initialized');
-}
-
-function initTestimonialMarquee() {
-  const track = document.querySelector('.testimonials-track');
-  if (!track) return;
-
-  // Bail if reduced motion is preferred
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-  // Collect the original (Set A) cards
-  const setA = Array.from(track.children);
-
-  // Remove any previously hard-coded clones (class="testimonial-card-clone")
-  track.querySelectorAll('.testimonial-card-clone').forEach(el => el.remove());
-
-  // Clone Set A → Set B and append
-  setA.forEach(card => {
-    const clone = card.cloneNode(true);
-    clone.classList.add('testimonial-card-clone');
-    clone.setAttribute('aria-hidden', 'true');
-    track.appendChild(clone);
-  });
-
-  // After two paint frames (ensures layout is stable), measure Set A
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const gap = parseFloat(getComputedStyle(track).gap) || 24;
-      let setWidth = 0;
-
-      setA.forEach(card => {
-        setWidth += card.getBoundingClientRect().width + gap;
-      });
-
-      // Store pixel value — no rounding ambiguity
-      track.style.setProperty('--set-width', `${setWidth}px`);
-
-      // Tune speed: ~85px/s feels natural for testimonial cards
-      const duration = Math.max(20, Math.round(setWidth / 85));
-      track.style.setProperty('--marquee-duration', `${duration}s`);
-
-      console.log(`✓ Marquee: set-width=${setWidth.toFixed(1)}px, duration=${duration}s`);
-    });
-  });
-}
-
 /* ================================================================
-   KEYBOARD NAVIGATION ACCESSIBILITY
+   KEYBOARD NAVIGATION
    ================================================================ */
 
 function initKeyboardNavigation() {
@@ -542,54 +476,41 @@ function initKeyboardNavigation() {
 }
 
 /* ================================================================
-   ONLINE / OFFLINE DETECTION (PRESERVED)
+   ONLINE / OFFLINE
    ================================================================ */
 
-window.addEventListener('online', () => {
-  window.showToast?.('Connection restored', 'success', 3000);
-});
-
-window.addEventListener('offline', () => {
-  window.showToast?.('No internet connection — some features may be unavailable.', 'warning', 8000);
-});
+window.addEventListener('online', () => window.showToast?.('Connection restored', 'success', 3000));
+window.addEventListener('offline', () => window.showToast?.('No internet connection — some features may be unavailable.', 'warning', 8000));
 
 /* ================================================================
-   GLOBAL ERROR HANDLING (PRESERVED)
+   ERROR HANDLING
    ================================================================ */
 
-window.addEventListener('error', e => {
-  console.error('Global error:', e.error);
-});
-
-window.addEventListener('unhandledrejection', e => {
-  console.error('Unhandled rejection:', e.reason);
-});
+window.addEventListener('error', e => console.error('Global error:', e.error));
+window.addEventListener('unhandledrejection', e => console.error('Unhandled rejection:', e.reason));
 
 /* ================================================================
    MAIN ENTRY POINT
    ================================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🏫 Fahmid School — Initializing');
+  console.log('🏫 Fahmid School — Initializing v3.1');
 
   setCopyrightYear();
   initKeyboardNavigation();
 
-  try { initNavigation(); }        catch (e) { console.error('Nav:', e); }
-  try { initScrollReveal(); }      catch (e) { console.error('Reveal:', e); }
-  try { initFAQ(); }               catch (e) { console.error('FAQ:', e); }
-  try { initGalleryLightbox(); }   catch (e) { console.error('Lightbox:', e); }
-  try { initContactForm(); }       catch (e) { console.error('Contact form:', e); }
-  try { initAdmissionsForm(); }    catch (e) { console.error('Admissions form:', e); }
-  try { initSmoothScroll(); }      catch (e) { console.error('Smooth scroll:', e); }
-  try { initTypingHeadline(); }      catch (e) { console.error('Typing:', e); }
-  try { initCountUp(); }             catch (e) { console.error('CountUp:', e); }
-  try { initTestimonialMarquee(); }  catch (e) { console.error('Marquee:', e); }
+  try { initNavigation(); }            catch (e) { console.error('Nav:', e); }
+  try { initScrollReveal(); }          catch (e) { console.error('Reveal:', e); }
+  try { initTypingHeadline(); }        catch (e) { console.error('Typing:', e); }
+  try { initCountUp(); }               catch (e) { console.error('CountUp:', e); }
+  try { initTestimonialMarquee(); }    catch (e) { console.error('Marquee:', e); }
+  try { initFAQ(); }                   catch (e) { console.error('FAQ:', e); }
+  try { initGalleryLightbox(); }       catch (e) { console.error('Lightbox:', e); }
+  try { initContactForm(); }           catch (e) { console.error('Contact form:', e); }
+  try { initAdmissionsForm(); }        catch (e) { console.error('Admissions form:', e); }
+  try { initSmoothScroll(); }          catch (e) { console.error('Smooth scroll:', e); }
 
-  // Initialize Lucide icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 
   console.log('✓ Initialization complete');
 });
