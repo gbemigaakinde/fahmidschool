@@ -291,5 +291,3 @@ async function cleanupOldCache() {
 setInterval(() => {
   cleanupOldCache().catch(err => console.error('[SW] Cleanup error:', err));
 }, 24 * 60 * 60 * 1000); // Once per day
-
-console.log('[SW] Service Worker loaded');
