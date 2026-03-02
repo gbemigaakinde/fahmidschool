@@ -942,14 +942,6 @@ p:not(:last-child) { margin-bottom: 1em; }
   to { opacity: 0; }
 }
 
-/* Mobile: slightly tighter text */
-@media (max-width: 480px) {
-  .hero h1 {
-    font-size: clamp(2.2rem, 9vw, 3rem);
-    line-height: 1.18;
-  }
-}
-
 /* The italic/typed portion — add class="typed-word" to the <em> tag */
 .hero h1 .typed-word {
   display: inline-block;
