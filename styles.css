@@ -838,33 +838,116 @@ p:not(:last-child) { margin-bottom: 1em; }
   max-width: 780px;
 }
 
+/* ================================================================
+   HERO HEADLINE + EYEBROW — COMPLETE FIX
+   Replace the matching blocks in styles.css
+   ================================================================ */
+
+
+/* ----------------------------------------------------------------
+   FIX 1 — Hero eyebrow (Est. 2007)
+   The key change: smaller padding, subtler background opacity,
+   and a lower border opacity so it reads as a quiet label,
+   not a badge demanding attention.
+   ---------------------------------------------------------------- */
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;                        /* was 8px 16px */
-  background: rgba(200, 159, 77, 0.12);
-  border: 1px solid rgba(200, 159, 77, 0.28);
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(200, 159, 77, 0.08);        /* much more subtle */
+  border: 1px solid rgba(200, 159, 77, 0.22);  /* softer edge */
   border-radius: var(--radius-pill);
-  font-size: var(--text-xs);               /* 11px — unchanged */
+  font-size: 0.625rem;                         /* 10px — one step smaller */
   font-weight: var(--w-semibold);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gold);
-  margin-bottom: var(--s-6);
+  margin-bottom: var(--s-5);                   /* slightly tighter gap below */
 }
 .hero-eyebrow svg {
-  width: 12px;                              /* was 14px */
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
+
+/* ----------------------------------------------------------------
+   FIX 2 — Hero h1: wrapping + per-line typing
+   
+   The problem with putting typed-word on the full sentence:
+   white-space:nowrap prevents line breaks → bleeds off screen.
+
+   Solution: Split into two separate lines in HTML.
+   Line 1 renders immediately (static).
+   Line 2 uses the typing animation.
+   Both lines can wrap naturally within the container width.
+   ---------------------------------------------------------------- */
 .hero h1 {
   font-family: var(--font-display);
   font-size: var(--text-display);
   color: white;
-  line-height: 1.1;
+  line-height: 1.15;
   margin-bottom: var(--s-6);
   letter-spacing: -0.02em;
+  /* Allow the h1 to take full available width */
+  max-width: 100%;
+}
+
+/* Line 1: "Where Every Child" — shows immediately */
+.hero h1 .hero-line-1 {
+  display: block;
+}
+
+/* Line 2: "Discovers Their Best" — typed in */
+.hero h1 .hero-line-2 {
+  display: block;
+  font-style: italic;
+  color: white;
+
+  /*
+    Clip reveal trick that RESPECTS line breaks:
+    Instead of animating width (which requires nowrap),
+    we animate clip-path from left to right.
+    This works on any multi-line content safely.
+  */
+  clip-path: inset(0 100% 0 0);
+  animation: hero-reveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+}
+
+/* Optional: cursor effect on line 2 via a pseudo-element */
+.hero h1 .hero-line-2::after {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 0.85em;
+  background: var(--gold);
+  margin-left: 4px;
+  vertical-align: middle;
+  border-radius: 1px;
+  animation:
+    hero-cursor-blink 0.65s step-end 0.6s 5,  /* blinks during typing */
+    hero-cursor-hide 0s 3.9s forwards;          /* disappears after */
+}
+
+@keyframes hero-reveal {
+  to { clip-path: inset(0 0% 0 0); }
+}
+
+@keyframes hero-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+@keyframes hero-cursor-hide {
+  to { opacity: 0; }
+}
+
+/* Mobile: slightly tighter text */
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: clamp(2.2rem, 9vw, 3rem);
+    line-height: 1.18;
+  }
 }
 
 /* The italic/typed portion — add class="typed-word" to the <em> tag */
