@@ -48,7 +48,6 @@ function initNavigation() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
   window.addEventListener('resize', debounce(() => { if (window.innerWidth >= 1024) closeMenu(); }, 200));
 
-  console.log('✓ Navigation initialized');
 }
 
 /* ================================================================
@@ -74,7 +73,6 @@ function initScrollReveal() {
   }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
   elements.forEach(el => observer.observe(el));
-  console.log('✓ Scroll reveal initialized');
 }
 
 /*/*
@@ -93,7 +91,6 @@ function initTypingHeadline() {
     line2.style.animation = 'none';
   }
 
-  console.log('✓ Hero headline initialized');
 }
 
 /* ================================================================
@@ -145,7 +142,6 @@ function initCountUp() {
     observer.observe(el);
   });
 
-  console.log('✓ Count-up initialized');
 }
 
 /* ================================================================
@@ -194,7 +190,6 @@ function initTestimonialMarquee() {
       const duration = Math.max(20, Math.round(setWidth / 85));
       track.style.setProperty('--marquee-duration', `${duration}s`);
 
-      console.log(`✓ Marquee: ${setWidth.toFixed(0)}px / ${duration}s`);
     });
   });
 }
@@ -276,7 +271,6 @@ function initGalleryLightbox() {
     if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
   });
 
-  console.log('✓ Gallery lightbox initialized');
 }
 
 /* ================================================================
