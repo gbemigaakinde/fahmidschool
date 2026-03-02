@@ -56,16 +56,13 @@ const EXTERNAL_DOMAINS = [
  * Install Event - Cache critical assets
  */
 self.addEventListener('install', event => {
-  console.log('[SW] Installing version:', CACHE_VERSION);
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[SW] Caching precache assets');
         return cache.addAll(PRECACHE_ASSETS.map(url => new Request(url, {cache: 'reload'})));
       })
       .then(() => {
-        console.log('[SW] Precache complete');
         return self.skipWaiting();
       })
       .catch(error => {
@@ -87,7 +84,6 @@ self.addEventListener('activate', event => {
         return Promise.all(
           cacheNames.map(cacheName => {
             if (cacheName !== CACHE_NAME) {
-              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -96,7 +92,6 @@ self.addEventListener('activate', event => {
       // Take control immediately
       self.clients.claim()
     ]).then(() => {
-      console.log('[SW] Activation complete');
     })
   );
 });
@@ -218,7 +213,6 @@ self.addEventListener('message', event => {
  * Background Sync - Queue failed requests
  */
 self.addEventListener('sync', event => {
-  console.log('[SW] Background sync:', event.tag);
   
   if (event.tag === 'sync-data') {
     event.waitUntil(syncPendingData());
@@ -226,7 +220,6 @@ self.addEventListener('sync', event => {
 });
 
 async function syncPendingData() {
-  console.log('[SW] Syncing pending data...');
   // Implement sync logic as needed
   return Promise.resolve();
 }
@@ -235,7 +228,6 @@ async function syncPendingData() {
  * Push Notifications
  */
 self.addEventListener('push', event => {
-  console.log('[SW] Push received');
   
   const title = 'Fahmid School';
   const options = {
@@ -256,7 +248,6 @@ self.addEventListener('push', event => {
  * Notification Click
  */
 self.addEventListener('notificationclick', event => {
-  console.log('[SW] Notification clicked');
   event.notification.close();
   
   event.waitUntil(
@@ -280,7 +271,6 @@ async function cleanupOldCache() {
         const age = now - new Date(dateHeader).getTime();
         if (age > MAX_CACHE_AGE) {
           await cache.delete(request);
-          console.log('[SW] Deleted old cache entry:', request.url);
         }
       }
     }
