@@ -164,7 +164,7 @@ window.QUESTIONS = {
       { id:"p3m027", q:"What is 5² (5 squared)?", opts:["24","25","26","27"], ans:"B" },
       { id:"p3m028", q:"A rectangular plot is 35 m × 28 m. Find the perimeter.", opts:["124","125","126","127"], ans:"C" },
       { id:"p3m029", q:"Calculate 15% of 600.", opts:["88","89","90","91"], ans:"C" },
-      { id:"p3m030", q:"Solve: 3/8 + 2/8 + 1/8 = ?", opts:["3/4","5/8","6/8","3/8"], ans:"A" },
+      { id:"p3m030", q:"Solve: 3/8 + 2/8 + 1/8 = ?", opts:["3/4","5/8","6/8","3/8"], ans:"C" },
       { id:"p3m031", q:"689 ÷ 13 = ?", opts:["51","52","53","54"], ans:"C" },
       { id:"p3m032", q:"A school had 1250 pupils. 3/5 are boys. How many girls?", opts:["498","499","500","501"], ans:"C" },
     ],
