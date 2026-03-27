@@ -56,7 +56,7 @@ window.QUESTIONS = {
       { id:"p1m028", q:"Between 1 and 10, how many even numbers are there?", opts:["4","5","6","7"], ans:"B" },
       { id:"p1m029", q:"Mummy bought items for ₦35 and ₦18. Total cost?", opts:["50","51","52","53"], ans:"D" },
       { id:"p1m030", q:"How much money remains from ₦40 after spending ₦13?", opts:["25","26","27","28"], ans:"C" },
-      { id:"p1m031", q:"A baker makes 12 cakes on Monday and 15 on Tuesday. How many more on Tuesday?", opts:["2","3","4","5"], ans:"C" },
+      { id:"p1m031", q:"A baker makes 12 cakes on Monday and 15 on Tuesday. How many more on Tuesday?", opts:["2","3","4","5"], ans:"B" },
       { id:"p1m032", q:"If you skip count by 2s starting from 4, what is the 7th number?", opts:["16","17","18","19"], ans:"A" },
     ],
     theory: [
