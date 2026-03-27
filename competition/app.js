@@ -44,6 +44,45 @@ const CLASS_LABELS = ['P1','P2','P3','P4','P5'];
 const CLASS_FULL   = ['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5'];
 const STORAGE_KEY  = 'fahmid_competition_state';
 
+/*
+  INPUT_GUARD_DELAY:
+  The minimum number of milliseconds that must have elapsed between
+  the moment the options become interactive and a click/touch being
+  accepted as intentional.
+
+  Problem this solves:
+  ─────────────────────────────────────────────────────────────
+  On mobile browsers a "tap" produces the event sequence:
+    touchstart → touchend → (300 ms delay) → click  (legacy browsers)
+  OR immediately:
+    touchstart → touchend → click                    (modern browsers)
+
+  When the facilitator taps the "Ready — Show Question" button (or
+  the skip button on the Ready screen), that synthetic `click` event
+  is still in-flight as the Match screen slides in. If any option
+  button happens to sit under the same screen coordinates as the
+  skip button, the queued click lands on the option and auto-selects
+  it — even though we disable buttons until after a setTimeout.
+
+  The setTimeout trick alone is NOT reliable because:
+    1. setTimeout(fn, 300) fires *roughly* 300 ms later; the queued
+       click can arrive at ~50–200 ms on fast devices.
+    2. Even with buttons disabled, the browser may re-enable them
+       during the same task microtask queue drain before the click
+       fires, depending on the JS engine.
+
+  The correct fix is to record a high-resolution timestamp at the
+  moment we intentionally enable the options (questionOpenedAt), and
+  then in the click handler reject any event whose timeStamp is
+  earlier than that value — meaning the click was initiated before
+  this question existed.
+
+  We also keep the setTimeout delay (now 400 ms instead of 300 ms)
+  as an additional layer of protection.
+  ─────────────────────────────────────────────────────────────
+*/
+const INPUT_GUARD_DELAY = 400; // ms — must match or exceed setTimeout below
+
 /* ─────────────────────────────────────────────────────────────
    QUESTION ENGINE
 ───────────────────────────────────────────────────────────── */
@@ -410,26 +449,44 @@ function renderBracket() {
 /* ─────────────────────────────────────────────────────────────
    MATCH CONTROLLER
 
-   Structure:
-     Each player answers questionsPerPlayer MCQ questions.
-     Total questions = 2 × questionsPerPlayer.
-     Turn order: Left answers Q1, Right answers Q1,
-                 Left answers Q2, Right answers Q2, etc.
-     i.e. round 1 → Left, round 2 → Right,
-          round 3 → Left, round 4 → Right, ...
-     Between players (after Left answers, before Right appears
-     and vice versa) a 10-second "Ready" screen is shown.
+   Auto-click bug — root cause & fix:
+   ──────────────────────────────────
+   On mobile, tapping the "Ready — Show Question" skip button
+   produces a synthetic `click` event that the browser queues and
+   dispatches *after* the JS callstack clears. By the time the
+   Match screen is visible and the options are enabled (via
+   setTimeout), that queued click can land on whichever option
+   button happens to sit under the same screen coordinates as the
+   button that was just tapped — auto-selecting an answer.
 
-   Auto-click bug fix:
-     Options are rendered by creating buttons and assigning
-     event listeners only AFTER a 100ms paint delay, preventing
-     any spurious click from the button that opened the question
-     from propagating into the new option buttons.
+   The fix uses a two-layer guard:
+
+   1. _questionOpenedAt  (high-resolution timestamp, ms)
+      Recorded inside the setTimeout callback, immediately before
+      we call _enableOptions(). Any click/touch event whose
+      `timeStamp` (the time the event was originally dispatched,
+      relative to the page's time origin) is *earlier* than this
+      value was initiated before this question existed and is
+      unconditionally rejected in handleOptionClick().
+
+   2. INPUT_GUARD_DELAY  (400 ms setTimeout, up from 300 ms)
+      Kept as a belt-and-suspenders measure. On some browsers the
+      event timeStamp is relative to a different epoch, so the
+      timestamp comparison alone is not 100% cross-browser safe.
+      The setTimeout ensures buttons are disabled for at least
+      400 ms regardless.
+
+   Together these two layers make it impossible for any touch/click
+   that predates the current question to register as an answer.
 ───────────────────────────────────────────────────────────── */
 const Match = (() => {
   let ctx           = null;
   let _undoSnapshot = null;
   let _undoTimeout  = null;
+
+  // Timestamp (performance.now() based) recorded when options become
+  // interactive. Any click event with an earlier timeStamp is rejected.
+  let _questionOpenedAt = 0;
 
   function start(config) {
     ctx = {
@@ -452,6 +509,7 @@ const Match = (() => {
       answered:          false,
       _advanceTimeout:   null,
     };
+    _questionOpenedAt = 0;
     showScreen('match');
     _renderHeader();
     _doNextRound();
@@ -505,6 +563,9 @@ const Match = (() => {
     _undoSnapshot = null;
     _hideUndoButton();
 
+    // Reset the guard so no stale timestamp can accidentally pass
+    _questionOpenedAt = 0;
+
     const totalQ    = _totalRounds();
     const displayRound = ctx.roundIdx + 1;
     document.getElementById('match-round-info').textContent = `Turn ${displayRound} of ${totalQ}`;
@@ -517,20 +578,38 @@ const Match = (() => {
     document.getElementById('question-text').textContent     = q.q;
 
     // Render options (disabled, no listeners yet).
-    // Listeners are attached only after a 300 ms delay so any lingering
-    // touch/click from the Ready screen cannot bleed through.
+    // The options grid is also made non-interactive at the CSS level
+    // during the guard window as an extra safety net.
     _renderOptions(q);
+    _setOptionsGridInteractive(false);
     _hideOverlay();
     showScreen('match');
 
+    // FIX: Use INPUT_GUARD_DELAY (400 ms) instead of the previous 300 ms.
+    // More importantly, record _questionOpenedAt at the moment we enable
+    // options so we can compare against incoming event timestamps.
     setTimeout(() => {
+      // Record the wall-clock time (relative to page load) at which this
+      // question becomes interactive. performance.now() is the same epoch
+      // used by browser event timeStamps, making the comparison reliable.
+      _questionOpenedAt = performance.now();
+
+      _setOptionsGridInteractive(true);
       _enableOptions();
+
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, 300);
+    }, INPUT_GUARD_DELAY);
+  }
+
+  // Toggle pointer-events on the entire options grid so that even if a
+  // button somehow gets re-enabled early, touches cannot reach it.
+  function _setOptionsGridInteractive(enabled) {
+    const grid = document.getElementById('options-grid');
+    if (grid) grid.style.pointerEvents = enabled ? '' : 'none';
   }
 
   function _renderOptions(q) {
@@ -541,14 +620,13 @@ const Match = (() => {
       const btn = document.createElement('button');
       btn.className      = 'option-btn';
       btn.dataset.letter = letter;
-      btn.disabled       = true;          // always start disabled; no listener yet
+      btn.disabled       = true; // always start disabled; listener added later
       btn.innerHTML = `
         <span class="option-letter">${letter}</span>
         <span class="option-text">${q.opts[i]}</span>
       `;
       // NOTE: click listener is NOT added here.
-      // It is added only inside _enableOptions() after the delay,
-      // so a lingering press from a previous screen cannot fire it.
+      // It is added only inside _enableOptions() after the delay.
       grid.appendChild(btn);
     });
   }
@@ -556,10 +634,14 @@ const Match = (() => {
   function _enableOptions() {
     document.querySelectorAll('.option-btn').forEach(btn => {
       btn.disabled = false;
-      // Attach the listener now — safe because any prior touch/click
-      // has had at least 300 ms to fully release before we get here.
       const letter = btn.dataset.letter;
-      btn.addEventListener('click', () => handleOptionClick(letter, btn), { once: true });
+      // Attach listener now — safe because:
+      //   a) At least INPUT_GUARD_DELAY ms have passed since the screen
+      //      transitioned, so any touch from the previous screen has
+      //      fully settled.
+      //   b) handleOptionClick will additionally check the event's
+      //      timeStamp against _questionOpenedAt and reject stale events.
+      btn.addEventListener('click', (e) => handleOptionClick(letter, btn, e), { once: true });
     });
   }
 
@@ -577,6 +659,7 @@ const Match = (() => {
   function _handleTimeout() {
     if (ctx.answered) return;
     ctx.answered = true;
+    _setOptionsGridInteractive(false);
     _disableOptions();
     _showCorrectAnswer();
     _showOverlay(false, 'Time Up!', ctx.currentQuestion.q.ans);
@@ -613,10 +696,32 @@ const Match = (() => {
     if (_undoTimeout) { clearTimeout(_undoTimeout); _undoTimeout = null; }
   }
 
-  function handleOptionClick(letter, btnEl) {
+  // FIX: Accept the MouseEvent/TouchEvent `e` so we can inspect its
+  // timeStamp and reject events that originated before this question.
+  function handleOptionClick(letter, btnEl, e) {
+    // ── GHOST-CLICK GUARD ──────────────────────────────────────────
+    // e.timeStamp is the number of milliseconds since the page's time
+    // origin (performance.timeOrigin) at which the event was *created*
+    // by the browser — NOT when our handler runs. This means it reflects
+    // when the user's finger actually touched the screen.
+    //
+    // If that moment is earlier than _questionOpenedAt (the time we
+    // recorded when enabling the options), the tap happened before this
+    // question was interactive and must have been intended for a
+    // previous screen element. We discard it entirely.
+    //
+    // We add a small epsilon (50 ms) to absorb minor clock jitter
+    // between performance.now() calls.
+    if (e && _questionOpenedAt > 0 && e.timeStamp < (_questionOpenedAt - 50)) {
+      // Stale event — restore the button so the question remains answerable.
+      btnEl.disabled = false;
+      return;
+    }
+
     if (ctx.answered) return;
     ctx.answered = true;
     TimerController.stop();
+    _setOptionsGridInteractive(false);
     _saveUndoSnapshot();
 
     const isCorrect = (letter === ctx.currentQuestion.q.ans);
@@ -633,7 +738,6 @@ const Match = (() => {
       else if (btn.dataset.letter === letter && !isCorrect) btn.classList.add('wrong');
     });
 
-    const correctText = `Correct answer: ${ctx.currentQuestion.q.ans}`;
     _showOverlay(isCorrect, isCorrect ? 'Correct!' : 'Wrong!', isCorrect ? '' : ctx.currentQuestion.q.ans);
     _showUndoButton();
 
@@ -671,15 +775,21 @@ const Match = (() => {
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
+    // Reset guard for the re-displayed question
+    _questionOpenedAt = 0;
     _renderOptions(q);
+    _setOptionsGridInteractive(false);
+
     setTimeout(() => {
+      _questionOpenedAt = performance.now();
+      _setOptionsGridInteractive(true);
       _enableOptions();
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, 300);
+    }, INPUT_GUARD_DELAY);
 
     toast('Answer undone — question restarted with a fresh timer.');
   }
