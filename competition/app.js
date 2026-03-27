@@ -516,13 +516,13 @@ const Match = (() => {
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    // Render options but attach listeners after a short delay to prevent
-    // click bleed-through from the Ready screen's skip button / any prior interaction.
-    _renderOptions(q, true /* disabled initially */);
+    // Render options (disabled, no listeners yet).
+    // Listeners are attached only after a 300 ms delay so any lingering
+    // touch/click from the Ready screen cannot bleed through.
+    _renderOptions(q);
     _hideOverlay();
     showScreen('match');
 
-    // Small paint delay before enabling buttons and starting timer
     setTimeout(() => {
       _enableOptions();
       TimerController.start(
@@ -530,10 +530,10 @@ const Match = (() => {
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, 120);
+    }, 300);
   }
 
-  function _renderOptions(q, startDisabled) {
+  function _renderOptions(q) {
     const grid = document.getElementById('options-grid');
     grid.innerHTML = '';
     const letters = ['A','B','C','D'];
@@ -541,19 +541,26 @@ const Match = (() => {
       const btn = document.createElement('button');
       btn.className      = 'option-btn';
       btn.dataset.letter = letter;
-      btn.disabled       = startDisabled;
+      btn.disabled       = true;          // always start disabled; no listener yet
       btn.innerHTML = `
         <span class="option-letter">${letter}</span>
         <span class="option-text">${q.opts[i]}</span>
       `;
-      // listener assigned once; disabled flag controls interactivity
-      btn.addEventListener('click', () => handleOptionClick(letter, btn));
+      // NOTE: click listener is NOT added here.
+      // It is added only inside _enableOptions() after the delay,
+      // so a lingering press from a previous screen cannot fire it.
       grid.appendChild(btn);
     });
   }
 
   function _enableOptions() {
-    document.querySelectorAll('.option-btn').forEach(btn => { btn.disabled = false; });
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.disabled = false;
+      // Attach the listener now — safe because any prior touch/click
+      // has had at least 300 ms to fully release before we get here.
+      const letter = btn.dataset.letter;
+      btn.addEventListener('click', () => handleOptionClick(letter, btn), { once: true });
+    });
   }
 
   function _updateTimer(remaining, total) {
@@ -664,7 +671,7 @@ const Match = (() => {
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    _renderOptions(q, true);
+    _renderOptions(q);
     setTimeout(() => {
       _enableOptions();
       TimerController.start(
@@ -672,7 +679,7 @@ const Match = (() => {
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, 120);
+    }, 300);
 
     toast('Answer undone — question restarted with a fresh timer.');
   }
