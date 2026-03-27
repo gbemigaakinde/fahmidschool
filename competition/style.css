@@ -543,10 +543,17 @@ html, body {
   transition: background var(--transition), border-color var(--transition), transform var(--transition);
   text-align: left;
 }
-.option-btn:hover:not(:disabled) {
+@media (hover: hover) {
+  .option-btn:hover:not(:disabled) {
+    background: var(--teal-dim);
+    border-color: var(--teal);
+    transform: translateY(-1px);
+  }
+}
+
+.option-btn:focus-visible:not(:disabled) {
   background: var(--teal-dim);
   border-color: var(--teal);
-  transform: translateY(-1px);
 }
 .option-btn:disabled { cursor: default; }
 .option-btn.correct {
