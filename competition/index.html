@@ -3,60 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fahmid Nursery & Primary School – Inter-Class Mathematics Competition</title>
+  <title>Fahmid Nursery &amp; Primary School – Inter-Class Mathematics Competition</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../competition/style.css">
-
-  <!-- FIX-05: Undo button style; FIX-04: Skip break button style -->
-  <style>
-    /* ── UNDO BUTTON (FIX-05) ──────────────────────────────── */
-    #undo-answer-btn {
-      display: none;                 /* hidden by default; shown for 3 s after answer */
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 18px;
-      background: var(--gold);
-      color: var(--black);
-      font-family: var(--ff-display);
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.5px;
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      z-index: 30;
-      transition: background 0.2s, transform 0.15s;
-    }
-    #undo-answer-btn:hover  { background: #e0a830; transform: translateY(-1px); }
-    #undo-answer-btn:active { transform: translateY(0); }
-
-    /* ── SKIP BREAK BUTTON (FIX-04) ────────────────────────── */
-    #skip-break-btn {
-      margin-top: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 22px;
-      background: transparent;
-      color: var(--grey-lt);
-      font-family: var(--ff-body);
-      font-weight: 500;
-      font-size: 13px;
-      border: 1px solid var(--grey-md);
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: border-color 0.2s, color 0.2s;
-    }
-    #skip-break-btn:hover { border-color: var(--teal); color: var(--teal); }
-  </style>
 </head>
 <body>
+
+  <!-- ===================== SESSION RESTORE BANNER ===================== -->
+  <div id="restore-banner">
+    <span id="restore-message">Unfinished competition found. Resume where you left off?</span>
+    <div class="restore-btns">
+      <button id="restore-yes-btn" class="restore-yes"><i class="fas fa-rotate-right"></i> Resume</button>
+      <button id="restore-no-btn"  class="restore-no"><i class="fas fa-trash"></i> Discard</button>
+    </div>
+  </div>
 
   <!-- ===================== IDLE / PRE-EVENT SCREEN ===================== -->
   <div id="screen-idle" class="screen active">
@@ -65,6 +28,10 @@
       <div class="geo-ring r2"></div>
       <div class="geo-ring r3"></div>
       <div class="dots-grid"></div>
+      <div class="corner-accent tl"></div>
+      <div class="corner-accent tr"></div>
+      <div class="corner-accent bl"></div>
+      <div class="corner-accent br"></div>
     </div>
     <div class="idle-content">
       <div class="school-emblem">
@@ -113,7 +80,7 @@
       <div class="setup-body">
         <div class="setup-info-box">
           <i class="fas fa-circle-info"></i>
-          <p>Enter the names of each class representative. The <strong>Group Stage</strong> decides who represents each class. Fill in names below to begin.</p>
+          <p>Enter the names of each class representative. One boy and one girl compete per class in the <strong>Group Stage</strong> (5 questions each). Fill in all names below to begin.</p>
         </div>
 
         <div class="class-rows" id="class-rows">
@@ -140,10 +107,6 @@
         <!-- Bracket SVG inserted by JS -->
       </div>
       <div class="bracket-actions">
-        <!--
-          FIX-02: proceedFromBracket() now reads State.stage internally
-          and routes to the correct next step — no more per-match onclick overwrites.
-        -->
         <button class="btn-primary" id="bracket-proceed-btn" onclick="App.proceedFromBracket()">
           <i class="fas fa-chevron-right"></i> Proceed to Next Round
         </button>
@@ -151,13 +114,36 @@
     </div>
   </div>
 
+  <!-- ===================== READY / GET READY SCREEN ===================== -->
+  <!--
+    Shown for 10 seconds between players to give the next answerer
+    time to get settled before their question appears.
+    The facilitator can skip early with the button.
+  -->
+  <div id="screen-ready" class="screen">
+    <div class="ready-wrap">
+      <div class="ready-chip">
+        <i class="fas fa-bell"></i> NEXT UP
+      </div>
+      <div class="ready-name" id="ready-player-name">—</div>
+      <div class="ready-class" id="ready-player-class">—</div>
+      <div class="ready-instruction" id="ready-instruction">Get ready — your question is coming up!</div>
+      <div class="ready-q-info" id="ready-q-info" style="font-size:13px;color:var(--grey-lt);font-family:var(--ff-mono)"></div>
+      <div class="ready-countdown" id="ready-countdown">10</div>
+      <button class="btn-ghost btn-sm" onclick="ReadyScreen.skip()">
+        <i class="fas fa-forward"></i> Ready — Show Question
+      </button>
+    </div>
+  </div>
+
   <!-- ===================== MATCH SCREEN ===================== -->
   <div id="screen-match" class="screen">
     <div class="match-layout">
+
       <!-- Header bar -->
       <div class="match-topbar">
         <div class="match-stage-chip" id="match-stage-chip">GROUP STAGE · P1</div>
-        <div class="match-round-info" id="match-round-info">Round 1 of 5</div>
+        <div class="match-round-info" id="match-round-info">Turn 1 of 10</div>
         <div class="match-score-mini">
           <span id="score-left-mini">0</span>
           <span class="score-vs">–</span>
@@ -198,13 +184,16 @@
         <div class="timer-track">
           <div class="timer-fill" id="timer-fill"></div>
         </div>
-        <div class="timer-display" id="timer-display">40</div>
+        <div class="timer-display" id="timer-display">50</div>
         <div class="timer-label" id="timer-label">seconds remaining</div>
       </div>
 
       <!-- Question Box -->
       <div class="question-box" id="question-box">
-        <div class="question-whose" id="question-whose">Answering: <strong id="question-answerer">—</strong></div>
+        <div class="question-whose" id="question-whose">
+          <span class="question-whose-dot"></span>
+          Answering: <strong id="question-answerer">—</strong>
+        </div>
         <div class="question-text" id="question-text">Loading question…</div>
         <div class="options-grid" id="options-grid">
           <!-- Rendered by JS -->
@@ -215,13 +204,10 @@
       <div class="answer-overlay" id="answer-overlay">
         <div class="answer-icon" id="answer-icon"></div>
         <div class="answer-msg" id="answer-msg"></div>
+        <div class="answer-correct-text" id="answer-correct-text"></div>
       </div>
 
-      <!--
-        FIX-05: Undo button — visible for 3 seconds after any answer is recorded.
-        Allows the operator to correct accidental wrong clicks before the next
-        question loads. Managed entirely by Match.undoLastAnswer().
-      -->
+      <!-- Undo button — visible 5 seconds after any answer -->
       <button id="undo-answer-btn" onclick="Match.undoLastAnswer()">
         <i class="fas fa-rotate-left"></i> Undo Answer
       </button>
@@ -234,8 +220,12 @@
     <div class="tb-wrap">
       <div class="tb-header">
         <div class="tb-badge"><i class="fas fa-scale-balanced"></i> TIE BREAKER</div>
-        <p class="tb-instruction">Both competitors tied! Answer <strong>3 theoretical questions</strong> each correctly within 1 min 30 sec. First to answer all 3 correctly wins.</p>
+        <p class="tb-instruction">
+          Both competitors are tied! Each player gets <strong>90 seconds</strong> to answer
+          <strong>3 theory questions</strong>. Most correct wins.
+        </p>
       </div>
+
       <div class="tb-players">
         <div class="tb-player" id="tb-player-left">
           <div class="tb-player-name" id="tb-name-left">—</div>
@@ -255,18 +245,27 @@
           </div>
         </div>
       </div>
-      <div class="timer-section">
-        <div class="timer-track">
-          <div class="timer-fill" id="tb-timer-fill"></div>
+
+      <!-- Timer block for current player's 90-second window -->
+      <div class="tb-timer-block">
+        <div>
+          <div class="tb-timer-label">TIME REMAINING</div>
+          <div class="tb-timer-display" id="tb-timer-display">90</div>
         </div>
-        <div class="timer-display" id="tb-timer-display">90</div>
+        <div class="tb-timer-track">
+          <div class="tb-timer-fill" id="tb-timer-fill"></div>
+        </div>
       </div>
+
       <div class="tb-question-area">
-        <div class="tb-whose" id="tb-whose">Question for: <strong id="tb-answerer">—</strong></div>
+        <div class="tb-whose">Now answering: <strong id="tb-answerer">—</strong></div>
+        <div class="tb-q-number" id="tb-q-number">Question 1 of 3</div>
         <div class="tb-question" id="tb-question-text">—</div>
         <div class="tb-input-row">
-          <input type="text" id="tb-answer-input" class="tb-input" placeholder="Type answer…" autocomplete="off">
-          <button class="btn-primary" onclick="App.submitTBAnswer()"><i class="fas fa-paper-plane"></i> Submit</button>
+          <input type="text" id="tb-answer-input" class="tb-input" placeholder="Type your answer…" autocomplete="off">
+          <button class="btn-primary" onclick="App.submitTBAnswer()">
+            <i class="fas fa-paper-plane"></i> Submit
+          </button>
         </div>
         <div class="tb-result" id="tb-result"></div>
       </div>
@@ -287,11 +286,6 @@
       <div class="break-progress-track">
         <div class="break-progress-fill" id="break-progress-fill"></div>
       </div>
-      <!--
-        FIX-04: Skip Break button — lets the operator end the break early
-        if the audience is ready. Styled as a ghost button so it is clearly
-        secondary/operator-only.
-      -->
       <button id="skip-break-btn" onclick="BreakCtrl.skip()">
         <i class="fas fa-forward-step"></i> Skip Break
       </button>
@@ -319,12 +313,8 @@
           <div class="rsc-score" id="rsc-score-right">0</div>
         </div>
       </div>
-      <!--
-        FIX-02: onclick calls App.advanceAfterResult() which reads
-        State._nextCallback — no more per-match onclick rewrites.
-      -->
       <button class="btn-primary result-next-btn" id="result-next-btn" onclick="App.advanceAfterResult()">
-        <i class="fas fa-arrow-right"></i> <span id="result-next-label">Continue</span>
+        <i class="fas fa-arrow-right"></i> Continue
       </button>
     </div>
   </div>
