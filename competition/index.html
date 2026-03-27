@@ -9,6 +9,52 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../competition/style.css">
+
+  <!-- FIX-05: Undo button style; FIX-04: Skip break button style -->
+  <style>
+    /* ── UNDO BUTTON (FIX-05) ──────────────────────────────── */
+    #undo-answer-btn {
+      display: none;                 /* hidden by default; shown for 3 s after answer */
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      background: var(--gold);
+      color: var(--black);
+      font-family: var(--ff-display);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      z-index: 30;
+      transition: background 0.2s, transform 0.15s;
+    }
+    #undo-answer-btn:hover  { background: #e0a830; transform: translateY(-1px); }
+    #undo-answer-btn:active { transform: translateY(0); }
+
+    /* ── SKIP BREAK BUTTON (FIX-04) ────────────────────────── */
+    #skip-break-btn {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 22px;
+      background: transparent;
+      color: var(--grey-lt);
+      font-family: var(--ff-body);
+      font-weight: 500;
+      font-size: 13px;
+      border: 1px solid var(--grey-md);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #skip-break-btn:hover { border-color: var(--teal); color: var(--teal); }
+  </style>
 </head>
 <body>
 
@@ -94,6 +140,10 @@
         <!-- Bracket SVG inserted by JS -->
       </div>
       <div class="bracket-actions">
+        <!--
+          FIX-02: proceedFromBracket() now reads State.stage internally
+          and routes to the correct next step — no more per-match onclick overwrites.
+        -->
         <button class="btn-primary" id="bracket-proceed-btn" onclick="App.proceedFromBracket()">
           <i class="fas fa-chevron-right"></i> Proceed to Next Round
         </button>
@@ -167,6 +217,15 @@
         <div class="answer-msg" id="answer-msg"></div>
       </div>
 
+      <!--
+        FIX-05: Undo button — visible for 3 seconds after any answer is recorded.
+        Allows the operator to correct accidental wrong clicks before the next
+        question loads. Managed entirely by Match.undoLastAnswer().
+      -->
+      <button id="undo-answer-btn" onclick="Match.undoLastAnswer()">
+        <i class="fas fa-rotate-left"></i> Undo Answer
+      </button>
+
     </div>
   </div>
 
@@ -228,6 +287,14 @@
       <div class="break-progress-track">
         <div class="break-progress-fill" id="break-progress-fill"></div>
       </div>
+      <!--
+        FIX-04: Skip Break button — lets the operator end the break early
+        if the audience is ready. Styled as a ghost button so it is clearly
+        secondary/operator-only.
+      -->
+      <button id="skip-break-btn" onclick="BreakCtrl.skip()">
+        <i class="fas fa-forward-step"></i> Skip Break
+      </button>
     </div>
   </div>
 
@@ -252,6 +319,10 @@
           <div class="rsc-score" id="rsc-score-right">0</div>
         </div>
       </div>
+      <!--
+        FIX-02: onclick calls App.advanceAfterResult() which reads
+        State._nextCallback — no more per-match onclick rewrites.
+      -->
       <button class="btn-primary result-next-btn" id="result-next-btn" onclick="App.advanceAfterResult()">
         <i class="fas fa-arrow-right"></i> <span id="result-next-label">Continue</span>
       </button>
