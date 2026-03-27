@@ -46,7 +46,7 @@ window.QUESTIONS = {
       { id:"p1m018", q:"Kola has 40 naira. He spends 15 naira on food. How much money is left?", opts:["23","24","25","26"], ans:"C" },
       { id:"p1m019", q:"How many sides do THREE triangles have in total?", opts:["6","7","8","9"], ans:"D" },
       { id:"p1m020", q:"A vendor buys pens at ₦6 each. He buys 5 pens. How much does he spend?", opts:["28","29","30","31"], ans:"C" },
-      { id:"p1m021", q:"Which odd numbers add up to exactly 20? (Among: 5, 7, 9, 11)", opts:["5+11","7+9","9+11","5+9"], ans:"B" },
+      { id:"p1m021", q:"Which odd numbers add up to exactly 20? (Among: 5, 7, 9, 11)", opts:["5+11","7+9","9+11","5+9"], ans:"C" },
       { id:"p1m022", q:"Subtract: 45 − (10 + 12) = ?", opts:["20","22","23","24"], ans:"C" },
       { id:"p1m023", q:"A girl counts: 2, 4, 6, 8, 10, 12, ___. What is the next number?", opts:["13","14","15","16"], ans:"B" },
       { id:"p1m024", q:"Three friends share ₦30 equally. How much does each friend get?", opts:["9","10","11","12"], ans:"B" },
