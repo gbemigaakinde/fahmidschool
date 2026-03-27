@@ -16,13 +16,6 @@ const STAGE = {
   CHAMPION:    'CHAMPION',
 };
 
-/*
-  ROUNDS: Each player answers N questions = 2N total questions per match.
-  GROUP   → 5 questions each = 10 total
-  QUARTER → 5 questions each = 10 total
-  SEMI    → 7 questions each = 14 total
-  FINAL   → 10 questions each = 20 total
-*/
 const QUESTIONS_PER_PLAYER = {
   GROUP:   5,
   QUARTER: 5,
@@ -31,57 +24,79 @@ const QUESTIONS_PER_PLAYER = {
 };
 
 const TIMER = {
-  MCQ:              50,   // 50s per question (10s buffer for facilitator to read)
-  THEORY_PER_PLAYER: 90, // 90s per player for ALL their tie-breaker questions
-  BREAK_SEMI:       3 * 60,
-  BREAK_FINAL:      2 * 60,
-  READY_COUNTDOWN:  10,  // seconds on "get ready" screen between players
-  UNDO_WINDOW:      5,   // seconds undo button stays visible
-  RESULT_DISPLAY:   2500 // ms overlay stays before auto-advancing (not between players)
+  MCQ:               50,
+  THEORY_PER_PLAYER: 90,
+  BREAK_SEMI:        3 * 60,
+  BREAK_FINAL:       2 * 60,
+  READY_COUNTDOWN:   10,
+  UNDO_WINDOW:       5,
+  RESULT_DISPLAY:    2500,
 };
 
 const CLASS_LABELS = ['P1','P2','P3','P4','P5'];
 const CLASS_FULL   = ['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5'];
 const STORAGE_KEY  = 'fahmid_competition_state';
 
-/*
-  INPUT_GUARD_DELAY:
-  The minimum number of milliseconds that must have elapsed between
-  the moment the options become interactive and a click/touch being
-  accepted as intentional.
+/* ─────────────────────────────────────────────────────────────
+   GHOST-CLICK SHIELD
+   ─────────────────────────────────────────────────────────────
+   Root cause:
+     On mobile every tap fires:  touchstart → touchend → click
+     The final synthetic "click" is queued by the browser and
+     dispatched asynchronously — AFTER the current JS callstack
+     finishes. When a tap on one screen causes a screen transition
+     (e.g. tapping "Skip" on the Ready screen, or choosing an option
+     on a previous question), the new screen's buttons are already
+     in the DOM and hit-testable by the time that queued click fires.
+     The click lands on whichever new button is at the same screen
+     coordinates as the element that was originally tapped, making
+     it look like an option was auto-selected.
 
-  Problem this solves:
-  ─────────────────────────────────────────────────────────────
-  On mobile browsers a "tap" produces the event sequence:
-    touchstart → touchend → (300 ms delay) → click  (legacy browsers)
-  OR immediately:
-    touchstart → touchend → click                    (modern browsers)
+     e.timeStamp does NOT reliably distinguish these ghost clicks:
+     modern mobile browsers stamp the synthetic click with the time
+     it is *dispatched* (already on the new screen), not the time
+     the finger originally touched down.
 
-  When the facilitator taps the "Ready — Show Question" button (or
-  the skip button on the Ready screen), that synthetic `click` event
-  is still in-flight as the Match screen slides in. If any option
-  button happens to sit under the same screen coordinates as the
-  skip button, the queued click lands on the option and auto-selects
-  it — even though we disable buttons until after a setTimeout.
+   Fix — capture-phase swallow listener:
+     A single listener is registered on `document` in the CAPTURE
+     phase (runs before any element's own listener). While the shield
+     is active it intercepts every "click" and "touchstart" whose
+     target is an .option-btn and calls stopPropagation() +
+     preventDefault(), consuming the event before any button handler
+     can see it.
 
-  The setTimeout trick alone is NOT reliable because:
-    1. setTimeout(fn, 300) fires *roughly* 300 ms later; the queued
-       click can arrive at ~50–200 ms on fast devices.
-    2. Even with buttons disabled, the browser may re-enable them
-       during the same task microtask queue drain before the click
-       fires, depending on the JS engine.
+     The shield is:
+       • Raised  (activate)   just before showScreen('match'), so it
+                              is in place the moment buttons appear.
+       • Lowered (deactivate) inside setTimeout after INPUT_GUARD_MS,
+                              immediately before listeners are attached.
 
-  The correct fix is to record a high-resolution timestamp at the
-  moment we intentionally enable the options (questionOpenedAt), and
-  then in the click handler reject any event whose timeStamp is
-  earlier than that value — meaning the click was initiated before
-  this question existed.
+     500 ms is more than enough for any queued ghost click to have
+     fired and been swallowed. After that window the shield is gone
+     and real taps work normally.
+───────────────────────────────────────────────────────────── */
+const INPUT_GUARD_MS = 500;
 
-  We also keep the setTimeout delay (now 400 ms instead of 300 ms)
-  as an additional layer of protection.
-  ─────────────────────────────────────────────────────────────
-*/
-const INPUT_GUARD_DELAY = 400; // ms — must match or exceed setTimeout below
+const GhostClickShield = (() => {
+  let _active = false;
+
+  function _swallow(e) {
+    if (!_active) return;
+    if (e.target && e.target.closest && e.target.closest('.option-btn')) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }
+
+  // Installed once, permanently, in capture phase so it always runs first.
+  document.addEventListener('click',      _swallow, true);
+  document.addEventListener('touchstart', _swallow, { capture: true, passive: false });
+
+  return {
+    activate()   { _active = true;  },
+    deactivate() { _active = false; },
+  };
+})();
 
 /* ─────────────────────────────────────────────────────────────
    QUESTION ENGINE
@@ -174,16 +189,16 @@ const Persist = (() => {
   function save() {
     try {
       const snapshot = {
-        stage:            State.stage,
-        contestants:      State.contestants,
-        groupReps:        State.groupReps,
-        quarterResults:   State.quarterResults,
-        semiWinner:       State.semiWinner,
-        finalWinner:      State.finalWinner,
+        stage:             State.stage,
+        contestants:       State.contestants,
+        groupReps:         State.groupReps,
+        quarterResults:    State.quarterResults,
+        semiWinner:        State.semiWinner,
+        finalWinner:       State.finalWinner,
         currentGroupClass: State.currentGroupClass,
-        matchScores:      State.matchScores,
-        usedQuestions:    QuestionEngine.getUsed(),
-        savedAt:          Date.now(),
+        matchScores:       State.matchScores,
+        usedQuestions:     QuestionEngine.getUsed(),
+        savedAt:           Date.now(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
     } catch (e) {
@@ -213,21 +228,15 @@ const Persist = (() => {
 ───────────────────────────────────────────────────────────── */
 const State = {
   stage: STAGE.IDLE,
-
   contestants:    [],
   groupReps:      [],
-
-  match: null,
-
+  match:          null,
   quarterResults: [],
   semiWinner:     null,
   finalWinner:    null,
-
   currentGroupClass: 0,
-
-  _nextCallback: null,
-
-  matchScores: {},
+  _nextCallback:  null,
+  matchScores:    {},
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -305,9 +314,7 @@ function buildSetupForm() {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   READY SCREEN — shown between players to signal the next
-   player to get ready before their question appears.
-   countdown: 10 seconds, then calls onDone.
+   READY SCREEN
 ───────────────────────────────────────────────────────────── */
 const ReadyScreen = (() => {
   let _interval = null;
@@ -317,8 +324,8 @@ const ReadyScreen = (() => {
     _onDone = onDone;
     if (_interval) clearInterval(_interval);
 
-    document.getElementById('ready-player-name').textContent   = player.name;
-    document.getElementById('ready-player-class').textContent  = player.classLabel;
+    document.getElementById('ready-player-name').textContent  = player.name;
+    document.getElementById('ready-player-class').textContent = player.classLabel;
     document.getElementById('ready-q-info').textContent =
       `Question ${questionNumber} of ${totalQuestions}`;
     document.getElementById('ready-instruction').textContent =
@@ -370,10 +377,10 @@ function renderBracket() {
     { col: 0, y: 365, name: reps[4] ? reps[4].name : '—', cls: 'P5 (Auto)', winner: false, auto: true },
   ];
 
-  const sf1  = { col: 1, y: 95,  name: qr[0] ? qr[0].name : '—', cls: qr[0] ? qr[0].classLabel : '—', winner: sw && sw.name === (qr[0]||{}).name };
-  const sf2  = { col: 1, y: 260, name: qr[1] ? qr[1].name : '—', cls: qr[1] ? qr[1].classLabel : '—', winner: sw && sw.name === (qr[1]||{}).name };
-  const fn1  = { col: 2, y: 178, name: sw  ? sw.name  : '—', cls: sw  ? sw.classLabel  : '—', winner: fw && fw.name === (sw||{}).name };
-  const fn2  = { col: 2, y: 330, name: reps[4] ? reps[4].name : '—', cls: 'P5', winner: fw && fw.name === (reps[4]||{}).name };
+  const sf1   = { col: 1, y: 95,  name: qr[0] ? qr[0].name : '—', cls: qr[0] ? qr[0].classLabel : '—', winner: sw && sw.name === (qr[0]||{}).name };
+  const sf2   = { col: 1, y: 260, name: qr[1] ? qr[1].name : '—', cls: qr[1] ? qr[1].classLabel : '—', winner: sw && sw.name === (qr[1]||{}).name };
+  const fn1   = { col: 2, y: 178, name: sw  ? sw.name  : '—', cls: sw  ? sw.classLabel  : '—', winner: fw && fw.name === (sw||{}).name };
+  const fn2   = { col: 2, y: 330, name: reps[4] ? reps[4].name : '—', cls: 'P5', winner: fw && fw.name === (reps[4]||{}).name };
   const champ = { col: 3, y: 254, name: fw ? fw.name : '—', cls: fw ? fw.classLabel : '—' };
 
   function truncate(s) { return s.length > 18 ? s.slice(0,16)+'…' : s; }
@@ -448,85 +455,43 @@ function renderBracket() {
 
 /* ─────────────────────────────────────────────────────────────
    MATCH CONTROLLER
-
-   Auto-click bug — root cause & fix:
-   ──────────────────────────────────
-   On mobile, tapping the "Ready — Show Question" skip button
-   produces a synthetic `click` event that the browser queues and
-   dispatches *after* the JS callstack clears. By the time the
-   Match screen is visible and the options are enabled (via
-   setTimeout), that queued click can land on whichever option
-   button happens to sit under the same screen coordinates as the
-   button that was just tapped — auto-selecting an answer.
-
-   The fix uses a two-layer guard:
-
-   1. _questionOpenedAt  (high-resolution timestamp, ms)
-      Recorded inside the setTimeout callback, immediately before
-      we call _enableOptions(). Any click/touch event whose
-      `timeStamp` (the time the event was originally dispatched,
-      relative to the page's time origin) is *earlier* than this
-      value was initiated before this question existed and is
-      unconditionally rejected in handleOptionClick().
-
-   2. INPUT_GUARD_DELAY  (400 ms setTimeout, up from 300 ms)
-      Kept as a belt-and-suspenders measure. On some browsers the
-      event timeStamp is relative to a different epoch, so the
-      timestamp comparison alone is not 100% cross-browser safe.
-      The setTimeout ensures buttons are disabled for at least
-      400 ms regardless.
-
-   Together these two layers make it impossible for any touch/click
-   that predates the current question to register as an answer.
 ───────────────────────────────────────────────────────────── */
 const Match = (() => {
   let ctx           = null;
   let _undoSnapshot = null;
   let _undoTimeout  = null;
 
-  // Timestamp (performance.now() based) recorded when options become
-  // interactive. Any click event with an earlier timeStamp is rejected.
-  let _questionOpenedAt = 0;
-
   function start(config) {
     ctx = {
-      left:              config.left,
-      right:             config.right,
+      left:               config.left,
+      right:              config.right,
       questionsPerPlayer: config.questionsPerPlayer,
-      stageLabel:        config.stageLabel,
-      scoreKey:          config.scoreKey || null,
-      onComplete:        config.onComplete,
-      scoreLeft:         0,
-      scoreRight:        0,
-      /*
-        roundIdx: counts 0-based from 0 to (2*questionsPerPlayer - 1)
-        Even roundIdx → Left player answers
-        Odd  roundIdx → Right player answers
-        questionNumber for each player = Math.floor(roundIdx / 2) + 1
-      */
-      roundIdx:          0,
-      currentQuestion:   null,
-      answered:          false,
-      _advanceTimeout:   null,
+      stageLabel:         config.stageLabel,
+      scoreKey:           config.scoreKey || null,
+      onComplete:         config.onComplete,
+      scoreLeft:          0,
+      scoreRight:         0,
+      roundIdx:           0,
+      currentQuestion:    null,
+      answered:           false,
+      _advanceTimeout:    null,
     };
-    _questionOpenedAt = 0;
     showScreen('match');
     _renderHeader();
     _doNextRound();
   }
 
   function _totalRounds() { return ctx.questionsPerPlayer * 2; }
-
   function _sideForRound(idx) { return idx % 2 === 0 ? 'left' : 'right'; }
 
   function _renderHeader() {
-    document.getElementById('match-stage-chip').textContent  = ctx.stageLabel;
-    document.getElementById('player-name-left').textContent  = ctx.left.name;
-    document.getElementById('player-name-right').textContent = ctx.right.name;
+    document.getElementById('match-stage-chip').textContent   = ctx.stageLabel;
+    document.getElementById('player-name-left').textContent   = ctx.left.name;
+    document.getElementById('player-name-right').textContent  = ctx.right.name;
     document.getElementById('player-class-left').textContent  = ctx.left.classLabel;
     document.getElementById('player-class-right').textContent = ctx.right.classLabel;
-    document.getElementById('player-role-left').textContent  = ctx.left.role || '';
-    document.getElementById('player-role-right').textContent = ctx.right.role || '';
+    document.getElementById('player-role-left').textContent   = ctx.left.role || '';
+    document.getElementById('player-role-right').textContent  = ctx.right.role || '';
     _updateScores();
   }
 
@@ -542,12 +507,10 @@ const Match = (() => {
       _conclude();
       return;
     }
+    const side        = _sideForRound(ctx.roundIdx);
+    const player      = side === 'left' ? ctx.left : ctx.right;
+    const questionNum = Math.floor(ctx.roundIdx / 2) + 1;
 
-    const side         = _sideForRound(ctx.roundIdx);
-    const player       = side === 'left' ? ctx.left : ctx.right;
-    const questionNum  = Math.floor(ctx.roundIdx / 2) + 1; // 1-based per player
-
-    // Show the "get ready" screen before every question
     ReadyScreen.show(
       player,
       questionNum,
@@ -563,13 +526,10 @@ const Match = (() => {
     _undoSnapshot = null;
     _hideUndoButton();
 
-    // Reset the guard so no stale timestamp can accidentally pass
-    _questionOpenedAt = 0;
-
-    const totalQ    = _totalRounds();
+    const totalQ       = _totalRounds();
     const displayRound = ctx.roundIdx + 1;
     document.getElementById('match-round-info').textContent = `Turn ${displayRound} of ${totalQ}`;
-    document.getElementById('q-counter').textContent = `Q ${questionNum}/${ctx.questionsPerPlayer}`;
+    document.getElementById('q-counter').textContent        = `Q ${questionNum}/${ctx.questionsPerPlayer}`;
 
     document.getElementById('player-card-left').classList.toggle('active-answerer',  side === 'left');
     document.getElementById('player-card-right').classList.toggle('active-answerer', side === 'right');
@@ -577,39 +537,25 @@ const Match = (() => {
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    // Render options (disabled, no listeners yet).
-    // The options grid is also made non-interactive at the CSS level
-    // during the guard window as an extra safety net.
+    // Build disabled buttons with no listeners yet.
+    // Shield goes up BEFORE showScreen so it is active the instant
+    // the match screen (and its option buttons) become visible.
     _renderOptions(q);
-    _setOptionsGridInteractive(false);
     _hideOverlay();
+    GhostClickShield.activate();
     showScreen('match');
 
-    // FIX: Use INPUT_GUARD_DELAY (400 ms) instead of the previous 300 ms.
-    // More importantly, record _questionOpenedAt at the moment we enable
-    // options so we can compare against incoming event timestamps.
+    // After INPUT_GUARD_MS the ghost-click window has passed.
+    // Drop the shield and wire up real click listeners.
     setTimeout(() => {
-      // Record the wall-clock time (relative to page load) at which this
-      // question becomes interactive. performance.now() is the same epoch
-      // used by browser event timeStamps, making the comparison reliable.
-      _questionOpenedAt = performance.now();
-
-      _setOptionsGridInteractive(true);
+      GhostClickShield.deactivate();
       _enableOptions();
-
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, INPUT_GUARD_DELAY);
-  }
-
-  // Toggle pointer-events on the entire options grid so that even if a
-  // button somehow gets re-enabled early, touches cannot reach it.
-  function _setOptionsGridInteractive(enabled) {
-    const grid = document.getElementById('options-grid');
-    if (grid) grid.style.pointerEvents = enabled ? '' : 'none';
+    }, INPUT_GUARD_MS);
   }
 
   function _renderOptions(q) {
@@ -620,13 +566,12 @@ const Match = (() => {
       const btn = document.createElement('button');
       btn.className      = 'option-btn';
       btn.dataset.letter = letter;
-      btn.disabled       = true; // always start disabled; listener added later
+      btn.disabled       = true; // also disabled; shield is primary guard
       btn.innerHTML = `
         <span class="option-letter">${letter}</span>
         <span class="option-text">${q.opts[i]}</span>
       `;
-      // NOTE: click listener is NOT added here.
-      // It is added only inside _enableOptions() after the delay.
+      // No click listener here — added only in _enableOptions().
       grid.appendChild(btn);
     });
   }
@@ -635,13 +580,7 @@ const Match = (() => {
     document.querySelectorAll('.option-btn').forEach(btn => {
       btn.disabled = false;
       const letter = btn.dataset.letter;
-      // Attach listener now — safe because:
-      //   a) At least INPUT_GUARD_DELAY ms have passed since the screen
-      //      transitioned, so any touch from the previous screen has
-      //      fully settled.
-      //   b) handleOptionClick will additionally check the event's
-      //      timeStamp against _questionOpenedAt and reject stale events.
-      btn.addEventListener('click', (e) => handleOptionClick(letter, btn, e), { once: true });
+      btn.addEventListener('click', () => handleOptionClick(letter, btn), { once: true });
     });
   }
 
@@ -659,7 +598,6 @@ const Match = (() => {
   function _handleTimeout() {
     if (ctx.answered) return;
     ctx.answered = true;
-    _setOptionsGridInteractive(false);
     _disableOptions();
     _showCorrectAnswer();
     _showOverlay(false, 'Time Up!', ctx.currentQuestion.q.ans);
@@ -696,32 +634,10 @@ const Match = (() => {
     if (_undoTimeout) { clearTimeout(_undoTimeout); _undoTimeout = null; }
   }
 
-  // FIX: Accept the MouseEvent/TouchEvent `e` so we can inspect its
-  // timeStamp and reject events that originated before this question.
-  function handleOptionClick(letter, btnEl, e) {
-    // ── GHOST-CLICK GUARD ──────────────────────────────────────────
-    // e.timeStamp is the number of milliseconds since the page's time
-    // origin (performance.timeOrigin) at which the event was *created*
-    // by the browser — NOT when our handler runs. This means it reflects
-    // when the user's finger actually touched the screen.
-    //
-    // If that moment is earlier than _questionOpenedAt (the time we
-    // recorded when enabling the options), the tap happened before this
-    // question was interactive and must have been intended for a
-    // previous screen element. We discard it entirely.
-    //
-    // We add a small epsilon (50 ms) to absorb minor clock jitter
-    // between performance.now() calls.
-    if (e && _questionOpenedAt > 0 && e.timeStamp < (_questionOpenedAt - 50)) {
-      // Stale event — restore the button so the question remains answerable.
-      btnEl.disabled = false;
-      return;
-    }
-
+  function handleOptionClick(letter, btnEl) {
     if (ctx.answered) return;
     ctx.answered = true;
     TimerController.stop();
-    _setOptionsGridInteractive(false);
     _saveUndoSnapshot();
 
     const isCorrect = (letter === ctx.currentQuestion.q.ans);
@@ -735,7 +651,7 @@ const Match = (() => {
     document.querySelectorAll('.option-btn').forEach(btn => {
       btn.disabled = true;
       if (btn.dataset.letter === ctx.currentQuestion.q.ans) btn.classList.add('correct');
-      else if (btn.dataset.letter === letter && !isCorrect) btn.classList.add('wrong');
+      else if (btn.dataset.letter === letter && !isCorrect)  btn.classList.add('wrong');
     });
 
     _showOverlay(isCorrect, isCorrect ? 'Correct!' : 'Wrong!', isCorrect ? '' : ctx.currentQuestion.q.ans);
@@ -762,34 +678,29 @@ const Match = (() => {
     ctx.currentQuestion = _undoSnapshot.question;
     ctx.answered        = false;
     _undoSnapshot       = null;
-
     _updateScores();
 
-    const q    = ctx.currentQuestion.q;
-    const side = ctx.currentQuestion.side;
-    const player = side === 'left' ? ctx.left : ctx.right;
-    const questionNum = Math.floor(ctx.roundIdx / 2) + 1;
+    const q           = ctx.currentQuestion.q;
+    const side        = ctx.currentQuestion.side;
+    const player      = side === 'left' ? ctx.left : ctx.right;
 
     document.getElementById('player-card-left').classList.toggle('active-answerer',  side === 'left');
     document.getElementById('player-card-right').classList.toggle('active-answerer', side === 'right');
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    // Reset guard for the re-displayed question
-    _questionOpenedAt = 0;
     _renderOptions(q);
-    _setOptionsGridInteractive(false);
+    GhostClickShield.activate();
 
     setTimeout(() => {
-      _questionOpenedAt = performance.now();
-      _setOptionsGridInteractive(true);
+      GhostClickShield.deactivate();
       _enableOptions();
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
         () => _handleTimeout()
       );
-    }, INPUT_GUARD_DELAY);
+    }, INPUT_GUARD_MS);
 
     toast('Answer undone — question restarted with a fresh timer.');
   }
@@ -829,7 +740,7 @@ const Match = (() => {
         right:      ctx.right,
         stageLabel: ctx.stageLabel,
         scoreKey:   ctx.scoreKey,
-        onWinner: (winner) => _showResult(winner),
+        onWinner:   (winner) => _showResult(winner),
       });
       return;
     }
@@ -860,7 +771,6 @@ const Match = (() => {
 
     spawnConfetti('result-confetti', 40);
     showScreen('result');
-
     State._nextCallback = () => ctx.onComplete(winner);
   }
 
@@ -869,34 +779,24 @@ const Match = (() => {
 
 /* ─────────────────────────────────────────────────────────────
    TIE-BREAKER CONTROLLER
-
-   Each player gets 90 seconds to answer ALL 3 of their theory
-   questions (not 90s per question). The timer runs continuously
-   while the player works through their 3 questions one by one.
-   After the 90s runs out, any unanswered questions are marked fail.
-
-   Flow:
-     1. Left player's block: start 90s timer, show Q1→Q2→Q3 in sequence
-     2. Right player's block: start fresh 90s timer, show Q1→Q2→Q3
-     3. Decide winner.
 ───────────────────────────────────────────────────────────── */
 const TieBreaker = (() => {
   let ctx = null;
 
   function start(config) {
     ctx = {
-      left:          config.left,
-      right:         config.right,
-      onWinner:      config.onWinner,
-      scoreKey:      config.scoreKey || null,
-      progressLeft:  [null, null, null],
-      progressRight: [null, null, null],
+      left:           config.left,
+      right:          config.right,
+      onWinner:       config.onWinner,
+      scoreKey:       config.scoreKey || null,
+      progressLeft:   [null, null, null],
+      progressRight:  [null, null, null],
       questionsLeft:  [],
       questionsRight: [],
-      currentSide:   'left',
-      currentQIdx:   0,    // index within current player's 3 questions
-      answered:      false,
-      timerTotal:    TIMER.THEORY_PER_PLAYER,
+      currentSide:    'left',
+      currentQIdx:    0,
+      answered:       false,
+      timerTotal:     TIMER.THEORY_PER_PLAYER,
     };
 
     for (let i = 0; i < 3; i++) {
@@ -932,8 +832,6 @@ const TieBreaker = (() => {
         }
       });
     });
-
-    // Highlight active player card
     document.getElementById('tb-player-left').classList.toggle('active-tb',  ctx.currentSide === 'left');
     document.getElementById('tb-player-right').classList.toggle('active-tb', ctx.currentSide === 'right');
   }
@@ -944,7 +842,6 @@ const TieBreaker = (() => {
     ctx.answered     = false;
     _updateChecks();
 
-    // Show ready screen before each player's block
     const player = side === 'left' ? ctx.left : ctx.right;
     ReadyScreen.show(
       player, 1, 3,
@@ -963,8 +860,8 @@ const TieBreaker = (() => {
       (rem, tot) => {
         const pct = (rem / tot) * 100;
         document.getElementById('tb-timer-fill').style.width    = pct + '%';
-        document.getElementById('tb-timer-fill').className      = 'tb-timer-fill' +
-          (pct <= 25 ? ' danger' : pct <= 50 ? ' warn' : '');
+        document.getElementById('tb-timer-fill').className      =
+          'tb-timer-fill' + (pct <= 25 ? ' danger' : pct <= 50 ? ' warn' : '');
         document.getElementById('tb-timer-display').textContent = rem;
       },
       () => _onPlayerTimerEnd()
@@ -972,7 +869,6 @@ const TieBreaker = (() => {
   }
 
   function _onPlayerTimerEnd() {
-    // Time ran out — mark all remaining questions as fail
     const progress = ctx.currentSide === 'left' ? ctx.progressLeft : ctx.progressRight;
     for (let i = ctx.currentQIdx; i < 3; i++) {
       if (progress[i] === null) progress[i] = 'fail';
@@ -980,7 +876,6 @@ const TieBreaker = (() => {
     _updateChecks();
     document.getElementById('tb-result').textContent = 'Time Up!';
     document.getElementById('tb-result').className   = 'tb-result fail';
-
     setTimeout(() => _endPlayerBlock(), 2000);
   }
 
@@ -998,7 +893,6 @@ const TieBreaker = (() => {
     document.getElementById('tb-q-number').textContent      = `Question ${ctx.currentQIdx + 1} of 3`;
     document.getElementById('tb-question-text').textContent = q.q;
 
-    // Focus after slight delay to avoid bleed-through events
     setTimeout(() => {
       const inp = document.getElementById('tb-answer-input');
       if (inp) inp.focus();
@@ -1014,7 +908,7 @@ const TieBreaker = (() => {
     ctx.answered = true;
     const questions = ctx.currentSide === 'left' ? ctx.questionsLeft : ctx.questionsRight;
     const progress  = ctx.currentSide === 'left' ? ctx.progressLeft  : ctx.progressRight;
-    const q = questions[ctx.currentQIdx];
+    const q       = questions[ctx.currentQIdx];
     const correct = _checkAnswer(val, q.ans);
 
     progress[ctx.currentQIdx] = correct ? 'pass' : 'fail';
@@ -1029,13 +923,10 @@ const TieBreaker = (() => {
       res.className   = 'tb-result fail';
     }
 
-    // Check if all 3 done for this player
     ctx.currentQIdx++;
     if (ctx.currentQIdx >= 3) {
-      // All questions done — wait then end block
       setTimeout(() => _endPlayerBlock(), 2000);
     } else {
-      // Move to next question after brief pause
       setTimeout(() => _showTBQuestion(), 2000);
     }
   }
@@ -1043,10 +934,8 @@ const TieBreaker = (() => {
   function _endPlayerBlock() {
     TimerController.stop();
     if (ctx.currentSide === 'left') {
-      // Now do right player
       _startPlayerBlock('right');
     } else {
-      // Both done — decide
       const lPass = ctx.progressLeft.filter(x  => x === 'pass').length;
       const rPass = ctx.progressRight.filter(x => x === 'pass').length;
       _decide(lPass, rPass);
@@ -1081,7 +970,6 @@ const TieBreaker = (() => {
 
     const u = norm(userAns);
     const c = norm(correctAns);
-
     if (u === c) return true;
 
     const uStripped = stripUnits(u).replace(/[^0-9.\s-]/g, '').trim();
@@ -1190,7 +1078,6 @@ const App = {
     State.stage = STAGE.GROUP;
     QuestionEngine.reset();
     Persist.save();
-
     this._runGroupMatch(0);
   },
 
@@ -1352,19 +1239,15 @@ const App = {
     toast('Competition reset. Ready for a new session!');
   },
 
-  /* ── SESSION RESTORE ──────────────────────────────────────
-     Called on DOMContentLoaded. Checks if a saved session exists
-     and shows the restore banner if so.
-  ────────────────────────────────────────────────────────── */
   checkRestore() {
     const saved = Persist.load();
     if (!saved || !saved.stage || saved.stage === STAGE.IDLE) return;
-    if (saved.stage === STAGE.CHAMPION) return; // don't restore a finished competition
+    if (saved.stage === STAGE.CHAMPION) return;
 
     const banner = document.getElementById('restore-banner');
     if (!banner) return;
 
-    const mins = Math.round((Date.now() - (saved.savedAt || 0)) / 60000);
+    const mins    = Math.round((Date.now() - (saved.savedAt || 0)) / 60000);
     const timeStr = mins < 2 ? 'just now' : `${mins} minutes ago`;
     document.getElementById('restore-message').textContent =
       `Unfinished competition found (saved ${timeStr}). Resume where you left off?`;
@@ -1393,10 +1276,8 @@ const App = {
 
     QuestionEngine.restoreUsed(saved.usedQuestions);
 
-    // Route to correct screen based on stage
     switch (saved.stage) {
       case STAGE.GROUP:
-        // Resume from where group stage left off
         App._runGroupMatch(State.currentGroupClass);
         break;
       case STAGE.BRACKET:
@@ -1422,7 +1303,7 @@ const App = {
       case STAGE.SEMI:
         renderBracket();
         document.getElementById('bracket-stage-label').textContent = 'Semi-Final';
-        State.stage = STAGE.QUARTER;  // so proceedFromBracket routes to _preSemi
+        State.stage = STAGE.QUARTER;
         showScreen('bracket');
         break;
       case STAGE.PRE_FINAL:
@@ -1445,22 +1326,19 @@ const App = {
 /* ─────────────────────────────────────────────────────────────
    GLOBAL BINDINGS
 ───────────────────────────────────────────────────────────── */
-window.App        = App;
-window.BreakCtrl  = BreakCtrl;
-window.Match      = Match;
+window.App         = App;
+window.BreakCtrl   = BreakCtrl;
+window.Match       = Match;
 window.ReadyScreen = ReadyScreen;
 
 App.submitTBAnswer = function() { TieBreaker.submit(); };
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Enter key in tie-breaker
   const inp = document.getElementById('tb-answer-input');
   if (inp) {
     inp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') TieBreaker.submit();
     });
   }
-
-  // Check for saved session
   App.checkRestore();
 });
