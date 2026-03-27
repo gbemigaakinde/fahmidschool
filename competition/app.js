@@ -38,65 +38,91 @@ const CLASS_FULL   = ['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5
 const STORAGE_KEY  = 'fahmid_competition_state';
 
 /* ─────────────────────────────────────────────────────────────
-   GHOST-CLICK SHIELD
+   GHOST-CLICK SHIELD  (complete rewrite)
    ─────────────────────────────────────────────────────────────
-   Root cause:
-     On mobile every tap fires:  touchstart → touchend → click
-     The final synthetic "click" is queued by the browser and
-     dispatched asynchronously — AFTER the current JS callstack
-     finishes. When a tap on one screen causes a screen transition
-     (e.g. tapping "Skip" on the Ready screen, or choosing an option
-     on a previous question), the new screen's buttons are already
-     in the DOM and hit-testable by the time that queued click fires.
-     The click lands on whichever new button is at the same screen
-     coordinates as the element that was originally tapped, making
-     it look like an option was auto-selected.
+   Strategy: three independent layers so that even if one fails,
+   the others catch the spurious event.
 
-     e.timeStamp does NOT reliably distinguish these ghost clicks:
-     modern mobile browsers stamp the synthetic click with the time
-     it is *dispatched* (already on the new screen), not the time
-     the finger originally touched down.
+   LAYER 1 — Interaction token (primary gate)
+     A monotonically-incrementing integer "token" is stamped on
+     every question render. Each option button stores the token
+     value at the moment it was rendered. The click handler
+     compares the button's stored token against the current global
+     token; if they differ the click is stale and is silently
+     dropped. Screen transitions increment the token, so any
+     queued synthetic click from the previous screen carries the
+     old token and is rejected regardless of timing.
 
-   Fix — capture-phase swallow listener:
-     A single listener is registered on `document` in the CAPTURE
-     phase (runs before any element's own listener). While the shield
-     is active it intercepts every "click" and "touchstart" whose
-     target is an .option-btn and calls stopPropagation() +
-     preventDefault(), consuming the event before any button handler
-     can see it.
+   LAYER 2 — Touch-to-click gap guard
+     The browser's synthetic "click" after a touch fires within
+     ~300 ms of the touchend. We record the timestamp of every
+     touchend anywhere on the document. Any subsequent "click"
+     that fires within TOUCH_CLICK_GAP_MS of that touchend is
+     treated as synthetic and eaten — UNLESS the click's own
+     target was the element that was actually touched (i.e. the
+     user tapped and released on the same element, which is a
+     legitimate intentional tap).
 
-     The shield is:
-       • Raised  (activate)   just before showScreen('match'), so it
-                              is in place the moment buttons appear.
-       • Lowered (deactivate) inside setTimeout after INPUT_GUARD_MS,
-                              immediately before listeners are attached.
+   LAYER 3 — Pointer-events CSS blackout window
+     For INPUT_GUARD_MS after a screen transition the entire
+     options grid has pointer-events:none via a CSS class, so
+     even if layers 1 and 2 somehow fail the click cannot reach
+     a button.
 
-     500 ms is more than enough for any queued ghost click to have
-     fired and been swallowed. After that window the shield is gone
-     and real taps work normally.
+   Together these make accidental option-selection essentially
+   impossible, even on the slowest/buggiest mobile browser.
 ───────────────────────────────────────────────────────────── */
-const INPUT_GUARD_MS = 500;
 
-const GhostClickShield = (() => {
-  let _active = false;
+const TOUCH_CLICK_GAP_MS = 600;  // synthetic clicks arrive within ~300 ms; 600 is safe margin
+const INPUT_GUARD_MS     = 700;  // CSS pointer-events blackout after screen switch
 
-  function _swallow(e) {
-    if (!_active) return;
-    if (e.target && e.target.closest && e.target.closest('.option-btn')) {
+let _interactionToken   = 0;   // incremented every time a new question is rendered
+let _lastTouchEndTime   = 0;   // epoch ms of most recent touchend anywhere
+let _lastTouchEndTarget = null; // the element that was touched
+
+// Record every touchend globally — used by Layer 2
+document.addEventListener('touchend', (e) => {
+  _lastTouchEndTime   = Date.now();
+  _lastTouchEndTarget = e.target;
+}, { passive: true, capture: true });
+
+// Layer 2 capture-phase click interceptor
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.option-btn');
+  if (!btn) return;
+
+  const age = Date.now() - _lastTouchEndTime;
+  if (age < TOUCH_CLICK_GAP_MS) {
+    // Only let through if the user touched AND released on/inside this same button
+    const touchedInsideBtn = btn.contains(_lastTouchEndTarget);
+    if (!touchedInsideBtn) {
       e.stopPropagation();
       e.preventDefault();
+      return;
     }
   }
 
-  // Installed once, permanently, in capture phase so it always runs first.
-  document.addEventListener('click',      _swallow, true);
-  document.addEventListener('touchstart', _swallow, { capture: true, passive: false });
+  // Layer 1 token check
+  const btnToken = parseInt(btn.dataset.token || '-1', 10);
+  if (btnToken !== _interactionToken) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+}, { capture: true });
 
-  return {
-    activate()   { _active = true;  },
-    deactivate() { _active = false; },
-  };
-})();
+function _advanceToken() {
+  _interactionToken++;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CSS pointer-events blackout helper (Layer 3)
+───────────────────────────────────────────────────────────── */
+function _blackoutOptions(durationMs) {
+  const grid = document.getElementById('options-grid');
+  if (!grid) return;
+  grid.classList.add('input-guarded');
+  setTimeout(() => grid.classList.remove('input-guarded'), durationMs);
+}
 
 /* ─────────────────────────────────────────────────────────────
    QUESTION ENGINE
@@ -537,19 +563,27 @@ const Match = (() => {
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    // Build disabled buttons with no listeners yet.
-    // Shield goes up BEFORE showScreen so it is active the instant
-    // the match screen (and its option buttons) become visible.
-    _renderOptions(q);
+    // Advance interaction token — all buttons rendered below will
+    // carry the NEW token; any queued synthetic click from a previous
+    // screen carries the OLD token and will be rejected by Layer 1.
+    _advanceToken();
+    const tokenSnapshot = _interactionToken;
+
+    // Render options (disabled + carrying current token)
+    _renderOptions(q, tokenSnapshot);
+
     _hideOverlay();
-    GhostClickShield.activate();
+
+    // Layer 3: CSS pointer-events blackout for INPUT_GUARD_MS
+    _blackoutOptions(INPUT_GUARD_MS);
+
     showScreen('match');
 
-    // After INPUT_GUARD_MS the ghost-click window has passed.
-    // Drop the shield and wire up real click listeners.
+    // Enable real interaction after INPUT_GUARD_MS
     setTimeout(() => {
-      GhostClickShield.deactivate();
-      _enableOptions();
+      // Safety check: if the question changed while we were waiting, abort
+      if (_interactionToken !== tokenSnapshot) return;
+      _enableOptions(tokenSnapshot);
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
@@ -558,29 +592,35 @@ const Match = (() => {
     }, INPUT_GUARD_MS);
   }
 
-  function _renderOptions(q) {
+  function _renderOptions(q, token) {
     const grid = document.getElementById('options-grid');
     grid.innerHTML = '';
     const letters = ['A','B','C','D'];
     letters.forEach((letter, i) => {
       const btn = document.createElement('button');
-      btn.className      = 'option-btn';
-      btn.dataset.letter = letter;
-      btn.disabled       = true; // also disabled; shield is primary guard
+      btn.className        = 'option-btn';
+      btn.dataset.letter   = letter;
+      btn.dataset.token    = String(token); // Layer 1 token stamped here
+      btn.disabled         = true;
       btn.innerHTML = `
         <span class="option-letter">${letter}</span>
         <span class="option-text">${q.opts[i]}</span>
       `;
-      // No click listener here — added only in _enableOptions().
       grid.appendChild(btn);
     });
   }
 
-  function _enableOptions() {
+  function _enableOptions(tokenSnapshot) {
     document.querySelectorAll('.option-btn').forEach(btn => {
+      // Double-check the button still belongs to the current question
+      if (parseInt(btn.dataset.token, 10) !== tokenSnapshot) return;
       btn.disabled = false;
       const letter = btn.dataset.letter;
-      btn.addEventListener('click', () => handleOptionClick(letter, btn), { once: true });
+      btn.addEventListener('click', () => {
+        // Layer 1 final check inside the handler itself
+        if (parseInt(btn.dataset.token, 10) !== _interactionToken) return;
+        handleOptionClick(letter, btn);
+      }, { once: true });
     });
   }
 
@@ -598,6 +638,7 @@ const Match = (() => {
   function _handleTimeout() {
     if (ctx.answered) return;
     ctx.answered = true;
+    _advanceToken(); // Invalidate any pending clicks
     _disableOptions();
     _showCorrectAnswer();
     _showOverlay(false, 'Time Up!', ctx.currentQuestion.q.ans);
@@ -638,6 +679,7 @@ const Match = (() => {
     if (ctx.answered) return;
     ctx.answered = true;
     TimerController.stop();
+    _advanceToken(); // Invalidate any further clicks immediately
     _saveUndoSnapshot();
 
     const isCorrect = (letter === ctx.currentQuestion.q.ans);
@@ -680,21 +722,25 @@ const Match = (() => {
     _undoSnapshot       = null;
     _updateScores();
 
-    const q           = ctx.currentQuestion.q;
-    const side        = ctx.currentQuestion.side;
-    const player      = side === 'left' ? ctx.left : ctx.right;
+    const q      = ctx.currentQuestion.q;
+    const side   = ctx.currentQuestion.side;
+    const player = side === 'left' ? ctx.left : ctx.right;
 
     document.getElementById('player-card-left').classList.toggle('active-answerer',  side === 'left');
     document.getElementById('player-card-right').classList.toggle('active-answerer', side === 'right');
     document.getElementById('question-answerer').textContent = player.name;
     document.getElementById('question-text').textContent     = q.q;
 
-    _renderOptions(q);
-    GhostClickShield.activate();
+    // Advance token for the re-rendered question
+    _advanceToken();
+    const tokenSnapshot = _interactionToken;
+
+    _renderOptions(q, tokenSnapshot);
+    _blackoutOptions(INPUT_GUARD_MS);
 
     setTimeout(() => {
-      GhostClickShield.deactivate();
-      _enableOptions();
+      if (_interactionToken !== tokenSnapshot) return;
+      _enableOptions(tokenSnapshot);
       TimerController.start(
         TIMER.MCQ,
         (rem, tot) => _updateTimer(rem, tot),
