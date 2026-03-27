@@ -1,49 +1,3 @@
-/**
- * FAHMID NURSERY & PRIMARY SCHOOL
- * Inter-Class Mathematics Competition – Main App
- *
- * @version 2.0.0 - FIXED
- *
- * Fixes applied:
- *   FIX-01  TieBreaker._finish() no longer flashes the idle screen before the
- *           result screen. The erroneous showScreen('idle') call was removed.
- *
- *   FIX-02  result-next-btn "onclick override" pattern replaced with a single
- *           App._nextCallback variable. advanceAfterResult() calls the stored
- *           callback, eliminating the fragile per-match onclick rewrites and
- *           the associated race-condition risk.
- *
- *   FIX-03  TieBreaker answer-checker is now more lenient:
- *           • Strips common units (cm, m, kg, g, ml, l, %, ₦, naira, degrees,°)
- *             before comparing so "12 cm" matches "12".
- *           • Extracts ALL numeric tokens from both strings and checks whether
- *             every number in the model answer appears in the pupil's answer —
- *             useful for questions whose model answer is "Perimeter = 28; Area = 45".
- *           • Still falls back to full-string equality for non-numeric answers
- *             such as Roman-numeral or word answers.
- *
- *   FIX-04  Break screen now has a visible "Skip Break" button (operator-only
- *           convenience). Pressing it clears the timer and advances immediately.
- *
- *   FIX-05  Match screen now has a "↩ Undo Last Answer" button that is revealed
- *           for 3 seconds immediately after an answer is recorded, giving the
- *           operator a short window to correct accidental clicks before the next
- *           question loads.
- *
- *   FIX-06  Bracket SVG now shows the final score of completed matches
- *           (e.g. "3–2") below each highlighted winner box.
- *
- * Architecture (unchanged):
- *   • State machine: one phase at a time, no shared mutable globals
- *   • QuestionEngine: picks questions per class, never repeats
- *   • TimerController: zero-error countdown, single source of truth
- *   • MatchController: runs one match (group/quarter/semi/final)
- *   • TieController: handles 3-question theoretical tie-breaker
- *   • BreakController: timed intermission
- *   • BracketRenderer: draws SVG bracket
- *   • UI helpers: screen transitions, confetti, toasts
- */
-
 'use strict';
 
 /* ─────────────────────────────────────────────────────────────
@@ -62,7 +16,14 @@ const STAGE = {
   CHAMPION:    'CHAMPION',
 };
 
-const ROUNDS = {
+/*
+  ROUNDS: Each player answers N questions = 2N total questions per match.
+  GROUP   → 5 questions each = 10 total
+  QUARTER → 5 questions each = 10 total
+  SEMI    → 7 questions each = 14 total
+  FINAL   → 10 questions each = 20 total
+*/
+const QUESTIONS_PER_PLAYER = {
   GROUP:   5,
   QUARTER: 5,
   SEMI:    7,
@@ -70,15 +31,18 @@ const ROUNDS = {
 };
 
 const TIMER = {
-  MCQ:         40,
-  THEORY:      90,
-  BREAK_SEMI:  3 * 60,
-  BREAK_FINAL: 2 * 60,
-  UNDO_WINDOW: 3,   // seconds the undo button stays visible after an answer
+  MCQ:              50,   // 50s per question (10s buffer for facilitator to read)
+  THEORY_PER_PLAYER: 90, // 90s per player for ALL their tie-breaker questions
+  BREAK_SEMI:       3 * 60,
+  BREAK_FINAL:      2 * 60,
+  READY_COUNTDOWN:  10,  // seconds on "get ready" screen between players
+  UNDO_WINDOW:      5,   // seconds undo button stays visible
+  RESULT_DISPLAY:   2500 // ms overlay stays before auto-advancing (not between players)
 };
 
 const CLASS_LABELS = ['P1','P2','P3','P4','P5'];
 const CLASS_FULL   = ['Primary 1','Primary 2','Primary 3','Primary 4','Primary 5'];
+const STORAGE_KEY  = 'fahmid_competition_state';
 
 /* ─────────────────────────────────────────────────────────────
    QUESTION ENGINE
@@ -90,7 +54,7 @@ const QuestionEngine = (() => {
     const pool = window.QUESTIONS[classKey][type];
     const available = pool.filter(q => !used[classKey].has(q.id));
     if (!available.length) {
-      console.warn(`Question pool exhausted for ${classKey} ${type}. Re-using questions.`);
+      console.warn(`Question pool exhausted for ${classKey} ${type}. Re-using.`);
       used[classKey].clear();
       return pool[Math.floor(Math.random() * pool.length)];
     }
@@ -99,11 +63,24 @@ const QuestionEngine = (() => {
     return q;
   }
 
+  function getUsed() {
+    const out = {};
+    for (const k of Object.keys(used)) out[k] = [...used[k]];
+    return out;
+  }
+
+  function restoreUsed(data) {
+    for (const k of Object.keys(used)) {
+      used[k].clear();
+      if (data && data[k]) data[k].forEach(id => used[k].add(id));
+    }
+  }
+
   function reset() {
     for (const k of Object.keys(used)) used[k].clear();
   }
 
-  return { pick, reset };
+  return { pick, getUsed, restoreUsed, reset };
 })();
 
 /* ─────────────────────────────────────────────────────────────
@@ -152,27 +129,66 @@ const TimerController = (() => {
 })();
 
 /* ─────────────────────────────────────────────────────────────
+   PERSISTENCE — LocalStorage
+───────────────────────────────────────────────────────────── */
+const Persist = (() => {
+  function save() {
+    try {
+      const snapshot = {
+        stage:            State.stage,
+        contestants:      State.contestants,
+        groupReps:        State.groupReps,
+        quarterResults:   State.quarterResults,
+        semiWinner:       State.semiWinner,
+        finalWinner:      State.finalWinner,
+        currentGroupClass: State.currentGroupClass,
+        matchScores:      State.matchScores,
+        usedQuestions:    QuestionEngine.getUsed(),
+        savedAt:          Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (e) {
+      console.warn('Could not save state:', e);
+    }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clear() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  return { save, load, clear };
+})();
+
+/* ─────────────────────────────────────────────────────────────
    GLOBAL STATE
 ───────────────────────────────────────────────────────────── */
 const State = {
   stage: STAGE.IDLE,
 
-  contestants:    [],   // 5 pairs: { boy, girl }
-  groupReps:      [],   // winners from group stage (index 0-4)
+  contestants:    [],
+  groupReps:      [],
 
   match: null,
 
-  quarterResults: [],   // [qf1winner, qf2winner]
+  quarterResults: [],
   semiWinner:     null,
   finalWinner:    null,
 
   currentGroupClass: 0,
 
-  // FIX-02: Single callback for the result screen's Continue button
   _nextCallback: null,
 
-  // FIX-06: Match score history keyed by a label string
-  matchScores: {},      // e.g. { "QF1": { left: 3, right: 2, leftName: "Ade", rightName: "Sola" } }
+  matchScores: {},
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -250,9 +266,50 @@ function buildSetupForm() {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   READY SCREEN — shown between players to signal the next
+   player to get ready before their question appears.
+   countdown: 10 seconds, then calls onDone.
+───────────────────────────────────────────────────────────── */
+const ReadyScreen = (() => {
+  let _interval = null;
+  let _onDone   = null;
+
+  function show(player, questionNumber, totalQuestions, onDone) {
+    _onDone = onDone;
+    if (_interval) clearInterval(_interval);
+
+    document.getElementById('ready-player-name').textContent   = player.name;
+    document.getElementById('ready-player-class').textContent  = player.classLabel;
+    document.getElementById('ready-q-info').textContent =
+      `Question ${questionNumber} of ${totalQuestions}`;
+    document.getElementById('ready-instruction').textContent =
+      `Get ready — your question is coming up!`;
+
+    let remaining = TIMER.READY_COUNTDOWN;
+    document.getElementById('ready-countdown').textContent = remaining;
+    showScreen('ready');
+
+    _interval = setInterval(() => {
+      remaining--;
+      document.getElementById('ready-countdown').textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(_interval);
+        _interval = null;
+        if (_onDone) _onDone();
+      }
+    }, 1000);
+  }
+
+  function skip() {
+    if (_interval) { clearInterval(_interval); _interval = null; }
+    if (_onDone) { const cb = _onDone; _onDone = null; cb(); }
+  }
+
+  return { show, skip };
+})();
+
+/* ─────────────────────────────────────────────────────────────
    BRACKET SVG RENDERER
-   FIX-06: Now accepts matchScores from State.matchScores and
-   renders the final score next to each completed winner box.
 ───────────────────────────────────────────────────────────── */
 function renderBracket() {
   const container = document.getElementById('bracket-svg-container');
@@ -262,61 +319,61 @@ function renderBracket() {
   const fw   = State.finalWinner;
   const ms   = State.matchScores;
 
-  const W = 800, H = 400;
-  const BOX_W = 140, BOX_H = 36;
-  const COL = [20, 210, 400, 590];
+  const W = 800, H = 420;
+  const BOX_W = 145, BOX_H = 38;
+  const COL = [20, 215, 415, 605];
 
   const data = [
-    { col: 0, y: 60,  name: reps[0] ? reps[0].name : '—', cls: 'P1', winner: qr[0] && qr[0].name === (reps[0]||{}).name },
-    { col: 0, y: 120, name: reps[1] ? reps[1].name : '—', cls: 'P2', winner: qr[0] && qr[0].name === (reps[1]||{}).name },
-    { col: 0, y: 220, name: reps[2] ? reps[2].name : '—', cls: 'P3', winner: qr[1] && qr[1].name === (reps[2]||{}).name },
-    { col: 0, y: 280, name: reps[3] ? reps[3].name : '—', cls: 'P4', winner: qr[1] && qr[1].name === (reps[3]||{}).name },
-    { col: 0, y: 350, name: reps[4] ? reps[4].name : '—', cls: 'P5 (Auto)', winner: false, auto: true },
+    { col: 0, y: 65,  name: reps[0] ? reps[0].name : '—', cls: 'P1', winner: qr[0] && qr[0].name === (reps[0]||{}).name },
+    { col: 0, y: 125, name: reps[1] ? reps[1].name : '—', cls: 'P2', winner: qr[0] && qr[0].name === (reps[1]||{}).name },
+    { col: 0, y: 230, name: reps[2] ? reps[2].name : '—', cls: 'P3', winner: qr[1] && qr[1].name === (reps[2]||{}).name },
+    { col: 0, y: 290, name: reps[3] ? reps[3].name : '—', cls: 'P4', winner: qr[1] && qr[1].name === (reps[3]||{}).name },
+    { col: 0, y: 365, name: reps[4] ? reps[4].name : '—', cls: 'P5 (Auto)', winner: false, auto: true },
   ];
 
-  const sf1 = { col: 1, y: 90,  name: qr[0] ? qr[0].name : '—', cls: qr[0] ? qr[0].classLabel : '—', winner: sw && sw.name === (qr[0]||{}).name };
-  const sf2 = { col: 1, y: 250, name: qr[1] ? qr[1].name : '—', cls: qr[1] ? qr[1].classLabel : '—', winner: sw && sw.name === (qr[1]||{}).name };
-  const fn1 = { col: 2, y: 170, name: sw  ? sw.name  : '—',      cls: sw  ? sw.classLabel  : '—',     winner: fw && fw.name === (sw||{}).name  };
-  const fn2 = { col: 2, y: 320, name: reps[4] ? reps[4].name : '—', cls: 'P5',                         winner: fw && fw.name === (reps[4]||{}).name };
-  const champ = { col: 3, y: 245, name: fw ? fw.name : '—', cls: fw ? fw.classLabel : '—' };
+  const sf1  = { col: 1, y: 95,  name: qr[0] ? qr[0].name : '—', cls: qr[0] ? qr[0].classLabel : '—', winner: sw && sw.name === (qr[0]||{}).name };
+  const sf2  = { col: 1, y: 260, name: qr[1] ? qr[1].name : '—', cls: qr[1] ? qr[1].classLabel : '—', winner: sw && sw.name === (qr[1]||{}).name };
+  const fn1  = { col: 2, y: 178, name: sw  ? sw.name  : '—', cls: sw  ? sw.classLabel  : '—', winner: fw && fw.name === (sw||{}).name };
+  const fn2  = { col: 2, y: 330, name: reps[4] ? reps[4].name : '—', cls: 'P5', winner: fw && fw.name === (reps[4]||{}).name };
+  const champ = { col: 3, y: 254, name: fw ? fw.name : '—', cls: fw ? fw.classLabel : '—' };
 
-  function truncate(s) { return s.length > 18 ? s.slice(0, 16) + '…' : s; }
+  function truncate(s) { return s.length > 18 ? s.slice(0,16)+'…' : s; }
 
   function box(x, y, text, cls, isWinner, isAuto, scoreLabel) {
-    const fill  = isWinner ? '#0FA9A0' : (isAuto ? '#C9922A' : '#1E2C2C');
-    const tc    = isWinner ? '#0D1717' : '#FFFFFF';
-    const score = (isWinner && scoreLabel)
-      ? `<text x="${x + BOX_W - 4}" y="${y + 27}" text-anchor="end" font-family="Space Mono,monospace" font-size="11" font-weight="700" fill="${tc}" opacity="0.85">${scoreLabel}</text>`
+    const fill   = isWinner ? '#00C4BB' : (isAuto ? '#D4A017' : '#1C2C2C');
+    const stroke = isWinner ? '#00C4BB' : (isAuto ? '#D4A017' : '#2A3E3E');
+    const tc     = isWinner ? '#090F0F' : '#FFFFFF';
+    const clrTc  = isWinner ? 'rgba(9,15,15,0.65)' : '#7AACAC';
+    const score  = (isWinner && scoreLabel)
+      ? `<text x="${x+BOX_W-6}" y="${y+28}" text-anchor="end" font-family="Space Mono,monospace" font-size="11" font-weight="700" fill="${tc}" opacity="0.8">${scoreLabel}</text>`
       : '';
     return `
-      <rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="${fill}" stroke="${isWinner ? '#0FA9A0' : '#3B5050'}" stroke-width="1.5"/>
-      <text x="${x + 8}" y="${y + 13}" font-family="DM Sans,sans-serif" font-size="11" fill="${tc}" opacity="0.7">${cls}</text>
-      <text x="${x + 8}" y="${y + 28}" font-family="Barlow Condensed,sans-serif" font-size="14" font-weight="700" fill="${tc}">${truncate(text)}</text>
+      <rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+      <text x="${x+9}" y="${y+14}" font-family="DM Sans,sans-serif" font-size="10" fill="${clrTc}" font-weight="600">${cls}</text>
+      <text x="${x+9}" y="${y+29}" font-family="Barlow Condensed,sans-serif" font-size="15" font-weight="700" fill="${tc}">${truncate(text)}</text>
       ${score}
     `;
   }
 
   function line(x1, y1, x2, y2) {
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3B5050" stroke-width="1.5"/>`;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2A3E3E" stroke-width="1.5"/>`;
   }
 
-  const c0 = COL[0]; const c1 = COL[1]; const c2 = COL[2]; const c3 = COL[3];
-
-  // Helper: get score string for a match key
   function scoreFor(key) {
     const s = ms[key];
     if (!s) return null;
     return `${s.scoreLeft}–${s.scoreRight}`;
   }
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="DM Sans,sans-serif">`;
+  const c0=COL[0], c1=COL[1], c2=COL[2], c3=COL[3];
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
 
-  svg += `<text x="${c0+BOX_W/2}" y="22" text-anchor="middle" font-size="11" fill="#8AADAD" letter-spacing="1" font-family="Barlow Condensed,sans-serif">QUARTER-FINAL</text>`;
-  svg += `<text x="${c1+BOX_W/2}" y="22" text-anchor="middle" font-size="11" fill="#8AADAD" letter-spacing="1" font-family="Barlow Condensed,sans-serif">SEMI-FINAL</text>`;
-  svg += `<text x="${c2+BOX_W/2}" y="22" text-anchor="middle" font-size="11" fill="#8AADAD" letter-spacing="1" font-family="Barlow Condensed,sans-serif">FINAL</text>`;
-  svg += `<text x="${c3+BOX_W/2}" y="22" text-anchor="middle" font-size="11" fill="#C9922A" letter-spacing="1" font-family="Barlow Condensed,sans-serif">CHAMPION</text>`;
+  const labelStyle = `font-family="Barlow Condensed,sans-serif" font-size="10" fill="#7AACAC" letter-spacing="2"`;
+  svg += `<text x="${c0+BOX_W/2}" y="24" text-anchor="middle" ${labelStyle}>QUARTER-FINAL</text>`;
+  svg += `<text x="${c1+BOX_W/2}" y="24" text-anchor="middle" ${labelStyle}>SEMI-FINAL</text>`;
+  svg += `<text x="${c2+BOX_W/2}" y="24" text-anchor="middle" ${labelStyle}>FINAL</text>`;
+  svg += `<text x="${c3+BOX_W/2}" y="24" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-size="10" fill="#D4A017" letter-spacing="2">CHAMPION</text>`;
 
-  // QF boxes (FIX-06: pass score labels)
   data.forEach((d, i) => {
     const key   = i < 2 ? 'QF1' : (i < 4 ? 'QF2' : null);
     const score = (key && d.winner) ? scoreFor(key) : null;
@@ -336,7 +393,6 @@ function renderBracket() {
   const sfMid = (sf1.y + sf2.y + BOX_H) / 2;
   svg += line(c1+BOX_W, sf1.y+BOX_H/2, c2, sfMid);
   svg += line(c1+BOX_W, sf2.y+BOX_H/2, c2, sfMid);
-
   svg += line(c0+BOX_W, data[4].y+BOX_H/2, c2, fn2.y+BOX_H/2);
 
   svg += box(c2, fn1.y, fn1.name, fn1.cls, fn1.winner, false, fn1.winner ? scoreFor('FINAL') : null);
@@ -347,44 +403,63 @@ function renderBracket() {
   svg += line(c2+BOX_W, fn2.y+BOX_H/2, c3, fnMid);
 
   svg += box(c3, champ.y-BOX_H/2, champ.name, champ.cls, true, false, null);
-
   svg += '</svg>';
   container.innerHTML = svg;
 }
 
 /* ─────────────────────────────────────────────────────────────
    MATCH CONTROLLER
-   FIX-02: Uses App._nextCallback instead of overwriting onclick.
-   FIX-05: Undo button with a 3-second reveal window.
+
+   Structure:
+     Each player answers questionsPerPlayer MCQ questions.
+     Total questions = 2 × questionsPerPlayer.
+     Turn order: Left answers Q1, Right answers Q1,
+                 Left answers Q2, Right answers Q2, etc.
+     i.e. round 1 → Left, round 2 → Right,
+          round 3 → Left, round 4 → Right, ...
+     Between players (after Left answers, before Right appears
+     and vice versa) a 10-second "Ready" screen is shown.
+
+   Auto-click bug fix:
+     Options are rendered by creating buttons and assigning
+     event listeners only AFTER a 100ms paint delay, preventing
+     any spurious click from the button that opened the question
+     from propagating into the new option buttons.
 ───────────────────────────────────────────────────────────── */
 const Match = (() => {
-  let ctx = null;
-  // FIX-05: snapshot of state before an answer is recorded
+  let ctx           = null;
   let _undoSnapshot = null;
   let _undoTimeout  = null;
 
   function start(config) {
     ctx = {
-      left:            config.left,
-      right:           config.right,
-      totalRounds:     config.rounds,
-      stageLabel:      config.stageLabel,
-      scoreKey:        config.scoreKey || null,   // FIX-06
-      onComplete:      config.onComplete,
-      scoreLeft:       0,
-      scoreRight:      0,
-      currentRound:    1,
-      currentQuestion: null,
-      answered:        false,
+      left:              config.left,
+      right:             config.right,
+      questionsPerPlayer: config.questionsPerPlayer,
+      stageLabel:        config.stageLabel,
+      scoreKey:          config.scoreKey || null,
+      onComplete:        config.onComplete,
+      scoreLeft:         0,
+      scoreRight:        0,
+      /*
+        roundIdx: counts 0-based from 0 to (2*questionsPerPlayer - 1)
+        Even roundIdx → Left player answers
+        Odd  roundIdx → Right player answers
+        questionNumber for each player = Math.floor(roundIdx / 2) + 1
+      */
+      roundIdx:          0,
+      currentQuestion:   null,
+      answered:          false,
+      _advanceTimeout:   null,
     };
     showScreen('match');
     _renderHeader();
-    _nextRound();
+    _doNextRound();
   }
 
-  function _answererThisRound() {
-    return ctx.currentRound % 2 === 1 ? 'left' : 'right';
-  }
+  function _totalRounds() { return ctx.questionsPerPlayer * 2; }
+
+  function _sideForRound(idx) { return idx % 2 === 0 ? 'left' : 'right'; }
 
   function _renderHeader() {
     document.getElementById('match-stage-chip').textContent  = ctx.stageLabel;
@@ -404,55 +479,81 @@ const Match = (() => {
     document.getElementById('score-right-mini').textContent   = ctx.scoreRight;
   }
 
-  function _nextRound() {
-    if (ctx.currentRound > ctx.totalRounds) {
+  function _doNextRound() {
+    if (ctx.roundIdx >= _totalRounds()) {
       _conclude();
       return;
     }
 
-    const side   = _answererThisRound();
-    const player = side === 'left' ? ctx.left : ctx.right;
-    const q      = QuestionEngine.pick(player.classKey, 'mcq');
+    const side         = _sideForRound(ctx.roundIdx);
+    const player       = side === 'left' ? ctx.left : ctx.right;
+    const questionNum  = Math.floor(ctx.roundIdx / 2) + 1; // 1-based per player
 
+    // Show the "get ready" screen before every question
+    ReadyScreen.show(
+      player,
+      questionNum,
+      ctx.questionsPerPlayer,
+      () => _showQuestion(side, player, questionNum)
+    );
+  }
+
+  function _showQuestion(side, player, questionNum) {
+    const q = QuestionEngine.pick(player.classKey, 'mcq');
     ctx.currentQuestion = { q, side };
     ctx.answered = false;
     _undoSnapshot = null;
     _hideUndoButton();
 
-    document.getElementById('match-round-info').textContent = `Round ${ctx.currentRound} of ${ctx.totalRounds}`;
-    document.getElementById('q-counter').textContent        = `Q ${ctx.currentRound}/${ctx.totalRounds}`;
+    const totalQ    = _totalRounds();
+    const displayRound = ctx.roundIdx + 1;
+    document.getElementById('match-round-info').textContent = `Turn ${displayRound} of ${totalQ}`;
+    document.getElementById('q-counter').textContent = `Q ${questionNum}/${ctx.questionsPerPlayer}`;
 
     document.getElementById('player-card-left').classList.toggle('active-answerer',  side === 'left');
     document.getElementById('player-card-right').classList.toggle('active-answerer', side === 'right');
 
-    document.getElementById('question-whose').querySelector('#question-answerer').textContent = player.name;
-    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('question-answerer').textContent = player.name;
+    document.getElementById('question-text').textContent     = q.q;
 
-    _renderOptions(q);
+    // Render options but attach listeners after a short delay to prevent
+    // click bleed-through from the Ready screen's skip button / any prior interaction.
+    _renderOptions(q, true /* disabled initially */);
     _hideOverlay();
+    showScreen('match');
 
-    TimerController.start(
-      TIMER.MCQ,
-      (rem, tot) => _updateTimer(rem, tot),
-      () => _handleTimeout()
-    );
+    // Small paint delay before enabling buttons and starting timer
+    setTimeout(() => {
+      _enableOptions();
+      TimerController.start(
+        TIMER.MCQ,
+        (rem, tot) => _updateTimer(rem, tot),
+        () => _handleTimeout()
+      );
+    }, 120);
   }
 
-  function _renderOptions(q) {
+  function _renderOptions(q, startDisabled) {
     const grid = document.getElementById('options-grid');
     grid.innerHTML = '';
     const letters = ['A','B','C','D'];
     letters.forEach((letter, i) => {
-      const btn       = document.createElement('button');
-      btn.className   = 'option-btn';
+      const btn = document.createElement('button');
+      btn.className      = 'option-btn';
       btn.dataset.letter = letter;
-      btn.innerHTML   = `
+      btn.disabled       = startDisabled;
+      btn.innerHTML = `
         <span class="option-letter">${letter}</span>
         <span class="option-text">${q.opts[i]}</span>
       `;
+      // listener assigned once; disabled flag controls interactivity
       btn.addEventListener('click', () => handleOptionClick(letter, btn));
       grid.appendChild(btn);
     });
+  }
+
+  function _enableOptions() {
+    document.querySelectorAll('.option-btn').forEach(btn => { btn.disabled = false; });
   }
 
   function _updateTimer(remaining, total) {
@@ -471,18 +572,17 @@ const Match = (() => {
     ctx.answered = true;
     _disableOptions();
     _showCorrectAnswer();
-    _showOverlay(false, 'Time Up!');
-    setTimeout(() => {
+    _showOverlay(false, 'Time Up!', ctx.currentQuestion.q.ans);
+    ctx._advanceTimeout = setTimeout(() => {
       _hideOverlay();
-      ctx.currentRound++;
-      _nextRound();
-    }, 2000);
+      ctx.roundIdx++;
+      _doNextRound();
+    }, TIMER.RESULT_DISPLAY);
   }
 
-  // FIX-05: Save a snapshot before committing the answer so we can undo
   function _saveUndoSnapshot() {
     _undoSnapshot = {
-      round:      ctx.currentRound,
+      roundIdx:   ctx.roundIdx,
       scoreLeft:  ctx.scoreLeft,
       scoreRight: ctx.scoreRight,
       question:   ctx.currentQuestion,
@@ -490,11 +590,10 @@ const Match = (() => {
   }
 
   function _showUndoButton() {
-    let btn = document.getElementById('undo-answer-btn');
+    const btn = document.getElementById('undo-answer-btn');
     if (!btn) return;
     btn.style.display = 'inline-flex';
     if (_undoTimeout) clearTimeout(_undoTimeout);
-    // Hide after UNDO_WINDOW seconds automatically
     _undoTimeout = setTimeout(() => {
       _hideUndoButton();
       _undoSnapshot = null;
@@ -511,80 +610,71 @@ const Match = (() => {
     if (ctx.answered) return;
     ctx.answered = true;
     TimerController.stop();
-
-    // FIX-05: snapshot before mutating state
     _saveUndoSnapshot();
 
     const isCorrect = (letter === ctx.currentQuestion.q.ans);
     if (isCorrect) {
-      if (ctx.currentQuestion.side === 'left')  ctx.scoreLeft++;
-      else                                       ctx.scoreRight++;
+      if (ctx.currentQuestion.side === 'left') ctx.scoreLeft++;
+      else                                      ctx.scoreRight++;
       _updateScores();
+      Persist.save();
     }
 
     document.querySelectorAll('.option-btn').forEach(btn => {
       btn.disabled = true;
       if (btn.dataset.letter === ctx.currentQuestion.q.ans) btn.classList.add('correct');
-      else if (btn.dataset.letter === letter && !isCorrect)  btn.classList.add('wrong');
+      else if (btn.dataset.letter === letter && !isCorrect) btn.classList.add('wrong');
     });
 
-    _showOverlay(isCorrect, isCorrect ? 'Correct!' : 'Wrong!');
+    const correctText = `Correct answer: ${ctx.currentQuestion.q.ans}`;
+    _showOverlay(isCorrect, isCorrect ? 'Correct!' : 'Wrong!', isCorrect ? '' : ctx.currentQuestion.q.ans);
     _showUndoButton();
 
-    // Schedule auto-advance; undo cancels this
     ctx._advanceTimeout = setTimeout(() => {
       _hideUndoButton();
       _undoSnapshot = null;
       _hideOverlay();
-      ctx.currentRound++;
-      _nextRound();
-    }, 2000);
+      ctx.roundIdx++;
+      _doNextRound();
+    }, TIMER.RESULT_DISPLAY);
   }
 
-  // FIX-05: Undo handler — restores scores and re-renders the same question
   function undoLastAnswer() {
-    if (!_undoSnapshot) {
-      toast('Nothing to undo.', true);
-      return;
-    }
-    // Cancel the pending auto-advance
-    if (ctx._advanceTimeout) {
-      clearTimeout(ctx._advanceTimeout);
-      ctx._advanceTimeout = null;
-    }
+    if (!_undoSnapshot) { toast('Nothing to undo.', true); return; }
+    if (ctx._advanceTimeout) { clearTimeout(ctx._advanceTimeout); ctx._advanceTimeout = null; }
     _hideUndoButton();
     _hideOverlay();
 
-    // Restore state
     ctx.scoreLeft       = _undoSnapshot.scoreLeft;
     ctx.scoreRight      = _undoSnapshot.scoreRight;
-    ctx.currentRound    = _undoSnapshot.round;
+    ctx.roundIdx        = _undoSnapshot.roundIdx;
     ctx.currentQuestion = _undoSnapshot.question;
     ctx.answered        = false;
     _undoSnapshot       = null;
 
     _updateScores();
 
-    // Re-render the same question (but do NOT re-pick from the engine)
     const q    = ctx.currentQuestion.q;
     const side = ctx.currentQuestion.side;
     const player = side === 'left' ? ctx.left : ctx.right;
+    const questionNum = Math.floor(ctx.roundIdx / 2) + 1;
 
     document.getElementById('player-card-left').classList.toggle('active-answerer',  side === 'left');
     document.getElementById('player-card-right').classList.toggle('active-answerer', side === 'right');
-    document.getElementById('question-whose').querySelector('#question-answerer').textContent = player.name;
-    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('question-answerer').textContent = player.name;
+    document.getElementById('question-text').textContent     = q.q;
 
-    _renderOptions(q);
+    _renderOptions(q, true);
+    setTimeout(() => {
+      _enableOptions();
+      TimerController.start(
+        TIMER.MCQ,
+        (rem, tot) => _updateTimer(rem, tot),
+        () => _handleTimeout()
+      );
+    }, 120);
 
-    // Restart the timer from full
-    TimerController.start(
-      TIMER.MCQ,
-      (rem, tot) => _updateTimer(rem, tot),
-      () => _handleTimeout()
-    );
-
-    toast('Answer undone. Question restarted with a fresh timer.');
+    toast('Answer undone — question restarted with a fresh timer.');
   }
 
   function _disableOptions() {
@@ -597,14 +687,16 @@ const Match = (() => {
     });
   }
 
-  function _showOverlay(correct, msg) {
+  function _showOverlay(correct, msg, correctAns) {
     const ov = document.getElementById('answer-overlay');
     const ic = document.getElementById('answer-icon');
     const ms = document.getElementById('answer-msg');
+    const ct = document.getElementById('answer-correct-text');
     ic.innerHTML = correct
       ? '<i class="fas fa-circle-check" style="color:var(--teal)"></i>'
       : '<i class="fas fa-circle-xmark" style="color:var(--red)"></i>';
     ms.textContent = msg;
+    if (ct) ct.textContent = (!correct && correctAns) ? `Correct answer: ${correctAns}` : '';
     ov.classList.add('show');
   }
 
@@ -620,9 +712,7 @@ const Match = (() => {
         right:      ctx.right,
         stageLabel: ctx.stageLabel,
         scoreKey:   ctx.scoreKey,
-        onWinner: (winner) => {
-          _showResult(winner);
-        }
+        onWinner: (winner) => _showResult(winner),
       });
       return;
     }
@@ -633,7 +723,6 @@ const Match = (() => {
   }
 
   function _showResult(winner) {
-    // FIX-06: Record score for bracket display
     if (ctx.scoreKey) {
       State.matchScores[ctx.scoreKey] = {
         scoreLeft:  ctx.scoreLeft,
@@ -642,6 +731,7 @@ const Match = (() => {
         rightName:  ctx.right.name,
       };
     }
+    Persist.save();
 
     document.getElementById('result-label').textContent    = 'Round Winner';
     document.getElementById('result-name').textContent     = winner.name;
@@ -654,7 +744,6 @@ const Match = (() => {
     spawnConfetti('result-confetti', 40);
     showScreen('result');
 
-    // FIX-02: Store callback, don't overwrite onclick
     State._nextCallback = () => ctx.onComplete(winner);
   }
 
@@ -663,8 +752,16 @@ const Match = (() => {
 
 /* ─────────────────────────────────────────────────────────────
    TIE-BREAKER CONTROLLER
-   FIX-01: _finish() no longer calls showScreen('idle').
-   FIX-03: _checkAnswer() uses a multi-strategy comparison.
+
+   Each player gets 90 seconds to answer ALL 3 of their theory
+   questions (not 90s per question). The timer runs continuously
+   while the player works through their 3 questions one by one.
+   After the 90s runs out, any unanswered questions are marked fail.
+
+   Flow:
+     1. Left player's block: start 90s timer, show Q1→Q2→Q3 in sequence
+     2. Right player's block: start fresh 90s timer, show Q1→Q2→Q3
+     3. Decide winner.
 ───────────────────────────────────────────────────────────── */
 const TieBreaker = (() => {
   let ctx = null;
@@ -677,19 +774,22 @@ const TieBreaker = (() => {
       scoreKey:      config.scoreKey || null,
       progressLeft:  [null, null, null],
       progressRight: [null, null, null],
-      queue:         [],
-      queueIdx:      0,
+      questionsLeft:  [],
+      questionsRight: [],
+      currentSide:   'left',
+      currentQIdx:   0,    // index within current player's 3 questions
       answered:      false,
+      timerTotal:    TIMER.THEORY_PER_PLAYER,
     };
 
     for (let i = 0; i < 3; i++) {
-      ctx.queue.push({ side: 'left',  q: QuestionEngine.pick(config.left.classKey,  'theory'), i });
-      ctx.queue.push({ side: 'right', q: QuestionEngine.pick(config.right.classKey, 'theory'), i });
+      ctx.questionsLeft.push(QuestionEngine.pick(config.left.classKey,  'theory'));
+      ctx.questionsRight.push(QuestionEngine.pick(config.right.classKey, 'theory'));
     }
 
     _renderUI();
     showScreen('tiebreaker');
-    _nextQuestion();
+    _startPlayerBlock('left');
   }
 
   function _renderUI() {
@@ -715,75 +815,77 @@ const TieBreaker = (() => {
         }
       });
     });
+
+    // Highlight active player card
+    document.getElementById('tb-player-left').classList.toggle('active-tb',  ctx.currentSide === 'left');
+    document.getElementById('tb-player-right').classList.toggle('active-tb', ctx.currentSide === 'right');
   }
 
-  function _nextQuestion() {
+  function _startPlayerBlock(side) {
+    ctx.currentSide  = side;
+    ctx.currentQIdx  = 0;
+    ctx.answered     = false;
+    _updateChecks();
+
+    // Show ready screen before each player's block
+    const player = side === 'left' ? ctx.left : ctx.right;
+    ReadyScreen.show(
+      player, 1, 3,
+      () => {
+        showScreen('tiebreaker');
+        _startBlockTimer(side);
+        _showTBQuestion();
+      }
+    );
+  }
+
+  function _startBlockTimer(side) {
+    const total = TIMER.THEORY_PER_PLAYER;
+    TimerController.start(
+      total,
+      (rem, tot) => {
+        const pct = (rem / tot) * 100;
+        document.getElementById('tb-timer-fill').style.width    = pct + '%';
+        document.getElementById('tb-timer-fill').className      = 'tb-timer-fill' +
+          (pct <= 25 ? ' danger' : pct <= 50 ? ' warn' : '');
+        document.getElementById('tb-timer-display').textContent = rem;
+      },
+      () => _onPlayerTimerEnd()
+    );
+  }
+
+  function _onPlayerTimerEnd() {
+    // Time ran out — mark all remaining questions as fail
+    const progress = ctx.currentSide === 'left' ? ctx.progressLeft : ctx.progressRight;
+    for (let i = ctx.currentQIdx; i < 3; i++) {
+      if (progress[i] === null) progress[i] = 'fail';
+    }
+    _updateChecks();
+    document.getElementById('tb-result').textContent = 'Time Up!';
+    document.getElementById('tb-result').className   = 'tb-result fail';
+
+    setTimeout(() => _endPlayerBlock(), 2000);
+  }
+
+  function _showTBQuestion() {
     ctx.answered = false;
     document.getElementById('tb-answer-input').value = '';
     document.getElementById('tb-result').textContent  = '';
     document.getElementById('tb-result').className    = 'tb-result';
 
-    if (ctx.queueIdx >= ctx.queue.length) {
-      const lPass = ctx.progressLeft.filter(x  => x === 'pass').length;
-      const rPass = ctx.progressRight.filter(x => x === 'pass').length;
-      _decide(lPass, rPass);
-      return;
-    }
+    const questions = ctx.currentSide === 'left' ? ctx.questionsLeft : ctx.questionsRight;
+    const player    = ctx.currentSide === 'left' ? ctx.left : ctx.right;
+    const q         = questions[ctx.currentQIdx];
 
-    const item   = ctx.queue[ctx.queueIdx];
-    const player = item.side === 'left' ? ctx.left : ctx.right;
+    document.getElementById('tb-answerer').textContent      = player.name;
+    document.getElementById('tb-q-number').textContent      = `Question ${ctx.currentQIdx + 1} of 3`;
+    document.getElementById('tb-question-text').textContent = q.q;
 
-    document.getElementById('tb-answerer').textContent     = player.name;
-    document.getElementById('tb-question-text').textContent = item.q.q;
-    document.getElementById('tb-answer-input').focus();
-
-    TimerController.start(
-      TIMER.THEORY,
-      (rem, tot) => {
-        const pct = (rem / tot) * 100;
-        document.getElementById('tb-timer-fill').style.width   = pct + '%';
-        document.getElementById('tb-timer-display').textContent = rem;
-      },
-      () => {
-        if (ctx.answered) return;
-        ctx.answered = true;
-        const item = ctx.queue[ctx.queueIdx];
-        _markAnswer(item.side, item.i, false);
-        document.getElementById('tb-result').textContent = 'Time Up! Answer: ' + item.q.ans;
-        document.getElementById('tb-result').className   = 'tb-result fail';
-        if (_checkEarlyWin()) return;
-        setTimeout(() => { ctx.queueIdx++; _nextQuestion(); }, 2500);
-      }
-    );
-  }
-
-  function _markAnswer(side, i, pass) {
-    if (side === 'left')  ctx.progressLeft[i]  = pass ? 'pass' : 'fail';
-    else                  ctx.progressRight[i] = pass ? 'pass' : 'fail';
-    _updateChecks();
-  }
-
-  function _checkEarlyWin() {
-    const lPass = ctx.progressLeft.filter(x  => x === 'pass').length;
-    const rPass = ctx.progressRight.filter(x => x === 'pass').length;
-    if (lPass === 3) { _finish(ctx.left);  return true; }
-    if (rPass === 3) { _finish(ctx.right); return true; }
-    return false;
-  }
-
-  function _decide(lPass, rPass) {
-    if      (lPass > rPass) _finish(ctx.left);
-    else if (rPass > lPass) _finish(ctx.right);
-    else {
-      toast('Perfect tie! Left player advances by coin toss rule.');
-      _finish(ctx.left);
-    }
-  }
-
-  // FIX-01: Removed erroneous showScreen('idle') — we go directly to onWinner.
-  function _finish(winner) {
-    TimerController.stop();
-    ctx.onWinner(winner);
+    // Focus after slight delay to avoid bleed-through events
+    setTimeout(() => {
+      const inp = document.getElementById('tb-answer-input');
+      if (inp) inp.focus();
+    }, 150);
   }
 
   function submit() {
@@ -793,79 +895,95 @@ const TieBreaker = (() => {
     if (!val) { toast('Please enter an answer.', true); return; }
 
     ctx.answered = true;
-    TimerController.stop();
+    const questions = ctx.currentSide === 'left' ? ctx.questionsLeft : ctx.questionsRight;
+    const progress  = ctx.currentSide === 'left' ? ctx.progressLeft  : ctx.progressRight;
+    const q = questions[ctx.currentQIdx];
+    const correct = _checkAnswer(val, q.ans);
 
-    const item    = ctx.queue[ctx.queueIdx];
-    const correct = _checkAnswer(val, item.q.ans);
-
-    _markAnswer(item.side, item.i, correct);
+    progress[ctx.currentQIdx] = correct ? 'pass' : 'fail';
+    _updateChecks();
 
     const res = document.getElementById('tb-result');
     if (correct) {
       res.textContent = '✓ Correct!';
       res.className   = 'tb-result pass';
     } else {
-      res.textContent = '✗ Wrong. Answer: ' + item.q.ans;
+      res.textContent = '✗ Wrong. Answer: ' + q.ans;
       res.className   = 'tb-result fail';
     }
 
-    if (_checkEarlyWin()) return;
-    setTimeout(() => { ctx.queueIdx++; _nextQuestion(); }, 2500);
+    // Check if all 3 done for this player
+    ctx.currentQIdx++;
+    if (ctx.currentQIdx >= 3) {
+      // All questions done — wait then end block
+      setTimeout(() => _endPlayerBlock(), 2000);
+    } else {
+      // Move to next question after brief pause
+      setTimeout(() => _showTBQuestion(), 2000);
+    }
   }
 
-  /* ─────────────────────────────────────────────────────────
-     FIX-03: Multi-strategy answer checker
-     Strategy 1 – Exact string match after normalisation.
-     Strategy 2 – Numeric equality after stripping units.
-     Strategy 3 – All numbers in model answer present in pupil's answer
-                  (handles "Perimeter = 28 cm; Area = 45 cm²" style answers).
-  ───────────────────────────────────────────────────────────── */
-  function _checkAnswer(userAns, correctAns) {
-    // --- normalise: lowercase, collapse whitespace
-    const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  function _endPlayerBlock() {
+    TimerController.stop();
+    if (ctx.currentSide === 'left') {
+      // Now do right player
+      _startPlayerBlock('right');
+    } else {
+      // Both done — decide
+      const lPass = ctx.progressLeft.filter(x  => x === 'pass').length;
+      const rPass = ctx.progressRight.filter(x => x === 'pass').length;
+      _decide(lPass, rPass);
+    }
+  }
 
-    // --- strip common units and currency symbols so "28 cm" → "28"
+  function _decide(lPass, rPass) {
+    if      (lPass > rPass) _finish(ctx.left);
+    else if (rPass > lPass) _finish(ctx.right);
+    else {
+      toast('Perfect tie! Left player advances by coin-toss rule.');
+      _finish(ctx.left);
+    }
+  }
+
+  function _finish(winner) {
+    TimerController.stop();
+    ctx.onWinner(winner);
+  }
+
+  function _checkAnswer(userAns, correctAns) {
+    const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
     const stripUnits = s => s
       .replace(/₦|naira/gi, '')
       .replace(/\bcm²?\b|\bm²?\b|\bkm²?\b|\bmm²?\b/gi, '')
-      .replace(/\bkg\b|\bgram?s?\b|\bml\b|\blitre?s?\b|\blitres?\b/gi, '')
+      .replace(/\bkg\b|\bgrams?\b|\bml\b|\blitre?s?\b/gi, '')
       .replace(/%/g, '')
       .replace(/°/g, '')
       .replace(/degrees?/gi, '')
       .replace(/[,;:=]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+      .replace(/\s+/g, ' ').trim();
 
-    const u  = norm(userAns);
-    const c  = norm(correctAns);
+    const u = norm(userAns);
+    const c = norm(correctAns);
 
-    // Strategy 1: normalised string equality
     if (u === c) return true;
 
-    // Strategy 2: numeric equality after stripping units
     const uStripped = stripUnits(u).replace(/[^0-9.\s-]/g, '').trim();
     const cStripped = stripUnits(c).replace(/[^0-9.\s-]/g, '').trim();
     const uNum = parseFloat(uStripped);
     const cNum = parseFloat(cStripped);
     if (!isNaN(uNum) && !isNaN(cNum) && uNum === cNum) return true;
 
-    // Strategy 3: all numeric tokens in the model answer must appear in the
-    // pupil's answer (order-independent, unit-stripped).
-    // e.g. model = "Perimeter = 28 cm; Area = 45 cm²", user = "28 and 45"
     const extractNums = s => {
       const matches = s.match(/-?\d+(\.\d+)?/g);
       return matches ? matches.map(Number) : [];
     };
     const modelNums = extractNums(cStripped || c);
     const userNums  = extractNums(uStripped  || u);
-
     if (modelNums.length > 0) {
       const allPresent = modelNums.every(n => userNums.some(un => Math.abs(un - n) < 0.001));
       if (allPresent) return true;
     }
 
-    // Strategy 4: normalised string contains check (for word/Roman answers)
-    // e.g. model = "2, 3, 5, 7, 11" user = "2,3,5,7,11"
     const uClean = u.replace(/[^a-z0-9]/g, '');
     const cClean = c.replace(/[^a-z0-9]/g, '');
     if (uClean === cClean) return true;
@@ -878,21 +996,18 @@ const TieBreaker = (() => {
 
 /* ─────────────────────────────────────────────────────────────
    BREAK CONTROLLER
-   FIX-04: Operator "Skip Break" button is now functional.
-   The button must exist in the HTML (see HTML note below).
 ───────────────────────────────────────────────────────────── */
 const BreakCtrl = (() => {
   let _onDone = null;
 
   function start(seconds, title, subtitle, onDone) {
     _onDone = onDone;
-    const total = seconds;
     document.getElementById('break-title').textContent    = title;
     document.getElementById('break-subtitle').textContent = subtitle;
     showScreen('break');
 
     TimerController.start(
-      total,
+      seconds,
       (rem, tot) => {
         const m = Math.floor(rem / 60);
         const s = rem % 60;
@@ -905,14 +1020,9 @@ const BreakCtrl = (() => {
     );
   }
 
-  // FIX-04: Called by the Skip Break button in the HTML
   function skip() {
     TimerController.stop();
-    if (_onDone) {
-      const cb = _onDone;
-      _onDone = null;
-      cb();
-    }
+    if (_onDone) { const cb = _onDone; _onDone = null; cb(); }
   }
 
   return { start, skip };
@@ -920,8 +1030,6 @@ const BreakCtrl = (() => {
 
 /* ─────────────────────────────────────────────────────────────
    MAIN APP CONTROLLER
-   FIX-02: advanceAfterResult() now calls State._nextCallback,
-           eliminating per-match onclick overwrites.
 ───────────────────────────────────────────────────────────── */
 const App = {
 
@@ -936,7 +1044,6 @@ const App = {
     State.stage = STAGE.SETUP;
   },
 
-  // FIX-02: Single entry point for the result screen Continue button
   advanceAfterResult() {
     if (typeof State._nextCallback === 'function') {
       const cb = State._nextCallback;
@@ -965,6 +1072,7 @@ const App = {
     State.currentGroupClass = 0;
     State.stage = STAGE.GROUP;
     QuestionEngine.reset();
+    Persist.save();
 
     this._runGroupMatch(0);
   },
@@ -976,15 +1084,15 @@ const App = {
     }
     const pair = State.contestants[classIdx];
     Match.start({
-      left:       pair.boy,
-      right:      pair.girl,
-      rounds:     ROUNDS.GROUP,
-      stageLabel: `GROUP STAGE · ${CLASS_LABELS[classIdx]}`,
-      scoreKey:   `GROUP_${CLASS_LABELS[classIdx]}`,
+      left:               pair.boy,
+      right:              pair.girl,
+      questionsPerPlayer: QUESTIONS_PER_PLAYER.GROUP,
+      stageLabel:         `GROUP STAGE · ${CLASS_LABELS[classIdx]}`,
+      scoreKey:           `GROUP_${CLASS_LABELS[classIdx]}`,
       onComplete: (winner) => {
         State.groupReps.push(winner);
-        // FIX-02: callback stored in State._nextCallback by _showResult
-        // Override it to move to the next group match
+        State.currentGroupClass = classIdx + 1;
+        Persist.save();
         State._nextCallback = () => App._runGroupMatch(classIdx + 1);
       }
     });
@@ -992,12 +1100,12 @@ const App = {
 
   _afterGroupStage() {
     State.stage = STAGE.BRACKET;
+    Persist.save();
     renderBracket();
     document.getElementById('bracket-stage-label').textContent = 'Quarter-Final';
     showScreen('bracket');
   },
 
-  // FIX-02: proceedFromBracket now reads the stage and routes correctly
   proceedFromBracket() {
     if (State.stage === STAGE.BRACKET || State.stage === STAGE.GROUP) {
       this._runQuarterFinal();
@@ -1010,15 +1118,16 @@ const App = {
 
   _runQuarterFinal() {
     State.stage = STAGE.QUARTER;
+    Persist.save();
     Match.start({
-      left:       State.groupReps[0],
-      right:      State.groupReps[1],
-      rounds:     ROUNDS.QUARTER,
-      stageLabel: 'QUARTER-FINAL · P1 vs P2',
-      scoreKey:   'QF1',
+      left:               State.groupReps[0],
+      right:              State.groupReps[1],
+      questionsPerPlayer: QUESTIONS_PER_PLAYER.QUARTER,
+      stageLabel:         'QUARTER-FINAL · P1 vs P2',
+      scoreKey:           'QF1',
       onComplete: (winner) => {
         State.quarterResults[0] = winner;
-        // FIX-02: after QF1 result, Continue → run QF2
+        Persist.save();
         State._nextCallback = () => App._runQF2();
       }
     });
@@ -1026,16 +1135,16 @@ const App = {
 
   _runQF2() {
     Match.start({
-      left:       State.groupReps[2],
-      right:      State.groupReps[3],
-      rounds:     ROUNDS.QUARTER,
-      stageLabel: 'QUARTER-FINAL · P3 vs P4',
-      scoreKey:   'QF2',
+      left:               State.groupReps[2],
+      right:              State.groupReps[3],
+      questionsPerPlayer: QUESTIONS_PER_PLAYER.QUARTER,
+      stageLabel:         'QUARTER-FINAL · P3 vs P4',
+      scoreKey:           'QF2',
       onComplete: (winner) => {
         State.quarterResults[1] = winner;
+        Persist.save();
         renderBracket();
         document.getElementById('bracket-stage-label').textContent = 'Semi-Final';
-        // FIX-02: Continue → show bracket; bracket button routes to _preSemi via proceedFromBracket
         State._nextCallback = () => showScreen('bracket');
       }
     });
@@ -1043,6 +1152,7 @@ const App = {
 
   _preSemi() {
     State.stage = STAGE.PRE_SEMI;
+    Persist.save();
     BreakCtrl.start(
       TIMER.BREAK_SEMI,
       '3-Minute Break',
@@ -1053,17 +1163,18 @@ const App = {
 
   _runSemi() {
     State.stage = STAGE.SEMI;
+    Persist.save();
     Match.start({
-      left:       State.quarterResults[0],
-      right:      State.quarterResults[1],
-      rounds:     ROUNDS.SEMI,
-      stageLabel: 'SEMI-FINAL',
-      scoreKey:   'SF',
+      left:               State.quarterResults[0],
+      right:              State.quarterResults[1],
+      questionsPerPlayer: QUESTIONS_PER_PLAYER.SEMI,
+      stageLabel:         'SEMI-FINAL',
+      scoreKey:           'SF',
       onComplete: (winner) => {
         State.semiWinner = winner;
+        Persist.save();
         renderBracket();
         document.getElementById('bracket-stage-label').textContent = 'Final';
-        // FIX-02: Continue → show bracket; bracket button routes to _preFinal
         State._nextCallback = () => showScreen('bracket');
       }
     });
@@ -1071,6 +1182,7 @@ const App = {
 
   _preFinal() {
     State.stage = STAGE.PRE_FINAL;
+    Persist.save();
     BreakCtrl.start(
       TIMER.BREAK_FINAL,
       '2-Minute Break',
@@ -1081,15 +1193,17 @@ const App = {
 
   _runFinal() {
     State.stage = STAGE.FINAL;
+    Persist.save();
     const p5Rep = State.groupReps[4];
     Match.start({
-      left:       State.semiWinner,
-      right:      p5Rep,
-      rounds:     ROUNDS.FINAL,
-      stageLabel: 'THE GRAND FINAL',
-      scoreKey:   'FINAL',
+      left:               State.semiWinner,
+      right:              p5Rep,
+      questionsPerPlayer: QUESTIONS_PER_PLAYER.FINAL,
+      stageLabel:         'THE GRAND FINAL',
+      scoreKey:           'FINAL',
       onComplete: (winner) => {
         State.finalWinner = winner;
+        Persist.save();
         App._showChampion(winner);
       }
     });
@@ -1101,38 +1215,135 @@ const App = {
     spawnConfetti('champ-confetti', 120);
     showScreen('champion');
     State.stage = STAGE.CHAMPION;
+    Persist.save();
   },
 
   restart() {
-    State.stage            = STAGE.IDLE;
-    State.contestants      = [];
-    State.groupReps        = [];
-    State.quarterResults   = [];
-    State.semiWinner       = null;
-    State.finalWinner      = null;
+    State.stage             = STAGE.IDLE;
+    State.contestants       = [];
+    State.groupReps         = [];
+    State.quarterResults    = [];
+    State.semiWinner        = null;
+    State.finalWinner       = null;
     State.currentGroupClass = 0;
-    State._nextCallback    = null;
-    State.matchScores      = {};
+    State._nextCallback     = null;
+    State.matchScores       = {};
     QuestionEngine.reset();
     TimerController.stop();
+    Persist.clear();
     showScreen('idle');
     toast('Competition reset. Ready for a new session!');
-  }
+  },
+
+  /* ── SESSION RESTORE ──────────────────────────────────────
+     Called on DOMContentLoaded. Checks if a saved session exists
+     and shows the restore banner if so.
+  ────────────────────────────────────────────────────────── */
+  checkRestore() {
+    const saved = Persist.load();
+    if (!saved || !saved.stage || saved.stage === STAGE.IDLE) return;
+    if (saved.stage === STAGE.CHAMPION) return; // don't restore a finished competition
+
+    const banner = document.getElementById('restore-banner');
+    if (!banner) return;
+
+    const mins = Math.round((Date.now() - (saved.savedAt || 0)) / 60000);
+    const timeStr = mins < 2 ? 'just now' : `${mins} minutes ago`;
+    document.getElementById('restore-message').textContent =
+      `Unfinished competition found (saved ${timeStr}). Resume where you left off?`;
+
+    banner.classList.add('show');
+
+    document.getElementById('restore-yes-btn').onclick = () => {
+      banner.classList.remove('show');
+      App._restoreSession(saved);
+    };
+    document.getElementById('restore-no-btn').onclick = () => {
+      banner.classList.remove('show');
+      Persist.clear();
+    };
+  },
+
+  _restoreSession(saved) {
+    State.stage             = saved.stage;
+    State.contestants       = saved.contestants       || [];
+    State.groupReps         = saved.groupReps         || [];
+    State.quarterResults    = saved.quarterResults    || [];
+    State.semiWinner        = saved.semiWinner        || null;
+    State.finalWinner       = saved.finalWinner       || null;
+    State.currentGroupClass = saved.currentGroupClass || 0;
+    State.matchScores       = saved.matchScores       || {};
+
+    QuestionEngine.restoreUsed(saved.usedQuestions);
+
+    // Route to correct screen based on stage
+    switch (saved.stage) {
+      case STAGE.GROUP:
+        // Resume from where group stage left off
+        App._runGroupMatch(State.currentGroupClass);
+        break;
+      case STAGE.BRACKET:
+        renderBracket();
+        document.getElementById('bracket-stage-label').textContent = 'Quarter-Final';
+        showScreen('bracket');
+        break;
+      case STAGE.QUARTER:
+        renderBracket();
+        if (State.quarterResults.length === 0) {
+          App._runQuarterFinal();
+        } else if (State.quarterResults.length === 1) {
+          State.stage = STAGE.QUARTER;
+          App._runQF2();
+        } else {
+          renderBracket();
+          document.getElementById('bracket-stage-label').textContent = 'Semi-Final';
+          State.stage = STAGE.BRACKET;
+          showScreen('bracket');
+        }
+        break;
+      case STAGE.PRE_SEMI:
+      case STAGE.SEMI:
+        renderBracket();
+        document.getElementById('bracket-stage-label').textContent = 'Semi-Final';
+        State.stage = STAGE.QUARTER;  // so proceedFromBracket routes to _preSemi
+        showScreen('bracket');
+        break;
+      case STAGE.PRE_FINAL:
+      case STAGE.FINAL:
+        renderBracket();
+        document.getElementById('bracket-stage-label').textContent = 'Final';
+        State.stage = STAGE.SEMI;
+        showScreen('bracket');
+        break;
+      case STAGE.CHAMPION:
+        if (State.finalWinner) App._showChampion(State.finalWinner);
+        break;
+      default:
+        showScreen('idle');
+    }
+    toast('Session restored! Continue from where you left off.');
+  },
 };
 
-// Expose to global scope for HTML onclick attributes
-window.App       = App;
-window.BreakCtrl = BreakCtrl;
-window.Match     = Match;
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL BINDINGS
+───────────────────────────────────────────────────────────── */
+window.App        = App;
+window.BreakCtrl  = BreakCtrl;
+window.Match      = Match;
+window.ReadyScreen = ReadyScreen;
 
-// Enter key support in tie-breaker input
+App.submitTBAnswer = function() { TieBreaker.submit(); };
+
 document.addEventListener('DOMContentLoaded', () => {
+  // Enter key in tie-breaker
   const inp = document.getElementById('tb-answer-input');
   if (inp) {
     inp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') TieBreaker.submit();
     });
   }
-});
 
-App.submitTBAnswer = function() { TieBreaker.submit(); };
+  // Check for saved session
+  App.checkRestore();
+});
