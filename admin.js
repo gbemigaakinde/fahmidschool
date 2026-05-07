@@ -7826,15 +7826,32 @@ async function loadDashboardStats() {
 ======================================== */
 function showTeacherForm() {
   const form = document.getElementById('teacher-form');
-  if (form) {
-    form.style.display = 'block';
-    document.getElementById('teacher-name')?.focus();
+  if (!form) return;
+
+  // Reset form and hidden id
+  document.getElementById('add-teacher-form').reset();
+  document.getElementById('teacher-id').value = '';
+  document.getElementById('teacher-form-title').innerHTML = '<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add New Teacher';
+  document.getElementById('save-teacher-btn').textContent = 'Save Teacher';
+
+  // Set today as default date joined
+  const dateJoinedInput = document.getElementById('teacher-date-joined');
+  if (dateJoinedInput && !dateJoinedInput.value) {
+    dateJoinedInput.value = new Date().toISOString().split('T')[0];
   }
+
+  form.style.display = 'block';
+  document.getElementById('teacher-name')?.focus();
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function cancelTeacherForm() {
   document.getElementById('teacher-form').style.display = 'none';
   document.getElementById('add-teacher-form').reset();
+  document.getElementById('teacher-id').value = '';
+  document.getElementById('teacher-form-title').innerHTML = '<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add New Teacher';
+  document.getElementById('save-teacher-btn').textContent = 'Save Teacher';
 }
 
 /* =====================================================
@@ -7844,144 +7861,149 @@ function cancelTeacherForm() {
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('📝 Setting up teacher form handler...');
-  
+
   const teacherForm = document.getElementById('add-teacher-form');
-  
+
   if (!teacherForm) {
     console.warn('⚠️ Teacher form not found');
     return;
   }
-  
+
   // Remove old handlers by cloning
   const newTeacherForm = teacherForm.cloneNode(true);
   teacherForm.parentNode.replaceChild(newTeacherForm, teacherForm);
-  
+
   const freshForm = document.getElementById('add-teacher-form');
-  
+
   freshForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     console.log('🎯 Teacher form submitted');
-    
-    // Get form values
-    const name = document.getElementById('teacher-name')?.value.trim();
-    const email = document.getElementById('teacher-email')?.value.trim();
-    const contact = document.getElementById('teacher-contact')?.value.trim();
+
+    const teacherId  = document.getElementById('teacher-id')?.value;
+    const name       = document.getElementById('teacher-name')?.value.trim();
+    const gender     = document.getElementById('teacher-gender')?.value;
+    const dob        = document.getElementById('teacher-dob')?.value || '';
+    const contact    = document.getElementById('teacher-contact')?.value.trim() || '';
+    const address    = document.getElementById('teacher-address')?.value.trim() || '';
+    const employeeId = document.getElementById('teacher-employee-id')?.value.trim() || '';
+    const dateJoined = document.getElementById('teacher-date-joined')?.value || '';
+    const roleTitle  = document.getElementById('teacher-role-title')?.value || 'Class Teacher';
+    const status     = document.getElementById('teacher-status')?.value || 'Active';
+    const qualification   = document.getElementById('teacher-qualification')?.value || '';
+    const specialization  = document.getElementById('teacher-specialization')?.value.trim() || '';
+    const notes      = document.getElementById('teacher-notes')?.value.trim() || '';
+    const email      = document.getElementById('teacher-email')?.value.trim();
     const tempPassword = document.getElementById('teacher-password')?.value;
-    
+
     // Validation
-    if (!name || !email || !tempPassword) {
-      console.warn('⚠️ Form validation failed');
-      window.showToast?.('All required fields must be filled', 'warning');
+    if (!name || !gender || !dateJoined || !email) {
+      window.showToast?.('Full Name, Gender, Date Joined, and Email are required.', 'warning');
       return;
     }
-    
-    console.log(`📋 Creating teacher: ${name} (${email})`);
-    
-    // Validate email format
+
+    if (!teacherId && !tempPassword) {
+      window.showToast?.('Temporary password is required for new teachers.', 'warning');
+      return;
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      console.warn('⚠️ Invalid email format');
       window.showToast?.('Please enter a valid email address', 'warning');
       return;
     }
-    
-    // Check for duplicate email
-    console.log('🔍 Checking for duplicate email...');
-    try {
-      const existingUsers = await db.collection('users')
-        .where('email', '==', email)
-        .get();
-      
-      if (!existingUsers.empty) {
-        console.warn('⚠️ Duplicate email found');
-        window.showToast?.('This email is already registered', 'warning');
-        return;
-      }
-      console.log('✓ Email is unique');
-    } catch (error) {
-      console.error('❌ Error checking email:', error);
-      window.showToast?.('Error checking email. Please try again.', 'danger');
-      return;
-    }
-    
-    // Get submit button
+
     const submitBtn = freshForm.querySelector('button[type="submit"]');
-    
-    // Disable button and show loading
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="btn-loading">Creating teacher...</span>';
+      submitBtn.innerHTML = '<span class="btn-loading">Saving...</span>';
     }
-    
+
     try {
-      console.log('🚀 Starting user creation process...');
-      
-      // CRITICAL: Check if createSecondaryUser exists
-      if (typeof window.createSecondaryUser !== 'function') {
-        throw new Error(
-          'User creation system not ready. Please refresh the page and try again.'
+      const teacherData = {
+        name,
+        gender,
+        dob,
+        contact,
+        address,
+        employeeId,
+        dateJoined,
+        roleTitle,
+        status,
+        qualification,
+        specialization,
+        notes,
+        email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (teacherId) {
+        // ── UPDATE EXISTING TEACHER ───────────────────────────────
+        console.log(`📝 Updating teacher: ${teacherId}`);
+
+        await db.collection('teachers').doc(teacherId).update(teacherData);
+
+        // Update email in users doc if changed
+        const userDoc = await db.collection('users').doc(teacherId).get();
+        if (userDoc.exists && userDoc.data().email !== email) {
+          await db.collection('users').doc(teacherId).update({
+            email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+        window.showToast?.(`✓ Teacher "${name}" updated successfully`, 'success');
+
+      } else {
+        // ── CREATE NEW TEACHER ────────────────────────────────────
+        console.log(`🚀 Creating new teacher: ${name} (${email})`);
+
+        // Check for duplicate email
+        const existingUsers = await db.collection('users').where('email', '==', email).get();
+        if (!existingUsers.empty) {
+          window.showToast?.('This email is already registered', 'warning');
+          return;
+        }
+
+        if (typeof window.createSecondaryUser !== 'function') {
+          throw new Error('User creation system not ready. Please refresh the page and try again.');
+        }
+
+        const uid = await window.createSecondaryUser(email, tempPassword);
+        if (!uid) throw new Error('User creation returned no UID');
+
+        console.log(`✓ User account created: ${uid}`);
+
+        await db.collection('users').doc(uid).set({
+          email,
+          role: 'teacher',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        teacherData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('teachers').doc(uid).set(teacherData);
+
+        console.log('✓ Teacher profile created');
+
+        window.showToast?.(
+          `✓ Teacher "${name}" added successfully!\n\nPassword reset email sent to ${email}`,
+          'success',
+          6000
         );
       }
-      
-      // Create user account
-      console.log('📝 Calling createSecondaryUser...');
-      const uid = await window.createSecondaryUser(email, tempPassword);
-      
-      if (!uid) {
-        throw new Error('User creation returned no UID');
-      }
-      
-      console.log(`✓ User account created: ${uid}`);
-      
-      // Create user document
-      console.log('📄 Creating user document...');
-      await db.collection('users').doc(uid).set({
-        email,
-        role: 'teacher',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      console.log('✓ User document created');
-      
-      // Create teacher profile
-      console.log('👤 Creating teacher profile...');
-      await db.collection('teachers').doc(uid).set({
-        name,
-        email,
-        contact: contact || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      console.log('✓ Teacher profile created');
-      
-      // Success!
-      console.log('✅ Teacher creation complete');
-      
-      window.showToast?.(
-        `✓ Teacher "${name}" added successfully!\n\nPassword reset email sent to ${email}`,
-        'success',
-        6000
-      );
-      
-      // Reset form and hide
+
       freshForm.reset();
+      document.getElementById('teacher-id').value = '';
       document.getElementById('teacher-form').style.display = 'none';
-      
-      // Reload data
+
       await loadTeachers();
       await loadDashboardStats();
-      
+
     } catch (error) {
-      console.error('❌ TEACHER CREATION FAILED:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-      
-      // Handle specific errors
-      let errorMessage = 'Failed to add teacher';
-      
+      console.error('❌ TEACHER SAVE FAILED:', error);
+
+      let errorMessage = teacherId ? 'Failed to update teacher' : 'Failed to add teacher';
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already registered';
       } else if (error.code === 'auth/invalid-email') {
@@ -7991,18 +8013,17 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       window.showToast?.(errorMessage, 'danger', 5000);
-      
+
     } finally {
-      // Re-enable button
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Save Teacher';
+        submitBtn.innerHTML = teacherId ? 'Update Teacher' : 'Save Teacher';
       }
     }
   });
-  
+
   console.log('✅ Teacher form handler registered');
 });
 
@@ -8382,27 +8403,210 @@ async function loadTeachers() {
 function renderTeachersTable(teachersData) {
   const tbody = document.getElementById('teachers-table');
   if (!tbody) return;
-  
+
   tbody.innerHTML = '';
-  
+
   if (teachersData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers match your search</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--color-gray-600);">No teachers match your search</td></tr>';
     return;
   }
-  
+
   paginateTable(teachersData, 'teachers-table', 20, (teacher, tbody) => {
+    const statusColor = {
+      'Active':     '#16a34a',
+      'On Leave':   '#d97706',
+      'Suspended':  '#dc2626',
+      'Resigned':   '#64748b'
+    }[teacher.status] || '#64748b';
+
+    const statusBadge = teacher.status
+      ? `<span style="background:${statusColor};color:white;padding:2px 8px;border-radius:999px;font-size:0.6875rem;font-weight:700;">${teacher.status}</span>`
+      : '<span style="color:#94a3b8;">—</span>';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="Name">${teacher.name}</td>
+      <td data-label="Name"><strong>${teacher.name}</strong></td>
       <td data-label="Email">${teacher.email}</td>
-      <td data-label="Contact">${teacher.contact || '-'}</td>
+      <td data-label="Role">${teacher.roleTitle || 'Class Teacher'}</td>
+      <td data-label="Contact">${teacher.contact || '—'}</td>
+      <td data-label="Status">${statusBadge}</td>
       <td data-label="Actions">
+        <button class="btn-small btn-primary" onclick="editTeacher('${teacher.id}')">Edit</button>
         <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
+
+async function editTeacher(uid) {
+  try {
+    console.log(`📝 Loading teacher for edit: ${uid}`);
+
+    const doc = await db.collection('teachers').doc(uid).get();
+    if (!doc.exists) throw new Error('Teacher not found');
+
+    const data = doc.data();
+
+    document.getElementById('teacher-id').value = uid;
+    document.getElementById('teacher-name').value        = data.name || '';
+    document.getElementById('teacher-gender').value      = data.gender || '';
+    document.getElementById('teacher-dob').value         = data.dob || '';
+    document.getElementById('teacher-contact').value     = data.contact || '';
+    document.getElementById('teacher-address').value     = data.address || '';
+    document.getElementById('teacher-employee-id').value = data.employeeId || '';
+    document.getElementById('teacher-date-joined').value = data.dateJoined || '';
+    document.getElementById('teacher-role-title').value  = data.roleTitle || 'Class Teacher';
+    document.getElementById('teacher-status').value      = data.status || 'Active';
+    document.getElementById('teacher-qualification').value  = data.qualification || '';
+    document.getElementById('teacher-specialization').value = data.specialization || '';
+    document.getElementById('teacher-notes').value       = data.notes || '';
+    document.getElementById('teacher-email').value       = data.email || '';
+    document.getElementById('teacher-password').value   = ''; // always blank for security
+
+    // Password not required when editing
+    document.getElementById('teacher-password').removeAttribute('required');
+
+    document.getElementById('teacher-form-title').innerHTML = `<i data-lucide="pencil" style="width:16px;height:16px;"></i> Edit Teacher: ${data.name}`;
+    document.getElementById('save-teacher-btn').textContent = 'Update Teacher';
+
+    document.getElementById('teacher-form').style.display = 'block';
+    document.getElementById('teacher-name')?.focus();
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  } catch (error) {
+    console.error('❌ Error loading teacher for edit:', error);
+    window.showToast?.('Failed to load teacher details for editing', 'danger');
+  }
+}
+
+window.editTeacher = editTeacher;
+
+/**
+ * Export all teachers data to PDF
+ */
+async function exportTeachersPDF() {
+  try {
+    if (typeof window.jspdf === 'undefined') {
+      window.showToast?.('PDF library not loaded. Please refresh the page.', 'danger');
+      return;
+    }
+
+    window.showToast?.('Preparing teachers PDF...', 'info', 2000);
+
+    const snapshot = await db.collection('teachers').orderBy('name').get();
+
+    if (snapshot.empty) {
+      window.showToast?.('No teachers found to export.', 'warning');
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    // ── Header ────────────────────────────────────────────────────────────
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FAHMID NURSERY & PRIMARY SCHOOL', 148, 14, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text('Staff Directory', 148, 22, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB', { year:'numeric', month:'long', day:'numeric' })}`, 148, 28, { align: 'center' });
+
+    // ── Table ─────────────────────────────────────────────────────────────
+    const tableData = [];
+    snapshot.forEach(doc_ => {
+      const d = doc_.data();
+      tableData.push([
+        d.name           || '—',
+        d.gender         || '—',
+        d.roleTitle      || 'Class Teacher',
+        d.qualification  || '—',
+        d.specialization || '—',
+        d.contact        || '—',
+        d.email          || '—',
+        d.employeeId     || '—',
+        d.dateJoined     || '—',
+        d.status         || 'Active'
+      ]);
+    });
+
+    doc.autoTable({
+      startY: 34,
+      head: [[
+        'Full Name',
+        'Gender',
+        'Role',
+        'Qualification',
+        'Specialization',
+        'Phone',
+        'Email',
+        'Staff No.',
+        'Date Joined',
+        'Status'
+      ]],
+      body: tableData,
+      theme: 'grid',
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 2.5,
+        valign: 'middle',
+        overflow: 'linebreak'
+      },
+      headStyles: {
+        fillColor: [26, 58, 110],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 8
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      columnStyles: {
+        0: { cellWidth: 36 },  // Name
+        1: { cellWidth: 16 },  // Gender
+        2: { cellWidth: 28 },  // Role
+        3: { cellWidth: 28 },  // Qualification
+        4: { cellWidth: 26 },  // Specialization
+        5: { cellWidth: 24 },  // Phone
+        6: { cellWidth: 40 },  // Email
+        7: { cellWidth: 22 },  // Staff No
+        8: { cellWidth: 20 },  // Date Joined
+        9: { cellWidth: 16 }   // Status
+      }
+    });
+
+    // ── Footer on each page ───────────────────────────────────────────────
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${i} of ${pageCount}   |   Total Staff: ${snapshot.size}   |   Fahmid Nursery & Primary School`,
+        148,
+        doc.internal.pageSize.getHeight() - 6,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`Teachers_Directory_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    window.showToast?.(`✓ PDF exported: ${snapshot.size} teacher(s)`, 'success');
+
+  } catch (error) {
+    console.error('❌ Error exporting teachers PDF:', error);
+    window.showToast?.('Failed to export PDF. Please try again.', 'danger');
+  }
+}
+
+window.exportTeachersPDF = exportTeachersPDF;
 
 /**
  * Filter teachers by search term
