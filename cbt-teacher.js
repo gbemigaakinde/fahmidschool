@@ -47,11 +47,15 @@ function renderCbtListView(container) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ── Load tests from Firestore ──────────────────────────────────────────────
+// Store test metadata keyed by doc ID so buttons can look it up safely
+const _cbtTestMap = new Map();
+
 async function loadCbtTests(container) {
     if (!window.currentUser) return;
     const listEl = document.getElementById('cbt-tests-list');
     if (!listEl) return;
+
+    _cbtTestMap.clear();
 
     try {
         const snap = await db.collection('cbt_tests')
@@ -69,7 +73,6 @@ async function loadCbtTests(container) {
             return;
         }
 
-        // Sort client-side: newest first
         const docs = snap.docs.slice().sort((a, b) => {
             const ta = a.data().createdAt?.toMillis?.() || 0;
             const tb = b.data().createdAt?.toMillis?.() || 0;
@@ -80,8 +83,11 @@ async function loadCbtTests(container) {
 
         for (const doc of docs) {
             const t   = doc.data();
-            const now = new Date();
             const tid = doc.id;
+            const now = new Date();
+
+            // Store in map for safe retrieval on button click
+            _cbtTestMap.set(tid, { ...t, id: tid });
 
             let status = 'open';
             let statusLabel = 'Open';
@@ -109,28 +115,30 @@ async function loadCbtTests(container) {
             const publishBtnStyle = t.published
                 ? 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;'
                 : 'background:#dcfce7;border:1px solid #16a34a;color:#14532d;';
-            const publishBtnText = t.published ? 'Unpublish' : 'Publish';
 
             const scheduleHTML = t.scheduledDate
-                ? `<div class="cbt-card-date"> Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date">📅 Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
             const expiryHTML = t.expiryDate
-                ? `<div class="cbt-card-date"> Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date">⏰ Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
 
             const card = document.createElement('div');
             card.className = 'cbt-mgr-card';
+
+            // Title is set via textContent after creation — never via innerHTML
+            // so no character in the title can ever break the HTML structure
             card.innerHTML = `
                 <div class="cbt-mgr-card__top">
                     <div class="cbt-mgr-card__title-row">
-                        <span class="cbt-mgr-card__title">${escHtml(t.title)}</span>
+                        <span class="cbt-mgr-card__title" data-title-slot></span>
                         <span class="cbt-mgr-status-pill" style="background:${sc.bg};color:${sc.color};">
                             ${sc.dot} ${statusLabel}
                         </span>
                     </div>
                     <div class="cbt-mgr-card__meta">
-                        <span> ${escHtml(t.subject || '—')}</span>
-                        <span> ${escHtml(t.className || '—')}</span>
+                        <span> <span data-subject-slot></span></span>
+                        <span> <span data-class-slot></span></span>
                         <span> ${qCount} question${qCount !== 1 ? 's' : ''}</span>
                         <span> ${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
                         <span> ${attemptCount} submitted</span>
@@ -138,29 +146,29 @@ async function loadCbtTests(container) {
                     ${scheduleHTML}${expiryHTML}
                 </div>
                 <div class="cbt-mgr-card__actions">
-                    <button class="cbt-mgr-btn cbt-mgr-btn--edit" data-action="edit" data-id="${tid}">
-                        Edit
+                    <button class="cbt-mgr-btn cbt-mgr-btn--edit"    data-tid="${tid}" data-action="edit">✏️ Edit</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-tid="${tid}" data-action="results">📊 Results</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-tid="${tid}" data-action="publish" style="${publishBtnStyle}">
+                        ${t.published ? '🔒 Unpublish' : '🟢 Publish'}
                     </button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-action="results" data-id="${tid}" data-title="${escHtml(t.title)}">
-                        Results
-                    </button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-action="publish" data-id="${tid}" data-published="${t.published}" style="${publishBtnStyle}">
-                        ${t.published ? 'Unpublish' : 'Publish'}
-                    </button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--delete" data-action="delete" data-id="${tid}" data-title="${escHtml(t.title)}">
-                        Delete
-                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--delete"  data-tid="${tid}" data-action="delete">🗑 Delete</button>
                 </div>
             `;
 
-            // Attach ALL button events here on the element directly — no inline onclick
+            // Set text content safely — no HTML injection possible
+            card.querySelector('[data-title-slot]').textContent   = t.title   || '(Untitled)';
+            card.querySelector('[data-subject-slot]').textContent = t.subject || '—';
+            card.querySelector('[data-class-slot]').textContent   = t.className || '—';
+
+            // Attach events — title is read from the Map, never from the DOM
             card.querySelectorAll('[data-action]').forEach(btn => {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const action    = this.dataset.action;
-                    const id        = this.dataset.id;
-                    const title     = this.dataset.title || '';
-                    const published = this.dataset.published === 'true';
+                    const id        = this.dataset.tid;
+                    const testEntry = _cbtTestMap.get(id);
+                    const title     = testEntry?.title || '(Untitled)';
+                    const published = testEntry?.published || false;
 
                     if (action === 'edit')    editCbtTest(id);
                     if (action === 'results') viewCbtResults(id, title);
@@ -525,35 +533,115 @@ async function togglePublish(testId, currentlyPublished) {
 
 // ── Delete test ────────────────────────────────────────────────────────────
 async function deleteCbtTest(testId, title) {
-    if (!confirm(`Delete "${title}"?\n\nThis will permanently delete the test, all questions, and all student results. This cannot be undone.`)) return;
+    // Build a custom confirmation overlay — never rely on browser confirm()
+    // which is blocked silently in many mobile and cross-origin contexts
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(15,23,42,0.7);
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px; backdrop-filter: blur(3px);
+    `;
+
+    const box = document.createElement('div');
+    box.style.cssText = `
+        background: #ffffff; border-radius: 18px;
+        padding: 32px 28px; max-width: 400px; width: 100%;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        text-align: center; font-family: 'DM Sans', sans-serif;
+    `;
+
+    box.innerHTML = `
+        <div style="font-size: 40px; margin-bottom: 12px;">🗑️</div>
+        <h3 style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1.1rem; font-weight:800;
+                   color:#0f172a; margin:0 0 8px;">Delete Test?</h3>
+        <p style="font-size:13.5px; color:#64748b; margin:0 0 6px; line-height:1.5;">
+            You are about to permanently delete:
+        </p>
+        <p style="font-size:14px; font-weight:700; color:#0f172a; margin:0 0 16px;
+                  background:#f1f5f9; border-radius:8px; padding:10px 14px;">
+            ${escHtml(title)}
+        </p>
+        <p style="font-size:12.5px; color:#dc2626; margin:0 0 24px; line-height:1.5;">
+            This will delete all questions, all pupil scores, and all submission records.
+            This <strong>cannot be undone</strong>.
+        </p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="cbt-del-cancel" style="
+                flex:1; max-width:150px; padding:11px;
+                border-radius:9999px; border:1.5px solid #e2e8f0;
+                background:#ffffff; color:#475569;
+                font-size:14px; font-weight:600; cursor:pointer;">
+                Cancel
+            </button>
+            <button id="cbt-del-confirm" style="
+                flex:1; max-width:150px; padding:11px;
+                border-radius:9999px; border:none;
+                background:#dc2626; color:#ffffff;
+                font-size:14px; font-weight:700; cursor:pointer;">
+                Yes, Delete
+            </button>
+        </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    // Return a promise that resolves when the user makes a choice
+    const confirmed = await new Promise(resolve => {
+        document.getElementById('cbt-del-cancel').addEventListener('click', () => {
+            document.body.removeChild(overlay);
+            resolve(false);
+        });
+        document.getElementById('cbt-del-confirm').addEventListener('click', () => {
+            document.body.removeChild(overlay);
+            resolve(true);
+        });
+        // Also close on backdrop click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+                resolve(false);
+            }
+        });
+    });
+
+    if (!confirmed) return;
+
+    // Show deleting state
+    window.showToast?.('Deleting test…', 'info', 3000);
 
     try {
         const batch = db.batch();
 
-        // Delete questions
-        const qSnap = await db.collection('cbt_questions').where('testId','==',testId).get();
+        const qSnap = await db.collection('cbt_questions').where('testId', '==', testId).get();
         qSnap.forEach(d => batch.delete(d.ref));
 
-        // Delete attempts
-        const aSnap = await db.collection('cbt_attempts').where('testId','==',testId).get();
+        const aSnap = await db.collection('cbt_attempts').where('testId', '==', testId).get();
         aSnap.forEach(d => batch.delete(d.ref));
 
-        // Delete results
-        const rSnap = await db.collection('cbt_results').where('testId','==',testId).get();
+        const rSnap = await db.collection('cbt_results').where('testId', '==', testId).get();
         rSnap.forEach(d => batch.delete(d.ref));
 
-        // Delete reviews
-        const revSnap = await db.collection('cbt_reviews').where('testId','==',testId).get();
+        const revSnap = await db.collection('cbt_reviews').where('testId', '==', testId).get();
         revSnap.forEach(d => batch.delete(d.ref));
 
-        // Delete test doc itself
+        const pSnap = await db.collection('cbt_proctoring').where('testId', '==', testId).get();
+        pSnap.forEach(d => batch.delete(d.ref));
+
         batch.delete(db.collection('cbt_tests').doc(testId));
 
         await batch.commit();
-        window.showToast?.('Test deleted.', 'success');
+
+        // Remove from local map
+        _cbtTestMap.delete(testId);
+
+        window.showToast?.('✓ Test deleted successfully.', 'success', 4000);
         await loadCbtSection();
-    } catch(err) {
-        window.showToast?.('Delete failed: ' + err.message, 'danger');
+
+    } catch (err) {
+        console.error('Delete failed:', err);
+        window.showToast?.('Delete failed: ' + (err.message || 'Unknown error'), 'danger', 6000);
     }
 }
 
