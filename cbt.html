@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test — Fahmid School CBT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+<link rel="stylesheet" href="portal-base.css">
+<link rel="stylesheet" href="cbt-portal.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
+<style>
+body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-serif; }
+.cbt-body { min-height: 100vh; }
+#start-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.start-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 48px 40px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.start-card__logo { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 20px; overflow:hidden; }
+.start-card__logo img { width:100%; height:100%; object-fit:contain; }
+.start-card__school { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+.start-card__title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+.start-card__subject { font-size: 14px; color: #64748b; margin-bottom: 28px; }
+.start-card__info { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+.start-info-cell { background: #f8faff; border: 1px solid #e0e7ff; border-radius: 12px; padding: 14px; }
+.start-info-cell__label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; margin-bottom: 4px; }
+.start-info-cell__value { font-size: 1.1rem; font-weight: 700; color: #1a56db; }
+.start-card__rules { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px; text-align: left; margin-bottom: 28px; }
+.start-card__rules ul { margin: 8px 0 0 16px; padding: 0; }
+.start-card__rules li { font-size: 12.5px; color: #92400e; margin-bottom: 4px; }
+.start-card__rules strong { font-size: 12px; color: #78350f; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.start-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 9999px;
+  background: #1a56db;
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.start-btn:hover { background: #1e40af; transform: translateY(-1px); }
+.start-btn:active { transform: translateY(0); }
+#loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 16px;
+  color: #64748b;
+}
+#test-screen { display: none; }
+#result-screen { display: none; }
+.result-card {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 20px;
+}
+.result-main {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 36px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+}
+.result-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 24px 0; }
+.result-stat { background: #f8faff; border: 1px solid #e0e7ff; border-radius: 12px; padding: 16px; }
+.result-stat__label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; margin-bottom: 4px; }
+.result-stat__value { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.4rem; font-weight: 800; color: #0f172a; }
+.review-section { background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+.review-item { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; }
+.review-item:last-child { border-bottom: none; }
+.review-item__q { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 12px; }
+.review-item__q-num { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+</style>
+</head>
+<body class="cbt-body">
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Loading your test…</p>
+</div>
+
+<!-- Start Screen (shown before test begins) -->
+<div id="start-screen" style="display:none;">
+  <div class="start-card">
+    <div class="start-card__logo">
+      <img src="IMG_4629.png" alt="Fahmid School">
+    </div>
+    <div class="start-card__school">Fahmid Nursery &amp; Primary School</div>
+    <h1 class="start-card__title" id="sc-title">Loading…</h1>
+    <p class="start-card__subject" id="sc-subject">—</p>
+    <div class="start-card__info">
+      <div class="start-info-cell">
+        <div class="start-info-cell__label">Questions</div>
+        <div class="start-info-cell__value" id="sc-qcount">—</div>
+      </div>
+      <div class="start-info-cell">
+        <div class="start-info-cell__label">Time Limit</div>
+        <div class="start-info-cell__value" id="sc-time">—</div>
+      </div>
+      <div class="start-info-cell">
+        <div class="start-info-cell__label">Class</div>
+        <div class="start-info-cell__value" id="sc-class">—</div>
+      </div>
+      <div class="start-info-cell">
+        <div class="start-info-cell__label">Term</div>
+        <div class="start-info-cell__value" id="sc-term">—</div>
+      </div>
+    </div>
+    <div class="start-card__rules">
+      <strong>⚠ Instructions — Read carefully</strong>
+      <ul>
+        <li>Once you start, the timer begins immediately.</li>
+        <li>Switching tabs or windows will be logged.</li>
+        <li>The test auto-submits when time runs out.</li>
+        <li>Select one answer per question.</li>
+        <li>You can flag questions and come back to them.</li>
+        <li>Click Submit when you are done.</li>
+      </ul>
+    </div>
+    <button class="start-btn" onclick="startTest()">
+      Begin Test →
+    </button>
+    <p id="sc-already-done" style="margin-top:14px; color:#dc2626; font-size:13px; font-weight:600; display:none;">
+      You have already completed this test.
+    </p>
+  </div>
+</div>
+
+<!-- Test Screen -->
+<div id="test-screen">
+  <!-- Top Bar -->
+  <div class="cbt-topbar">
+    <div class="cbt-topbar__info">
+      <div class="cbt-topbar__title" id="ts-title">Test</div>
+      <div class="cbt-topbar__meta" id="ts-meta">—</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="cbt-timer" id="cbt-timer-display">
+        <i data-lucide="clock" style="width:16px;height:16px;" aria-hidden="true"></i>
+        <span id="cbt-timer-text">00:00</span>
+      </div>
+      <button class="cbt-nav-btn cbt-nav-btn--submit" onclick="confirmSubmit()" style="padding:8px 18px;font-size:13px;">
+        <i data-lucide="send" style="width:14px;height:14px;" aria-hidden="true"></i>
+        Submit
+      </button>
+    </div>
+  </div>
+
+  <!-- Warning banner (hidden by default) -->
+  <div id="tab-warn-banner" class="cbt-warn-banner" style="display:none;max-width:900px;margin:12px auto 0;">
+    <i data-lucide="alert-triangle" style="width:18px;height:18px;flex-shrink:0;" aria-hidden="true"></i>
+    <span id="tab-warn-text">Warning: You left this page. This has been recorded.</span>
+  </div>
+
+  <!-- Shell -->
+  <div class="cbt-shell">
+    <!-- Question Area -->
+    <div>
+      <div class="cbt-question-card">
+        <div class="cbt-question-number" id="q-number">Question 1 of —</div>
+        <button class="cbt-flag-btn" id="flag-btn" onclick="toggleFlag()">
+          <i data-lucide="flag" style="width:13px;height:13px;" aria-hidden="true"></i>
+          Flag for review
+        </button>
+        <p class="cbt-question-text" id="q-text">Loading…</p>
+        <div class="cbt-options" id="q-options"></div>
+        <div class="cbt-nav">
+          <button class="cbt-nav-btn cbt-nav-btn--prev" onclick="prevQuestion()">
+            <i data-lucide="arrow-left" style="width:14px;height:14px;" aria-hidden="true"></i>
+            Previous
+          </button>
+          <span id="q-progress" style="font-size:12px;color:#64748b;font-weight:600;"></span>
+          <button class="cbt-nav-btn cbt-nav-btn--next" id="next-btn" onclick="nextQuestion()">
+            Next
+            <i data-lucide="arrow-right" style="width:14px;height:14px;" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar: palette + info -->
+    <div class="cbt-sidebar">
+      <div class="cbt-palette-card">
+        <div class="cbt-palette-title">Question Palette</div>
+        <div class="cbt-palette-grid" id="palette-grid"></div>
+        <div class="cbt-legend">
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background:#1a56db;"></div> Current
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background:#dbeafe;border:1.5px solid #1a56db;"></div> Answered
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background:#fef3c7;border:1.5px solid #f59e0b;"></div> Flagged
+          </div>
+          <div class="cbt-legend-item">
+            <div class="cbt-legend-dot" style="background:#f8fafc;border:1.5px solid #e2e8f0;"></div> Not answered
+          </div>
+        </div>
+      </div>
+      <div class="cbt-palette-card">
+        <div class="cbt-palette-title">Progress</div>
+        <div id="progress-stats" style="font-size:13px;color:#374151;line-height:1.8;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Result Screen -->
+<div id="result-screen">
+  <div class="result-card">
+    <div class="result-main">
+      <div class="cbt-score-ring" id="score-ring">
+        <div class="cbt-score-value" id="score-pct">—</div>
+        <div class="cbt-score-label">Score</div>
+      </div>
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:6px;" id="result-title">Test Complete!</h2>
+      <p style="font-size:13px;color:#64748b;" id="result-subtitle">—</p>
+      <div class="result-stats">
+        <div class="result-stat"><div class="result-stat__label">Correct</div><div class="result-stat__value" id="r-correct">—</div></div>
+        <div class="result-stat"><div class="result-stat__label">Wrong</div><div class="result-stat__value" id="r-wrong">—</div></div>
+        <div class="result-stat"><div class="result-stat__label">Skipped</div><div class="result-stat__value" id="r-skipped">—</div></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button onclick="showReview()" class="cbt-nav-btn cbt-nav-btn--next" style="border:none;">
+          <i data-lucide="eye" style="width:14px;height:14px;" aria-hidden="true"></i>
+          Review Answers
+        </button>
+        <a href="pupil.html" class="cbt-nav-btn cbt-nav-btn--prev" style="text-decoration:none;">
+          Back to Portal
+        </a>
+      </div>
+    </div>
+    <div id="review-container" style="display:none;">
+      <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#64748b;margin:20px 0 12px;">Answer Review</h3>
+      <div class="review-section" id="review-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Submit Overlay -->
+<div id="confirm-overlay" class="cbt-overlay" style="display:none;">
+  <div class="cbt-overlay-card">
+    <div class="cbt-overlay-icon">📝</div>
+    <div class="cbt-overlay-title">Submit Test?</div>
+    <p class="cbt-overlay-desc" id="confirm-desc">Are you sure you want to submit? Once submitted you cannot change your answers.</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="document.getElementById('confirm-overlay').style.display='none'" class="cbt-nav-btn cbt-nav-btn--prev" style="border:none;">Cancel</button>
+      <button onclick="submitTest()" class="cbt-nav-btn cbt-nav-btn--submit" style="border:none;">Yes, Submit</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="firebase-init.js"></script>
+<script src="script.js"></script>
+<script src="cbt.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+</script>
+</body>
+</html>
