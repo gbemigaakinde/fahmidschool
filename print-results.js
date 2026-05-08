@@ -267,7 +267,7 @@ function updateReportHeader() {
     const session = currentSettings.session || '';
 
     // Title strip
-    setText('report-title', `${term} Report Card${session ? ' — ' + session + ' Session' : ''}`);
+    setText('report-title', `${term} Report Card${session ? ' — ' + session + ' Academic Session' : ''}`);
 
     // Profile cells
     setText('current-term',    term    || '-');
