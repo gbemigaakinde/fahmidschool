@@ -30,6 +30,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="cbt-portal.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="remark-templates.js"></script>
 </head>
@@ -97,6 +98,11 @@
             <a href="#remarks" data-section="remarks" class="tp-nav-link">
                 <i data-lucide="message-square-text"></i>
                 <span>Remarks</span>
+            </a>
+            
+            <a href="#cbt" data-section="cbt" class="tp-nav-link">
+                <i data-lucide="monitor"></i>
+                <span>CBT (Test/Exam)</span>
             </a>
 
             <div class="tp-nav-label">Admin</div>
@@ -529,6 +535,22 @@
                     </div>
                 </div>
             </section>
+            
+            <!-- ── CBT / TESTS ────────────────────── -->
+            <section id="cbt" class="tp-section admin-card" hidden tabindex="-1">
+                <div class="tp-section-header">
+                    <div>
+                        <h1 class="tp-section-title">CBT – Online Tests and Exam</h1>
+                        <p class="tp-section-subtitle section-description">Create and manage objective tests/exams pupils take online.</p>
+                    </div>
+                </div>
+                <div id="cbt-section-content">
+                    <div style="text-align:center;padding:40px;color:#94a3b8;">
+                        <div class="spinner" style="margin:0 auto 12px;"></div>
+                        <p>Loading…</p>
+                    </div>
+                </div>
+            </section>
 
             <!-- ── LESSON NOTES ────────────────────── -->
             <section id="lesson-notes" class="tp-section admin-card" hidden tabindex="-1">
@@ -565,11 +587,16 @@
     <script src="button-loader.js"></script>
     
 
-    <!-- Lucide icon init -->
+    <!-- CBT script and Lucide icon init -->
+    <script src="cbt-teacher.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
         });
+        // Register CBT section in the loader map
+        if (window.sectionLoaders) {
+            window.sectionLoaders['cbt'] = () => window.loadCbtSection?.();
+        }
     </script>
 
     <!-- PWA Service Worker -->
