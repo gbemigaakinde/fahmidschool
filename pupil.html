@@ -1383,72 +1383,102 @@ window.openPrintReport = openPrintReport;
 /* ── Pupil Tests Loader ─────────────────────────────────────── */
 async function loadPupilTests() {
   const container = document.getElementById('pp-tests-content');
-  if (!container || !currentPupilId) return;
+  if (!container) return;
 
   try {
-    // Find pupil's classId
-    const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
-    if (!pupilDoc.exists) return;
+    // Get the currently logged-in user directly from Firebase Auth
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Please log in to view your tests.</p>';
+      return;
+    }
+
+    const pupilId = user.uid;
+
+    // Get pupil document to find classId
+    const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+    if (!pupilDoc.exists) {
+      container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Pupil profile not found. Contact admin.</p>';
+      return;
+    }
+
     const pData = pupilDoc.data();
-    const classId = typeof pData.class === 'object' ? pData.class.id : null;
+    const classId = typeof pData.class === 'object' && pData.class !== null
+      ? pData.class.id
+      : null;
 
     if (!classId) {
-      container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Class information not found. Contact admin.</p>';
+      container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Class information missing. Contact admin to update your profile.</p>';
       return;
     }
 
     // Load published tests for this class
+    // NOTE: No orderBy here to avoid requiring a composite index
     const testsSnap = await db.collection('cbt_tests')
       .where('classId', '==', classId)
       .where('published', '==', true)
-      .orderBy('createdAt', 'desc')
       .get();
 
     if (testsSnap.empty) {
       container.innerHTML = `
         <div class="cbt-empty">
-          <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;"></i>
+          <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;display:block;margin-left:auto;margin-right:auto;"></i>
           <div class="cbt-empty-title">No tests yet</div>
-          <div class="cbt-empty-desc">Your teacher hasn't published any tests yet. Check back soon.</div>
+          <div class="cbt-empty-desc">Your teacher has not published any tests yet. Check back soon.</div>
         </div>`;
       if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }
 
-    // For each test, check if this pupil has already completed it
+    // Check which tests this pupil has already completed
     const completedSnap = await db.collection('cbt_attempts')
-      .where('pupilId', '==', currentPupilId)
+      .where('pupilId', '==', pupilId)
       .where('status', '==', 'completed')
       .get();
     const completedTestIds = new Set(completedSnap.docs.map(d => d.data().testId));
 
-    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px;">';
+    // Sort tests client-side: open first, then upcoming, then expired/done
     const now = new Date();
+    const tests = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    tests.sort((a, b) => {
+      const getPriority = t => {
+        const done = completedTestIds.has(t.id);
+        if (done) return 3;
+        if (t.expiryDate && t.expiryDate.toDate() < now) return 2;
+        if (t.scheduledDate && t.scheduledDate.toDate() > now) return 1;
+        return 0;
+      };
+      return getPriority(a) - getPriority(b);
+    });
 
-    for (const doc of testsSnap.docs) {
-      const t = doc.data();
-      const done = completedTestIds.has(doc.id);
+    // Build cards HTML
+    let cardsHTML = '<div style="display:flex;flex-direction:column;gap:12px;">';
 
-      // Determine window status
+    for (const t of tests) {
+      const done = completedTestIds.has(t.id);
+
       let windowStatus = 'open';
       if (t.scheduledDate && t.scheduledDate.toDate() > now) windowStatus = 'upcoming';
       if (t.expiryDate    && t.expiryDate.toDate()    < now) windowStatus = 'expired';
 
-      // Get score if done
+      // Get score if pupil already did this test
       let scoreDisplay = '';
       if (done) {
-        const resultSnap = await db.collection('cbt_results')
-          .where('testId','==', doc.id)
-          .where('pupilId','==', currentPupilId)
-          .limit(1)
-          .get();
-        if (!resultSnap.empty) {
-          const r = resultSnap.docs[0].data();
-          scoreDisplay = `
-            <div style="font-size:13px;font-weight:700;color:#16a34a;">
-              ✓ ${r.score}/${r.total} (${r.percentage}% — ${r.grade})
-            </div>`;
-        }
+        try {
+          const resultSnap = await db.collection('cbt_results')
+            .where('testId', '==', t.id)
+            .where('pupilId', '==', pupilId)
+            .limit(1)
+            .get();
+          if (!resultSnap.empty) {
+            const r = resultSnap.docs[0].data();
+            scoreDisplay = `
+              <div style="margin-top:6px;font-size:13px;font-weight:700;color:#16a34a;display:flex;align-items:center;gap:5px;">
+                <i data-lucide="check-circle" style="width:14px;height:14px;"></i>
+                Your score: ${r.score}/${r.total} &nbsp;·&nbsp; ${r.percentage}% &nbsp;·&nbsp; Grade ${r.grade}
+              </div>`;
+          }
+        } catch(e) { /* score display is non-critical */ }
       }
 
       const statusPill = done
@@ -1461,7 +1491,30 @@ async function loadPupilTests() {
 
       const canTake = !done && windowStatus === 'open';
 
-      container.innerHTML += `
+      const actionBtn = canTake
+        ? `<a href="cbt.html?testId=${t.id}"
+              class="pp-action-btn pp-action-btn--solid"
+              style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
+              <i data-lucide="play" style="width:14px;height:14px;"></i>
+              Start Test
+           </a>`
+        : done
+          ? `<span class="pp-action-btn pp-action-btn--outline" style="opacity:0.7;cursor:default;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
+               <i data-lucide="check" style="width:14px;height:14px;"></i>
+               Done
+             </span>`
+          : `<span class="pp-action-btn pp-action-btn--outline" style="opacity:0.5;cursor:not-allowed;display:inline-flex;padding:10px 20px;">
+               ${windowStatus === 'upcoming' ? '⏳ Not yet open' : '✗ Expired'}
+             </span>`;
+
+      const scheduleInfo = t.scheduledDate
+        ? `<div style="font-size:11px;color:#64748b;margin-top:3px;">Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>`
+        : '';
+      const expiryInfo = t.expiryDate
+        ? `<div style="font-size:11px;color:#64748b;">Closes: ${t.expiryDate.toDate().toLocaleString('en-GB')}</div>`
+        : '';
+
+      cardsHTML += `
         <div class="cbt-test-card cbt-test-card--${done ? 'completed' : windowStatus}">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
             <div style="min-width:0;flex:1;">
@@ -1470,50 +1523,50 @@ async function loadPupilTests() {
                 ${statusPill}
               </div>
               <div class="cbt-test-card__meta">
-                <span><i data-lucide="book-open" style="width:12px;height:12px;"></i>${t.subject}</span>
-                <span><i data-lucide="help-circle" style="width:12px;height:12px;"></i>Objective questions</span>
+                <span><i data-lucide="book-open" style="width:12px;height:12px;"></i>${t.subject || '—'}</span>
+                <span><i data-lucide="tag" style="width:12px;height:12px;"></i>${t.type || 'Test'}</span>
                 <span><i data-lucide="clock" style="width:12px;height:12px;"></i>${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
+                <span><i data-lucide="calendar" style="width:12px;height:12px;"></i>${t.term || '—'}</span>
               </div>
               ${scoreDisplay}
-              ${t.scheduledDate ? `<div style="font-size:11px;color:#64748b;margin-top:4px;">Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>` : ''}
-              ${t.expiryDate   ? `<div style="font-size:11px;color:#64748b;">Closes: ${t.expiryDate.toDate().toLocaleString('en-GB')}</div>` : ''}
+              ${scheduleInfo}
+              ${expiryInfo}
             </div>
-            <div style="flex-shrink:0;">
-              ${canTake
-                ? `<a href="cbt.html?testId=${doc.id}" class="pp-action-btn pp-action-btn--solid" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
-                    <i data-lucide="play" style="width:14px;height:14px;"></i> Start Test
-                   </a>`
-                : done
-                  ? `<button onclick="alert('Results are shown above. Talk to your teacher for a detailed review.')" class="pp-action-btn pp-action-btn--outline" style="cursor:pointer;">
-                      <i data-lucide="eye" style="width:14px;height:14px;"></i> View Score
-                     </button>`
-                  : `<button disabled class="pp-action-btn pp-action-btn--outline" style="opacity:0.5;cursor:not-allowed;">
-                      ${windowStatus === 'upcoming' ? '⏳ Not started' : '✗ Expired'}
-                     </button>`
-              }
+            <div style="flex-shrink:0;align-self:center;">
+              ${actionBtn}
             </div>
           </div>
         </div>`;
     }
 
-    container.innerHTML += '</div>';
+    cardsHTML += '</div>';
+    container.innerHTML = cardsHTML;
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
   } catch (err) {
     console.error('Error loading pupil tests:', err);
-    container.innerHTML = '<p style="text-align:center;color:#dc2626;padding:24px;font-size:13px;">Failed to load tests. Please refresh.</p>';
+
+    // Show a helpful message based on the error type
+    let msg = 'Failed to load tests. Please refresh the page.';
+    if (err.code === 'permission-denied') {
+      msg = 'Permission denied. This may be a Firestore rules issue — contact admin.';
+    } else if (err.code === 'failed-precondition') {
+      msg = 'A database index is still building. Please wait 2 minutes and refresh.';
+    }
+
+    const container2 = document.getElementById('pp-tests-content');
+    if (container2) {
+      container2.innerHTML = `<p style="text-align:center;color:#dc2626;padding:24px;font-size:13px;">${msg}</p>`;
+    }
   }
 }
 
-// Call it when the section becomes visible and pupil data is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Watch for pupil data to be ready, then load tests
-  const check = setInterval(() => {
-    if (window.currentPupilId) {
-      clearInterval(check);
-      loadPupilTests();
-    }
-  }, 500);
+// Wait for Firebase Auth to be ready, then load tests
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+    // Small delay to let pupil.js finish its own setup first
+    setTimeout(loadPupilTests, 800);
+  }
 });
 </script>
 
