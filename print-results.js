@@ -1,6 +1,6 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Print Results JavaScript - FIXED
+ * Print Results JavaScript
  *
  * Purpose:
  * - Generate dynamic termly report card
@@ -8,8 +8,8 @@
  * - Reflect admin changes instantly
  * - Support session parameter from pupil portal (?session=2023/2024)
  *
- * Version: 6.3.0 - SESSION URL PARAMETER SUPPORT
- * Date: 2026-02-28
+ * Version: 6.4.0 - NEW FIXED-WIDTH LAYOUT + PERFORMANCE SUMMARY CARD
+ * Date: 2026-05-08
  */
 'use strict';
 
@@ -137,7 +137,7 @@ initPrintResultsWrapper();
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
-        
+
         if (!doc.exists) {
             console.warn('Settings document not found');
             return;
@@ -147,7 +147,7 @@ async function fetchSchoolSettings() {
         currentSettings.term = data.term || currentSettings.term;
         currentSettings.session = data.session || '';
         currentSettings.resumptionDate = data.resumptionDate || '-';
-        
+
         console.log('Settings loaded successfully:', currentSettings);
     } catch (error) {
         console.error('Error loading settings:', error);
@@ -156,13 +156,13 @@ async function fetchSchoolSettings() {
 }
 
 /* ===============================
-   FETCH PUPIL PROFILE (CORE FIX)
+   FETCH PUPIL PROFILE
 ================================ */
 
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
-        
+
         if (!doc.exists) {
             throw new Error('Pupil record not found');
         }
@@ -218,7 +218,7 @@ async function fetchPupilProfile(uid) {
 
         setText('class-teacher', teacherName);
         setText('subjects-list', subjectsList);
-        
+
         console.log('Pupil profile loaded successfully');
     } catch (error) {
         console.error('Error loading pupil profile:', error);
@@ -263,9 +263,23 @@ function setupTermSelector() {
 ================================ */
 
 function updateReportHeader() {
-    setText('report-title', `${currentSettings.term} Report Card - ${currentSettings.session} Session`);
-    setText('current-session', currentSettings.session || '-');
+    const term    = currentSettings.term    || '';
+    const session = currentSettings.session || '';
 
+    // Title strip
+    setText('report-title', `${term} Report Card${session ? ' — ' + session + ' Session' : ''}`);
+
+    // Profile cells
+    setText('current-term',    term    || '-');
+    setText('current-session', session || '-');
+
+    // Header badge (top-right of the blue header)
+    setText('header-term-badge', term || 'Termly Report');
+
+    // Header session line
+    setText('header-session', session ? `Session: ${session}` : 'Session –');
+
+    // Resumption date
     const urlSession = getSessionFromUrl();
     if (urlSession) {
         setText('resumption-date', '-');
@@ -298,7 +312,7 @@ async function loadReportData() {
 }
 
 /* ===============================
-   ACADEMIC RESULTS (FIXED)
+   ACADEMIC RESULTS
 ================================ */
 
 async function loadAcademicResults() {
@@ -316,11 +330,13 @@ async function loadAcademicResults() {
         }
         if (attempts >= maxAttempts) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">⚠️ Unable to load results. Reload page.</td></tr>`;
+            clearPerformanceSummary();
             return;
         }
     }
 
     tbody.innerHTML = loadingRow();
+    clearPerformanceSummary();
 
     try {
         const resultsSnap = await db.collection('results')
@@ -329,7 +345,7 @@ async function loadAcademicResults() {
             .where('session', '==', currentSettings.session)
             .where('status', '==', 'approved')
             .get();
-        
+
         let results = [];
         if (!resultsSnap.empty) {
             resultsSnap.forEach(doc => {
@@ -341,6 +357,7 @@ async function loadAcademicResults() {
                 });
             });
         } else {
+            // Fallback: fetch all and filter client-side
             const allResultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .get();
@@ -361,6 +378,7 @@ async function loadAcademicResults() {
 
         if (results.length === 0) {
             tbody.innerHTML = emptyRow(`No approved results available for ${currentSettings.term}, ${currentSettings.session} session`);
+            clearPerformanceSummary();
             return;
         }
 
@@ -368,6 +386,7 @@ async function loadAcademicResults() {
 
     } catch (error) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
+        clearPerformanceSummary();
         console.error('Error loading results:', error);
     }
 }
@@ -377,17 +396,19 @@ function renderResults(results, tbody) {
     results.sort((a, b) => a.subject.localeCompare(b.subject));
 
     let totalScore = 0;
+
     results.forEach(r => {
-        const ca = r.caScore;
+        const ca   = r.caScore;
         const exam = r.examScore;
         const score = ca + exam;
         totalScore += score;
+
         tbody.insertAdjacentHTML('beforeend', `
             <tr>
                 <td>${r.subject}</td>
                 <td>${ca}</td>
                 <td>${exam}</td>
-                <td><strong>${score}</strong></td>
+                <td class="col-total">${score}</td>
                 <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
                 <td>${getRemark(score)}</td>
             </tr>
@@ -395,23 +416,25 @@ function renderResults(results, tbody) {
     });
 
     const subjectCount = results.length;
-    const average = (totalScore / subjectCount).toFixed(1);
-    const avgGrade = getGrade(parseFloat(average));
+    const average      = (totalScore / subjectCount).toFixed(1);
+    const avgGrade     = getGrade(parseFloat(average));
 
-    tbody.insertAdjacentHTML('beforeend', `
-        <tr class="summary-row">
-            <td colspan="3"><strong>TOTAL SCORE</strong></td>
-            <td colspan="3"><strong>${totalScore} / ${subjectCount * 100}</strong></td>
-        </tr>
-        <tr class="summary-row">
-            <td colspan="3"><strong>AVERAGE</strong></td>
-            <td colspan="3"><strong>${average}% (${avgGrade})</strong></td>
-        </tr>
-    `);
+    // Populate Performance Summary card (side panel)
+    setText('perf-total',    `${totalScore} / ${subjectCount * 100}`);
+    setText('perf-subjects', String(subjectCount));
+    setText('perf-avg',      `${average}%`);
+
+    const gradeEl = document.getElementById('perf-grade');
+    if (gradeEl) {
+        gradeEl.textContent  = avgGrade;
+        // Apply grade colour class
+        gradeEl.className = `perf-row__val grade-${avgGrade}`;
+        gradeEl.id = 'perf-grade'; // preserve id after className reset
+    }
 }
 
 /* ===============================
-   ATTENDANCE (FIXED)
+   ATTENDANCE
 ================================ */
 
 async function loadAttendance() {
@@ -420,16 +443,16 @@ async function loadAttendance() {
     const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
     const doc = await db.collection('attendance').doc(docId).get();
     const d = doc.exists ? doc.data() : {};
-    setText('times-opened', typeof d.timesOpened === 'number' ? d.timesOpened : '-');
+    setText('times-opened',  typeof d.timesOpened  === 'number' ? d.timesOpened  : '-');
     setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
-    setText('times-absent', typeof d.timesAbsent === 'number' ? d.timesAbsent : '-');
+    setText('times-absent',  typeof d.timesAbsent  === 'number' ? d.timesAbsent  : '-');
 }
 
 /* ===============================
    TRAITS & SKILLS
 ================================ */
 
-async function loadBehavioralTraits() { await loadKeyedCollection('behavioral_traits', 'trait-'); }
+async function loadBehavioralTraits()  { await loadKeyedCollection('behavioral_traits',  'trait-'); }
 async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
 
 async function loadKeyedCollection(collection, prefix) {
@@ -457,20 +480,33 @@ async function loadRemarks() {
     const doc = await db.collection('remarks').doc(docId).get();
     const data = doc.exists ? doc.data() : {};
     setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
-    setText('head-remark', typeof data.headRemark === 'string' ? data.headRemark : '-');
+    setText('head-remark',    typeof data.headRemark    === 'string' ? data.headRemark    : '-');
 }
 
 /* ===============================
    HELPERS
 ================================ */
 
+function clearPerformanceSummary() {
+    setText('perf-total',    '–');
+    setText('perf-subjects', '–');
+    setText('perf-avg',      '–');
+    const gradeEl = document.getElementById('perf-grade');
+    if (gradeEl) {
+        gradeEl.textContent = '–';
+        gradeEl.className   = 'perf-row__val';
+        gradeEl.id          = 'perf-grade';
+    }
+}
+
 function resetTraitsAndRemarks() {
     document.querySelectorAll('.trait-value').forEach(el => el.textContent = '-');
     setText('teacher-remark', '-');
     setText('head-remark', '-');
-    setText('times-opened', '-');
+    setText('times-opened',  '-');
     setText('times-present', '-');
-    setText('times-absent', '-');
+    setText('times-absent',  '-');
+    clearPerformanceSummary();
 }
 
 function setText(id, value) {
@@ -479,14 +515,16 @@ function setText(id, value) {
 }
 
 function loadingRow() {
-    return `<tr><td colspan="6" style="text-align:center; padding: var(--space-lg); color: var(--color-gray-600);">
-        <div class="spinner" style="width: 30px; height: 30px; margin: 0 auto var(--space-sm); border: 3px solid #f3f3f3; border-top: 3px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        Loading results...
+    return `<tr><td colspan="6" style="text-align:center; padding:12px; color:var(--ink-3);">
+        <div style="width:24px;height:24px;margin:0 auto 6px;border:3px solid #f3f3f3;
+             border-top:3px solid var(--blue-deep);border-radius:50%;
+             animation:spin 1s linear infinite;"></div>
+        Loading results…
     </td></tr>`;
 }
 
 function emptyRow(text) {
-    return `<tr><td colspan="6" style="text-align:center; padding: var(--space-lg); color: var(--color-gray-600);">${text}</td></tr>`;
+    return `<tr><td colspan="6" style="text-align:center; padding:12px; color:var(--ink-3);">${text}</td></tr>`;
 }
 
 function getGrade(score) {
@@ -508,13 +546,13 @@ function getRemark(score) {
     if (score >= 60) return 'Credit';
     if (score >= 50) return 'Credit';
     if (score >= 45) return 'Pass';
+    if (score >= 40) return 'Pass';
     return 'Fail';
 }
 
-const style = document.createElement('style');
-style.textContent = `
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-`;
-document.head.appendChild(style);
+// Spin animation for loading spinner
+const _spinStyle = document.createElement('style');
+_spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
+document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.3.0 - SESSION URL PARAMETER SUPPORT)');
+console.log('✓ print-results.js ready (v6.4.0 - NEW FIXED-WIDTH LAYOUT + PERFORMANCE SUMMARY CARD)');
