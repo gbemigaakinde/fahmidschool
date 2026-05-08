@@ -11,6 +11,7 @@
 <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 <link rel="stylesheet" href="portal-base.css">
 <link rel="stylesheet" href="pupil-portal.css">
+<link rel="stylesheet" href="cbt-portal.css">
 
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
@@ -1007,6 +1008,10 @@
         <i data-lucide="bar-chart-2" aria-hidden="true"></i>
         <span>Results</span>
       </a>
+      <a href="#pp-tests" class="pp-nav-link" data-section="tests">
+        <i data-lucide="monitor" aria-hidden="true"></i>
+        <span>Online Tests/Exams</span>
+      </a>
       <a href="#pp-fees" class="pp-nav-link" data-section="fees">
         <i data-lucide="credit-card" aria-hidden="true"></i>
         <span>Fees</span>
@@ -1164,6 +1169,27 @@
 
   </section>
 
+<!-- ─── TESTS SECTION ─────────────────────── -->
+  <section class="pp-card" id="pp-tests" aria-labelledby="tests-heading">
+
+    <div class="pp-card__header">
+      <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--indigo" aria-hidden="true">
+        <i data-lucide="monitor"></i>
+      </div>
+      <div>
+        <h2 class="pp-card__title" id="tests-heading">Online Tests and Examinations</h2>
+        <p class="pp-card__subtitle">Tests or examinations assigned to your class</p>
+      </div>
+    </div>
+
+    <div style="padding:0 32px 24px;" id="pp-tests-content">
+      <div style="text-align:center;padding:32px;color:#94a3b8;">
+        <div class="spinner" style="margin:0 auto 12px;"></div>
+        <p style="font-size:13px;">Loading tests…</p>
+      </div>
+    </div>
+
+  </section>
 
   <!-- ─── RESULTS SECTION ─────────────────── -->
   <section class="pp-card" id="pp-results" aria-labelledby="results-heading">
@@ -1212,7 +1238,6 @@
 
   </section>
 
-
   <!-- ─── FEE BALANCE SECTION ──────────────── -->
   <section class="pp-card" id="pp-fees" style="display:none;" aria-labelledby="fees-heading">
     <!-- pupil.js populates this -->
@@ -1239,6 +1264,10 @@
     <a href="#pp-results" class="pp-bottom-nav__link" data-section="results">
       <i data-lucide="bar-chart-2" aria-hidden="true"></i>
       <span>Results</span>
+    </a>
+   <a href="#pp-tests" class="pp-bottom-nav__link" data-section="tests">
+      <i data-lucide="monitor" aria-hidden="true"></i>
+      <span>Tests/Exams</span>
     </a>
     <a href="#pp-fees" class="pp-bottom-nav__link" data-section="fees">
       <i data-lucide="credit-card" aria-hidden="true"></i>
@@ -1349,6 +1378,144 @@ window.openPrintReport = openPrintReport;
 <script src="session-cache.js"></script>
 <script src="button-loader.js"></script>
 <script src="pupil-ui-patch.js"></script>
+
+<script>
+/* ── Pupil Tests Loader ─────────────────────────────────────── */
+async function loadPupilTests() {
+  const container = document.getElementById('pp-tests-content');
+  if (!container || !currentPupilId) return;
+
+  try {
+    // Find pupil's classId
+    const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
+    if (!pupilDoc.exists) return;
+    const pData = pupilDoc.data();
+    const classId = typeof pData.class === 'object' ? pData.class.id : null;
+
+    if (!classId) {
+      container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Class information not found. Contact admin.</p>';
+      return;
+    }
+
+    // Load published tests for this class
+    const testsSnap = await db.collection('cbt_tests')
+      .where('classId', '==', classId)
+      .where('published', '==', true)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    if (testsSnap.empty) {
+      container.innerHTML = `
+        <div class="cbt-empty">
+          <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;"></i>
+          <div class="cbt-empty-title">No tests yet</div>
+          <div class="cbt-empty-desc">Your teacher hasn't published any tests yet. Check back soon.</div>
+        </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
+    // For each test, check if this pupil has already completed it
+    const completedSnap = await db.collection('cbt_attempts')
+      .where('pupilId', '==', currentPupilId)
+      .where('status', '==', 'completed')
+      .get();
+    const completedTestIds = new Set(completedSnap.docs.map(d => d.data().testId));
+
+    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px;">';
+    const now = new Date();
+
+    for (const doc of testsSnap.docs) {
+      const t = doc.data();
+      const done = completedTestIds.has(doc.id);
+
+      // Determine window status
+      let windowStatus = 'open';
+      if (t.scheduledDate && t.scheduledDate.toDate() > now) windowStatus = 'upcoming';
+      if (t.expiryDate    && t.expiryDate.toDate()    < now) windowStatus = 'expired';
+
+      // Get score if done
+      let scoreDisplay = '';
+      if (done) {
+        const resultSnap = await db.collection('cbt_results')
+          .where('testId','==', doc.id)
+          .where('pupilId','==', currentPupilId)
+          .limit(1)
+          .get();
+        if (!resultSnap.empty) {
+          const r = resultSnap.docs[0].data();
+          scoreDisplay = `
+            <div style="font-size:13px;font-weight:700;color:#16a34a;">
+              ✓ ${r.score}/${r.total} (${r.percentage}% — ${r.grade})
+            </div>`;
+        }
+      }
+
+      const statusPill = done
+        ? '<span class="cbt-status-pill cbt-status-pill--done">✓ Completed</span>'
+        : windowStatus === 'upcoming'
+          ? '<span class="cbt-status-pill cbt-status-pill--upcoming">⏳ Scheduled</span>'
+          : windowStatus === 'expired'
+            ? '<span class="cbt-status-pill cbt-status-pill--expired">Expired</span>'
+            : '<span class="cbt-status-pill cbt-status-pill--open">● Open</span>';
+
+      const canTake = !done && windowStatus === 'open';
+
+      container.innerHTML += `
+        <div class="cbt-test-card cbt-test-card--${done ? 'completed' : windowStatus}">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <div class="cbt-test-card__title">${t.title}</div>
+                ${statusPill}
+              </div>
+              <div class="cbt-test-card__meta">
+                <span><i data-lucide="book-open" style="width:12px;height:12px;"></i>${t.subject}</span>
+                <span><i data-lucide="help-circle" style="width:12px;height:12px;"></i>Objective questions</span>
+                <span><i data-lucide="clock" style="width:12px;height:12px;"></i>${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
+              </div>
+              ${scoreDisplay}
+              ${t.scheduledDate ? `<div style="font-size:11px;color:#64748b;margin-top:4px;">Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>` : ''}
+              ${t.expiryDate   ? `<div style="font-size:11px;color:#64748b;">Closes: ${t.expiryDate.toDate().toLocaleString('en-GB')}</div>` : ''}
+            </div>
+            <div style="flex-shrink:0;">
+              ${canTake
+                ? `<a href="cbt.html?testId=${doc.id}" class="pp-action-btn pp-action-btn--solid" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
+                    <i data-lucide="play" style="width:14px;height:14px;"></i> Start Test
+                   </a>`
+                : done
+                  ? `<button onclick="alert('Results are shown above. Talk to your teacher for a detailed review.')" class="pp-action-btn pp-action-btn--outline" style="cursor:pointer;">
+                      <i data-lucide="eye" style="width:14px;height:14px;"></i> View Score
+                     </button>`
+                  : `<button disabled class="pp-action-btn pp-action-btn--outline" style="opacity:0.5;cursor:not-allowed;">
+                      ${windowStatus === 'upcoming' ? '⏳ Not started' : '✗ Expired'}
+                     </button>`
+              }
+            </div>
+          </div>
+        </div>`;
+    }
+
+    container.innerHTML += '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  } catch (err) {
+    console.error('Error loading pupil tests:', err);
+    container.innerHTML = '<p style="text-align:center;color:#dc2626;padding:24px;font-size:13px;">Failed to load tests. Please refresh.</p>';
+  }
+}
+
+// Call it when the section becomes visible and pupil data is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Watch for pupil data to be ready, then load tests
+  const check = setInterval(() => {
+    if (window.currentPupilId) {
+      clearInterval(check);
+      loadPupilTests();
+    }
+  }, 500);
+});
+</script>
 
 <script>
 if ('serviceWorker' in navigator) {
