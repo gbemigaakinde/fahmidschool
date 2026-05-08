@@ -56,7 +56,6 @@ async function loadCbtTests(container) {
     try {
         const snap = await db.collection('cbt_tests')
             .where('teacherId', '==', window.currentUser.uid)
-            .orderBy('createdAt', 'desc')
             .get();
 
         if (snap.empty) {
@@ -70,68 +69,106 @@ async function loadCbtTests(container) {
             return;
         }
 
+        // Sort client-side: newest first
+        const docs = snap.docs.slice().sort((a, b) => {
+            const ta = a.data().createdAt?.toMillis?.() || 0;
+            const tb = b.data().createdAt?.toMillis?.() || 0;
+            return tb - ta;
+        });
+
         listEl.innerHTML = '';
-        for (const doc of snap.docs) {
+
+        for (const doc of docs) {
             const t   = doc.data();
             const now = new Date();
+            const tid = doc.id;
 
-            // Determine status
             let status = 'open';
             let statusLabel = 'Open';
             if (!t.published) { status = 'draft'; statusLabel = 'Draft'; }
             else if (t.expiryDate && t.expiryDate.toDate() < now) { status = 'expired'; statusLabel = 'Expired'; }
             else if (t.scheduledDate && t.scheduledDate.toDate() > now) { status = 'upcoming'; statusLabel = 'Scheduled'; }
 
-            // Count questions
-            const qSnap = await db.collection('cbt_questions')
-                .where('testId', '==', doc.id)
-                .get();
+            const qSnap = await db.collection('cbt_questions').where('testId', '==', tid).get();
             const qCount = qSnap.size;
 
-            // Count attempts
             const aSnap = await db.collection('cbt_attempts')
-                .where('testId', '==', doc.id)
+                .where('testId', '==', tid)
                 .where('status', '==', 'completed')
                 .get();
             const attemptCount = aSnap.size;
 
+            const statusColors = {
+                open:     { bg: '#dbeafe', color: '#1e40af', dot: '●' },
+                draft:    { bg: '#f1f5f9', color: '#475569', dot: '○' },
+                upcoming: { bg: '#fef3c7', color: '#92400e', dot: '⏳' },
+                expired:  { bg: '#fee2e2', color: '#991b1b', dot: '✕' }
+            };
+            const sc = statusColors[status] || statusColors.open;
+
+            const publishBtnStyle = t.published
+                ? 'background:#fef3c7;border:1px solid #f59e0b;color:#92400e;'
+                : 'background:#dcfce7;border:1px solid #16a34a;color:#14532d;';
+            const publishBtnText = t.published ? 'Unpublish' : 'Publish';
+
+            const scheduleHTML = t.scheduledDate
+                ? `<div class="cbt-card-date"> Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                : '';
+            const expiryHTML = t.expiryDate
+                ? `<div class="cbt-card-date"> Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                : '';
+
             const card = document.createElement('div');
-            card.className = `cbt-test-card cbt-test-card--${status}`;
-            card.style.marginBottom = '12px';
+            card.className = 'cbt-mgr-card';
             card.innerHTML = `
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-                    <div style="min-width:0;">
-                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                            <div class="cbt-test-card__title">${escHtml(t.title)}</div>
-                            <span class="cbt-status-pill cbt-status-pill--${status === 'open' ? 'open' : status === 'upcoming' ? 'upcoming' : status === 'expired' ? 'expired' : 'expired'}">${statusLabel}</span>
-                        </div>
-                        <div class="cbt-test-card__meta">
-                            <span><i data-lucide="book-open" style="width:12px;height:12px;"></i>${escHtml(t.subject)}</span>
-                            <span><i data-lucide="users" style="width:12px;height:12px;"></i>${escHtml(t.className || '—')}</span>
-                            <span><i data-lucide="help-circle" style="width:12px;height:12px;"></i>${qCount} question${qCount !== 1 ? 's' : ''}</span>
-                            <span><i data-lucide="clock" style="width:12px;height:12px;"></i>${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
-                            <span><i data-lucide="users" style="width:12px;height:12px;"></i>${attemptCount} submitted</span>
-                        </div>
-                        ${t.scheduledDate ? `<div style="font-size:11px;color:#64748b;margin-top:4px;">📅 Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>` : ''}
-                        ${t.expiryDate   ? `<div style="font-size:11px;color:#64748b;">⏰ Closes: ${t.expiryDate.toDate().toLocaleString('en-GB')}</div>` : ''}
+                <div class="cbt-mgr-card__top">
+                    <div class="cbt-mgr-card__title-row">
+                        <span class="cbt-mgr-card__title">${escHtml(t.title)}</span>
+                        <span class="cbt-mgr-status-pill" style="background:${sc.bg};color:${sc.color};">
+                            ${sc.dot} ${statusLabel}
+                        </span>
                     </div>
-                    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">
-                        <button class="btn-small btn-secondary" onclick="editCbtTest('${doc.id}')">
-                            <i data-lucide="edit" style="width:13px;height:13px;"></i> Edit
-                        </button>
-                        <button class="btn-small btn-secondary" onclick="viewCbtResults('${doc.id}', '${escHtml(t.title)}')">
-                            <i data-lucide="bar-chart-2" style="width:13px;height:13px;"></i> Results
-                        </button>
-                        <button class="btn-small btn-secondary" onclick="togglePublish('${doc.id}', ${t.published})" style="${t.published ? 'background:#fef3c7;border-color:#f59e0b;color:#92400e;' : 'background:#dcfce7;border-color:#16a34a;color:#14532d;'}">
-                            <i data-lucide="${t.published ? 'eye-off' : 'eye'}" style="width:13px;height:13px;"></i>
-                            ${t.published ? 'Unpublish' : 'Publish'}
-                        </button>
-                        <button class="btn-small" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;padding:6px 12px;border-radius:8px;cursor:pointer;" onclick="deleteCbtTest('${doc.id}', '${escHtml(t.title)}')">
-                            <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
-                        </button>
+                    <div class="cbt-mgr-card__meta">
+                        <span> ${escHtml(t.subject || '—')}</span>
+                        <span> ${escHtml(t.className || '—')}</span>
+                        <span> ${qCount} question${qCount !== 1 ? 's' : ''}</span>
+                        <span> ${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
+                        <span> ${attemptCount} submitted</span>
                     </div>
+                    ${scheduleHTML}${expiryHTML}
+                </div>
+                <div class="cbt-mgr-card__actions">
+                    <button class="cbt-mgr-btn cbt-mgr-btn--edit" data-action="edit" data-id="${tid}">
+                        Edit
+                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-action="results" data-id="${tid}" data-title="${escHtml(t.title)}">
+                        Results
+                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-action="publish" data-id="${tid}" data-published="${t.published}" style="${publishBtnStyle}">
+                        ${t.published ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--delete" data-action="delete" data-id="${tid}" data-title="${escHtml(t.title)}">
+                        Delete
+                    </button>
                 </div>
             `;
+
+            // Attach ALL button events here on the element directly — no inline onclick
+            card.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const action    = this.dataset.action;
+                    const id        = this.dataset.id;
+                    const title     = this.dataset.title || '';
+                    const published = this.dataset.published === 'true';
+
+                    if (action === 'edit')    editCbtTest(id);
+                    if (action === 'results') viewCbtResults(id, title);
+                    if (action === 'publish') togglePublish(id, published);
+                    if (action === 'delete')  deleteCbtTest(id, title);
+                });
+            });
+
             listEl.appendChild(card);
         }
 
@@ -139,7 +176,7 @@ async function loadCbtTests(container) {
 
     } catch (err) {
         console.error('Error loading CBT tests:', err);
-        if (listEl) listEl.innerHTML = '<p style="color:red;padding:20px;">Error loading tests.</p>';
+        if (listEl) listEl.innerHTML = '<p style="color:red;padding:20px;">Error loading tests. Please refresh.</p>';
     }
 }
 
