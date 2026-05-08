@@ -117,10 +117,10 @@ async function loadCbtTests(container) {
                 : 'background:#dcfce7;border:1px solid #16a34a;color:#14532d;';
 
             const scheduleHTML = t.scheduledDate
-                ? `<div class="cbt-card-date">📅 Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date"> Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
             const expiryHTML = t.expiryDate
-                ? `<div class="cbt-card-date">⏰ Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date"> Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
 
             const card = document.createElement('div');
@@ -146,12 +146,12 @@ async function loadCbtTests(container) {
                     ${scheduleHTML}${expiryHTML}
                 </div>
                 <div class="cbt-mgr-card__actions">
-                    <button class="cbt-mgr-btn cbt-mgr-btn--edit"    data-tid="${tid}" data-action="edit">✏️ Edit</button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-tid="${tid}" data-action="results">📊 Results</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--edit"    data-tid="${tid}" data-action="edit"> Edit</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-tid="${tid}" data-action="results"> Results</button>
                     <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-tid="${tid}" data-action="publish" style="${publishBtnStyle}">
-                        ${t.published ? '🔒 Unpublish' : '🟢 Publish'}
+                        ${t.published ? ' Unpublish' : ' Publish'}
                     </button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--delete"  data-tid="${tid}" data-action="delete">🗑 Delete</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--delete"  data-tid="${tid}" data-action="delete"> Delete</button>
                 </div>
             `;
 
