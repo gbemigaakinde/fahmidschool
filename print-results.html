@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!--
+        viewport width=740 — intentional.
+        This is a fixed-width document (like a PDF), not a responsive UI.
+        Mobile browsers zoom-to-fit, so the layout is pixel-identical
+        on every screen size and in print.
+    -->
     <meta name="viewport" content="width=740">
     <title>Termly Report Card – Fahmid Nursery & Primary School</title>
 
@@ -331,7 +337,7 @@
     }
     .att-card:last-child { border-right: none; }
     .att-card__n {
-        font-size: 18pt;
+        font-size: 13pt;
         font-weight: 700;
         color: var(--blue-deep);
         line-height: 1;
@@ -358,18 +364,11 @@
     /* Academic table */
     .section--academic { overflow: hidden; }
     .ac-table-wrap {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        scrollbar-width: thin;
-        scrollbar-color: var(--blue-border) transparent;
+        overflow: visible;
     }
-    .ac-table-wrap::-webkit-scrollbar { width: 4px; }
-    .ac-table-wrap::-webkit-scrollbar-track { background: transparent; }
-    .ac-table-wrap::-webkit-scrollbar-thumb { background: var(--blue-border); border-radius: 2px; }
 
     .ac-table { width: 100%; border-collapse: collapse; font-size: 7pt; }
-    .ac-table thead { position: sticky; top: 0; z-index: 2; }
+    .ac-table thead { position: static; }
     .ac-table thead tr { background: var(--paper-alt); border-bottom: 1.5px solid var(--blue-deep); }
     .ac-table th {
         padding: 4px 5px;
@@ -575,12 +574,9 @@
             z-index: 0 !important;
         }
 
-        /* Unlock scrollable table */
-        .ac-table-wrap { max-height: none !important; overflow: visible !important; }
+        /* Academic table print rules */
         .ac-table thead { display: table-header-group; position: static; }
-        .ac-table .summary-row { position: static; }
         .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
-        .ac-table .summary-row { page-break-before: avoid; break-before: avoid; }
 
         /* Keep non-academic sections together */
         .doc-hd, .doc-title, .doc-body,
