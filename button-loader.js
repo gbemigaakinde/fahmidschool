@@ -1,223 +1,367 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Enhanced Button Loading States
- * 
- * Purpose: Provide consistent loading states for all buttons
- * 
- * @version 1.0.0
- * @date 2026-01-11
+ * Global Button Loading State Manager — button-loader.js
+ *
+ * STRATEGY: Event delegation on document.body — one handler catches
+ * every button/submit click in the portal, wraps the mapped async
+ * function in a loading state, and restores the button when done.
+ *
+ * HOW IT WORKS:
+ *  1. Buttons declare data-action="fnName" (preferred) OR are matched
+ *     by their onclick="fnName()" attribute string.
+ *  2. A registry maps action names → the actual window function.
+ *  3. The interceptor wraps the call: disable button, show spinner + label,
+ *     await the function, restore button.
+ *  4. For inline onclick buttons with no data-action, a MutationObserver
+ *     patches them automatically after they render into the DOM.
+ *
+ * ZERO CHANGES NEEDED to teacher.js, attendance-teacher-ui.js, etc.
+ *
+ * @version 2.0.0
  */
 
 'use strict';
 
-/**
- * Button Loading Manager
- * Handles loading states for buttons consistently across the app
- */
-window.ButtonLoader = (function() {
-  
-  // Store original button states
-  const buttonStates = new WeakMap();
-  
-  /**
-   * Show loading state on button
-   * @param {HTMLElement|string} button - Button element or selector
-   * @param {string} loadingText - Text to show while loading
-   * @returns {Function} restore - Function to restore original state
-   */
-  function showLoading(button, loadingText = 'Loading...') {
-    const btn = typeof button === 'string' ? document.querySelector(button) : button;
-    
-    if (!btn) {
-      console.warn('ButtonLoader: Button not found');
-      return () => {};
-    }
-    
-    // Save original state
-    buttonStates.set(btn, {
-      innerHTML: btn.innerHTML,
-      disabled: btn.disabled,
-      cursor: btn.style.cursor,
-      opacity: btn.style.opacity
-    });
-    
-    // Apply loading state
-    btn.disabled = true;
-    btn.style.cursor = 'not-allowed';
-    btn.style.opacity = '0.65';
-    
-    // Create loading content with spinner
-    btn.innerHTML = `
-      <span style="display:inline-flex; align-items:center; gap:0.5rem;">
-        <span class="btn-spinner" style="
-          width: 14px;
-          height: 14px;
-          border: 2px solid transparent;
-          border-top-color: currentColor;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        "></span>
-        ${loadingText}
-      </span>
-    `;
-    
-    // Return restore function
-    return () => restore(btn);
-  }
-  
-  /**
-   * Restore button to original state
-   */
-  function restore(button) {
-    const btn = typeof button === 'string' ? document.querySelector(button) : button;
-    
-    if (!btn) {
-      console.warn('ButtonLoader: Button not found for restore');
-      return;
-    }
-    
-    const originalState = buttonStates.get(btn);
-    
-    if (!originalState) {
-      console.warn('ButtonLoader: No saved state found');
-      return;
-    }
-    
-    // Restore original state
-    btn.innerHTML = originalState.innerHTML;
-    btn.disabled = originalState.disabled;
-    btn.style.cursor = originalState.cursor;
-    btn.style.opacity = originalState.opacity;
-    
-    // Clean up
-    buttonStates.delete(btn);
-  }
-  
-  /**
-   * Wrap an async function with automatic loading state
-   * @param {HTMLElement|string} button
-   * @param {Function} asyncFn - Async function to execute
-   * @param {string} loadingText - Loading text
-   */
-  async function withLoading(button, asyncFn, loadingText = 'Loading...') {
-    const restore = showLoading(button, loadingText);
-    
-    try {
-      const result = await asyncFn();
-      return result;
-    } catch (error) {
-      throw error;
-    } finally {
-      restore();
-    }
-  }
-  
-  /**
-   * Show success state briefly before restoring
-   */
-  function showSuccess(button, successText = '✓ Success', duration = 2000) {
-    const btn = typeof button === 'string' ? document.querySelector(button) : button;
-    
-    if (!btn) return;
-    
-    // Save current state
-    const originalHTML = btn.innerHTML;
-    const originalDisabled = btn.disabled;
-    
-    // Show success
-    btn.innerHTML = successText;
-    btn.disabled = true;
-    btn.style.background = '#4CAF50';
-    btn.style.color = 'white';
-    
-    // Restore after duration
-    setTimeout(() => {
-      btn.innerHTML = originalHTML;
-      btn.disabled = originalDisabled;
-      btn.style.background = '';
-      btn.style.color = '';
-    }, duration);
-  }
-  
-  /**
-   * Show error state briefly before restoring
-   */
-  function showError(button, errorText = '✗ Error', duration = 2000) {
-    const btn = typeof button === 'string' ? document.querySelector(button) : button;
-    
-    if (!btn) return;
-    
-    // Save current state
-    const originalHTML = btn.innerHTML;
-    const originalDisabled = btn.disabled;
-    
-    // Show error
-    btn.innerHTML = errorText;
-    btn.disabled = true;
-    btn.style.background = '#f44336';
-    btn.style.color = 'white';
-    
-    // Restore after duration
-    setTimeout(() => {
-      btn.innerHTML = originalHTML;
-      btn.disabled = originalDisabled;
-      btn.style.background = '';
-      btn.style.color = '';
-    }, duration);
-  }
-  
-  // Public API
-  return {
-    showLoading,
-    restore,
-    withLoading,
-    showSuccess,
-    showError
-  };
-})();
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — match teacher-ui.css
+═══════════════════════════════════════════════════════════════ */
+const BL_STYLES = `
+@keyframes bl-spin { to { transform: rotate(360deg); } }
 
-/**
- * Add global CSS for button spinner animation if not exists
- */
-if (!document.querySelector('#btn-spinner-styles')) {
-  const style = document.createElement('style');
-  style.id = 'btn-spinner-styles';
-  style.textContent = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .btn-spinner {
-      display: inline-block;
-      animation: spin 0.8s linear infinite;
-    }
-    
-    /* Enhanced button states */
-    .btn:disabled {
-      cursor: not-allowed !important;
-      opacity: 0.65;
-    }
-    
-    .btn-loading {
-      position: relative;
-      pointer-events: none;
-    }
-    
-    /* Success/Error flash animations */
-    @keyframes flashSuccess {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-    
-    @keyframes flashError {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
-    }
-  `;
-  document.head.appendChild(style);
+.bl-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: bl-spin 0.7s linear infinite;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
 
-console.log('✓ Button loading states manager loaded');
+/* Ghost / secondary buttons get a dark spinner */
+.bl-spinner--dark {
+    border-color: rgba(0,0,0,0.15);
+    border-top-color: currentColor;
+}
+
+button[data-bl-loading="true"] {
+    cursor: wait !important;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* Instant press feedback for ALL portal buttons */
+.tp-btn-primary:active,
+.tp-btn-ghost:active,
+.att-cta-btn:active,
+.att-modal-save-btn:active,
+.att-bulk-btn:active,
+.btn:active {
+    transform: scale(0.97);
+}
+`;
+
+function injectStyles() {
+    if (document.getElementById('bl-styles')) return;
+    const tag = document.createElement('style');
+    tag.id = 'bl-styles';
+    tag.textContent = BL_STYLES;
+    document.head.appendChild(tag);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BUTTON STATE HELPERS
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Detect whether a button uses a dark (ghost/secondary) style
+ * so we can pick the right spinner colour.
+ */
+function isDarkButton(btn) {
+    return (
+        btn.classList.contains('tp-btn-ghost') ||
+        btn.classList.contains('btn-secondary') ||
+        btn.classList.contains('att-modal-cancel-btn') ||
+        btn.classList.contains('att-btn-print') ||
+        btn.classList.contains('att-btn-today') ||
+        btn.classList.contains('att-bulk-btn')
+    );
+}
+
+/**
+ * Apply loading state. Returns a restore function.
+ * @param {HTMLButtonElement} btn
+ * @param {string} [label] — optional override label
+ * @returns {() => void}
+ */
+function applyLoading(btn, label) {
+    if (btn.dataset.blLoading === 'true') return () => {};   // already loading
+
+    const originalHTML     = btn.innerHTML;
+    const originalDisabled = btn.disabled;
+    const originalWidth    = btn.offsetWidth;
+
+    // Lock width so the button doesn't shrink when text changes
+    btn.style.minWidth = originalWidth + 'px';
+    btn.disabled       = true;
+    btn.dataset.blLoading = 'true';
+
+    const spinnerClass = isDarkButton(btn) ? 'bl-spinner bl-spinner--dark' : 'bl-spinner';
+    const displayLabel = label || deriveLabel(btn);
+
+    btn.innerHTML = `<span class="${spinnerClass}" aria-hidden="true"></span>${displayLabel ? `&nbsp;${displayLabel}` : ''}`;
+
+    return function restore() {
+        btn.innerHTML         = originalHTML;
+        btn.disabled          = originalDisabled;
+        btn.style.minWidth    = '';
+        btn.dataset.blLoading = 'false';
+        // Re-init Lucide icons that were inside the button
+        try { window.lucide?.createIcons({ nodes: [btn] }); } catch (_) {}
+    };
+}
+
+/** Extract a short loading label from button content */
+function deriveLabel(btn) {
+    const text = btn.textContent.trim().replace(/\s+/g, ' ');
+    if (!text) return 'Loading…';
+    // Map common labels to their loading equivalents
+    const map = {
+        'save': 'Saving…',
+        'saving': 'Saving…',
+        'submit': 'Submitting…',
+        'submitting': 'Submitting…',
+        'send': 'Sending…',
+        'approve': 'Approving…',
+        'reject': 'Rejecting…',
+        'delete': 'Deleting…',
+        'removing': 'Removing…',
+        'lock': 'Locking…',
+        'unlock': 'Unlocking…',
+        'publish': 'Publishing…',
+        'generate': 'Generating…',
+        'print': 'Preparing…',
+        'export': 'Exporting…',
+        'upload': 'Uploading…',
+        'mark': 'Saving…',
+        'promote': 'Submitting…',
+    };
+    const lower = text.toLowerCase();
+    for (const [key, val] of Object.entries(map)) {
+        if (lower.includes(key)) return val;
+    }
+    return 'Loading…';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTION REGISTRY
+   Maps data-action names → window function names.
+   Add new entries here as you add more async buttons.
+═══════════════════════════════════════════════════════════════ */
+const ACTION_REGISTRY = {
+    // Results
+    'saveAllResults':              'saveAllResults',
+    'submitResultsForApproval':    'submitResultsForApproval',
+    // Attendance
+    'saveAllAttendance':           'saveAllAttendance',
+    'saveModalAttendance':         'saveModalAttendance',
+    'saveAllAttendanceManual':     'saveAllAttendanceManual',
+    'printAttendanceRegister':     'printAttendanceRegister',
+    // Traits & skills
+    'saveBulkTraitsAndSkills':     'saveBulkTraitsAndSkills',
+    // Remarks
+    'saveRemarks':                 'saveRemarks',
+    'refreshRemarkSuggestions':    'refreshRemarkSuggestions',
+    // Promotions
+    'submitPromotionRequest':      'submitPromotionRequest',
+    // CBT
+    'saveCbtTest':                 'saveCbtTest',
+    'publishCbtTest':              'publishCbtTest',
+    'deleteCbtTest':               'deleteCbtTest',
+    // Lesson notes
+    'saveLessonNote':              'saveLessonNote',
+    'submitLessonNote':            'submitLessonNote',
+    'deleteLessonNote':            'deleteLessonNote',
+    // Admin — results approval
+    'approveResults':              'approveResults',
+    'rejectResults':               'rejectResults',
+    'lockResults':                 'lockResults',
+    'unlockResults':               'unlockResults',
+    // Admin — promotions
+    'approvePromotion':            'approvePromotion',
+    'rejectPromotion':             'rejectPromotion',
+    // Admin — general
+    'saveSettings':                'saveSettings',
+    'saveSchoolCalendar':          'saveSchoolCalendar',
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   ONCLICK PATTERN EXTRACTOR
+   Reads onclick="fnName(args)" and returns just "fnName"
+═══════════════════════════════════════════════════════════════ */
+function extractOnclickFn(btn) {
+    const attr = btn.getAttribute('onclick') || '';
+    const match = attr.match(/^\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/);
+    return match ? match[1] : null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CORE INTERCEPTOR
+   Called for every button click in the portal.
+═══════════════════════════════════════════════════════════════ */
+async function interceptButtonClick(e) {
+    const btn = e.target.closest('button, input[type="submit"], input[type="button"]');
+    if (!btn) return;
+    if (btn.dataset.blLoading === 'true') return;
+    if (btn.dataset.blSkip === 'true') return;    // opt-out: data-bl-skip="true"
+
+    // Determine which async function this button calls
+    const action = btn.dataset.action || extractOnclickFn(btn);
+    if (!action) return;
+
+    const fnName = ACTION_REGISTRY[action] || action;
+    const fn = window[fnName];
+
+    // Only intercept if it's an actual async function
+    if (typeof fn !== 'function') return;
+
+    // Check if it's async (returns a Promise) by inspecting the constructor name,
+    // OR by duck-typing — we attempt a dry run only if safe
+    const isAsync = fn.constructor?.name === 'AsyncFunction';
+    if (!isAsync) return;
+
+    // Stop the onclick from firing natively — we'll call it ourselves
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    // Parse arguments from onclick attribute: fnName(arg1, arg2)
+    // We re-call with the original arguments by re-reading the attribute
+    let fnArgs = [];
+    try {
+        const attr = btn.getAttribute('onclick') || '';
+        const argsMatch = attr.match(/\(([^)]*)\)/);
+        if (argsMatch && argsMatch[1].trim()) {
+            // Use Function to safely evaluate the argument list
+            // eslint-disable-next-line no-new-func
+            fnArgs = Function(`"use strict"; return [${argsMatch[1]}]`)();
+        }
+    } catch (_) { fnArgs = []; }
+
+    const restore = applyLoading(btn);
+
+    try {
+        await fn(...fnArgs);
+    } catch (err) {
+        console.error(`ButtonLoader: error in ${fnName}:`, err);
+        // Don't suppress — let existing error handling in each function handle it
+    } finally {
+        restore();
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MUTATION OBSERVER
+   Watches for dynamically rendered buttons (from JS sections)
+   and patches onclick= buttons that render after page load,
+   converting them to use data-action so the interceptor works.
+═══════════════════════════════════════════════════════════════ */
+function patchButtonsInNode(root) {
+    const buttons = root.querySelectorAll ? root.querySelectorAll('button, input[type="submit"]') : [];
+    buttons.forEach(btn => {
+        if (btn.dataset.blPatched) return;
+        btn.dataset.blPatched = 'true';
+
+        const fn = extractOnclickFn(btn);
+        if (!fn) return;
+
+        const registeredName = ACTION_REGISTRY[fn] || fn;
+        if (typeof window[registeredName] === 'function') {
+            // Tag it so the interceptor knows to handle it
+            btn.dataset.action = fn;
+        }
+    });
+}
+
+function startMutationObserver() {
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+            m.addedNodes.forEach(node => {
+                if (node.nodeType !== 1) return;
+                patchButtonsInNode(node);
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROGRAMMATIC API
+   Use this from any function that already controls its own button.
+   Example:
+       const restore = ButtonLoader.start(myBtn);
+       await doSomething();
+       restore();
+═══════════════════════════════════════════════════════════════ */
+window.ButtonLoader = {
+    /**
+     * Manually start loading state on a button.
+     * @param {HTMLButtonElement|string} btnOrSelector
+     * @param {string} [label]
+     * @returns {() => void} restore function
+     */
+    start(btnOrSelector, label) {
+        const btn = typeof btnOrSelector === 'string'
+            ? document.querySelector(btnOrSelector)
+            : btnOrSelector;
+        if (!btn) return () => {};
+        return applyLoading(btn, label);
+    },
+
+    /**
+     * Wrap an async function call with loading state on a button.
+     * @param {HTMLButtonElement|string} btnOrSelector
+     * @param {() => Promise} asyncFn
+     * @param {string} [label]
+     */
+    async wrap(btnOrSelector, asyncFn, label) {
+        const btn = typeof btnOrSelector === 'string'
+            ? document.querySelector(btnOrSelector)
+            : btnOrSelector;
+        if (!btn) { await asyncFn(); return; }
+        const restore = applyLoading(btn, label);
+        try { await asyncFn(); }
+        catch (err) { console.error('ButtonLoader.wrap error:', err); throw err; }
+        finally { restore(); }
+    },
+
+    /** Add entries to the registry at runtime (for dynamic modules like CBT) */
+    register(actionName, windowFnName) {
+        ACTION_REGISTRY[actionName] = windowFnName || actionName;
+    },
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOTSTRAP
+═══════════════════════════════════════════════════════════════ */
+function init() {
+    injectStyles();
+
+    // Global delegated click handler — single listener for the entire portal
+    document.body.addEventListener('click', interceptButtonClick, true);  // capture phase
+
+    // Patch buttons already in the DOM at load time
+    patchButtonsInNode(document.body);
+
+    // Watch for buttons added later (section loads, modals, etc.)
+    startMutationObserver();
+
+    console.log('✓ ButtonLoader v2.0.0 — global auto-intercept active');
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
