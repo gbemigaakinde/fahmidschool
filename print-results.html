@@ -634,7 +634,7 @@
                 <option value="Third Term">Third Term</option>
             </select>
         </div>
-        <button class="btn btn-primary" onclick="window.print()">🖨 Print Report Card</button>
+        <button class="btn btn-primary" id="print-btn" onclick="handlePrint()">🖨 Print Report Card</button>
     </div>
 </div>
 
@@ -970,6 +970,23 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(() => console.log('✓ Service Worker registered'))
             .catch(e => console.error('SW error:', e));
+    });
+}
+</script>
+
+<script>
+function handlePrint() {
+    const btn = document.getElementById('print-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;"></span> Preparing…</span>';
+
+    window.print();
+
+    // Restore after print dialog closes (fires on confirm, cancel, or dismiss)
+    window.addEventListener('afterprint', function restoreBtn() {
+        btn.disabled = false;
+        btn.innerHTML = '🖨 Print Report Card';
+        window.removeEventListener('afterprint', restoreBtn);
     });
 }
 </script>
