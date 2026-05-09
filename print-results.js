@@ -10,15 +10,19 @@
  * - Sub-CA breakdown: Assignment(10) + Mid-term(20) + Project(10) = CA Total(40)
  * - Class average and position per subject
  *
- * Version: 6.7.0 - CLASSMATES-BASED AVERAGE (no classId dependency on results)
+ * Version: 6.8.0 - ROBUST CLASS AVERAGE (single-field queries only)
  * Date: 2026-05-09
  *
- * FIX: Class average, position and class size now work by:
- *   1. Finding classmates directly from the pupils collection using the
- *      pupil's own class.id (always reliable).
- *   2. Fetching each classmate's approved results for the same term+session.
- *   3. Computing average and rank from those scores.
- *   This approach works even when approved result documents lack a classId field.
+ * HOW CLASS AVERAGE WORKS IN THIS VERSION:
+ *   1. We fetch the current pupil's approved results for the term+session.
+ *   2. We find all classmates by querying the pupils collection using
+ *      class.id (single field — no composite index needed).
+ *   3. We fetch each classmate's results using pupilId (single field).
+ *   4. We filter term/session/status client-side to avoid composite indexes.
+ *   5. We compute average and rank from those scores.
+ *
+ *   This approach requires NO composite Firestore indexes and works even
+ *   when result documents lack a classId field.
  */
 'use strict';
 
@@ -207,13 +211,17 @@ async function fetchPupilProfile(uid) {
             } else if (typeof pupilProfile.class === 'string') {
                 className = pupilProfile.class;
                 // Look up the class doc to get its ID
-                const classSnap = await db.collection('classes')
-                    .where('name', '==', className)
-                    .limit(1)
-                    .get();
-                if (!classSnap.empty) {
-                    classId   = classSnap.docs[0].id;
-                    className = classSnap.docs[0].data().name || className;
+                try {
+                    const classSnap = await db.collection('classes')
+                        .where('name', '==', className)
+                        .limit(1)
+                        .get();
+                    if (!classSnap.empty) {
+                        classId   = classSnap.docs[0].id;
+                        className = classSnap.docs[0].data().name || className;
+                    }
+                } catch (e) {
+                    console.warn('Could not look up classId by name:', e.message);
                 }
             }
         }
@@ -226,15 +234,19 @@ async function fetchPupilProfile(uid) {
 
         let teacherName = '-';
         if (classId) {
-            const classDoc = await db.collection('classes').doc(classId).get();
-            if (classDoc.exists) {
-                const cd = classDoc.data();
-                if (cd.teacherName) {
-                    teacherName = cd.teacherName;
-                } else if (cd.teacherId) {
-                    const td = await db.collection('teachers').doc(cd.teacherId).get();
-                    if (td.exists) teacherName = td.data().name || '-';
+            try {
+                const classDoc = await db.collection('classes').doc(classId).get();
+                if (classDoc.exists) {
+                    const cd = classDoc.data();
+                    if (cd.teacherName) {
+                        teacherName = cd.teacherName;
+                    } else if (cd.teacherId) {
+                        const td = await db.collection('teachers').doc(cd.teacherId).get();
+                        if (td.exists) teacherName = td.data().name || '-';
+                    }
                 }
+            } catch (e) {
+                console.warn('Could not fetch teacher info:', e.message);
             }
         }
 
@@ -318,14 +330,16 @@ async function loadReportData() {
 }
 
 /* ===============================
-   ACADEMIC RESULTS — v6.7.0
+   ACADEMIC RESULTS — v6.8.0
+   Uses only single-field Firestore queries (no composite indexes needed).
+   All filtering is done client-side after fetching.
 ================================ */
 
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
 
-    // Wait for initialization if needed
+    // Wait for initialization
     if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
         tbody.innerHTML = loadingRow();
         let attempts = 0;
@@ -346,8 +360,7 @@ async function loadAcademicResults() {
 
     try {
         // ── Step 1: Fetch THIS pupil's approved results ───────────────────────
-        // Query by pupilId only (single-field index, always available).
-        // Filter term, session, and status client-side to avoid composite indexes.
+        // Single-field query: pupilId only. Filter everything else client-side.
         const allMyResultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
@@ -381,14 +394,9 @@ async function loadAcademicResults() {
         }
 
         // ── Step 2: Get classmates from the pupils collection ─────────────────
-        //
-        // KEY FIX: We find classmates by querying the pupils collection for
-        // class.id === this pupil's classId.  This works 100% of the time
-        // because the pupil profile always has current class info, and it
-        // does NOT depend on whether result documents have a classId field.
-        //
+        // Single-field query on class.id — always works, no composite index needed.
         const classId = pupilProfile._resolvedClassId;
-        let classmateIds = []; // includes this pupil
+        let classmateIds = [];
 
         if (classId) {
             try {
@@ -397,61 +405,74 @@ async function loadAcademicResults() {
                     .get();
 
                 classmatesSnap.forEach(doc => {
-                    // Exclude alumni — they are no longer in the active class
+                    // Exclude alumni
                     if (doc.data().status !== 'alumni') {
                         classmateIds.push(doc.id);
                     }
                 });
 
-                console.log(`Found ${classmateIds.length} classmates in class "${pupilProfile._resolvedClassName}" (classId: ${classId})`);
+                // Make sure the current pupil is included even if their record
+                // has a slightly different class structure
+                if (!classmateIds.includes(currentPupilId)) {
+                    classmateIds.push(currentPupilId);
+                }
+
+                console.log(`Found ${classmateIds.length} classmates (including this pupil) for class "${pupilProfile._resolvedClassName}"`);
             } catch (e) {
-                console.warn('Could not fetch classmates:', e.message);
+                console.warn('Could not fetch classmates by class.id:', e.message);
+                // Fallback: just use this pupil alone (no class stats)
+                classmateIds = [currentPupilId];
             }
         } else {
             console.warn('No classId available — class average and position will not be shown');
+            classmateIds = [currentPupilId];
         }
 
-        // ── Step 3: Build subject → scores map from classmates' results ───────
-        //
-        // For each classmate (including this pupil), fetch their approved results
-        // for the same term+session.  Because we query by pupilId (one field),
-        // no composite index is needed.
-        //
-        // We batch classmates in groups of 10 using Firestore's "in" operator
-        // so we minimise the number of round trips.
-        //
-        // subjectScoresMap: { subjectName: [ { pupilId, total }, ... ] }
-        //
-        const subjectScoresMap = {};
+        // ── Step 3: Fetch results for ALL classmates ──────────────────────────
+        // We batch in groups of 10 (Firestore "in" operator limit).
+        // Each query is a single-field "in" query — no composite index needed.
+        // We filter term/session/status client-side.
+        const subjectScoresMap = {}; // { subjectName: [ { pupilId, total } ] }
 
         if (classmateIds.length > 0) {
-            // Chunk into groups of 10 (Firestore "in" limit)
             const chunks = [];
             for (let i = 0; i < classmateIds.length; i += 10) {
                 chunks.push(classmateIds.slice(i, i + 10));
             }
 
             for (const chunk of chunks) {
-                const chunkSnap = await db.collection('results')
-                    .where('pupilId', 'in', chunk)
-                    .get();
+                try {
+                    const chunkSnap = await db.collection('results')
+                        .where('pupilId', 'in', chunk)
+                        .get();
 
-                chunkSnap.forEach(doc => {
-                    const d = doc.data();
-                    const matchesTerm    = d.term    === currentSettings.term;
-                    const matchesSession = d.session === currentSettings.session;
-                    const isApproved     = !d.status || d.status === 'approved';
+                    chunkSnap.forEach(doc => {
+                        const d = doc.data();
 
-                    if (!matchesTerm || !matchesSession || !isApproved) return;
+                        // Client-side filtering
+                        const matchesTerm    = d.term    === currentSettings.term;
+                        const matchesSession = d.session === currentSettings.session;
+                        const isApproved     = !d.status || d.status === 'approved';
 
-                    const subj  = d.subject || 'Unknown';
-                    const ca    = typeof d.caScore   === 'number' ? d.caScore   : 0;
-                    const exam  = typeof d.examScore === 'number' ? d.examScore : 0;
-                    const total = ca + exam;
+                        if (!matchesTerm || !matchesSession || !isApproved) return;
 
-                    if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
-                    subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
-                });
+                        const subj  = d.subject || 'Unknown';
+                        const ca    = typeof d.caScore   === 'number' ? d.caScore   : 0;
+                        const exam  = typeof d.examScore === 'number' ? d.examScore : 0;
+                        const total = ca + exam;
+                        const pid   = d.pupilId || '';
+
+                        if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
+
+                        // Avoid duplicate entries for the same pupil+subject
+                        const existing = subjectScoresMap[subj].find(s => s.pupilId === pid);
+                        if (!existing) {
+                            subjectScoresMap[subj].push({ pupilId: pid, total });
+                        }
+                    });
+                } catch (chunkError) {
+                    console.warn('Error fetching chunk results:', chunkError.message);
+                }
             }
 
             console.log('Subjects with class data:', Object.keys(subjectScoresMap));
@@ -461,8 +482,10 @@ async function loadAcademicResults() {
         const classAverageMap = {};
 
         Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
+            if (scores.length === 0) return;
+
             const sum    = scores.reduce((acc, s) => acc + s.total, 0);
-            const avg    = scores.length > 0 ? sum / scores.length : 0;
+            const avg    = sum / scores.length;
             const sorted = [...scores].sort((a, b) => b.total - a.total);
             const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
 
@@ -473,7 +496,7 @@ async function loadAcademicResults() {
             };
 
             if (posIdx < 0) {
-                console.warn(`Pupil not ranked for subject "${subj}" — their result may be missing from the class set`);
+                console.warn(`Pupil not ranked for subject "${subj}" — result may be missing from class set`);
             }
         });
 
@@ -485,9 +508,8 @@ async function loadAcademicResults() {
             classSize:    classAverageMap[r.subject]?.classSize ?? null,
         }));
 
-        // Debug: log the first result to verify stats are attached
         if (myResults.length > 0) {
-            console.log('Sample result:', myResults[0]);
+            console.log('Sample result with stats:', myResults[0]);
         }
 
         renderResults(myResults, tbody);
@@ -515,7 +537,7 @@ function renderResults(results, tbody) {
         const score = ca + exam;
         totalScore += score;
 
-        // Sub-CA: show '–' for legacy results that lack breakdown
+        // Sub-CA breakdown
         const assignment = (r.assignment !== null && r.assignment !== undefined) ? r.assignment : null;
         const midterm    = (r.midterm    !== null && r.midterm    !== undefined) ? r.midterm    : null;
         const project    = (r.project    !== null && r.project    !== undefined) ? r.project    : null;
@@ -554,7 +576,7 @@ function renderResults(results, tbody) {
     const average      = subjectCount > 0 ? (totalScore / subjectCount).toFixed(1) : '0.0';
     const avgGrade     = getGrade(parseFloat(average));
 
-    // Class size — take from first result that has it (all should be same)
+    // Class size — take from first result that has it
     const classSizeVal = results.find(r => r.classSize)?.classSize || null;
 
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
@@ -706,4 +728,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.7.0 - CLASSMATES-BASED AVERAGE)');
+console.log('✓ print-results.js ready (v6.8.0 - ROBUST CLASS AVERAGE, single-field queries only)');
