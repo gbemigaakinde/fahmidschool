@@ -10,7 +10,7 @@
  * - Sub-CA breakdown: Assignment(10) + Mid-term(20) + Project(10) = CA Total(40)
  * - Class average and position per subject
  *
- * Version: 6.5.0 - SUB-CA BREAKDOWN + CLASS AVERAGE + POSITION
+ * Version: 6.6.0 - INDEX-FREE CLASS AVERAGE + ROBUST CLASSID RESOLUTION
  * Date: 2026-05-09
  */
 'use strict';
@@ -82,7 +82,7 @@ async function initPrintResultsWrapper() {
                         console.error('Error looking up pupil by admissionNo:', lookupError);
                     }
                 } else if (urlPupilId) {
-                    console.warn('Legacy URL: pupilId visible in URL. Re-open from admin portal to use secure URL.');
+                    console.warn('Legacy URL: pupilId visible in URL.');
                     resolvedPupilId = urlPupilId;
                 }
             } else {
@@ -210,7 +210,7 @@ async function fetchPupilProfile(uid) {
 
         if (pupilProfile.class) {
             if (typeof pupilProfile.class === 'object') {
-                classId = pupilProfile.class.id;
+                classId = pupilProfile.class.id || null;
                 className = pupilProfile.class.name || '-';
             } else if (typeof pupilProfile.class === 'string') {
                 className = pupilProfile.class;
@@ -225,6 +225,9 @@ async function fetchPupilProfile(uid) {
                 }
             }
         }
+
+        // Store classId on pupilProfile for use in loadAcademicResults
+        pupilProfile._resolvedClassId = classId;
 
         setText('student-class', className);
 
@@ -245,7 +248,7 @@ async function fetchPupilProfile(uid) {
 
         setText('class-teacher', teacherName);
 
-        console.log('Pupil profile loaded successfully');
+        console.log('Pupil profile loaded. classId:', classId, 'className:', className);
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         throw error;
@@ -330,7 +333,8 @@ async function loadReportData() {
 }
 
 /* ===============================
-   ACADEMIC RESULTS
+   ACADEMIC RESULTS — v6.6.0
+   KEY FIX: Index-free class average
 ================================ */
 
 async function loadAcademicResults() {
@@ -358,18 +362,20 @@ async function loadAcademicResults() {
 
     try {
         // ── Step 1: Fetch this pupil's approved results ──────────────────────
-        const resultsSnap = await db.collection('results')
+        // Use a simple 2-field query (pupilId + term) which needs no composite index,
+        // then filter session and status client-side.
+        const allPupilResultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
-            .where('term',    '==', currentSettings.term)
-            .where('session', '==', currentSettings.session)
-            .where('status',  '==', 'approved')
+            .where('term', '==', currentSettings.term)
             .get();
 
         let results = [];
 
-        if (!resultsSnap.empty) {
-            resultsSnap.forEach(doc => {
-                const data = doc.data();
+        allPupilResultsSnap.forEach(doc => {
+            const data = doc.data();
+            const isApproved = !data.status || data.status === 'approved';
+            const matchesSession = data.session === currentSettings.session;
+            if (isApproved && matchesSession) {
                 results.push({
                     subject:    data.subject    || 'Unknown Subject',
                     assignment: typeof data.assignment === 'number' ? data.assignment : null,
@@ -380,31 +386,8 @@ async function loadAcademicResults() {
                     classId:    data.classId    || null,
                     className:  data.className  || null,
                 });
-            });
-        } else {
-            // Fallback: fetch all pupil results and filter client-side
-            const allResultsSnap = await db.collection('results')
-                .where('pupilId', '==', currentPupilId)
-                .get();
-            allResultsSnap.forEach(doc => {
-                const data = doc.data();
-                const isApproved     = !data.status || data.status === 'approved';
-                const matchesTerm    = data.term    === currentSettings.term;
-                const matchesSession = data.session === currentSettings.session;
-                if (isApproved && matchesTerm && matchesSession) {
-                    results.push({
-                        subject:    data.subject    || 'Unknown Subject',
-                        assignment: typeof data.assignment === 'number' ? data.assignment : null,
-                        midterm:    typeof data.midterm    === 'number' ? data.midterm    : null,
-                        project:    typeof data.project    === 'number' ? data.project    : null,
-                        caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
-                        examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
-                        classId:    data.classId    || null,
-                        className:  data.className  || null,
-                    });
-                }
-            });
-        }
+            }
+        });
 
         if (results.length === 0) {
             tbody.innerHTML = emptyRow(`No approved results available for ${currentSettings.term}, ${currentSettings.session} session`);
@@ -413,12 +396,18 @@ async function loadAcademicResults() {
         }
 
         // ── Step 2: Resolve classId ──────────────────────────────────────────
+        // Priority: from result docs > from pupil profile (already resolved in fetchPupilProfile)
         let classId = results.find(r => r.classId)?.classId || null;
 
+        if (!classId) {
+            // Use the classId we resolved during fetchPupilProfile
+            classId = pupilProfile?._resolvedClassId || null;
+        }
+
         if (!classId && pupilProfile) {
+            // Last-resort: try resolving from pupil profile class data directly
             if (typeof pupilProfile.class === 'object' && pupilProfile.class?.id) {
                 classId = pupilProfile.class.id;
-                console.log('classId resolved from pupil profile:', classId);
             } else if (typeof pupilProfile.class === 'string') {
                 try {
                     const classSnap = await db.collection('classes')
@@ -427,7 +416,6 @@ async function loadAcademicResults() {
                         .get();
                     if (!classSnap.empty) {
                         classId = classSnap.docs[0].id;
-                        console.log('classId resolved by class name lookup:', classId);
                     }
                 } catch (e) {
                     console.warn('Could not resolve classId by name:', e.message);
@@ -435,38 +423,46 @@ async function loadAcademicResults() {
             }
         }
 
-        if (!classId) {
-            console.warn('classId could not be resolved — will attempt subject-based classmate matching');
-        } else {
-            console.log('Using classId for averages:', classId);
-        }
+        console.log('classId resolved for class averages:', classId);
 
-        // ── Step 3: Fetch class averages & positions ─────────────────────────
-        let classAverageMap = {}; // subject -> { average, position, classSize }
+        // ── Step 3: Fetch ALL approved results for this term+session ──────────
+        // KEY FIX: Only query by term (single field = no composite index needed).
+        // Filter by session and status client-side. Then filter by classId client-side too.
+        // This completely avoids the composite index requirement.
+        let classAverageMap = {};
 
         if (classId) {
-            // PRIMARY METHOD: Query by classId (requires composite index)
             try {
-                const classResultsSnap = await db.collection('results')
-                    .where('classId', '==', classId)
-                    .where('term',    '==', currentSettings.term)
-                    .where('session', '==', currentSettings.session)
-                    .where('status',  '==', 'approved')
+                // Query only by term — single field index, always available
+                const allTermResultsSnap = await db.collection('results')
+                    .where('term', '==', currentSettings.term)
                     .get();
 
-                console.log(`Class results fetched (primary): ${classResultsSnap.size} documents`);
+                console.log(`Fetched ${allTermResultsSnap.size} total results for term "${currentSettings.term}" (will filter client-side)`);
 
-                if (!classResultsSnap.empty) {
-                    const subjectScoresMap = {};
-                    classResultsSnap.forEach(doc => {
-                        const d    = doc.data();
-                        const subj = d.subject || 'Unknown';
-                        const total = (typeof d.caScore === 'number' ? d.caScore : 0)
-                                    + (typeof d.examScore === 'number' ? d.examScore : 0);
-                        if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
-                        subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
-                    });
+                const subjectScoresMap = {};
 
+                allTermResultsSnap.forEach(doc => {
+                    const d = doc.data();
+
+                    // Filter client-side: must match session, classId, and be approved
+                    if (d.session !== currentSettings.session) return;
+                    if (d.classId !== classId) return;
+                    const isApproved = !d.status || d.status === 'approved';
+                    if (!isApproved) return;
+
+                    const subj = d.subject || 'Unknown';
+                    const total = (typeof d.caScore === 'number' ? d.caScore : 0)
+                                + (typeof d.examScore === 'number' ? d.examScore : 0);
+
+                    if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
+                    subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
+                });
+
+                const subjectsWithData = Object.keys(subjectScoresMap);
+                console.log(`After client-side filtering: ${subjectsWithData.length} subjects found for classId "${classId}"`);
+
+                if (subjectsWithData.length > 0) {
                     Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
                         const sum    = scores.reduce((acc, s) => acc + s.total, 0);
                         const avg    = scores.length > 0 ? sum / scores.length : 0;
@@ -480,22 +476,24 @@ async function loadAcademicResults() {
                         };
 
                         if (posIdx < 0) {
-                            console.warn(`Pupil not found in class scores for subject: ${subj}`);
+                            console.warn(`Pupil not found in class scores for subject: ${subj} (pupil may not have a result doc for this subject in the class)`);
                         }
                     });
 
-                    console.log('Class averages computed via primary method. Subjects:', Object.keys(classAverageMap));
+                    console.log('✓ Class averages computed. Subjects:', Object.keys(classAverageMap));
                 } else {
-                    console.warn('Primary classId query returned 0 results — trying fallback method');
+                    // classId filter returned nothing — results may not have classId field
+                    // Fall back to matching by the subjects this pupil took
+                    console.warn('No results found for classId after filtering. Trying subject-based fallback...');
                     classAverageMap = await _fetchClassAveragesBySubjectMatch(results, classId);
                 }
-            } catch (primaryErr) {
-                console.warn('Primary class averages query failed:', primaryErr.message, '— trying fallback');
+
+            } catch (err) {
+                console.warn('Class averages query failed:', err.message, '— using fallback');
                 classAverageMap = await _fetchClassAveragesBySubjectMatch(results, classId);
             }
         } else {
-            // No classId available — use subject-based matching fallback
-            console.warn('No classId — using subject-based classmate matching');
+            console.warn('No classId available — using subject-based fallback');
             classAverageMap = await _fetchClassAveragesBySubjectMatch(results, null);
         }
 
@@ -520,73 +518,60 @@ async function loadAcademicResults() {
 
 /**
  * FALLBACK: Build class average map by finding all approved results
- * for the same subjects in this term/session, then matching by classId
- * stored on those results OR by finding classmates via the pupils collection.
- *
- * This handles the case where the composite index is not yet ready,
- * or where results documents were saved without a classId field.
+ * for the same subjects in this term/session, matching by classId
+ * stored on those results OR by finding classmates via pupil subjects.
  */
 async function _fetchClassAveragesBySubjectMatch(myResults, knownClassId) {
     const classAverageMap = {};
 
     try {
-        // Get the list of subjects this pupil has results for
         const mySubjects = myResults.map(r => r.subject).filter(Boolean);
-
         if (mySubjects.length === 0) return classAverageMap;
 
-        // Find all approved results for this term + session
-        // We query without classId filter and match client-side
-        const allApprovedSnap = await db.collection('results')
-            .where('term',    '==', currentSettings.term)
-            .where('session', '==', currentSettings.session)
-            .where('status',  '==', 'approved')
+        // Query only by term — avoids composite index
+        const allTermSnap = await db.collection('results')
+            .where('term', '==', currentSettings.term)
             .get();
 
-        console.log(`Fallback: fetched ${allApprovedSnap.size} total approved results for term/session`);
+        console.log(`Fallback: fetched ${allTermSnap.size} results for term "${currentSettings.term}"`);
 
-        if (allApprovedSnap.empty) return classAverageMap;
-
-        // Group by subject; only include results whose classId matches
-        // knownClassId (if we have it), OR results that share the same
-        // classId as at least one of this pupil's own results.
+        // Collect classIds from this pupil's own results + known classId
         const pupilResultClassIds = new Set(
             myResults.map(r => r.classId).filter(Boolean)
         );
+        if (knownClassId) pupilResultClassIds.add(knownClassId);
 
-        // If we still don't know the classId, collect it from any result
-        // belonging to currentPupilId in this snapshot
-        if (knownClassId === null) {
-            allApprovedSnap.forEach(doc => {
+        // If we still have no classIds, collect from snapshot for this pupil
+        if (pupilResultClassIds.size === 0) {
+            allTermSnap.forEach(doc => {
                 const d = doc.data();
-                if (d.pupilId === currentPupilId && d.classId) {
+                if (d.pupilId === currentPupilId && d.session === currentSettings.session && d.classId) {
                     pupilResultClassIds.add(d.classId);
                 }
             });
         }
 
-        if (knownClassId) pupilResultClassIds.add(knownClassId);
-
         console.log('Fallback: classIds to match:', [...pupilResultClassIds]);
 
         const subjectScoresMap = {};
 
-        allApprovedSnap.forEach(doc => {
+        allTermSnap.forEach(doc => {
             const d    = doc.data();
             const subj = d.subject || 'Unknown';
 
-            // Only include results that match one of our classIds
-            // If we have no classId at all, include results that share
-            // a subject with this pupil (last resort, less accurate)
-            const docClassId = d.classId || null;
+            if (d.session !== currentSettings.session) return;
+            if (!mySubjects.includes(subj)) return;
 
+            const isApproved = !d.status || d.status === 'approved';
+            if (!isApproved) return;
+
+            const docClassId = d.classId || null;
             const classIdMatches =
                 pupilResultClassIds.size > 0
                     ? (docClassId && pupilResultClassIds.has(docClassId))
-                    : mySubjects.includes(subj); // last resort
+                    : mySubjects.includes(subj); // last resort: subject match only
 
             if (!classIdMatches) return;
-            if (!mySubjects.includes(subj)) return; // only subjects this pupil took
 
             const total = (typeof d.caScore === 'number' ? d.caScore : 0)
                         + (typeof d.examScore === 'number' ? d.examScore : 0);
@@ -633,18 +618,15 @@ function renderResults(results, tbody) {
         const score = ca + exam;
         totalScore += score;
 
-        // Sub-CA values — show '–' when not recorded (legacy results)
         const assignment = (r.assignment !== undefined && r.assignment !== null) ? r.assignment : null;
         const midterm    = (r.midterm    !== undefined && r.midterm    !== null) ? r.midterm    : null;
         const project    = (r.project    !== undefined && r.project    !== null) ? r.project    : null;
 
-        // Class stats
         const classAvg  = (r.classAverage !== undefined && r.classAverage !== null)
             ? Number(r.classAverage).toFixed(1) : null;
         const position  = (r.position !== undefined && r.position !== null) ? r.position : null;
         const classSize = (r.classSize !== undefined && r.classSize !== null) ? r.classSize : null;
 
-        // Format position as e.g. "3rd/25"
         let posDisplay = '–';
         if (position !== null) {
             const n = position;
@@ -673,10 +655,8 @@ function renderResults(results, tbody) {
     const average      = (totalScore / subjectCount).toFixed(1);
     const avgGrade     = getGrade(parseFloat(average));
 
-    // Class size — take from first result that has it
     const classSizeVal = results.find(r => r.classSize)?.classSize || null;
 
-    // Populate Performance Summary card
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
     setText('perf-subjects',   String(subjectCount));
     setText('perf-avg',        `${average}%`);
@@ -813,4 +793,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.5.0 - SUB-CA BREAKDOWN + CLASS AVERAGE + POSITION)');
+console.log('✓ print-results.js ready (v6.6.0 - INDEX-FREE CLASS AVERAGE + ROBUST CLASSID RESOLUTION)');
