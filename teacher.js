@@ -707,7 +707,6 @@ async function loadResultsTable() {
     return;
   }
 
-  // ✅ FIX: Filter pupils to only those in the selected class
   const classFilteredPupils = allPupils.filter(p => p.class?.id === selectedClassId);
 
   if (classFilteredPupils.length === 0) {
@@ -722,7 +721,6 @@ async function loadResultsTable() {
     
     const resultsMap = {};
     
-    // Query from DRAFT collection (filtered pupils only)
     for (const pupil of classFilteredPupils) {
       const docId = `${pupil.id}_${term}_${subject}`;
       const draftDoc = await db.collection('results_draft').doc(docId).get();
@@ -731,25 +729,25 @@ async function loadResultsTable() {
         const data = draftDoc.data();
         if (data.session === currentSession) {
           resultsMap[pupil.id] = {
-            ca: data.caScore || 0,
-            exam: data.examScore || 0
+            ca:         data.caScore   || 0,
+            exam:       data.examScore || 0,
+            assignment: data.assignment !== undefined ? data.assignment : '',
+            midterm:    data.midterm    !== undefined ? data.midterm    : '',
+            project:    data.project    !== undefined ? data.project    : '',
           };
         }
       }
     }
     
-    // ✅ Check for rejection reason
+    // Rejection banner check
     let rejectionBanner = '';
-    
     const encodedSession = currentSession.replace(/\//g, '-');
     const submissionId = `${selectedClassId}_${encodedSession}_${term}_${subject}`;
       
     try {
       const submissionDoc = await db.collection('result_submissions').doc(submissionId).get();
-      
       if (submissionDoc.exists) {
         const submissionData = submissionDoc.data();
-        
         if (submissionData.status === 'rejected' && submissionData.rejectionReason) {
           rejectionBanner = `
             <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
@@ -781,17 +779,29 @@ async function loadResultsTable() {
       console.log('No submission found or error checking submission:', submissionError.code);
     }
     
-    // Render table
+    // Build table with sub-CA columns
     container.innerHTML = `
       ${rejectionBanner}
-      <div class="table-container">
-        <table class="responsive-table" id="results-table">
+      <div style="background:#e0f2fe; border:1px solid #0284c7; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#0c4a6e;">
+        <strong> CA Breakdown:</strong> Assignment (max 10) + Mid-term (max 20) + Project (max 10) = CA Total (40). 
+        The system auto-calculates the CA Total as you type. Exam is entered separately (max 60).
+      </div>
+      <div class="table-container" style="overflow-x:auto;">
+        <table class="responsive-table" id="results-table" style="min-width:780px;">
           <thead>
             <tr>
-              <th>Pupil Name</th>
-              <th>CA Score (40)</th>
-              <th>Exam Score (60)</th>
-              <th>Total</th>
+              <th rowspan="2" style="vertical-align:middle;">Pupil Name</th>
+              <th colspan="4" style="text-align:center; border-bottom:1px solid #e2e8f0;">
+                Continuous Assessment (CA) — Max 40
+              </th>
+              <th rowspan="2" style="vertical-align:middle;">Exam Score<br><small style="font-weight:400;">(Max 60)</small></th>
+              <th rowspan="2" style="vertical-align:middle;">Total<br><small style="font-weight:400;">(100)</small></th>
+            </tr>
+            <tr>
+              <th style="font-size:11px;">Assignment<br><small style="font-weight:400;">(Max 10)</small></th>
+              <th style="font-size:11px;">Mid-term<br><small style="font-weight:400;">(Max 20)</small></th>
+              <th style="font-size:11px;">Project<br><small style="font-weight:400;">(Max 10)</small></th>
+              <th style="font-size:11px; color:#1d4ed8;">CA Total<br><small style="font-weight:400;">(Auto)</small></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -800,76 +810,111 @@ async function loadResultsTable() {
     `;
     
     paginateTable(classFilteredPupils, 'results-table', 20, (pupil, tbody) => {
-      const existing = resultsMap[pupil.id] || { ca: 0, exam: 0 };
+      const existing = resultsMap[pupil.id] || { ca: 0, exam: 0, assignment: '', midterm: '', project: '' };
       const total = existing.ca + existing.exam;
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td data-label="Pupil Name">${pupil.name}</td>
-        <td data-label="CA Score (40)">
-          <input type="number" min="0" max="40" step="0.5" value="${existing.ca || ''}" 
-                 data-pupil="${pupil.id}" data-field="ca" 
-                 style="width:100%; max-width:100px;"
-                 placeholder="0-40">
+        <td data-label="Assignment (10)">
+          <input type="number" min="0" max="10" step="0.5" 
+                 value="${existing.assignment !== '' ? existing.assignment : ''}" 
+                 data-pupil="${pupil.id}" data-field="assignment" 
+                 style="width:100%; max-width:70px;"
+                 placeholder="0-10">
+        </td>
+        <td data-label="Mid-term (20)">
+          <input type="number" min="0" max="20" step="0.5" 
+                 value="${existing.midterm !== '' ? existing.midterm : ''}" 
+                 data-pupil="${pupil.id}" data-field="midterm" 
+                 style="width:100%; max-width:70px;"
+                 placeholder="0-20">
+        </td>
+        <td data-label="Project (10)">
+          <input type="number" min="0" max="10" step="0.5" 
+                 value="${existing.project !== '' ? existing.project : ''}" 
+                 data-pupil="${pupil.id}" data-field="project" 
+                 style="width:100%; max-width:70px;"
+                 placeholder="0-10">
+        </td>
+        <td data-label="CA Total (Auto)" 
+            id="ca-total-${pupil.id}"
+            style="font-weight:700; color:#1d4ed8; text-align:center;">
+          ${existing.ca || '–'}
         </td>
         <td data-label="Exam Score (60)">
-          <input type="number" min="0" max="60" step="0.5" value="${existing.exam || ''}" 
+          <input type="number" min="0" max="60" step="0.5" 
+                 value="${existing.exam || ''}" 
                  data-pupil="${pupil.id}" data-field="exam" 
-                 style="width:100%; max-width:100px;"
+                 style="width:100%; max-width:80px;"
                  placeholder="0-60">
         </td>
-        <td data-label="Total">${total > 0 ? total : '-'}</td>
+        <td data-label="Total" id="grand-total-${pupil.id}"
+            style="font-weight:700;">
+          ${total > 0 ? total : '–'}
+        </td>
       `;
       tbody.appendChild(tr);
     });
-    
+
     if (saveBtn) saveBtn.hidden = false;
     
+    // Live calculation: sub-CA fields auto-sum to CA Total, then CA+Exam = Total
     container.querySelectorAll('input[type="number"]').forEach(input => {
       input.addEventListener('input', (e) => {
-        const field = e.target.dataset.field;
-        const max = field === 'ca' ? 40 : 60;
-        let value = parseFloat(e.target.value);
-        
-        if (value > max) {
-          e.target.value = max;
-          value = max;
-          window.showToast?.(
-            `Maximum score for ${field === 'ca' ? 'CA' : 'Exam'} is ${max}`,
-            'warning',
-            3000
-          );
-        }
-        
-        if (value < 0) {
-          e.target.value = 0;
-          value = 0;
-        }
-        
-        const row = e.target.closest('tr');
-        const caInput = row.querySelector('[data-field="ca"]');
-        const examInput = row.querySelector('[data-field="exam"]');
-        const ca = parseFloat(caInput?.value) || 0;
-        const exam = parseFloat(examInput?.value) || 0;
-        const totalCell = row.querySelector('td:last-child');
-        
-        if (totalCell) {
-          const total = ca + exam;
-          totalCell.textContent = total > 0 ? total.toFixed(1) : '-';
-          
-          totalCell.style.fontWeight = 'bold';
-          if (total >= 75) {
-            totalCell.style.color = '#4CAF50';
-          } else if (total >= 50) {
-            totalCell.style.color = '#2196F3';
-          } else if (total >= 40) {
-            totalCell.style.color = '#ff9800';
-          } else if (total > 0) {
-            totalCell.style.color = '#f44336';
-          } else {
-            totalCell.style.color = 'inherit';
-            totalCell.style.fontWeight = 'normal';
+        const field  = e.target.dataset.field;
+        const pupilId = e.target.dataset.pupil;
+        let value    = parseFloat(e.target.value);
+
+        // Max validation per field
+        const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
+        const max    = maxMap[field];
+
+        if (!isNaN(value) && max !== undefined) {
+          if (value > max) {
+            e.target.value = max;
+            value = max;
+            window.showToast?.(
+              `Maximum for ${field} is ${max}`,
+              'warning', 2500
+            );
           }
+          if (value < 0) { e.target.value = 0; value = 0; }
+        }
+
+        const row = e.target.closest('tr');
+        if (!row) return;
+
+        const assignmentInput = row.querySelector('[data-field="assignment"]');
+        const midtermInput    = row.querySelector('[data-field="midterm"]');
+        const projectInput    = row.querySelector('[data-field="project"]');
+        const examInput       = row.querySelector('[data-field="exam"]');
+
+        const assignment = parseFloat(assignmentInput?.value) || 0;
+        const midterm    = parseFloat(midtermInput?.value)    || 0;
+        const project    = parseFloat(projectInput?.value)    || 0;
+        const exam       = parseFloat(examInput?.value)       || 0;
+
+        const caTotal    = assignment + midterm + project;
+        const grandTotal = caTotal + exam;
+
+        // Update CA Total display cell
+        const caTotalCell = document.getElementById(`ca-total-${pupilId}`);
+        if (caTotalCell) {
+          caTotalCell.textContent = (caTotal > 0) ? caTotal.toFixed(caTotal % 1 !== 0 ? 1 : 0) : '–';
+        }
+
+        // Update Grand Total cell
+        const grandTotalCell = document.getElementById(`grand-total-${pupilId}`);
+        if (grandTotalCell) {
+          const displayTotal = grandTotal > 0 ? grandTotal.toFixed(grandTotal % 1 !== 0 ? 1 : 0) : '–';
+          grandTotalCell.textContent = displayTotal;
+          grandTotalCell.style.fontWeight = 'bold';
+          if      (grandTotal >= 75) grandTotalCell.style.color = '#4CAF50';
+          else if (grandTotal >= 50) grandTotalCell.style.color = '#2196F3';
+          else if (grandTotal >= 40) grandTotalCell.style.color = '#ff9800';
+          else if (grandTotal >  0)  grandTotalCell.style.color = '#f44336';
+          else                       { grandTotalCell.style.color = 'inherit'; grandTotalCell.style.fontWeight = 'normal'; }
         }
       });
     });
@@ -1358,11 +1403,9 @@ async function saveAllResults() {
     return;
   }
 
-  const inputs = document.querySelectorAll('#results-entry-table-container input[type="number"]');
-  const term = document.getElementById('result-term')?.value;
-  const subject = document.getElementById('result-subject')?.value;
-
-  // ✅ FIX: Read from class selector (consistent with submitResultsForApproval)
+  const inputs     = document.querySelectorAll('#results-entry-table-container input[type="number"]');
+  const term       = document.getElementById('result-term')?.value;
+  const subject    = document.getElementById('result-subject')?.value;
   const classSelect = document.getElementById('result-class');
   const selectedClassId = classSelect?.value;
 
@@ -1370,7 +1413,6 @@ async function saveAllResults() {
     window.showToast?.('Select term and subject first', 'warning');
     return;
   }
-
   if (!selectedClassId) {
     window.showToast?.('Please select a class first', 'warning');
     return;
@@ -1382,13 +1424,19 @@ async function saveAllResults() {
     return;
   }
 
+  // Validate scores
   let hasInvalidScores = false;
   inputs.forEach(input => {
     const field = input.dataset.field;
     const value = parseFloat(input.value) || 0;
-    const max = field === 'ca' ? 40 : 60;
-    if (value > max) { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = max; }
-    if (value < 0)  { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = 0; }
+    const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
+    const max    = maxMap[field];
+    if (max !== undefined && value > max) {
+      hasInvalidScores = true;
+      input.style.borderColor = '#f44336';
+      input.value = max;
+    }
+    if (value < 0) { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = 0; }
   });
 
   if (hasInvalidScores) {
@@ -1396,14 +1444,27 @@ async function saveAllResults() {
     return;
   }
 
+  // Collect per-pupil data
+  const pupilResults = {};
+  inputs.forEach(input => {
+    const pupilId = input.dataset.pupil;
+    const field   = input.dataset.field;
+    const value   = parseFloat(input.value) || 0;
+    if (!pupilResults[pupilId]) pupilResults[pupilId] = { assignment: 0, midterm: 0, project: 0, exam: 0 };
+    pupilResults[pupilId][field] = value;
+  });
+
+  // Check at least one score entered
   let hasChanges = false;
-  inputs.forEach(input => { if (parseFloat(input.value) || 0) hasChanges = true; });
+  Object.values(pupilResults).forEach(scores => {
+    if (scores.assignment || scores.midterm || scores.project || scores.exam) hasChanges = true;
+  });
   if (!hasChanges) { window.showToast?.('No scores have been entered', 'warning'); return; }
 
   isSavingResults = true;
 
   const saveBtn = document.getElementById('save-results-btn');
-  const originalHTML = saveBtn?.innerHTML;
+  const originalHTML     = saveBtn?.innerHTML;
   const originalDisabled = saveBtn?.disabled;
 
   if (saveBtn) {
@@ -1414,32 +1475,25 @@ async function saveAllResults() {
   }
 
   try {
-    const settings = await window.getCurrentSettings();
-    const currentSession = settings.session || 'Unknown';
+    const settings         = await window.getCurrentSettings();
+    const currentSession   = settings.session || 'Unknown';
     const sessionStartYear = settings.currentSession?.startYear;
-    const sessionEndYear = settings.currentSession?.endYear;
+    const sessionEndYear   = settings.currentSession?.endYear;
 
     const batch = db.batch();
 
-    const pupilResults = {};
-    inputs.forEach(input => {
-      const pupilId = input.dataset.pupil;
-      const field = input.dataset.field;
-      const value = parseFloat(input.value) || 0;
-      if (!pupilResults[pupilId]) pupilResults[pupilId] = {};
-      pupilResults[pupilId][field] = value;
-    });
-
     for (const [pupilId, scores] of Object.entries(pupilResults)) {
-      const pupil = allPupils.find(p => p.id === pupilId);
+      const pupil     = allPupils.find(p => p.id === pupilId);
       const pupilName = pupil?.name || 'Unknown';
-
-      // ✅ FIX: Use the selector's value for classId/className, not assignedClasses[0]
-      const classId = selectedClass.id;
+      const classId   = selectedClass.id;
       const className = selectedClass.name;
 
+      // CA total = sum of sub-components
+      const caScore   = (scores.assignment || 0) + (scores.midterm || 0) + (scores.project || 0);
+      const examScore = scores.exam || 0;
+
       const docId = `${pupilId}_${term}_${subject}`;
-      const ref = db.collection('results_draft').doc(docId);
+      const ref   = db.collection('results_draft').doc(docId);
 
       batch.set(ref, {
         pupilId,
@@ -1448,16 +1502,21 @@ async function saveAllResults() {
         className,
         term,
         subject,
-        session: currentSession,
+        session:     currentSession,
         sessionStartYear,
         sessionEndYear,
         sessionTerm: `${currentSession}_${term}`,
-        caScore:   scores.ca   !== undefined ? scores.ca   : 0,
-        examScore: scores.exam !== undefined ? scores.exam : 0,
-        teacherId: currentUser.uid,
-        status: 'draft',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: currentUser.uid
+        // Sub-CA breakdown
+        assignment:  scores.assignment || 0,
+        midterm:     scores.midterm    || 0,
+        project:     scores.project    || 0,
+        // Totals (backward compatible)
+        caScore,
+        examScore,
+        teacherId:   currentUser.uid,
+        status:      'draft',
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy:   currentUser.uid
       }, { merge: true });
     }
 
@@ -1474,10 +1533,10 @@ async function saveAllResults() {
   } finally {
     const finalSaveBtn = document.getElementById('save-results-btn');
     if (finalSaveBtn) {
-      finalSaveBtn.disabled = originalDisabled;
+      finalSaveBtn.disabled  = originalDisabled;
       finalSaveBtn.innerHTML = originalHTML;
       finalSaveBtn.style.opacity = '';
-      finalSaveBtn.style.cursor = '';
+      finalSaveBtn.style.cursor  = '';
     }
     isSavingResults = false;
   }
