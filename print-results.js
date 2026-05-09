@@ -34,7 +34,7 @@ function getSessionFromUrl() {
    DUAL-ROLE AUTH & INITIALIZATION
 ================================ */
 
-function initPrintResultsWrapper() {
+async function initPrintResultsWrapper() {
     firebase.auth().onAuthStateChanged(async user => {
         if (!user) {
             window.location.href = 'index.html';
@@ -56,8 +56,43 @@ function initPrintResultsWrapper() {
 
             const isAdmin = userRole === 'admin';
             const urlParams = new URLSearchParams(window.location.search);
-            const urlPupilId = urlParams.get('pupilId');
-            currentPupilId = isAdmin ? urlPupilId || null : user.uid;
+
+            // ── Resolve pupil identity from URL ──────────────────────────────────
+            // Admin URLs carry admissionNo (preferred) or legacy pupilId.
+            // Pupils always use their own UID — nothing ever comes from the URL.
+            let resolvedPupilId = null;
+
+            if (isAdmin) {
+                const urlAdmissionNo = urlParams.get('admissionNo');
+                const urlPupilId     = urlParams.get('pupilId'); // legacy fallback only
+
+                if (urlAdmissionNo) {
+                    // Look up UID by admissionNo server-side — UID never touches the URL
+                    try {
+                        const snap = await db.collection('pupils')
+                            .where('admissionNo', '==', urlAdmissionNo)
+                            .limit(1)
+                            .get();
+
+                        if (!snap.empty) {
+                            resolvedPupilId = snap.docs[0].id;
+                        } else {
+                            console.error('No pupil found with admissionNo:', urlAdmissionNo);
+                        }
+                    } catch (lookupError) {
+                        console.error('Error looking up pupil by admissionNo:', lookupError);
+                    }
+                } else if (urlPupilId) {
+                    // Legacy URLs still work but log a warning
+                    console.warn('Legacy URL: pupilId visible in URL. Re-open from admin portal to use secure URL.');
+                    resolvedPupilId = urlPupilId;
+                }
+            } else {
+                // Pupils always view their own record — UID never comes from URL
+                resolvedPupilId = user.uid;
+            }
+
+            currentPupilId = resolvedPupilId;
 
             if (isAdmin && !currentPupilId) {
                 document.body.innerHTML = `
