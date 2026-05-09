@@ -364,7 +364,7 @@ async function loadAcademicResults() {
             attempts++;
         }
         if (attempts >= maxAttempts) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">⚠️ Unable to load results. Reload page.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Unable to load results. Reload page.</td></tr>`;
             clearPerformanceSummary();
             return;
         }
@@ -376,9 +376,9 @@ async function loadAcademicResults() {
     try {
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
-            .where('term', '==', currentSettings.term)
+            .where('term',    '==', currentSettings.term)
             .where('session', '==', currentSettings.session)
-            .where('status', '==', 'approved')
+            .where('status',  '==', 'approved')
             .get();
 
         let results = [];
@@ -386,9 +386,13 @@ async function loadAcademicResults() {
             resultsSnap.forEach(doc => {
                 const data = doc.data();
                 results.push({
-                    subject: data.subject || 'Unknown Subject',
-                    caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                    examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                    subject:    data.subject    || 'Unknown Subject',
+                    assignment: typeof data.assignment === 'number' ? data.assignment : null,
+                    midterm:    typeof data.midterm    === 'number' ? data.midterm    : null,
+                    project:    typeof data.project    === 'number' ? data.project    : null,
+                    caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
+                    examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
+                    classId:    data.classId    || null,
                 });
             });
         } else {
@@ -398,14 +402,18 @@ async function loadAcademicResults() {
                 .get();
             allResultsSnap.forEach(doc => {
                 const data = doc.data();
-                const isApproved = !data.status || data.status === 'approved';
-                const matchesTerm = data.term === currentSettings.term;
+                const isApproved    = !data.status || data.status === 'approved';
+                const matchesTerm   = data.term    === currentSettings.term;
                 const matchesSession = data.session === currentSettings.session;
                 if (isApproved && matchesTerm && matchesSession) {
                     results.push({
-                        subject: data.subject || 'Unknown Subject',
-                        caScore: typeof data.caScore === 'number' ? data.caScore : 0,
-                        examScore: typeof data.examScore === 'number' ? data.examScore : 0
+                        subject:    data.subject    || 'Unknown Subject',
+                        assignment: typeof data.assignment === 'number' ? data.assignment : null,
+                        midterm:    typeof data.midterm    === 'number' ? data.midterm    : null,
+                        project:    typeof data.project    === 'number' ? data.project    : null,
+                        caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
+                        examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
+                        classId:    data.classId    || null,
                     });
                 }
             });
@@ -417,10 +425,61 @@ async function loadAcademicResults() {
             return;
         }
 
+        // ── Fetch class averages for each subject ──────────────────────────
+        // We query all approved results for the same class/term/session,
+        // then compute per-subject class averages and this pupil's position.
+        let classAverageMap = {};  // subject -> { average, position, classSize }
+        
+        try {
+            const classId = results[0]?.classId;
+            if (classId) {
+                const classResultsSnap = await db.collection('results')
+                    .where('classId', '==', classId)
+                    .where('term',    '==', currentSettings.term)
+                    .where('session', '==', currentSettings.session)
+                    .where('status',  '==', 'approved')
+                    .get();
+
+                // Group by subject
+                const subjectScoresMap = {};
+                classResultsSnap.forEach(doc => {
+                    const d     = doc.data();
+                    const subj  = d.subject || 'Unknown';
+                    const total = (d.caScore || 0) + (d.examScore || 0);
+                    if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
+                    subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
+                });
+
+                // Calculate class average and position per subject
+                Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
+                    const sum     = scores.reduce((acc, s) => acc + s.total, 0);
+                    const avg     = scores.length > 0 ? sum / scores.length : 0;
+                    // Position: rank of this pupil (1 = highest)
+                    const sorted  = [...scores].sort((a, b) => b.total - a.total);
+                    const pos     = sorted.findIndex(s => s.pupilId === currentPupilId) + 1;
+                    classAverageMap[subj] = {
+                        average:   avg.toFixed(1),
+                        position:  pos > 0 ? pos : null,
+                        classSize: scores.length
+                    };
+                });
+            }
+        } catch (avgErr) {
+            console.warn('Could not fetch class averages:', avgErr.message);
+        }
+
+        // Attach class stats to results
+        results = results.map(r => ({
+            ...r,
+            classAverage: classAverageMap[r.subject]?.average  ?? null,
+            position:     classAverageMap[r.subject]?.position ?? null,
+            classSize:    classAverageMap[r.subject]?.classSize ?? null,
+        }));
+
         renderResults(results, tbody);
 
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
         clearPerformanceSummary();
         console.error('Error loading results:', error);
     }
@@ -433,17 +492,36 @@ function renderResults(results, tbody) {
     let totalScore = 0;
 
     results.forEach(r => {
-        const ca   = r.caScore;
-        const exam = r.examScore;
+        const ca    = r.caScore;
+        const exam  = r.examScore;
         const score = ca + exam;
         totalScore += score;
+
+        const assignment = (r.assignment !== undefined && r.assignment !== null) ? r.assignment : null;
+        const midterm    = (r.midterm    !== undefined && r.midterm    !== null) ? r.midterm    : null;
+        const project    = (r.project    !== undefined && r.project    !== null) ? r.project    : null;
+        const classAvg   = (r.classAverage !== undefined && r.classAverage !== null) ? Number(r.classAverage).toFixed(1) : null;
+        const position   = (r.position    !== undefined && r.position    !== null) ? r.position    : null;
+        const classSize  = (r.classSize   !== undefined && r.classSize   !== null) ? r.classSize   : null;
+
+        // Position display: e.g. "3rd" or "3/25"
+        let posDisplay = '–';
+        if (position !== null) {
+            const suffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+            posDisplay = classSize ? `${position}${suffix}/${classSize}` : `${position}${suffix}`;
+        }
 
         tbody.insertAdjacentHTML('beforeend', `
             <tr>
                 <td>${r.subject}</td>
-                <td>${ca}</td>
+                <td>${assignment !== null ? assignment : '–'}</td>
+                <td>${midterm    !== null ? midterm    : '–'}</td>
+                <td>${project    !== null ? project    : '–'}</td>
+                <td class="col-total" style="color:var(--blue-mid);">${ca}</td>
                 <td>${exam}</td>
                 <td class="col-total">${score}</td>
+                <td>${classAvg  !== null ? classAvg  : '–'}</td>
+                <td>${posDisplay}</td>
                 <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
                 <td>${getRemark(score)}</td>
             </tr>
@@ -454,17 +532,19 @@ function renderResults(results, tbody) {
     const average      = (totalScore / subjectCount).toFixed(1);
     const avgGrade     = getGrade(parseFloat(average));
 
-    // Populate Performance Summary card (side panel)
-    setText('perf-total',    `${totalScore} / ${subjectCount * 100}`);
-    setText('perf-subjects', String(subjectCount));
-    setText('perf-avg',      `${average}%`);
+    // Class size from first result that has it
+    const classSizeVal = results.find(r => r.classSize)?.classSize || null;
+
+    setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
+    setText('perf-subjects',   String(subjectCount));
+    setText('perf-avg',        `${average}%`);
+    setText('perf-class-size', classSizeVal ? String(classSizeVal) : '–');
 
     const gradeEl = document.getElementById('perf-grade');
     if (gradeEl) {
-        gradeEl.textContent  = avgGrade;
-        // Apply grade colour class
-        gradeEl.className = `perf-row__val grade-${avgGrade}`;
-        gradeEl.id = 'perf-grade'; // preserve id after className reset
+        gradeEl.textContent = avgGrade;
+        gradeEl.className   = `perf-row__val grade-${avgGrade}`;
+        gradeEl.id          = 'perf-grade';
     }
 }
 
