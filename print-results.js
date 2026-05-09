@@ -2,32 +2,20 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript
  *
- * Purpose:
- * - Generate dynamic termly report card
- * - Pull live pupil bio, class, teacher, subjects
- * - Reflect admin changes instantly
- * - Support session parameter from pupil portal (?session=2023/2024)
- * - Sub-CA breakdown: Assignment(10) + Mid-term(20) + Project(10) = CA Total(40)
- * - Class average and position per subject
- *
- * Version: 6.8.0 - ROBUST CLASS AVERAGE (single-field queries only)
+ * Version: 6.9.0
  * Date: 2026-05-09
  *
- * HOW CLASS AVERAGE WORKS IN THIS VERSION:
- *   1. We fetch the current pupil's approved results for the term+session.
- *   2. We find all classmates by querying the pupils collection using
- *      class.id (single field — no composite index needed).
- *   3. We fetch each classmate's results using pupilId (single field).
- *   4. We filter term/session/status client-side to avoid composite indexes.
- *   5. We compute average and rank from those scores.
- *
- *   This approach requires NO composite Firestore indexes and works even
- *   when result documents lack a classId field.
+ * CLASS AVERAGE / POSITION / CLASS SIZE STRATEGY:
+ *   - We already know the pupil's classId from their profile.
+ *   - We fetch ALL pupils (no filter) and pick those whose class.id matches
+ *     in JavaScript. This avoids any Firestore nested-field index requirement.
+ *   - We then fetch results for each classmate by pupilId (single-field query).
+ *   - Everything is filtered client-side — zero composite indexes needed.
  */
 'use strict';
 
-let currentPupilId  = null;
-let pupilProfile    = null;
+let currentPupilId = null;
+let pupilProfile   = null;
 
 let currentSettings = {
     term:           'First Term',
@@ -37,22 +25,19 @@ let currentSettings = {
 
 let isInitialized = false;
 
+/* ─── URL helper ─────────────────────────────────────────────── */
 function getSessionFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const s = params.get('session');
     return (s && s !== 'current') ? s : null;
 }
 
-/* ===============================
-   DUAL-ROLE AUTH & INITIALIZATION
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   AUTH & INITIALIZATION
+═══════════════════════════════════════════════════════════════ */
 async function initPrintResultsWrapper() {
     firebase.auth().onAuthStateChanged(async user => {
-        if (!user) {
-            window.location.href = 'index.html';
-            return;
-        }
+        if (!user) { window.location.href = 'index.html'; return; }
 
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
@@ -64,11 +49,9 @@ async function initPrintResultsWrapper() {
                 return;
             }
 
-            const isAdmin  = userRole === 'admin';
+            const isAdmin   = userRole === 'admin';
             const urlParams = new URLSearchParams(window.location.search);
-
-            // ── Resolve pupil identity ────────────────────────────────────────
-            let resolvedPupilId = null;
+            let   resolvedPupilId = null;
 
             if (isAdmin) {
                 const urlAdmissionNo = urlParams.get('admissionNo');
@@ -78,15 +61,13 @@ async function initPrintResultsWrapper() {
                     try {
                         const snap = await db.collection('pupils')
                             .where('admissionNo', '==', urlAdmissionNo)
-                            .limit(1)
-                            .get();
+                            .limit(1).get();
                         if (!snap.empty) resolvedPupilId = snap.docs[0].id;
                         else console.error('No pupil found with admissionNo:', urlAdmissionNo);
                     } catch (e) {
                         console.error('Error looking up pupil by admissionNo:', e);
                     }
                 } else if (urlPupilId) {
-                    console.warn('Legacy URL: pupilId visible in URL.');
                     resolvedPupilId = urlPupilId;
                 }
             } else {
@@ -115,33 +96,32 @@ async function initPrintResultsWrapper() {
                 return;
             }
 
+            /* Admin toolbar */
             if (isAdmin) {
                 const bar = document.createElement('div');
                 bar.id = 'admin-view-bar';
                 bar.style.cssText =
-                  'position:fixed;top:0;left:0;right:0;z-index:9999;' +
-                  'background:#1e40af;color:white;padding:10px 20px;' +
-                  'display:flex;align-items:center;justify-content:space-between;' +
-                  'font-family:sans-serif;font-size:14px;font-weight:600;' +
-                  'box-shadow:0 2px 8px rgba(0,0,0,.25);';
+                    'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+                    'background:#1e40af;color:white;padding:10px 20px;' +
+                    'display:flex;align-items:center;justify-content:space-between;' +
+                    'font-family:sans-serif;font-size:14px;font-weight:600;' +
+                    'box-shadow:0 2px 8px rgba(0,0,0,.25);';
                 bar.innerHTML = `
-                  <span>🔐 Admin View</span>
-                  <div style="display:flex;gap:12px;align-items:center;">
-                    <button onclick="window.print()"
-                      style="background:rgba(255,255,255,.2);border:none;color:white;
-                             padding:6px 14px;border-radius:4px;cursor:pointer;
-                             font-weight:600;font-size:13px;">🖨️ Print</button>
-                    <a href="admin.html"
-                      style="background:rgba(255,255,255,.2);color:white;
-                             padding:6px 14px;border-radius:4px;text-decoration:none;
-                             font-weight:600;font-size:13px;">← Back to Admin</a>
-                  </div>`;
+                    <span>🔐 Admin View</span>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <button onclick="window.print()"
+                            style="background:rgba(255,255,255,.2);border:none;color:white;
+                                   padding:6px 14px;border-radius:4px;cursor:pointer;
+                                   font-weight:600;font-size:13px;">🖨️ Print</button>
+                        <a href="admin.html"
+                            style="background:rgba(255,255,255,.2);color:white;
+                                   padding:6px 14px;border-radius:4px;text-decoration:none;
+                                   font-weight:600;font-size:13px;">← Back to Admin</a>
+                    </div>`;
                 document.body.insertBefore(bar, document.body.firstChild);
                 document.body.style.paddingTop = '48px';
                 const ps = document.createElement('style');
-                ps.textContent =
-                  '@media print{#admin-view-bar{display:none!important}' +
-                  'body{padding-top:0!important}}';
+                ps.textContent = '@media print{#admin-view-bar{display:none!important}body{padding-top:0!important}}';
                 document.head.appendChild(ps);
             }
 
@@ -165,17 +145,16 @@ async function initPrintResultsWrapper() {
 
 initPrintResultsWrapper();
 
-/* ===============================
-   FETCH SCHOOL SETTINGS
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   SCHOOL SETTINGS
+═══════════════════════════════════════════════════════════════ */
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
         if (!doc.exists) { console.warn('Settings document not found'); return; }
         const data = doc.data();
-        currentSettings.term          = data.term          || currentSettings.term;
-        currentSettings.session       = data.session       || '';
+        currentSettings.term           = data.term           || currentSettings.term;
+        currentSettings.session        = data.session        || '';
         currentSettings.resumptionDate = data.resumptionDate || '-';
         console.log('Settings loaded:', currentSettings);
     } catch (error) {
@@ -184,23 +163,22 @@ async function fetchSchoolSettings() {
     }
 }
 
-/* ===============================
-   FETCH PUPIL PROFILE
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   PUPIL PROFILE
+═══════════════════════════════════════════════════════════════ */
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
         if (!doc.exists) throw new Error('Pupil record not found');
 
-        pupilProfile    = doc.data();
-        currentPupilId  = doc.id;
+        pupilProfile   = doc.data();
+        currentPupilId = doc.id;
 
-        setText('student-name',   pupilProfile.name   || '-');
-        setText('student-gender', pupilProfile.gender || '-');
+        setText('student-name',   pupilProfile.name        || '-');
+        setText('student-gender', pupilProfile.gender      || '-');
         setText('admission-no',   pupilProfile.admissionNo || '-');
 
-        // ── Resolve classId from pupil profile ────────────────────────────
+        /* Resolve classId */
         let classId   = null;
         let className = '-';
 
@@ -210,12 +188,9 @@ async function fetchPupilProfile(uid) {
                 className = pupilProfile.class.name || '-';
             } else if (typeof pupilProfile.class === 'string') {
                 className = pupilProfile.class;
-                // Look up the class doc to get its ID
                 try {
                     const classSnap = await db.collection('classes')
-                        .where('name', '==', className)
-                        .limit(1)
-                        .get();
+                        .where('name', '==', className).limit(1).get();
                     if (!classSnap.empty) {
                         classId   = classSnap.docs[0].id;
                         className = classSnap.docs[0].data().name || className;
@@ -226,12 +201,12 @@ async function fetchPupilProfile(uid) {
             }
         }
 
-        // Store on pupilProfile so loadAcademicResults can use it
         pupilProfile._resolvedClassId   = classId;
         pupilProfile._resolvedClassName = className;
 
         setText('student-class', className);
 
+        /* Teacher name */
         let teacherName = '-';
         if (classId) {
             try {
@@ -259,10 +234,9 @@ async function fetchPupilProfile(uid) {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    TERM SELECTOR
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) { console.error('Term selector not found'); return; }
@@ -284,10 +258,9 @@ function setupTermSelector() {
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 }
 
-/* ===============================
-   UPDATE HEADER FIELDS
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   REPORT HEADER
+═══════════════════════════════════════════════════════════════ */
 function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
@@ -309,10 +282,9 @@ function updateReportHeader() {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    LOAD ALL REPORT DATA
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 async function loadReportData() {
     resetTraitsAndRemarks();
     try {
@@ -325,31 +297,41 @@ async function loadReportData() {
         ]);
     } catch (error) {
         console.error('Error loading report data:', error);
-        window.showToast?.('Failed to load some report data', 'warning');
     }
 }
 
-/* ===============================
-   ACADEMIC RESULTS — v6.8.0
-   Uses only single-field Firestore queries (no composite indexes needed).
-   All filtering is done client-side after fetching.
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   ACADEMIC RESULTS  —  v6.9.0
+   ─────────────────────────────────────────────────────────────
+   HOW CLASS STATS ARE COMPUTED
+   ─────────────────────────────────────────────────────────────
+   1. Fetch THIS pupil's approved results (single-field query,
+      filter term/session/status client-side).
+   2. Fetch ALL pupils from the database (get() with no filter).
+      Loop through in JavaScript and keep only those whose
+      class.id matches this pupil's classId.
+      → Avoids any Firestore nested-field index requirement.
+   3. For each classmate, fetch results by pupilId in batches
+      of 10 (single-field "in" query — always works without indexes).
+      Filter term/session/status client-side.
+   4. Build per-subject scores map, compute average & rank.
+   5. Attach stats to each result row before rendering.
+═══════════════════════════════════════════════════════════════ */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
 
-    // Wait for initialization
+    /* Wait for init */
     if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
         tbody.innerHTML = loadingRow();
-        let attempts = 0;
-        while (attempts < 100) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        let tries = 0;
+        while (tries < 100) {
+            await sleep(100);
             if (isInitialized && currentPupilId && currentSettings.session && currentSettings.term) break;
-            attempts++;
+            tries++;
         }
-        if (attempts >= 100) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Unable to load results. Reload page.</td></tr>`;
+        if (tries >= 100) {
+            tbody.innerHTML = errorRow('Unable to load results. Reload page.');
             clearPerformanceSummary();
             return;
         }
@@ -359,19 +341,22 @@ async function loadAcademicResults() {
     clearPerformanceSummary();
 
     try {
-        // ── Step 1: Fetch THIS pupil's approved results ───────────────────────
-        // Single-field query: pupilId only. Filter everything else client-side.
-        const allMyResultsSnap = await db.collection('results')
+        const TARGET_TERM    = currentSettings.term;
+        const TARGET_SESSION = currentSettings.session;
+
+        /* ── 1. Fetch this pupil's own results ─────────────────────────── */
+        const mySnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
 
         let myResults = [];
-        allMyResultsSnap.forEach(doc => {
+        mySnap.forEach(doc => {
             const d = doc.data();
-            const matchesTerm    = d.term    === currentSettings.term;
-            const matchesSession = d.session === currentSettings.session;
-            const isApproved     = !d.status || d.status === 'approved';
-            if (matchesTerm && matchesSession && isApproved) {
+            if (
+                d.term    === TARGET_TERM    &&
+                d.session === TARGET_SESSION &&
+                (!d.status || d.status === 'approved')
+            ) {
                 myResults.push({
                     subject:    d.subject    || 'Unknown Subject',
                     assignment: typeof d.assignment === 'number' ? d.assignment : null,
@@ -383,148 +368,149 @@ async function loadAcademicResults() {
             }
         });
 
-        console.log(`This pupil has ${myResults.length} approved results for ${currentSettings.term} / ${currentSettings.session}`);
+        console.log(`Own results found: ${myResults.length}`);
 
         if (myResults.length === 0) {
             tbody.innerHTML = emptyRow(
-                `No approved results available for ${currentSettings.term}, ${currentSettings.session} session`
+                `No approved results for ${TARGET_TERM}, ${TARGET_SESSION} session`
             );
             clearPerformanceSummary();
             return;
         }
 
-        // ── Step 2: Get classmates from the pupils collection ─────────────────
-        // Single-field query on class.id — always works, no composite index needed.
+        /* ── 2. Find classmates ─────────────────────────────────────────── */
+        /*
+         * We fetch ALL pupils and filter in JavaScript.
+         * This is the only guaranteed-to-work approach when Firestore
+         * composite or nested-field indexes are not set up.
+         *
+         * We look for pupils where class.id === this pupil's classId.
+         * We also handle the edge case where class is stored as a plain string.
+         */
         const classId = pupilProfile._resolvedClassId;
         let classmateIds = [];
 
         if (classId) {
             try {
-                const classmatesSnap = await db.collection('pupils')
-                    .where('class.id', '==', classId)
-                    .get();
+                const allPupilsSnap = await db.collection('pupils').get();
 
-                classmatesSnap.forEach(doc => {
-                    // Exclude alumni
-                    if (doc.data().status !== 'alumni') {
+                allPupilsSnap.forEach(doc => {
+                    const d = doc.data();
+
+                    /* Skip alumni */
+                    if (d.status === 'alumni') return;
+
+                    /* Match class.id */
+                    let pupilClassId = null;
+                    if (d.class && typeof d.class === 'object' && d.class.id) {
+                        pupilClassId = d.class.id;
+                    }
+
+                    if (pupilClassId === classId) {
                         classmateIds.push(doc.id);
                     }
                 });
 
-                // Make sure the current pupil is included even if their record
-                // has a slightly different class structure
+                /* Always include the current pupil */
                 if (!classmateIds.includes(currentPupilId)) {
                     classmateIds.push(currentPupilId);
                 }
 
-                console.log(`Found ${classmateIds.length} classmates (including this pupil) for class "${pupilProfile._resolvedClassName}"`);
+                console.log(`Classmates found (JS filter): ${classmateIds.length} in classId "${classId}"`);
             } catch (e) {
-                console.warn('Could not fetch classmates by class.id:', e.message);
-                // Fallback: just use this pupil alone (no class stats)
+                console.warn('Could not fetch all pupils for class stats:', e.message);
                 classmateIds = [currentPupilId];
             }
         } else {
-            console.warn('No classId available — class average and position will not be shown');
+            console.warn('No classId — skipping class stats');
             classmateIds = [currentPupilId];
         }
 
-        // ── Step 3: Fetch results for ALL classmates ──────────────────────────
-        // We batch in groups of 10 (Firestore "in" operator limit).
-        // Each query is a single-field "in" query — no composite index needed.
-        // We filter term/session/status client-side.
-        const subjectScoresMap = {}; // { subjectName: [ { pupilId, total } ] }
+        /* ── 3. Fetch results for all classmates ────────────────────────── */
+        /*
+         * Firestore "in" queries accept max 10 values per call.
+         * We chunk classmateIds into groups of 10 and merge.
+         * Each query uses only ONE field (pupilId) — no index needed.
+         * We filter term / session / approved status client-side.
+         */
+        const subjectScoresMap = {}; // { subject: [ { pupilId, total } ] }
 
-        if (classmateIds.length > 0) {
-            const chunks = [];
-            for (let i = 0; i < classmateIds.length; i += 10) {
-                chunks.push(classmateIds.slice(i, i + 10));
+        const chunks = chunkArray(classmateIds, 10);
+
+        for (const chunk of chunks) {
+            try {
+                const snap = await db.collection('results')
+                    .where('pupilId', 'in', chunk)
+                    .get();
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+
+                    /* Client-side filter */
+                    if (d.term    !== TARGET_TERM)    return;
+                    if (d.session !== TARGET_SESSION)  return;
+                    if (d.status && d.status !== 'approved') return;
+
+                    const subj  = d.subject  || 'Unknown';
+                    const ca    = typeof d.caScore   === 'number' ? d.caScore   : 0;
+                    const exam  = typeof d.examScore === 'number' ? d.examScore : 0;
+                    const total = ca + exam;
+                    const pid   = d.pupilId  || '';
+
+                    if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
+
+                    /* Prevent duplicates for the same pupil+subject */
+                    if (!subjectScoresMap[subj].find(s => s.pupilId === pid)) {
+                        subjectScoresMap[subj].push({ pupilId: pid, total });
+                    }
+                });
+            } catch (chunkErr) {
+                console.warn('Chunk query failed:', chunkErr.message);
             }
-
-            for (const chunk of chunks) {
-                try {
-                    const chunkSnap = await db.collection('results')
-                        .where('pupilId', 'in', chunk)
-                        .get();
-
-                    chunkSnap.forEach(doc => {
-                        const d = doc.data();
-
-                        // Client-side filtering
-                        const matchesTerm    = d.term    === currentSettings.term;
-                        const matchesSession = d.session === currentSettings.session;
-                        const isApproved     = !d.status || d.status === 'approved';
-
-                        if (!matchesTerm || !matchesSession || !isApproved) return;
-
-                        const subj  = d.subject || 'Unknown';
-                        const ca    = typeof d.caScore   === 'number' ? d.caScore   : 0;
-                        const exam  = typeof d.examScore === 'number' ? d.examScore : 0;
-                        const total = ca + exam;
-                        const pid   = d.pupilId || '';
-
-                        if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
-
-                        // Avoid duplicate entries for the same pupil+subject
-                        const existing = subjectScoresMap[subj].find(s => s.pupilId === pid);
-                        if (!existing) {
-                            subjectScoresMap[subj].push({ pupilId: pid, total });
-                        }
-                    });
-                } catch (chunkError) {
-                    console.warn('Error fetching chunk results:', chunkError.message);
-                }
-            }
-
-            console.log('Subjects with class data:', Object.keys(subjectScoresMap));
         }
 
-        // ── Step 4: Compute average and position per subject ──────────────────
-        const classAverageMap = {};
+        console.log('Subjects with class data:', Object.keys(subjectScoresMap));
+
+        /* ── 4. Compute per-subject average, position, class size ───────── */
+        const classStatMap = {};
 
         Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
-            if (scores.length === 0) return;
+            if (!scores.length) return;
 
-            const sum    = scores.reduce((acc, s) => acc + s.total, 0);
-            const avg    = sum / scores.length;
-            const sorted = [...scores].sort((a, b) => b.total - a.total);
-            const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
+            const sum      = scores.reduce((acc, s) => acc + s.total, 0);
+            const average  = sum / scores.length;
+            const sorted   = [...scores].sort((a, b) => b.total - a.total);
+            const posIndex = sorted.findIndex(s => s.pupilId === currentPupilId);
 
-            classAverageMap[subj] = {
-                average:   avg.toFixed(1),
-                position:  posIdx >= 0 ? posIdx + 1 : null,
+            classStatMap[subj] = {
+                average:   average.toFixed(1),
+                position:  posIndex >= 0 ? posIndex + 1 : null,
                 classSize: scores.length
             };
-
-            if (posIdx < 0) {
-                console.warn(`Pupil not ranked for subject "${subj}" — result may be missing from class set`);
-            }
         });
 
-        // ── Step 5: Attach stats to each result row ───────────────────────────
+        console.log('Class stats computed:', classStatMap);
+
+        /* ── 5. Attach stats to rows and render ─────────────────────────── */
         myResults = myResults.map(r => ({
             ...r,
-            classAverage: classAverageMap[r.subject]?.average  ?? null,
-            position:     classAverageMap[r.subject]?.position ?? null,
-            classSize:    classAverageMap[r.subject]?.classSize ?? null,
+            classAverage: classStatMap[r.subject]?.average   ?? null,
+            position:     classStatMap[r.subject]?.position  ?? null,
+            classSize:    classStatMap[r.subject]?.classSize ?? null,
         }));
-
-        if (myResults.length > 0) {
-            console.log('Sample result with stats:', myResults[0]);
-        }
 
         renderResults(myResults, tbody);
 
-    } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
+    } catch (err) {
+        console.error('loadAcademicResults error:', err);
+        tbody.innerHTML = errorRow('Error loading results. Reload page.');
         clearPerformanceSummary();
-        console.error('Error in loadAcademicResults:', error);
     }
 }
 
-/* ===============================
-   RENDER RESULTS TABLE ROWS
-================================ */
-
+/* ═══════════════════════════════════════════════════════════════
+   RENDER TABLE ROWS
+═══════════════════════════════════════════════════════════════ */
 function renderResults(results, tbody) {
     tbody.innerHTML = '';
     results.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -537,21 +523,20 @@ function renderResults(results, tbody) {
         const score = ca + exam;
         totalScore += score;
 
-        // Sub-CA breakdown
-        const assignment = (r.assignment !== null && r.assignment !== undefined) ? r.assignment : null;
-        const midterm    = (r.midterm    !== null && r.midterm    !== undefined) ? r.midterm    : null;
-        const project    = (r.project    !== null && r.project    !== undefined) ? r.project    : null;
+        const assignment = r.assignment !== null && r.assignment !== undefined ? r.assignment : null;
+        const midterm    = r.midterm    !== null && r.midterm    !== undefined ? r.midterm    : null;
+        const project    = r.project    !== null && r.project    !== undefined ? r.project    : null;
 
-        // Class stats
-        const classAvg  = (r.classAverage !== null && r.classAverage !== undefined)
+        const classAvg  = r.classAverage !== null && r.classAverage !== undefined
             ? Number(r.classAverage).toFixed(1) : null;
-        const position  = (r.position  !== null && r.position  !== undefined) ? r.position  : null;
-        const classSize = (r.classSize !== null && r.classSize !== undefined) ? r.classSize : null;
+        const position  = r.position  !== null && r.position  !== undefined ? r.position  : null;
+        const classSize = r.classSize !== null && r.classSize !== undefined ? r.classSize : null;
 
-        // Format position as e.g. "3rd/25"
         let posDisplay = '–';
         if (position !== null) {
-            const suffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+            const suffix = position === 1 ? 'st'
+                         : position === 2 ? 'nd'
+                         : position === 3 ? 'rd' : 'th';
             posDisplay = classSize ? `${position}${suffix}/${classSize}` : `${position}${suffix}`;
         }
 
@@ -561,7 +546,7 @@ function renderResults(results, tbody) {
                 <td style="text-align:center;">${assignment !== null ? assignment : '–'}</td>
                 <td style="text-align:center;">${midterm    !== null ? midterm    : '–'}</td>
                 <td style="text-align:center;">${project    !== null ? project    : '–'}</td>
-                <td class="col-total" style="text-align:center; color:var(--blue-mid);">${ca}</td>
+                <td class="col-total" style="text-align:center;color:var(--blue-mid);">${ca}</td>
                 <td style="text-align:center;">${exam}</td>
                 <td class="col-total" style="text-align:center;">${score}</td>
                 <td style="text-align:center;">${classAvg  !== null ? classAvg  : '–'}</td>
@@ -575,14 +560,12 @@ function renderResults(results, tbody) {
     const subjectCount = results.length;
     const average      = subjectCount > 0 ? (totalScore / subjectCount).toFixed(1) : '0.0';
     const avgGrade     = getGrade(parseFloat(average));
-
-    // Class size — take from first result that has it
-    const classSizeVal = results.find(r => r.classSize)?.classSize || null;
+    const classSizeVal = results.find(r => r.classSize != null)?.classSize ?? null;
 
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
     setText('perf-subjects',   String(subjectCount));
     setText('perf-avg',        `${average}%`);
-    setText('perf-class-size', classSizeVal ? String(classSizeVal) : '–');
+    setText('perf-class-size', classSizeVal !== null ? String(classSizeVal) : '–');
 
     const gradeEl = document.getElementById('perf-grade');
     if (gradeEl) {
@@ -592,10 +575,9 @@ function renderResults(results, tbody) {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    ATTENDANCE
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 async function loadAttendance() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -611,10 +593,9 @@ async function loadAttendance() {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    TRAITS & SKILLS
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 async function loadBehavioralTraits()  { await loadKeyedCollection('behavioral_traits',  'trait-'); }
 async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
 
@@ -626,10 +607,10 @@ async function loadKeyedCollection(collection, prefix) {
         const doc = await db.collection(collection).doc(docId).get();
         if (!doc.exists) return;
         const data = doc.data();
-        const skip = ['pupilId','term','teacherId','updatedAt','session',
-                      'sessionStartYear','sessionEndYear','sessionTerm'];
+        const skip = new Set(['pupilId','term','teacherId','updatedAt','session',
+                              'sessionStartYear','sessionEndYear','sessionTerm']);
         Object.entries(data).forEach(([k, v]) => {
-            if (skip.includes(k)) return;
+            if (skip.has(k)) return;
             setText(prefix + k.toLowerCase(), v !== null && v !== undefined ? v : '-');
         });
     } catch (e) {
@@ -637,10 +618,9 @@ async function loadKeyedCollection(collection, prefix) {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    REMARKS
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 async function loadRemarks() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -655,10 +635,9 @@ async function loadRemarks() {
     }
 }
 
-/* ===============================
+/* ═══════════════════════════════════════════════════════════════
    HELPERS
-================================ */
-
+═══════════════════════════════════════════════════════════════ */
 function clearPerformanceSummary() {
     setText('perf-total',      '–');
     setText('perf-subjects',   '–');
@@ -687,8 +666,20 @@ function setText(id, value) {
     if (el) el.textContent = value;
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function chunkArray(arr, size) {
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
+
 function loadingRow() {
-    return `<tr><td colspan="11" style="text-align:center; padding:12px; color:var(--ink-3);">
+    return `<tr><td colspan="11" style="text-align:center;padding:12px;color:var(--ink-3);">
         <div style="width:24px;height:24px;margin:0 auto 6px;border:3px solid #f3f3f3;
              border-top:3px solid var(--blue-deep);border-radius:50%;
              animation:spin 1s linear infinite;"></div>
@@ -697,7 +688,11 @@ function loadingRow() {
 }
 
 function emptyRow(text) {
-    return `<tr><td colspan="11" style="text-align:center; padding:12px; color:var(--ink-3);">${text}</td></tr>`;
+    return `<tr><td colspan="11" style="text-align:center;padding:12px;color:var(--ink-3);">${text}</td></tr>`;
+}
+
+function errorRow(text) {
+    return `<tr><td colspan="11" style="text-align:center;padding:12px;color:#dc2626;">⚠️ ${text}</td></tr>`;
 }
 
 function getGrade(score) {
@@ -723,9 +718,9 @@ function getRemark(score) {
     return 'Fail';
 }
 
-// Spin animation
+/* Spin keyframes */
 const _spinStyle = document.createElement('style');
-_spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
+_spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.8.0 - ROBUST CLASS AVERAGE, single-field queries only)');
+console.log('✓ print-results.js v6.9.0 ready');
