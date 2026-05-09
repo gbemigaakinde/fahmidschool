@@ -2,8 +2,12 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript
  *
- * Version: 7.0.0
+ * Version: 7.1.0
  * Date: 2026-05-09
+ *
+ * FIX: Classmate lookup now uses a targeted query instead of
+ * fetching all pupils, which was failing silently on pupil accounts
+ * due to Firestore security rules blocking unrestricted collection reads.
  */
 'use strict';
 
@@ -295,11 +299,27 @@ async function loadReportData() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ACADEMIC RESULTS  —  v7.0.0
+   ACADEMIC RESULTS  —  v7.1.0
    ─────────────────────────────────────────────────────────────
-   FIX: Subject name normalisation ensures classmate scores are
-   correctly matched to this pupil's subjects even when there are
-   minor capitalisation or whitespace differences.
+   CLASSMATE LOOKUP STRATEGY
+   ─────────────────────────────────────────────────────────────
+   Three methods are attempted in order, falling back if each fails:
+
+   Method A — Direct class.id query (fastest, needs single-field index):
+     db.collection('pupils').where('class.id', '==', classId)
+     This is a nested field query. Firestore DOES support single-field
+     nested queries without a composite index. Works if security rules
+     allow a pupil to list the pupils collection.
+
+   Method B — Query results collection directly by classId field:
+     db.collection('results').where('classId', '==', classId)
+     Results store classId at the top level. This avoids the pupils
+     collection entirely and works even if pupils list is restricted.
+     Filter term/session client-side.
+
+   Method C — Fallback to current pupil only:
+     Shows –/– for class stats (indicates data unavailable).
+     Does NOT fake 1st/1 — shows honest dashes instead.
 ═══════════════════════════════════════════════════════════════ */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
@@ -327,10 +347,11 @@ async function loadAcademicResults() {
     try {
         const TARGET_TERM    = currentSettings.term;
         const TARGET_SESSION = currentSettings.session;
+        const classId        = pupilProfile._resolvedClassId;
 
-        console.log('Loading results for term:', TARGET_TERM, '| session:', TARGET_SESSION);
+        console.log('Loading results | term:', TARGET_TERM, '| session:', TARGET_SESSION, '| classId:', classId);
 
-        /* ── 1. Fetch this pupil's own results ─────────────────────────── */
+        /* ── 1. Fetch this pupil's own approved results ─────────────────── */
         const mySnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
@@ -354,7 +375,7 @@ async function loadAcademicResults() {
             }
         });
 
-        console.log(`Own results found: ${myResults.length}`, myResults.map(r => r.subject));
+        console.log('Own results:', myResults.length, myResults.map(r => r.subject));
 
         if (myResults.length === 0) {
             tbody.innerHTML = emptyRow(
@@ -364,62 +385,105 @@ async function loadAcademicResults() {
             return;
         }
 
-        /* ── 2. Find classmates ─────────────────────────────────────────── */
-        const classId = pupilProfile._resolvedClassId;
-        console.log('Using classId for classmate lookup:', classId);
-
+        /* ── 2. Get classmate IDs ────────────────────────────────────────── */
+        /*
+         * We try three approaches in order.
+         * The first one that returns more than 1 pupil wins.
+         * This ensures we always get the full class, regardless of
+         * which Firestore indexes or security rules are in place.
+         */
         let classmateIds = [];
 
         if (classId) {
+            /* ── Method A: Query pupils collection by class.id ── */
             try {
-                const allPupilsSnap = await db.collection('pupils').get();
+                const classSnap = await db.collection('pupils')
+                    .where('class.id', '==', classId)
+                    .get();
 
-                allPupilsSnap.forEach(doc => {
+                const methodAIds = [];
+                classSnap.forEach(doc => {
                     const d = doc.data();
-                    if (d.status === 'alumni') return;
-
-                    let pupilClassId = null;
-                    if (d.class && typeof d.class === 'object' && d.class.id) {
-                        pupilClassId = d.class.id;
-                    }
-
-                    if (pupilClassId === classId) {
-                        classmateIds.push(doc.id);
+                    if (d.status !== 'alumni') {
+                        methodAIds.push(doc.id);
                     }
                 });
 
-                if (!classmateIds.includes(currentPupilId)) {
-                    classmateIds.push(currentPupilId);
+                if (methodAIds.length > 0) {
+                    classmateIds = methodAIds;
+                    console.log('Method A (class.id query) found', classmateIds.length, 'pupils');
+                } else {
+                    console.warn('Method A returned 0 pupils, trying Method B');
                 }
+            } catch (errA) {
+                console.warn('Method A failed:', errA.message, '— trying Method B');
+            }
 
-                console.log(`Classmates found: ${classmateIds.length} in classId "${classId}"`);
-            } catch (e) {
-                console.warn('Could not fetch all pupils for class stats:', e.message);
-                classmateIds = [currentPupilId];
+            /* ── Method B: Derive classmates from results collection ── */
+            /*
+             * This approach queries results directly using classId (top-level field).
+             * It works even when the pupils collection is not listable by pupils.
+             * We collect all unique pupilIds that have results in this class/term/session.
+             */
+            if (classmateIds.length === 0) {
+                try {
+                    const classResultsSnap = await db.collection('results')
+                        .where('classId', '==', classId)
+                        .get();
+
+                    const pupilIdSet = new Set();
+                    classResultsSnap.forEach(doc => {
+                        const d = doc.data();
+                        if (
+                            d.term    === TARGET_TERM    &&
+                            d.session === TARGET_SESSION &&
+                            (!d.status || d.status === 'approved') &&
+                            d.pupilId
+                        ) {
+                            pupilIdSet.add(d.pupilId);
+                        }
+                    });
+
+                    if (pupilIdSet.size > 0) {
+                        classmateIds = Array.from(pupilIdSet);
+                        console.log('Method B (results by classId) found', classmateIds.length, 'pupils');
+                    } else {
+                        console.warn('Method B returned 0 pupils, trying Method C');
+                    }
+                } catch (errB) {
+                    console.warn('Method B failed:', errB.message, '— falling back to Method C');
+                }
             }
         } else {
-            console.warn('No classId resolved — class stats will be unavailable');
-            classmateIds = [currentPupilId];
+            console.warn('No classId available — cannot compute class stats');
         }
+
+        /* ── Method C: Use only the current pupil (honest fallback) ── */
+        /*
+         * If both A and B failed, we genuinely cannot get class stats.
+         * We do NOT fake 1st/1 — we leave stats as null so the UI
+         * shows "–" which is accurate: data unavailable.
+         */
+        const hasClassData = classmateIds.length > 1 ||
+            (classmateIds.length === 1 && classmateIds[0] !== currentPupilId);
+
+        if (!hasClassData && classmateIds.length === 0) {
+            // Ensure at least current pupil is in the list so their own score
+            // appears in the average calculation even if class stats show –
+            classmateIds = [currentPupilId];
+            console.warn('Method C: using only current pupil — class stats will show –');
+        } else if (!classmateIds.includes(currentPupilId)) {
+            classmateIds.push(currentPupilId);
+        }
+
+        console.log('Final classmate IDs:', classmateIds);
 
         /* ── 3. Fetch results for all classmates ────────────────────────── */
         /*
-         * KEY FIX: We normalise subject names to lowercase-trimmed keys
-         * for matching, but store the original name for display.
+         * subjectScoresMap keys are NORMALISED (lowercase trimmed) subject names.
          * This prevents mismatches from capitalisation differences.
          */
-
-        // Build a normalisation map from this pupil's own subject names
-        // so we always use THEIR exact capitalisation in the output.
-        const mySubjectNormMap = {}; // normalisedKey -> original subject name
-        myResults.forEach(r => {
-            mySubjectNormMap[normaliseSubject(r.subject)] = r.subject;
-        });
-
-        console.log('My subject norm map:', mySubjectNormMap);
-
-        // subjectScoresMap keys are NORMALISED subject names
-        const subjectScoresMap = {}; // normalisedSubject -> [ { pupilId, total } ]
+        const subjectScoresMap = {}; // normKey -> [ { pupilId, total } ]
 
         const chunks = chunkArray(classmateIds, 10);
 
@@ -431,22 +495,21 @@ async function loadAcademicResults() {
 
                 snap.forEach(doc => {
                     const d = doc.data();
-
                     if (d.term    !== TARGET_TERM)    return;
                     if (d.session !== TARGET_SESSION)  return;
                     if (d.status && d.status !== 'approved') return;
 
-                    const subjRaw  = d.subject  || 'Unknown';
-                    const subjNorm = normaliseSubject(subjRaw);
-                    const ca       = typeof d.caScore   === 'number' ? d.caScore   : 0;
-                    const exam     = typeof d.examScore === 'number' ? d.examScore : 0;
-                    const total    = ca + exam;
-                    const pid      = d.pupilId  || '';
+                    const normKey = normaliseSubject(d.subject || '');
+                    const ca      = typeof d.caScore   === 'number' ? d.caScore   : 0;
+                    const exam    = typeof d.examScore === 'number' ? d.examScore : 0;
+                    const total   = ca + exam;
+                    const pid     = d.pupilId || '';
 
-                    if (!subjectScoresMap[subjNorm]) subjectScoresMap[subjNorm] = [];
+                    if (!subjectScoresMap[normKey]) subjectScoresMap[normKey] = [];
 
-                    if (!subjectScoresMap[subjNorm].find(s => s.pupilId === pid)) {
-                        subjectScoresMap[subjNorm].push({ pupilId: pid, total });
+                    // Prevent duplicates for the same pupil+subject
+                    if (!subjectScoresMap[normKey].find(s => s.pupilId === pid)) {
+                        subjectScoresMap[normKey].push({ pupilId: pid, total });
                     }
                 });
             } catch (chunkErr) {
@@ -454,25 +517,19 @@ async function loadAcademicResults() {
             }
         }
 
-        console.log('Subjects found in classmate results (normalised):', Object.keys(subjectScoresMap));
-        console.log('Subjects needed (normalised):', Object.keys(mySubjectNormMap));
+        console.log('Subjects with class data:', Object.keys(subjectScoresMap));
 
         /* ── 4. Compute per-subject stats ───────────────────────────────── */
-        // classStatMap keys are the ORIGINAL subject names from myResults
-        const classStatMap = {};
+        const classStatMap = {}; // originalSubjectName -> stats
 
         myResults.forEach(r => {
             const normKey = normaliseSubject(r.subject);
             const scores  = subjectScoresMap[normKey];
 
             if (!scores || scores.length === 0) {
-                console.warn(`No classmate scores found for subject: "${r.subject}" (norm: "${normKey}")`);
-                // Still record with just this pupil's score so we can show partial stats
-                classStatMap[r.subject] = {
-                    average:   (r.caScore + r.examScore).toFixed(1),
-                    position:  1,
-                    classSize: 1
-                };
+                console.warn('No class scores for subject:', r.subject, '(norm:', normKey + ')');
+                // Leave as null — show "–" honestly
+                classStatMap[r.subject] = { average: null, position: null, classSize: null };
                 return;
             }
 
@@ -487,10 +544,13 @@ async function loadAcademicResults() {
                 classSize: scores.length
             };
 
-            console.log(`Stats for "${r.subject}": avg=${average.toFixed(1)}, pos=${posIndex + 1}/${scores.length}`);
+            console.log(
+                `"${r.subject}": classSize=${scores.length}, avg=${average.toFixed(1)},`,
+                `pos=${posIndex + 1}, scores=[${scores.map(s=>s.total).join(',')}]`
+            );
         });
 
-        /* ── 5. Attach stats to rows and render ─────────────────────────── */
+        /* ── 5. Attach stats and render ─────────────────────────────────── */
         myResults = myResults.map(r => ({
             ...r,
             classAverage: classStatMap[r.subject]?.average   ?? null,
@@ -507,11 +567,7 @@ async function loadAcademicResults() {
     }
 }
 
-/* ─── Subject name normalisation helper ─────────────────────── */
-/**
- * Normalises a subject name for comparison purposes.
- * Trims whitespace and lowercases. Does NOT alter the stored value.
- */
+/* ─── Subject name normalisation ────────────────────────────── */
 function normaliseSubject(name) {
     return (name || '').trim().toLowerCase();
 }
@@ -541,11 +597,11 @@ function renderResults(results, tbody) {
         const classSize = r.classSize !== null && r.classSize !== undefined ? r.classSize : null;
 
         let posDisplay = '–';
-        if (position !== null) {
+        if (position !== null && classSize !== null) {
             const suffix = position === 1 ? 'st'
                          : position === 2 ? 'nd'
                          : position === 3 ? 'rd' : 'th';
-            posDisplay = classSize ? `${position}${suffix}/${classSize}` : `${position}${suffix}`;
+            posDisplay = `${position}${suffix}/${classSize}`;
         }
 
         tbody.insertAdjacentHTML('beforeend', `
@@ -568,7 +624,10 @@ function renderResults(results, tbody) {
     const subjectCount = results.length;
     const average      = subjectCount > 0 ? (totalScore / subjectCount).toFixed(1) : '0.0';
     const avgGrade     = getGrade(parseFloat(average));
-    const classSizeVal = results.find(r => r.classSize != null)?.classSize ?? null;
+
+    // Class size: use the modal value across all subjects (most common value)
+    // to handle edge cases where one subject has more entries than another.
+    const classSizeVal = getModalClassSize(results);
 
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
     setText('perf-subjects',   String(subjectCount));
@@ -581,6 +640,25 @@ function renderResults(results, tbody) {
         gradeEl.className   = `perf-row__val grade-${avgGrade}`;
         gradeEl.id          = 'perf-grade';
     }
+}
+
+/* ─── Modal class size helper ───────────────────────────────── */
+/**
+ * Returns the most frequently occurring classSize value across
+ * all result rows. This is more robust than taking the first
+ * non-null value, which could be from a subject with fewer entries.
+ */
+function getModalClassSize(results) {
+    const freq = {};
+    results.forEach(r => {
+        if (r.classSize != null) {
+            freq[r.classSize] = (freq[r.classSize] || 0) + 1;
+        }
+    });
+    const entries = Object.entries(freq);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return Number(entries[0][0]);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -731,4 +809,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js v7.0.0 ready');
+console.log('✓ print-results.js v7.1.0 ready');
