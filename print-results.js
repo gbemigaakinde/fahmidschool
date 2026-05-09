@@ -630,7 +630,7 @@ function setText(id, value) {
 }
 
 function loadingRow() {
-    return `<tr><td colspan="6" style="text-align:center; padding:12px; color:var(--ink-3);">
+    return `<tr><td colspan="11" style="text-align:center; padding:12px; color:var(--ink-3);">
         <div style="width:24px;height:24px;margin:0 auto 6px;border:3px solid #f3f3f3;
              border-top:3px solid var(--blue-deep);border-radius:50%;
              animation:spin 1s linear infinite;"></div>
@@ -639,7 +639,7 @@ function loadingRow() {
 }
 
 function emptyRow(text) {
-    return `<tr><td colspan="6" style="text-align:center; padding:12px; color:var(--ink-3);">${text}</td></tr>`;
+    return `<tr><td colspan="11" style="text-align:center; padding:12px; color:var(--ink-3);">${text}</td></tr>`;
 }
 
 function getGrade(score) {
