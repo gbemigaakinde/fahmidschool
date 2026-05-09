@@ -408,6 +408,14 @@
     }
     .perf-row__val { font-size: 9pt; font-weight: 700; color: var(--blue-deep); }
     #perf-grade { font-size: 11pt; }
+    
+    /* Sub-CA column sizing */
+.ac-table th, .ac-table td {
+    vertical-align: middle;
+}
+.ac-table thead tr:first-child th {
+    border-bottom: 1px solid var(--rule);
+}
 
     /* ================================================================
        SECTION 4 — GRADING KEY  (full-width compact strip)
@@ -730,15 +738,25 @@
                 <div class="ac-table-wrap">
                     <table class="ac-table">
                         <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>C.A.<br><span style="font-weight:400;opacity:0.6;">(40)</span></th>
-                                <th>Exam<br><span style="font-weight:400;opacity:0.6;">(60)</span></th>
-                                <th>Total<br><span style="font-weight:400;opacity:0.6;">(100)</span></th>
-                                <th>Grade</th>
-                                <th>Remark</th>
-                            </tr>
-                        </thead>
+    <tr>
+        <th rowspan="2">Subject</th>
+        <th colspan="4" style="text-align:center; border-bottom:1px solid var(--rule);">
+            Continuous Assessment <span style="font-weight:400;opacity:0.6;">(40)</span>
+        </th>
+        <th rowspan="2">Exam<br><span style="font-weight:400;opacity:0.6;">(60)</span></th>
+        <th rowspan="2">Total<br><span style="font-weight:400;opacity:0.6;">(100)</span></th>
+        <th rowspan="2">Class<br>Avg</th>
+        <th rowspan="2">Pos.</th>
+        <th rowspan="2">Grade</th>
+        <th rowspan="2">Remark</th>
+    </tr>
+    <tr>
+        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Assign<br><span style="opacity:0.6;">(10)</span></th>
+        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Mid-term<br><span style="opacity:0.6;">(10)</span></th>
+        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Project<br><span style="opacity:0.6;">(20)</span></th>
+        <th style="font-size:5pt; font-weight:600; color:var(--blue-mid);">CA Total<br><span style="opacity:0.6;">(40)</span></th>
+    </tr>
+</thead>
                         <tbody id="academic-tbody">
                             <tr>
                                 <td colspan="6" style="text-align:center;padding:12px;color:var(--ink-3);">
@@ -751,26 +769,30 @@
             </div>
 
             <div class="section">
-                <div class="section__hd"><span class="section__title">Performance Summary</span></div>
-                <div class="perf-body">
-                    <div class="perf-row">
-                        <span class="perf-row__lbl">Total Score</span>
-                        <span class="perf-row__val" id="perf-total">–</span>
-                    </div>
-                    <div class="perf-row">
-                        <span class="perf-row__lbl">No. of Subjects</span>
-                        <span class="perf-row__val" id="perf-subjects">–</span>
-                    </div>
-                    <div class="perf-row">
-                        <span class="perf-row__lbl">Average Score</span>
-                        <span class="perf-row__val" id="perf-avg">–</span>
-                    </div>
-                    <div class="perf-row">
-                        <span class="perf-row__lbl">Overall Grade</span>
-                        <span class="perf-row__val" id="perf-grade">–</span>
-                    </div>
-                </div>
-            </div>
+    <div class="section__hd"><span class="section__title">Performance Summary</span></div>
+    <div class="perf-body">
+        <div class="perf-row">
+            <span class="perf-row__lbl">Total Score</span>
+            <span class="perf-row__val" id="perf-total">–</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-row__lbl">No. of Subjects</span>
+            <span class="perf-row__val" id="perf-subjects">–</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-row__lbl">Average Score</span>
+            <span class="perf-row__val" id="perf-avg">–</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-row__lbl">Overall Grade</span>
+            <span class="perf-row__val" id="perf-grade">–</span>
+        </div>
+        <div class="perf-row">
+            <span class="perf-row__lbl">Class Size</span>
+            <span class="perf-row__val" id="perf-class-size">–</span>
+        </div>
+    </div>
+</div>
 
         </div><!-- /row-ac -->
 
