@@ -3995,7 +3995,7 @@ async function loadPupilResults() {
         // Success! Render results
         console.log(`✅ Successfully loaded ${results.length} results using ${queryMethod} method`);
         currentResultsData = results;
-        renderResultsDisplay(results, container);
+        await renderResultsDisplay(results, container);
 
     } catch (error) {
         console.error('❌ Error loading pupil results:', error);
