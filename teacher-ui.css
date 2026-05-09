@@ -1781,9 +1781,8 @@
 
 /* ────────────────────────────────────────────────────────────
    2. RESULTS TABLE
-   4 columns: Name | CA Input | Exam Input | Total
-   Desktop: standard table. Mobile: card per pupil with
-   the two inputs side-by-side in a compact row.
+   7 columns: Name | Assignment | Mid-term | Project | CA Total | Exam | Total
+   Desktop: standard table. Mobile: card per pupil.
 ──────────────────────────────────────────────────────────── */
 #results-table {
     width: 100%;
@@ -1794,10 +1793,7 @@
     #results-table thead { display: none; }
 
     #results-table tbody tr {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-rows: auto auto;
-        gap: 0;
+        display: block;
         border: 1px solid var(--tp-border);
         border-radius: var(--tp-radius-md);
         margin-bottom: var(--tp-space-3);
@@ -1806,84 +1802,151 @@
         box-shadow: var(--tp-shadow-sm);
     }
 
-    /* Pupil name — top-left, spans both columns */
+    #results-table tbody td {
+        display: block;
+        border-bottom: 1px solid var(--tp-border-light);
+        padding: var(--tp-space-3) var(--tp-space-4);
+        text-align: left;
+    }
+
+    #results-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    /* --- Pupil Name row: styled as a card header --- */
     #results-table tbody td:nth-child(1) {
-        grid-column: 1 / -1;
         font-weight: 700;
         font-size: 0.9375rem;
         color: var(--tp-text-primary);
         background: var(--tp-bg);
-        padding: var(--tp-space-3) var(--tp-space-4);
         border-bottom: 1px solid var(--tp-border);
-        white-space: normal;
+        padding: var(--tp-space-3) var(--tp-space-4);
     }
 
-    /* Suppress the global data-label ::before on the name cell —
-       the cell IS the name, it doesn't need a label above it */
+    /* Suppress data-label on the name cell */
     #results-table tbody td:nth-child(1)::before {
         content: none !important;
         display: none !important;
     }
 
-    /* CA and Exam inputs sit side-by-side */
+    /* --- CA sub-fields: Assignment, Mid-term, Project --- */
+    /* Show them in a 3-column mini-grid */
     #results-table tbody td:nth-child(2),
-    #results-table tbody td:nth-child(3) {
+    #results-table tbody td:nth-child(3),
+    #results-table tbody td:nth-child(4) {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--tp-space-1);
+        width: 33.333%;
+        box-sizing: border-box;
+        border-bottom: 1px solid var(--tp-border);
+        vertical-align: top;
+        padding: var(--tp-space-3) var(--tp-space-2);
+    }
+
+    #results-table tbody td:nth-child(2) { border-right: 1px solid var(--tp-border-light); }
+    #results-table tbody td:nth-child(3) { border-right: 1px solid var(--tp-border-light); }
+    #results-table tbody td:nth-child(4) { border-right: none; }
+
+    #results-table tbody td:nth-child(2)::before { content: "Assignment (10)"; }
+    #results-table tbody td:nth-child(3)::before { content: "Mid-term (20)"; }
+    #results-table tbody td:nth-child(4)::before { content: "Project (10)"; }
+
+    #results-table tbody td:nth-child(2)::before,
+    #results-table tbody td:nth-child(3)::before,
+    #results-table tbody td:nth-child(4)::before {
+        font-size: 0.5625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--tp-text-muted);
+        display: block;
+        margin-bottom: 4px;
+        text-align: center;
+    }
+
+    #results-table tbody td:nth-child(2) input,
+    #results-table tbody td:nth-child(3) input,
+    #results-table tbody td:nth-child(4) input {
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: center;
+        font-size: 1rem;
+        padding: 8px 4px;
+    }
+
+    /* --- CA Total: auto-calculated, shown as a summary row --- */
+    #results-table tbody td:nth-child(5) {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #eff6ff;
+        border-bottom: 1px solid var(--tp-border);
+        font-weight: 700;
+        color: #1d4ed8;
+        font-size: 0.9375rem;
+        padding: var(--tp-space-2) var(--tp-space-4);
+    }
+
+    #results-table tbody td:nth-child(5)::before {
+        content: "CA Total (auto)";
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #3b82f6;
+    }
+
+    /* --- Exam Score --- */
+    #results-table tbody td:nth-child(6) {
         display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: var(--tp-space-1);
+        border-bottom: 1px solid var(--tp-border);
         padding: var(--tp-space-3) var(--tp-space-4);
-        border-bottom: none;
     }
 
-    #results-table tbody td:nth-child(2) {
-        border-right: 1px solid var(--tp-border);
-    }
-
-    #results-table tbody td:nth-child(2)::before { content: "CA (max 40)"; }
-    #results-table tbody td:nth-child(3)::before { content: "Exam (max 60)"; }
-
-    #results-table tbody td:nth-child(2)::before,
-    #results-table tbody td:nth-child(3)::before {
-        font-size: 0.625rem;
+    #results-table tbody td:nth-child(6)::before {
+        content: "Exam Score (max 60)";
+        font-size: 0.6875rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.07em;
+        letter-spacing: 0.06em;
         color: var(--tp-text-muted);
         display: block;
         margin-bottom: 4px;
     }
 
-    /* Input fills the cell */
-    #results-table tbody td:nth-child(2) input,
-    #results-table tbody td:nth-child(3) input {
+    #results-table tbody td:nth-child(6) input {
         width: 100% !important;
         max-width: 100% !important;
         text-align: center;
-        font-size: 1rem;
-        padding: 8px;
-        border-radius: var(--tp-radius-sm);
+        font-size: 1.125rem;
+        padding: 10px 8px;
+        font-weight: 600;
     }
 
-    /* Total — right-aligned chip in top-right */
-    #results-table tbody td:nth-child(4) {
+    /* --- Grand Total --- */
+    #results-table tbody td:nth-child(7) {
         display: flex;
         align-items: center;
-        justify-content: center;
-        padding: var(--tp-space-2) var(--tp-space-3);
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--tp-text-secondary);
+        justify-content: space-between;
         background: var(--tp-bg);
-        border-top: 1px solid var(--tp-border);
-        grid-column: 1 / -1;
+        font-weight: 700;
+        font-size: 1rem;
+        padding: var(--tp-space-3) var(--tp-space-4);
+        border-bottom: none;
     }
 
-    #results-table tbody td:nth-child(4)::before {
-        content: "Total: ";
+    #results-table tbody td:nth-child(7)::before {
+        content: "Total Score";
+        font-size: 0.6875rem;
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--tp-text-muted);
-        margin-right: 4px;
     }
 }
 
