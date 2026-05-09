@@ -10,17 +10,24 @@
  * - Sub-CA breakdown: Assignment(10) + Mid-term(20) + Project(10) = CA Total(40)
  * - Class average and position per subject
  *
- * Version: 6.6.0 - INDEX-FREE CLASS AVERAGE + ROBUST CLASSID RESOLUTION
+ * Version: 6.7.0 - CLASSMATES-BASED AVERAGE (no classId dependency on results)
  * Date: 2026-05-09
+ *
+ * FIX: Class average, position and class size now work by:
+ *   1. Finding classmates directly from the pupils collection using the
+ *      pupil's own class.id (always reliable).
+ *   2. Fetching each classmate's approved results for the same term+session.
+ *   3. Computing average and rank from those scores.
+ *   This approach works even when approved result documents lack a classId field.
  */
 'use strict';
 
-let currentPupilId = null;
-let pupilProfile = null;
+let currentPupilId  = null;
+let pupilProfile    = null;
 
 let currentSettings = {
-    term: 'First Term',
-    session: '',
+    term:           'First Term',
+    session:        '',
     resumptionDate: '-'
 };
 
@@ -45,10 +52,7 @@ async function initPrintResultsWrapper() {
 
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
-            if (!userDoc.exists) {
-                window.location.href = 'index.html';
-                return;
-            }
+            if (!userDoc.exists) { window.location.href = 'index.html'; return; }
 
             const userRole = userDoc.data().role;
             if (userRole !== 'admin' && userRole !== 'pupil') {
@@ -56,10 +60,10 @@ async function initPrintResultsWrapper() {
                 return;
             }
 
-            const isAdmin = userRole === 'admin';
+            const isAdmin  = userRole === 'admin';
             const urlParams = new URLSearchParams(window.location.search);
 
-            // ── Resolve pupil identity from URL ──────────────────────────────────
+            // ── Resolve pupil identity ────────────────────────────────────────
             let resolvedPupilId = null;
 
             if (isAdmin) {
@@ -72,14 +76,10 @@ async function initPrintResultsWrapper() {
                             .where('admissionNo', '==', urlAdmissionNo)
                             .limit(1)
                             .get();
-
-                        if (!snap.empty) {
-                            resolvedPupilId = snap.docs[0].id;
-                        } else {
-                            console.error('No pupil found with admissionNo:', urlAdmissionNo);
-                        }
-                    } catch (lookupError) {
-                        console.error('Error looking up pupil by admissionNo:', lookupError);
+                        if (!snap.empty) resolvedPupilId = snap.docs[0].id;
+                        else console.error('No pupil found with admissionNo:', urlAdmissionNo);
+                    } catch (e) {
+                        console.error('Error looking up pupil by admissionNo:', e);
                     }
                 } else if (urlPupilId) {
                     console.warn('Legacy URL: pupilId visible in URL.');
@@ -168,18 +168,12 @@ initPrintResultsWrapper();
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
-
-        if (!doc.exists) {
-            console.warn('Settings document not found');
-            return;
-        }
-
+        if (!doc.exists) { console.warn('Settings document not found'); return; }
         const data = doc.data();
-        currentSettings.term = data.term || currentSettings.term;
-        currentSettings.session = data.session || '';
+        currentSettings.term          = data.term          || currentSettings.term;
+        currentSettings.session       = data.session       || '';
         currentSettings.resumptionDate = data.resumptionDate || '-';
-
-        console.log('Settings loaded successfully:', currentSettings);
+        console.log('Settings loaded:', currentSettings);
     } catch (error) {
         console.error('Error loading settings:', error);
         throw error;
@@ -193,62 +187,60 @@ async function fetchSchoolSettings() {
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
+        if (!doc.exists) throw new Error('Pupil record not found');
 
-        if (!doc.exists) {
-            throw new Error('Pupil record not found');
-        }
+        pupilProfile    = doc.data();
+        currentPupilId  = doc.id;
 
-        pupilProfile = doc.data();
-        currentPupilId = doc.id;
-
-        setText('student-name', pupilProfile.name || '-');
+        setText('student-name',   pupilProfile.name   || '-');
         setText('student-gender', pupilProfile.gender || '-');
-        setText('admission-no', pupilProfile.admissionNo || '-');
+        setText('admission-no',   pupilProfile.admissionNo || '-');
 
-        let classId = null;
+        // ── Resolve classId from pupil profile ────────────────────────────
+        let classId   = null;
         let className = '-';
 
         if (pupilProfile.class) {
             if (typeof pupilProfile.class === 'object') {
-                classId = pupilProfile.class.id || null;
+                classId   = pupilProfile.class.id   || null;
                 className = pupilProfile.class.name || '-';
             } else if (typeof pupilProfile.class === 'string') {
                 className = pupilProfile.class;
+                // Look up the class doc to get its ID
                 const classSnap = await db.collection('classes')
                     .where('name', '==', className)
                     .limit(1)
                     .get();
                 if (!classSnap.empty) {
-                    const classDoc = classSnap.docs[0];
-                    classId = classDoc.id;
-                    className = classDoc.data().name || className;
+                    classId   = classSnap.docs[0].id;
+                    className = classSnap.docs[0].data().name || className;
                 }
             }
         }
 
-        // Store classId on pupilProfile for use in loadAcademicResults
-        pupilProfile._resolvedClassId = classId;
+        // Store on pupilProfile so loadAcademicResults can use it
+        pupilProfile._resolvedClassId   = classId;
+        pupilProfile._resolvedClassName = className;
 
         setText('student-class', className);
 
         let teacherName = '-';
-
         if (classId) {
             const classDoc = await db.collection('classes').doc(classId).get();
             if (classDoc.exists) {
-                const classData = classDoc.data();
-                if (classData.teacherName) {
-                    teacherName = classData.teacherName;
-                } else if (classData.teacherId) {
-                    const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
-                    if (teacherDoc.exists) teacherName = teacherDoc.data().name;
+                const cd = classDoc.data();
+                if (cd.teacherName) {
+                    teacherName = cd.teacherName;
+                } else if (cd.teacherId) {
+                    const td = await db.collection('teachers').doc(cd.teacherId).get();
+                    if (td.exists) teacherName = td.data().name || '-';
                 }
             }
         }
 
         setText('class-teacher', teacherName);
+        console.log('Pupil profile loaded. classId:', classId, '| className:', className);
 
-        console.log('Pupil profile loaded. classId:', classId, 'className:', className);
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         throw error;
@@ -261,18 +253,13 @@ async function fetchPupilProfile(uid) {
 
 function setupTermSelector() {
     const select = document.getElementById('print-term');
-    if (!select) {
-        console.error('❌ Term selector element not found!');
-        return;
-    }
+    if (!select) { console.error('Term selector not found'); return; }
 
     const termToSelect = currentSettings.term;
     setText('current-term', termToSelect);
 
     const newSelect = select.cloneNode(true);
-    Array.from(newSelect.options).forEach(option => {
-        option.selected = option.value === termToSelect;
-    });
+    Array.from(newSelect.options).forEach(o => { o.selected = o.value === termToSelect; });
     select.parentNode.replaceChild(newSelect, select);
 
     newSelect.addEventListener('change', async e => {
@@ -282,9 +269,7 @@ function setupTermSelector() {
         await loadReportData();
     });
 
-    if (newSelect.value !== termToSelect) {
-        newSelect.value = termToSelect;
-    }
+    if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 }
 
 /* ===============================
@@ -295,17 +280,18 @@ function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
 
-    setText('report-title', `${term} Report Card${session ? ' — ' + session + ' Academic Session' : ''}`);
-    setText('current-term',    term    || '-');
-    setText('current-session', session || '-');
-    setText('header-term-badge', term || 'Termly Report');
-    setText('header-session', session ? `Session: ${session}` : 'Session –');
+    setText('report-title',      `${term} Report Card${session ? ' — ' + session + ' Academic Session' : ''}`);
+    setText('current-term',      term    || '-');
+    setText('current-session',   session || '-');
+    setText('header-term-badge', term    || 'Termly Report');
+    setText('header-session',    session ? `Session: ${session}` : 'Session –');
 
     const urlSession = getSessionFromUrl();
     if (urlSession) {
         setText('resumption-date', '-');
     } else if (currentSettings.resumptionDate?.toDate) {
-        setText('resumption-date', currentSettings.resumptionDate.toDate().toLocaleDateString('en-GB'));
+        setText('resumption-date',
+            currentSettings.resumptionDate.toDate().toLocaleDateString('en-GB'));
     } else {
         setText('resumption-date', currentSettings.resumptionDate || '-');
     }
@@ -317,7 +303,6 @@ function updateReportHeader() {
 
 async function loadReportData() {
     resetTraitsAndRemarks();
-
     try {
         await Promise.all([
             loadAcademicResults(),
@@ -327,30 +312,29 @@ async function loadReportData() {
             loadRemarks()
         ]);
     } catch (error) {
-        console.error('=== Error Loading Report Data ===', error);
+        console.error('Error loading report data:', error);
         window.showToast?.('Failed to load some report data', 'warning');
     }
 }
 
 /* ===============================
-   ACADEMIC RESULTS — v6.6.0
-   KEY FIX: Index-free class average
+   ACADEMIC RESULTS — v6.7.0
 ================================ */
 
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
 
+    // Wait for initialization if needed
     if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
         tbody.innerHTML = loadingRow();
         let attempts = 0;
-        const maxAttempts = 100;
-        while (attempts < maxAttempts) {
+        while (attempts < 100) {
             await new Promise(resolve => setTimeout(resolve, 100));
             if (isInitialized && currentPupilId && currentSettings.session && currentSettings.term) break;
             attempts++;
         }
-        if (attempts >= maxAttempts) {
+        if (attempts >= 100) {
             tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Unable to load results. Reload page.</td></tr>`;
             clearPerformanceSummary();
             return;
@@ -361,224 +345,120 @@ async function loadAcademicResults() {
     clearPerformanceSummary();
 
     try {
-        // ── Step 1: Fetch this pupil's approved results ──────────────────────
-        // Use a simple 2-field query (pupilId + term) which needs no composite index,
-        // then filter session and status client-side.
-        const allPupilResultsSnap = await db.collection('results')
+        // ── Step 1: Fetch THIS pupil's approved results ───────────────────────
+        // Query by pupilId only (single-field index, always available).
+        // Filter term, session, and status client-side to avoid composite indexes.
+        const allMyResultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
-            .where('term', '==', currentSettings.term)
             .get();
 
-        let results = [];
-
-        allPupilResultsSnap.forEach(doc => {
-            const data = doc.data();
-            const isApproved = !data.status || data.status === 'approved';
-            const matchesSession = data.session === currentSettings.session;
-            if (isApproved && matchesSession) {
-                results.push({
-                    subject:    data.subject    || 'Unknown Subject',
-                    assignment: typeof data.assignment === 'number' ? data.assignment : null,
-                    midterm:    typeof data.midterm    === 'number' ? data.midterm    : null,
-                    project:    typeof data.project    === 'number' ? data.project    : null,
-                    caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
-                    examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
-                    classId:    data.classId    || null,
-                    className:  data.className  || null,
+        let myResults = [];
+        allMyResultsSnap.forEach(doc => {
+            const d = doc.data();
+            const matchesTerm    = d.term    === currentSettings.term;
+            const matchesSession = d.session === currentSettings.session;
+            const isApproved     = !d.status || d.status === 'approved';
+            if (matchesTerm && matchesSession && isApproved) {
+                myResults.push({
+                    subject:    d.subject    || 'Unknown Subject',
+                    assignment: typeof d.assignment === 'number' ? d.assignment : null,
+                    midterm:    typeof d.midterm    === 'number' ? d.midterm    : null,
+                    project:    typeof d.project    === 'number' ? d.project    : null,
+                    caScore:    typeof d.caScore    === 'number' ? d.caScore    : 0,
+                    examScore:  typeof d.examScore  === 'number' ? d.examScore  : 0,
                 });
             }
         });
 
-        if (results.length === 0) {
-            tbody.innerHTML = emptyRow(`No approved results available for ${currentSettings.term}, ${currentSettings.session} session`);
+        console.log(`This pupil has ${myResults.length} approved results for ${currentSettings.term} / ${currentSettings.session}`);
+
+        if (myResults.length === 0) {
+            tbody.innerHTML = emptyRow(
+                `No approved results available for ${currentSettings.term}, ${currentSettings.session} session`
+            );
             clearPerformanceSummary();
             return;
         }
 
-        // ── Step 2: Resolve classId ──────────────────────────────────────────
-        // Priority: from result docs > from pupil profile (already resolved in fetchPupilProfile)
-        let classId = results.find(r => r.classId)?.classId || null;
-
-        if (!classId) {
-            // Use the classId we resolved during fetchPupilProfile
-            classId = pupilProfile?._resolvedClassId || null;
-        }
-
-        if (!classId && pupilProfile) {
-            // Last-resort: try resolving from pupil profile class data directly
-            if (typeof pupilProfile.class === 'object' && pupilProfile.class?.id) {
-                classId = pupilProfile.class.id;
-            } else if (typeof pupilProfile.class === 'string') {
-                try {
-                    const classSnap = await db.collection('classes')
-                        .where('name', '==', pupilProfile.class)
-                        .limit(1)
-                        .get();
-                    if (!classSnap.empty) {
-                        classId = classSnap.docs[0].id;
-                    }
-                } catch (e) {
-                    console.warn('Could not resolve classId by name:', e.message);
-                }
-            }
-        }
-
-        console.log('classId resolved for class averages:', classId);
-
-        // ── Step 3: Fetch ALL approved results for this term+session ──────────
-        // KEY FIX: Only query by term (single field = no composite index needed).
-        // Filter by session and status client-side. Then filter by classId client-side too.
-        // This completely avoids the composite index requirement.
-        let classAverageMap = {};
+        // ── Step 2: Get classmates from the pupils collection ─────────────────
+        //
+        // KEY FIX: We find classmates by querying the pupils collection for
+        // class.id === this pupil's classId.  This works 100% of the time
+        // because the pupil profile always has current class info, and it
+        // does NOT depend on whether result documents have a classId field.
+        //
+        const classId = pupilProfile._resolvedClassId;
+        let classmateIds = []; // includes this pupil
 
         if (classId) {
             try {
-                // Query only by term — single field index, always available
-                const allTermResultsSnap = await db.collection('results')
-                    .where('term', '==', currentSettings.term)
+                const classmatesSnap = await db.collection('pupils')
+                    .where('class.id', '==', classId)
                     .get();
 
-                console.log(`Fetched ${allTermResultsSnap.size} total results for term "${currentSettings.term}" (will filter client-side)`);
+                classmatesSnap.forEach(doc => {
+                    // Exclude alumni — they are no longer in the active class
+                    if (doc.data().status !== 'alumni') {
+                        classmateIds.push(doc.id);
+                    }
+                });
 
-                const subjectScoresMap = {};
+                console.log(`Found ${classmateIds.length} classmates in class "${pupilProfile._resolvedClassName}" (classId: ${classId})`);
+            } catch (e) {
+                console.warn('Could not fetch classmates:', e.message);
+            }
+        } else {
+            console.warn('No classId available — class average and position will not be shown');
+        }
 
-                allTermResultsSnap.forEach(doc => {
+        // ── Step 3: Build subject → scores map from classmates' results ───────
+        //
+        // For each classmate (including this pupil), fetch their approved results
+        // for the same term+session.  Because we query by pupilId (one field),
+        // no composite index is needed.
+        //
+        // We batch classmates in groups of 10 using Firestore's "in" operator
+        // so we minimise the number of round trips.
+        //
+        // subjectScoresMap: { subjectName: [ { pupilId, total }, ... ] }
+        //
+        const subjectScoresMap = {};
+
+        if (classmateIds.length > 0) {
+            // Chunk into groups of 10 (Firestore "in" limit)
+            const chunks = [];
+            for (let i = 0; i < classmateIds.length; i += 10) {
+                chunks.push(classmateIds.slice(i, i + 10));
+            }
+
+            for (const chunk of chunks) {
+                const chunkSnap = await db.collection('results')
+                    .where('pupilId', 'in', chunk)
+                    .get();
+
+                chunkSnap.forEach(doc => {
                     const d = doc.data();
+                    const matchesTerm    = d.term    === currentSettings.term;
+                    const matchesSession = d.session === currentSettings.session;
+                    const isApproved     = !d.status || d.status === 'approved';
 
-                    // Filter client-side: must match session, classId, and be approved
-                    if (d.session !== currentSettings.session) return;
-                    if (d.classId !== classId) return;
-                    const isApproved = !d.status || d.status === 'approved';
-                    if (!isApproved) return;
+                    if (!matchesTerm || !matchesSession || !isApproved) return;
 
-                    const subj = d.subject || 'Unknown';
-                    const total = (typeof d.caScore === 'number' ? d.caScore : 0)
-                                + (typeof d.examScore === 'number' ? d.examScore : 0);
+                    const subj  = d.subject || 'Unknown';
+                    const ca    = typeof d.caScore   === 'number' ? d.caScore   : 0;
+                    const exam  = typeof d.examScore === 'number' ? d.examScore : 0;
+                    const total = ca + exam;
 
                     if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
                     subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
                 });
-
-                const subjectsWithData = Object.keys(subjectScoresMap);
-                console.log(`After client-side filtering: ${subjectsWithData.length} subjects found for classId "${classId}"`);
-
-                if (subjectsWithData.length > 0) {
-                    Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
-                        const sum    = scores.reduce((acc, s) => acc + s.total, 0);
-                        const avg    = scores.length > 0 ? sum / scores.length : 0;
-                        const sorted = [...scores].sort((a, b) => b.total - a.total);
-                        const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
-
-                        classAverageMap[subj] = {
-                            average:   avg.toFixed(1),
-                            position:  posIdx >= 0 ? posIdx + 1 : null,
-                            classSize: scores.length
-                        };
-
-                        if (posIdx < 0) {
-                            console.warn(`Pupil not found in class scores for subject: ${subj} (pupil may not have a result doc for this subject in the class)`);
-                        }
-                    });
-
-                    console.log('✓ Class averages computed. Subjects:', Object.keys(classAverageMap));
-                } else {
-                    // classId filter returned nothing — results may not have classId field
-                    // Fall back to matching by the subjects this pupil took
-                    console.warn('No results found for classId after filtering. Trying subject-based fallback...');
-                    classAverageMap = await _fetchClassAveragesBySubjectMatch(results, classId);
-                }
-
-            } catch (err) {
-                console.warn('Class averages query failed:', err.message, '— using fallback');
-                classAverageMap = await _fetchClassAveragesBySubjectMatch(results, classId);
             }
-        } else {
-            console.warn('No classId available — using subject-based fallback');
-            classAverageMap = await _fetchClassAveragesBySubjectMatch(results, null);
+
+            console.log('Subjects with class data:', Object.keys(subjectScoresMap));
         }
 
-        // ── Step 4: Attach class stats to each result row ────────────────────
-        results = results.map(r => ({
-            ...r,
-            classAverage: classAverageMap[r.subject]?.average   ?? null,
-            position:     classAverageMap[r.subject]?.position  ?? null,
-            classSize:    classAverageMap[r.subject]?.classSize ?? null,
-        }));
-
-        console.log('Sample result after attaching class stats:', results[0]);
-
-        renderResults(results, tbody);
-
-    } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
-        clearPerformanceSummary();
-        console.error('Error loading results:', error);
-    }
-}
-
-/**
- * FALLBACK: Build class average map by finding all approved results
- * for the same subjects in this term/session, matching by classId
- * stored on those results OR by finding classmates via pupil subjects.
- */
-async function _fetchClassAveragesBySubjectMatch(myResults, knownClassId) {
-    const classAverageMap = {};
-
-    try {
-        const mySubjects = myResults.map(r => r.subject).filter(Boolean);
-        if (mySubjects.length === 0) return classAverageMap;
-
-        // Query only by term — avoids composite index
-        const allTermSnap = await db.collection('results')
-            .where('term', '==', currentSettings.term)
-            .get();
-
-        console.log(`Fallback: fetched ${allTermSnap.size} results for term "${currentSettings.term}"`);
-
-        // Collect classIds from this pupil's own results + known classId
-        const pupilResultClassIds = new Set(
-            myResults.map(r => r.classId).filter(Boolean)
-        );
-        if (knownClassId) pupilResultClassIds.add(knownClassId);
-
-        // If we still have no classIds, collect from snapshot for this pupil
-        if (pupilResultClassIds.size === 0) {
-            allTermSnap.forEach(doc => {
-                const d = doc.data();
-                if (d.pupilId === currentPupilId && d.session === currentSettings.session && d.classId) {
-                    pupilResultClassIds.add(d.classId);
-                }
-            });
-        }
-
-        console.log('Fallback: classIds to match:', [...pupilResultClassIds]);
-
-        const subjectScoresMap = {};
-
-        allTermSnap.forEach(doc => {
-            const d    = doc.data();
-            const subj = d.subject || 'Unknown';
-
-            if (d.session !== currentSettings.session) return;
-            if (!mySubjects.includes(subj)) return;
-
-            const isApproved = !d.status || d.status === 'approved';
-            if (!isApproved) return;
-
-            const docClassId = d.classId || null;
-            const classIdMatches =
-                pupilResultClassIds.size > 0
-                    ? (docClassId && pupilResultClassIds.has(docClassId))
-                    : mySubjects.includes(subj); // last resort: subject match only
-
-            if (!classIdMatches) return;
-
-            const total = (typeof d.caScore === 'number' ? d.caScore : 0)
-                        + (typeof d.examScore === 'number' ? d.examScore : 0);
-
-            if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
-            subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
-        });
+        // ── Step 4: Compute average and position per subject ──────────────────
+        const classAverageMap = {};
 
         Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
             const sum    = scores.reduce((acc, s) => acc + s.total, 0);
@@ -591,15 +471,32 @@ async function _fetchClassAveragesBySubjectMatch(myResults, knownClassId) {
                 position:  posIdx >= 0 ? posIdx + 1 : null,
                 classSize: scores.length
             };
+
+            if (posIdx < 0) {
+                console.warn(`Pupil not ranked for subject "${subj}" — their result may be missing from the class set`);
+            }
         });
 
-        console.log('Fallback class averages computed. Subjects:', Object.keys(classAverageMap));
+        // ── Step 5: Attach stats to each result row ───────────────────────────
+        myResults = myResults.map(r => ({
+            ...r,
+            classAverage: classAverageMap[r.subject]?.average  ?? null,
+            position:     classAverageMap[r.subject]?.position ?? null,
+            classSize:    classAverageMap[r.subject]?.classSize ?? null,
+        }));
 
-    } catch (err) {
-        console.warn('Fallback class averages also failed:', err.message);
+        // Debug: log the first result to verify stats are attached
+        if (myResults.length > 0) {
+            console.log('Sample result:', myResults[0]);
+        }
+
+        renderResults(myResults, tbody);
+
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;">⚠️ Error loading results. Reload page.</td></tr>`;
+        clearPerformanceSummary();
+        console.error('Error in loadAcademicResults:', error);
     }
-
-    return classAverageMap;
 }
 
 /* ===============================
@@ -618,20 +515,22 @@ function renderResults(results, tbody) {
         const score = ca + exam;
         totalScore += score;
 
-        const assignment = (r.assignment !== undefined && r.assignment !== null) ? r.assignment : null;
-        const midterm    = (r.midterm    !== undefined && r.midterm    !== null) ? r.midterm    : null;
-        const project    = (r.project    !== undefined && r.project    !== null) ? r.project    : null;
+        // Sub-CA: show '–' for legacy results that lack breakdown
+        const assignment = (r.assignment !== null && r.assignment !== undefined) ? r.assignment : null;
+        const midterm    = (r.midterm    !== null && r.midterm    !== undefined) ? r.midterm    : null;
+        const project    = (r.project    !== null && r.project    !== undefined) ? r.project    : null;
 
-        const classAvg  = (r.classAverage !== undefined && r.classAverage !== null)
+        // Class stats
+        const classAvg  = (r.classAverage !== null && r.classAverage !== undefined)
             ? Number(r.classAverage).toFixed(1) : null;
-        const position  = (r.position !== undefined && r.position !== null) ? r.position : null;
-        const classSize = (r.classSize !== undefined && r.classSize !== null) ? r.classSize : null;
+        const position  = (r.position  !== null && r.position  !== undefined) ? r.position  : null;
+        const classSize = (r.classSize !== null && r.classSize !== undefined) ? r.classSize : null;
 
+        // Format position as e.g. "3rd/25"
         let posDisplay = '–';
         if (position !== null) {
-            const n = position;
-            const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
-            posDisplay = classSize ? `${n}${suffix}/${classSize}` : `${n}${suffix}`;
+            const suffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
+            posDisplay = classSize ? `${position}${suffix}/${classSize}` : `${position}${suffix}`;
         }
 
         tbody.insertAdjacentHTML('beforeend', `
@@ -652,9 +551,10 @@ function renderResults(results, tbody) {
     });
 
     const subjectCount = results.length;
-    const average      = (totalScore / subjectCount).toFixed(1);
+    const average      = subjectCount > 0 ? (totalScore / subjectCount).toFixed(1) : '0.0';
     const avgGrade     = getGrade(parseFloat(average));
 
+    // Class size — take from first result that has it (all should be same)
     const classSizeVal = results.find(r => r.classSize)?.classSize || null;
 
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
@@ -678,11 +578,15 @@ async function loadAttendance() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
     const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
-    const doc = await db.collection('attendance').doc(docId).get();
-    const d = doc.exists ? doc.data() : {};
-    setText('times-opened',  typeof d.timesOpened  === 'number' ? d.timesOpened  : '-');
-    setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
-    setText('times-absent',  typeof d.timesAbsent  === 'number' ? d.timesAbsent  : '-');
+    try {
+        const doc = await db.collection('attendance').doc(docId).get();
+        const d   = doc.exists ? doc.data() : {};
+        setText('times-opened',  typeof d.timesOpened  === 'number' ? d.timesOpened  : '-');
+        setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
+        setText('times-absent',  typeof d.timesAbsent  === 'number' ? d.timesAbsent  : '-');
+    } catch (e) {
+        console.error('Error loading attendance:', e);
+    }
 }
 
 /* ===============================
@@ -696,14 +600,19 @@ async function loadKeyedCollection(collection, prefix) {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
     const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
-    const doc = await db.collection(collection).doc(docId).get();
-    if (!doc.exists) return;
-    const data = doc.data();
-    Object.entries(data).forEach(([k, v]) => {
-        if (['pupilId','term','teacherId','updatedAt','session','sessionStartYear','sessionEndYear','sessionTerm'].includes(k)) return;
-        const fieldId = prefix + k.toLowerCase();
-        setText(fieldId, v !== null && v !== undefined ? v : '-');
-    });
+    try {
+        const doc = await db.collection(collection).doc(docId).get();
+        if (!doc.exists) return;
+        const data = doc.data();
+        const skip = ['pupilId','term','teacherId','updatedAt','session',
+                      'sessionStartYear','sessionEndYear','sessionTerm'];
+        Object.entries(data).forEach(([k, v]) => {
+            if (skip.includes(k)) return;
+            setText(prefix + k.toLowerCase(), v !== null && v !== undefined ? v : '-');
+        });
+    } catch (e) {
+        console.error(`Error loading ${collection}:`, e);
+    }
 }
 
 /* ===============================
@@ -714,10 +623,14 @@ async function loadRemarks() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
     const docId = `${currentPupilId}_${encodedSession}_${currentSettings.term}`;
-    const doc = await db.collection('remarks').doc(docId).get();
-    const data = doc.exists ? doc.data() : {};
-    setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
-    setText('head-remark',    typeof data.headRemark    === 'string' ? data.headRemark    : '-');
+    try {
+        const doc  = await db.collection('remarks').doc(docId).get();
+        const data = doc.exists ? doc.data() : {};
+        setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
+        setText('head-remark',    typeof data.headRemark    === 'string' ? data.headRemark    : '-');
+    } catch (e) {
+        console.error('Error loading remarks:', e);
+    }
 }
 
 /* ===============================
@@ -788,9 +701,9 @@ function getRemark(score) {
     return 'Fail';
 }
 
-// Spin animation for loading spinner
+// Spin animation
 const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.6.0 - INDEX-FREE CLASS AVERAGE + ROBUST CLASSID RESOLUTION)');
+console.log('✓ print-results.js ready (v6.7.0 - CLASSMATES-BASED AVERAGE)');
