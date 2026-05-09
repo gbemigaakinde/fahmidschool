@@ -378,6 +378,7 @@ async function loadAcademicResults() {
                     caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
                     examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
                     classId:    data.classId    || null,
+                    className:  data.className  || null,
                 });
             });
         } else {
@@ -399,6 +400,7 @@ async function loadAcademicResults() {
                         caScore:    typeof data.caScore    === 'number' ? data.caScore    : 0,
                         examScore:  typeof data.examScore  === 'number' ? data.examScore  : 0,
                         classId:    data.classId    || null,
+                        className:  data.className  || null,
                     });
                 }
             });
@@ -410,12 +412,43 @@ async function loadAcademicResults() {
             return;
         }
 
-        // ── Step 2: Fetch class averages & positions ─────────────────────────
+        // ── Step 2: Resolve classId ──────────────────────────────────────────
+        // Try to get classId from results first. If missing, look it up from
+        // the pupil profile which was already loaded into `pupilProfile`.
+        let classId = results.find(r => r.classId)?.classId || null;
+
+        if (!classId && pupilProfile) {
+            if (typeof pupilProfile.class === 'object' && pupilProfile.class?.id) {
+                classId = pupilProfile.class.id;
+                console.log('classId resolved from pupil profile:', classId);
+            } else if (typeof pupilProfile.class === 'string') {
+                // class stored as name string — look up the id
+                try {
+                    const classSnap = await db.collection('classes')
+                        .where('name', '==', pupilProfile.class)
+                        .limit(1)
+                        .get();
+                    if (!classSnap.empty) {
+                        classId = classSnap.docs[0].id;
+                        console.log('classId resolved by class name lookup:', classId);
+                    }
+                } catch (e) {
+                    console.warn('Could not resolve classId by name:', e.message);
+                }
+            }
+        }
+
+        if (!classId) {
+            console.warn('classId could not be resolved — class average/position will not be shown');
+        } else {
+            console.log('Using classId for averages:', classId);
+        }
+
+        // ── Step 3: Fetch class averages & positions ─────────────────────────
         let classAverageMap = {}; // subject -> { average, position, classSize }
 
-        try {
-            const classId = results.find(r => r.classId)?.classId || null;
-            if (classId) {
+        if (classId) {
+            try {
                 const classResultsSnap = await db.collection('results')
                     .where('classId', '==', classId)
                     .where('term',    '==', currentSettings.term)
@@ -423,32 +456,46 @@ async function loadAcademicResults() {
                     .where('status',  '==', 'approved')
                     .get();
 
-                // Group all approved results by subject
-                const subjectScoresMap = {};
-                classResultsSnap.forEach(doc => {
-                    const d     = doc.data();
-                    const subj  = d.subject || 'Unknown';
-                    const total = (d.caScore || 0) + (d.examScore || 0);
-                    if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
-                    subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
-                });
+                console.log(`Class results fetched: ${classResultsSnap.size} documents for classId=${classId}`);
 
-                // Calculate per-subject class average and this pupil's position
-                Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
-                    const sum    = scores.reduce((acc, s) => acc + s.total, 0);
-                    const avg    = scores.length > 0 ? sum / scores.length : 0;
-                    // Sort descending; position = 1-based rank
-                    const sorted = [...scores].sort((a, b) => b.total - a.total);
-                    const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
-                    classAverageMap[subj] = {
-                        average:   avg.toFixed(1),
-                        position:  posIdx >= 0 ? posIdx + 1 : null,
-                        classSize: scores.length
-                    };
-                });
+                if (classResultsSnap.empty) {
+                    console.warn('No approved class results found for this classId/term/session combination.');
+                } else {
+                    // Group all approved results by subject
+                    const subjectScoresMap = {};
+                    classResultsSnap.forEach(doc => {
+                        const d     = doc.data();
+                        const subj  = d.subject || 'Unknown';
+                        const total = (typeof d.caScore === 'number' ? d.caScore : 0)
+                                    + (typeof d.examScore === 'number' ? d.examScore : 0);
+                        if (!subjectScoresMap[subj]) subjectScoresMap[subj] = [];
+                        subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
+                    });
+
+                    console.log('Subjects found in class results:', Object.keys(subjectScoresMap));
+
+                    // Calculate per-subject class average and this pupil's position
+                    Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
+                        const sum    = scores.reduce((acc, s) => acc + s.total, 0);
+                        const avg    = scores.length > 0 ? sum / scores.length : 0;
+                        // Sort descending; position = 1-based rank
+                        const sorted = [...scores].sort((a, b) => b.total - a.total);
+                        const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
+
+                        classAverageMap[subj] = {
+                            average:   avg.toFixed(1),
+                            position:  posIdx >= 0 ? posIdx + 1 : null,
+                            classSize: scores.length
+                        };
+
+                        if (posIdx < 0) {
+                            console.warn(`Pupil ${currentPupilId} not found in class scores for subject: ${subj}. This pupil's result may not have classId set.`);
+                        }
+                    });
+                }
+            } catch (avgErr) {
+                console.warn('Could not fetch class averages:', avgErr.message);
             }
-        } catch (avgErr) {
-            console.warn('Could not fetch class averages:', avgErr.message);
         }
 
         // Attach class stats to each result row
@@ -458,6 +505,8 @@ async function loadAcademicResults() {
             position:     classAverageMap[r.subject]?.position  ?? null,
             classSize:    classAverageMap[r.subject]?.classSize ?? null,
         }));
+
+        console.log('Sample result after attaching class stats:', results[0]);
 
         renderResults(results, tbody);
 
