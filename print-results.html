@@ -167,6 +167,7 @@
     }
     .doc > *:not(.watermark) { position: relative; z-index: 1; }
 
+
     /* ================================================================
        HEADER
     ================================================================ */
@@ -540,59 +541,72 @@
     .doc-ft__badge { display: flex; align-items: center; gap: 4px; }
     .doc-ft__dot { width: 4px; height: 4px; border-radius: 50%; background: var(--blue-deep); opacity: 0.5; }
     .doc-ft__badge-txt { font-size: 5pt; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; }
+        
+/* ================================================================
+   PRINT
+================================================================ */
+@media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-    /* ================================================================
-       PRINT — matches screen exactly; just unlock scroll + set page size
-    ================================================================ */
-    @media print {
-        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { background: #fff; padding: 0; margin: 0; }
+    .ctrl, .no-print { display: none !important; }
 
-        html, body { background: #fff; padding: 0; margin: 0; }
-        .ctrl, .no-print { display: none !important; }
-
-        .doc {
-            width: 100%;
-            margin: 0;
-            box-shadow: none;
-            border-radius: 0;
-            overflow: visible !important;
-        }
-
-        /* Watermark centred on the printed page */
-        .watermark {
-            position: fixed !important;
-            top: 50% !important; left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 60% !important;
-            opacity: 0.035 !important;
-            z-index: 0 !important;
-        }
-
-        /* Academic table print rules */
-        .ac-table thead { display: table-header-group; position: static; }
-        .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
-
-        /* Keep non-academic sections together */
-        .doc-hd, .doc-title, .doc-body,
-        .section:not(.section--academic), .key,
-        .row-ac, .row-traits,
-        .bottom-strip, .resumption-bar, .doc-ft {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-
-        /* Academic section may split if the subject list is very long */
-        .section--academic {
-            page-break-inside: auto !important;
-            break-inside: auto !important;
-            overflow: visible !important;
-        }
-
-        @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
-        }
+    .doc {
+        width: 100%;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: visible !important;
     }
+
+    /* Hide the inline watermark image on print */
+    .watermark {
+        display: none !important;
+    }
+
+    /* Render watermark as a reliable CSS background on the doc container */
+    .doc::after {
+        content: '';
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('IMG_4629.png');
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: 55%;
+        opacity: 0.035;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* Academic table print rules */
+    .ac-table thead { display: table-header-group; position: static; }
+    .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Keep non-academic sections together */
+    .doc-hd, .doc-title, .doc-body,
+    .section:not(.section--academic), .key,
+    .row-ac, .row-traits,
+    .bottom-strip, .resumption-bar, .doc-ft {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Academic section may split if the subject list is very long */
+    .section--academic {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        overflow: visible !important;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 8mm 10mm;
+    }
+}
     </style>
 </head>
 <body>
