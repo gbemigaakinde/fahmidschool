@@ -7,9 +7,11 @@
  * - Pull live pupil bio, class, teacher, subjects
  * - Reflect admin changes instantly
  * - Support session parameter from pupil portal (?session=2023/2024)
+ * - Sub-CA breakdown: Assignment(10) + Mid-term(20) + Project(10) = CA Total(40)
+ * - Class average and position per subject
  *
- * Version: 6.4.0 - NEW FIXED-WIDTH LAYOUT + PERFORMANCE SUMMARY CARD
- * Date: 2026-05-08
+ * Version: 6.5.0 - SUB-CA BREAKDOWN + CLASS AVERAGE + POSITION
+ * Date: 2026-05-09
  */
 'use strict';
 
@@ -58,16 +60,13 @@ async function initPrintResultsWrapper() {
             const urlParams = new URLSearchParams(window.location.search);
 
             // ── Resolve pupil identity from URL ──────────────────────────────────
-            // Admin URLs carry admissionNo (preferred) or legacy pupilId.
-            // Pupils always use their own UID — nothing ever comes from the URL.
             let resolvedPupilId = null;
 
             if (isAdmin) {
                 const urlAdmissionNo = urlParams.get('admissionNo');
-                const urlPupilId     = urlParams.get('pupilId'); // legacy fallback only
+                const urlPupilId     = urlParams.get('pupilId');
 
                 if (urlAdmissionNo) {
-                    // Look up UID by admissionNo server-side — UID never touches the URL
                     try {
                         const snap = await db.collection('pupils')
                             .where('admissionNo', '==', urlAdmissionNo)
@@ -83,12 +82,10 @@ async function initPrintResultsWrapper() {
                         console.error('Error looking up pupil by admissionNo:', lookupError);
                     }
                 } else if (urlPupilId) {
-                    // Legacy URLs still work but log a warning
                     console.warn('Legacy URL: pupilId visible in URL. Re-open from admin portal to use secure URL.');
                     resolvedPupilId = urlPupilId;
                 }
             } else {
-                // Pupils always view their own record — UID never comes from URL
                 resolvedPupilId = user.uid;
             }
 
@@ -162,7 +159,6 @@ async function initPrintResultsWrapper() {
     });
 }
 
-// Call this wrapper once
 initPrintResultsWrapper();
 
 /* ===============================
@@ -233,7 +229,6 @@ async function fetchPupilProfile(uid) {
         setText('student-class', className);
 
         let teacherName = '-';
-        let subjectsList = '-';
 
         if (classId) {
             const classDoc = await db.collection('classes').doc(classId).get();
@@ -245,14 +240,10 @@ async function fetchPupilProfile(uid) {
                     const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
                     if (teacherDoc.exists) teacherName = teacherDoc.data().name;
                 }
-                if (Array.isArray(classData.subjects) && classData.subjects.length > 0) {
-                    subjectsList = classData.subjects.join(', ');
-                }
             }
         }
 
         setText('class-teacher', teacherName);
-        setText('subjects-list', subjectsList);
 
         console.log('Pupil profile loaded successfully');
     } catch (error) {
@@ -301,20 +292,12 @@ function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
 
-    // Title strip
     setText('report-title', `${term} Report Card${session ? ' — ' + session + ' Academic Session' : ''}`);
-
-    // Profile cells
     setText('current-term',    term    || '-');
     setText('current-session', session || '-');
-
-    // Header badge (top-right of the blue header)
     setText('header-term-badge', term || 'Termly Report');
-
-    // Header session line
     setText('header-session', session ? `Session: ${session}` : 'Session –');
 
-    // Resumption date
     const urlSession = getSessionFromUrl();
     if (urlSession) {
         setText('resumption-date', '-');
@@ -374,6 +357,7 @@ async function loadAcademicResults() {
     clearPerformanceSummary();
 
     try {
+        // ── Step 1: Fetch this pupil's approved results ──────────────────────
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .where('term',    '==', currentSettings.term)
@@ -382,6 +366,7 @@ async function loadAcademicResults() {
             .get();
 
         let results = [];
+
         if (!resultsSnap.empty) {
             resultsSnap.forEach(doc => {
                 const data = doc.data();
@@ -396,14 +381,14 @@ async function loadAcademicResults() {
                 });
             });
         } else {
-            // Fallback: fetch all and filter client-side
+            // Fallback: fetch all pupil results and filter client-side
             const allResultsSnap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
                 .get();
             allResultsSnap.forEach(doc => {
                 const data = doc.data();
-                const isApproved    = !data.status || data.status === 'approved';
-                const matchesTerm   = data.term    === currentSettings.term;
+                const isApproved     = !data.status || data.status === 'approved';
+                const matchesTerm    = data.term    === currentSettings.term;
                 const matchesSession = data.session === currentSettings.session;
                 if (isApproved && matchesTerm && matchesSession) {
                     results.push({
@@ -425,13 +410,11 @@ async function loadAcademicResults() {
             return;
         }
 
-        // ── Fetch class averages for each subject ──────────────────────────
-        // We query all approved results for the same class/term/session,
-        // then compute per-subject class averages and this pupil's position.
-        let classAverageMap = {};  // subject -> { average, position, classSize }
-        
+        // ── Step 2: Fetch class averages & positions ─────────────────────────
+        let classAverageMap = {}; // subject -> { average, position, classSize }
+
         try {
-            const classId = results[0]?.classId;
+            const classId = results.find(r => r.classId)?.classId || null;
             if (classId) {
                 const classResultsSnap = await db.collection('results')
                     .where('classId', '==', classId)
@@ -440,7 +423,7 @@ async function loadAcademicResults() {
                     .where('status',  '==', 'approved')
                     .get();
 
-                // Group by subject
+                // Group all approved results by subject
                 const subjectScoresMap = {};
                 classResultsSnap.forEach(doc => {
                     const d     = doc.data();
@@ -450,16 +433,16 @@ async function loadAcademicResults() {
                     subjectScoresMap[subj].push({ pupilId: d.pupilId, total });
                 });
 
-                // Calculate class average and position per subject
+                // Calculate per-subject class average and this pupil's position
                 Object.entries(subjectScoresMap).forEach(([subj, scores]) => {
-                    const sum     = scores.reduce((acc, s) => acc + s.total, 0);
-                    const avg     = scores.length > 0 ? sum / scores.length : 0;
-                    // Position: rank of this pupil (1 = highest)
-                    const sorted  = [...scores].sort((a, b) => b.total - a.total);
-                    const pos     = sorted.findIndex(s => s.pupilId === currentPupilId) + 1;
+                    const sum    = scores.reduce((acc, s) => acc + s.total, 0);
+                    const avg    = scores.length > 0 ? sum / scores.length : 0;
+                    // Sort descending; position = 1-based rank
+                    const sorted = [...scores].sort((a, b) => b.total - a.total);
+                    const posIdx = sorted.findIndex(s => s.pupilId === currentPupilId);
                     classAverageMap[subj] = {
                         average:   avg.toFixed(1),
-                        position:  pos > 0 ? pos : null,
+                        position:  posIdx >= 0 ? posIdx + 1 : null,
                         classSize: scores.length
                     };
                 });
@@ -468,11 +451,11 @@ async function loadAcademicResults() {
             console.warn('Could not fetch class averages:', avgErr.message);
         }
 
-        // Attach class stats to results
+        // Attach class stats to each result row
         results = results.map(r => ({
             ...r,
-            classAverage: classAverageMap[r.subject]?.average  ?? null,
-            position:     classAverageMap[r.subject]?.position ?? null,
+            classAverage: classAverageMap[r.subject]?.average   ?? null,
+            position:     classAverageMap[r.subject]?.position  ?? null,
             classSize:    classAverageMap[r.subject]?.classSize ?? null,
         }));
 
@@ -484,6 +467,10 @@ async function loadAcademicResults() {
         console.error('Error loading results:', error);
     }
 }
+
+/* ===============================
+   RENDER RESULTS TABLE ROWS
+================================ */
 
 function renderResults(results, tbody) {
     tbody.innerHTML = '';
@@ -497,33 +484,38 @@ function renderResults(results, tbody) {
         const score = ca + exam;
         totalScore += score;
 
+        // Sub-CA values — show '–' when not recorded (legacy results)
         const assignment = (r.assignment !== undefined && r.assignment !== null) ? r.assignment : null;
         const midterm    = (r.midterm    !== undefined && r.midterm    !== null) ? r.midterm    : null;
         const project    = (r.project    !== undefined && r.project    !== null) ? r.project    : null;
-        const classAvg   = (r.classAverage !== undefined && r.classAverage !== null) ? Number(r.classAverage).toFixed(1) : null;
-        const position   = (r.position    !== undefined && r.position    !== null) ? r.position    : null;
-        const classSize  = (r.classSize   !== undefined && r.classSize   !== null) ? r.classSize   : null;
 
-        // Position display: e.g. "3rd" or "3/25"
+        // Class stats
+        const classAvg  = (r.classAverage !== undefined && r.classAverage !== null)
+            ? Number(r.classAverage).toFixed(1) : null;
+        const position  = (r.position !== undefined && r.position !== null) ? r.position : null;
+        const classSize = (r.classSize !== undefined && r.classSize !== null) ? r.classSize : null;
+
+        // Format position as e.g. "3rd/25"
         let posDisplay = '–';
         if (position !== null) {
-            const suffix = position === 1 ? 'st' : position === 2 ? 'nd' : position === 3 ? 'rd' : 'th';
-            posDisplay = classSize ? `${position}${suffix}/${classSize}` : `${position}${suffix}`;
+            const n = position;
+            const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+            posDisplay = classSize ? `${n}${suffix}/${classSize}` : `${n}${suffix}`;
         }
 
         tbody.insertAdjacentHTML('beforeend', `
             <tr>
                 <td>${r.subject}</td>
-                <td>${assignment !== null ? assignment : '–'}</td>
-                <td>${midterm    !== null ? midterm    : '–'}</td>
-                <td>${project    !== null ? project    : '–'}</td>
-                <td class="col-total" style="color:var(--blue-mid);">${ca}</td>
-                <td>${exam}</td>
-                <td class="col-total">${score}</td>
-                <td>${classAvg  !== null ? classAvg  : '–'}</td>
-                <td>${posDisplay}</td>
-                <td class="grade-${getGrade(score)}">${getGrade(score)}</td>
-                <td>${getRemark(score)}</td>
+                <td style="text-align:center;">${assignment !== null ? assignment : '–'}</td>
+                <td style="text-align:center;">${midterm    !== null ? midterm    : '–'}</td>
+                <td style="text-align:center;">${project    !== null ? project    : '–'}</td>
+                <td class="col-total" style="text-align:center; color:var(--blue-mid);">${ca}</td>
+                <td style="text-align:center;">${exam}</td>
+                <td class="col-total" style="text-align:center;">${score}</td>
+                <td style="text-align:center;">${classAvg  !== null ? classAvg  : '–'}</td>
+                <td style="text-align:center;">${posDisplay}</td>
+                <td class="grade-${getGrade(score)}" style="text-align:center;">${getGrade(score)}</td>
+                <td style="text-align:center;">${getRemark(score)}</td>
             </tr>
         `);
     });
@@ -532,9 +524,10 @@ function renderResults(results, tbody) {
     const average      = (totalScore / subjectCount).toFixed(1);
     const avgGrade     = getGrade(parseFloat(average));
 
-    // Class size from first result that has it
+    // Class size — take from first result that has it
     const classSizeVal = results.find(r => r.classSize)?.classSize || null;
 
+    // Populate Performance Summary card
     setText('perf-total',      `${totalScore} / ${subjectCount * 100}`);
     setText('perf-subjects',   String(subjectCount));
     setText('perf-avg',        `${average}%`);
@@ -603,9 +596,10 @@ async function loadRemarks() {
 ================================ */
 
 function clearPerformanceSummary() {
-    setText('perf-total',    '–');
-    setText('perf-subjects', '–');
-    setText('perf-avg',      '–');
+    setText('perf-total',      '–');
+    setText('perf-subjects',   '–');
+    setText('perf-avg',        '–');
+    setText('perf-class-size', '–');
     const gradeEl = document.getElementById('perf-grade');
     if (gradeEl) {
         gradeEl.textContent = '–';
@@ -617,10 +611,10 @@ function clearPerformanceSummary() {
 function resetTraitsAndRemarks() {
     document.querySelectorAll('.trait-value').forEach(el => el.textContent = '-');
     setText('teacher-remark', '-');
-    setText('head-remark', '-');
-    setText('times-opened',  '-');
-    setText('times-present', '-');
-    setText('times-absent',  '-');
+    setText('head-remark',    '-');
+    setText('times-opened',   '-');
+    setText('times-present',  '-');
+    setText('times-absent',   '-');
     clearPerformanceSummary();
 }
 
@@ -670,4 +664,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js ready (v6.4.0 - NEW FIXED-WIDTH LAYOUT + PERFORMANCE SUMMARY CARD)');
+console.log('✓ print-results.js ready (v6.5.0 - SUB-CA BREAKDOWN + CLASS AVERAGE + POSITION)');
