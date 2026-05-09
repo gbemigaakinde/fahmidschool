@@ -4035,7 +4035,7 @@ async function loadPupilResults() {
     }
 }
 
-function renderResultsDisplay(results, container) {
+async function renderResultsDisplay(results, container) {
     container.innerHTML = '';
     
     // Group by term
@@ -4171,15 +4171,32 @@ function renderResultsDisplay(results, container) {
         container.appendChild(summaryCard);
     }
 
-  // Print / Full Report button (admin view)
+    // Print / Full Report button (admin view)
+    // Resolve admission number for the URL so the internal UID is never exposed
     const printBtn = document.createElement('a');
-    printBtn.href = `print-results.html?pupilId=${currentResultsPupilId}&session=${encodeURIComponent(currentResultsSession)}`;
+
+    let admissionNo = null;
+    try {
+        const pupilDoc = await db.collection('pupils').doc(currentResultsPupilId).get();
+        admissionNo = pupilDoc.exists ? (pupilDoc.data().admissionNo || null) : null;
+    } catch (e) {
+        console.warn('Could not fetch admissionNo for print URL:', e.message);
+    }
+
+    if (admissionNo) {
+        printBtn.href = `print-results.html?admissionNo=${encodeURIComponent(admissionNo)}&session=${encodeURIComponent(currentResultsSession)}`;
+    } else {
+        console.warn('No admissionNo found, falling back to pupilId in URL');
+        printBtn.href = `print-results.html?pupilId=${currentResultsPupilId}&session=${encodeURIComponent(currentResultsSession)}`;
+    }
+
     printBtn.target = '_blank';
     printBtn.rel = 'noopener noreferrer';
     printBtn.className = 'btn';
     printBtn.style.cssText = 'display:inline-block; margin-top:var(--space-xl); margin-right:var(--space-md); background:#00B2FF; color:white; text-decoration:none;';
     printBtn.innerHTML = '🖨️ Open Full Report / Print';
     container.appendChild(printBtn);
+
     // Show session comparison button
     const comparisonBtn = document.createElement('button');
     comparisonBtn.className = 'btn';
