@@ -804,6 +804,7 @@ p:not(:last-child) { margin-bottom: 1em; }
   padding-top: var(--nav-height);
   overflow: hidden;
   background: var(--ink-900);
+  z-index: var(--z-base);
 }
 
 .hero-bg {
