@@ -1,5 +1,6 @@
 // shared/retry.js
 // Network retry helper with exponential backoff (ES Module)
+// No Firebase SDK calls — no changes needed for v9 migration.
 
 import { showToast } from '../ui/toast.js';
 
