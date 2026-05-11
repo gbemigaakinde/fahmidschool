@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript
  *
- * Version: 8.0.0
+ * Version: 8.1.0
  * Date: 2026-05-11
  */
 'use strict';
@@ -22,6 +22,29 @@ function getSessionFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const s = params.get('session');
     return (s && s !== 'current') ? s : null;
+}
+
+/* ─── Date formatting ───────────────────────────────────────────
+   Formats a JS Date as e.g. "15th May, 2027"
+─────────────────────────────────────────────────────────────── */
+function formatResumptionDate(date) {
+    if (!date || !(date instanceof Date) || isNaN(date)) return '-';
+
+    const day   = date.getDate();
+    const year  = date.getFullYear();
+
+    const monthNames = [
+        'January','February','March','April','May','June',
+        'July','August','September','October','November','December'
+    ];
+    const month = monthNames[date.getMonth()];
+
+    const suffix =
+        day === 1 || day === 21 || day === 31 ? 'st' :
+        day === 2 || day === 22               ? 'nd' :
+        day === 3 || day === 23               ? 'rd' : 'th';
+
+    return `${day}${suffix} ${month}, ${year}`;
 }
 
 /* ─── Signature helpers ─────────────────────────────────────────
@@ -328,7 +351,10 @@ function updateReportHeader() {
         setText('resumption-date', '-');
     } else if (currentSettings.resumptionDate?.toDate) {
         setText('resumption-date',
-            currentSettings.resumptionDate.toDate().toLocaleDateString('en-GB'));
+            formatResumptionDate(currentSettings.resumptionDate.toDate()));
+    } else if (currentSettings.resumptionDate instanceof Date) {
+        setText('resumption-date',
+            formatResumptionDate(currentSettings.resumptionDate));
     } else {
         setText('resumption-date', currentSettings.resumptionDate || '-');
     }
