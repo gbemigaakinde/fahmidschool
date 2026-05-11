@@ -8382,14 +8382,14 @@ async function loadTeachers() {
   const tbody = document.getElementById('teachers-table');
   if (!tbody) return;
   
-  tbody.innerHTML = '<tr><td colspan="4" class="table-loading">Loading teachers...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading teachers...</td></tr>';
   
   try {
     const snapshot = await db.collection('teachers').get();
     tbody.innerHTML = '';
     
     if (snapshot.empty) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet. Add one above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-gray-600);">No teachers registered yet. Add one above.</td></tr>';
       allTeachersData = [];
       return;
     }
@@ -8401,16 +8401,14 @@ async function loadTeachers() {
     
     teachers.sort((a, b) => a.name.localeCompare(b.name));
     
-    // ✅ Store globally for search
     allTeachersData = teachers;
     
-    // Render with pagination
     renderTeachersTable(allTeachersData);
     
   } catch (error) {
     console.error('Error loading teachers:', error);
     window.showToast?.('Failed to load teachers list. Check connection and try again.', 'danger');
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--color-danger);">Error loading teachers - please refresh</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--color-danger);">Error loading teachers - please refresh</td></tr>';
   }
 }
 
@@ -8440,13 +8438,28 @@ function renderTeachersTable(teachersData) {
       ? `<span style="background:${statusColor};color:white;padding:2px 8px;border-radius:999px;font-size:0.6875rem;font-weight:700;">${teacher.status}</span>`
       : '<span style="color:#94a3b8;">—</span>';
 
+    const canDirectPublish = teacher.canDirectPublish === true;
+
+    const toggleStyle = canDirectPublish
+      ? 'background:#16a34a; color:white; border:none; padding:4px 10px; border-radius:999px; font-size:0.6875rem; font-weight:700; cursor:pointer;'
+      : 'background:#e2e8f0; color:#64748b; border:none; padding:4px 10px; border-radius:999px; font-size:0.6875rem; font-weight:700; cursor:pointer;';
+
+    const toggleLabel = canDirectPublish ? '✓ Enabled' : 'Disabled';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Name"><strong>${teacher.name}</strong></td>
       <td data-label="Email">${teacher.email}</td>
       <td data-label="Role">${teacher.roleTitle || 'Class Teacher'}</td>
-      <td data-label="Contact">${teacher.contact || '—'}</td>
       <td data-label="Status">${statusBadge}</td>
+      <td data-label="Direct Publish" style="text-align:center;">
+        <button
+          style="${toggleStyle}"
+          onclick="toggleDirectPublish('${teacher.id}', ${canDirectPublish})"
+          title="${canDirectPublish ? 'Click to disable direct publishing of results' : 'Click to allow direct publishing of results without approval'}">
+          ${toggleLabel}
+        </button>
+      </td>
       <td data-label="Actions">
         <button class="btn-small btn-primary" onclick="editTeacher('${teacher.id}')">Edit</button>
         <button class="btn-small btn-danger" onclick="deleteItem('teachers', '${teacher.id}')">Delete</button>
@@ -8455,6 +8468,60 @@ function renderTeachersTable(teachersData) {
     tbody.appendChild(tr);
   });
 }
+
+/**
+ * Toggle a teacher's ability to publish results directly without admin approval.
+ * Called from the Direct Publish button in the teachers table.
+ */
+async function toggleDirectPublish(teacherId, currentValue) {
+  const newValue = !currentValue;
+  const action = newValue ? 'ENABLE' : 'DISABLE';
+
+  const teacher = allTeachersData.find(t => t.id === teacherId);
+  const teacherName = teacher ? teacher.name : 'this teacher';
+
+  const confirmed = confirm(
+    `${action} Direct Publishing for ${teacherName}?\n\n` +
+    (newValue
+      ? 'This teacher will be able to publish results DIRECTLY to pupils\nwithout waiting for your approval.\n\nUse this when you trust the teacher or are unavailable.'
+      : 'This teacher will go back to the normal approval workflow.\nAll new submissions will require your approval before pupils can see results.')
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await db.collection('teachers').doc(teacherId).update({
+      canDirectPublish: newValue,
+      directPublishUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      directPublishUpdatedBy: auth.currentUser.uid
+    });
+
+    await db.collection('audit_log').add({
+      action: newValue ? 'enable_direct_publish' : 'disable_direct_publish',
+      collection: 'teachers',
+      documentId: teacherId,
+      changes: { teacherName, canDirectPublish: newValue },
+      performedBy: auth.currentUser.uid,
+      performedByEmail: auth.currentUser.email,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent: navigator.userAgent
+    });
+
+    window.showToast?.(
+      `✓ Direct publishing ${newValue ? 'enabled' : 'disabled'} for ${teacherName}`,
+      'success',
+      5000
+    );
+
+    await loadTeachers();
+
+  } catch (error) {
+    console.error('Error toggling direct publish:', error);
+    window.showToast?.('Failed to update teacher permission', 'danger');
+  }
+}
+
+window.toggleDirectPublish = toggleDirectPublish;
 
 async function editTeacher(uid) {
   try {
