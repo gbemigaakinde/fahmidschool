@@ -4,13 +4,6 @@
  *
  * Version: 8.0.0
  * Date: 2026-05-11
- *
- * Rewritten to use composite Firestore indexes directly:
- *   Index 1 (own results):  pupilId + term + session + status
- *   Index 2 (class results): classId + term + session + status
- *
- * This eliminates all fallback methods (A/B/C/D) and makes
- * classmate lookup a single indexed query.
  */
 'use strict';
 
@@ -25,16 +18,12 @@ let currentSettings = {
 
 let isInitialized = false;
 
-/* ─── URL helper ─────────────────────────────────────────────── */
 function getSessionFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const s = params.get('session');
     return (s && s !== 'current') ? s : null;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   AUTH & INITIALIZATION
-═══════════════════════════════════════════════════════════════ */
 async function initPrintResultsWrapper() {
     firebase.auth().onAuthStateChanged(async user => {
         if (!user) { window.location.href = 'index.html'; return; }
@@ -96,7 +85,6 @@ async function initPrintResultsWrapper() {
                 return;
             }
 
-            /* Admin toolbar */
             if (isAdmin) {
                 const bar = document.createElement('div');
                 bar.id = 'admin-view-bar';
@@ -145,9 +133,6 @@ async function initPrintResultsWrapper() {
 
 initPrintResultsWrapper();
 
-/* ═══════════════════════════════════════════════════════════════
-   SCHOOL SETTINGS
-═══════════════════════════════════════════════════════════════ */
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
@@ -163,9 +148,6 @@ async function fetchSchoolSettings() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   PUPIL PROFILE
-═══════════════════════════════════════════════════════════════ */
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
@@ -178,7 +160,6 @@ async function fetchPupilProfile(uid) {
         setText('student-gender', pupilProfile.gender      || '-');
         setText('admission-no',   pupilProfile.admissionNo || '-');
 
-        /* Resolve classId */
         let classId   = null;
         let className = '-';
 
@@ -208,7 +189,6 @@ async function fetchPupilProfile(uid) {
 
         setText('student-class', className);
 
-        /* Teacher name */
         let teacherName = '-';
         if (classId) {
             try {
@@ -235,9 +215,6 @@ async function fetchPupilProfile(uid) {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TERM SELECTOR
-═══════════════════════════════════════════════════════════════ */
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) { console.error('Term selector not found'); return; }
@@ -259,9 +236,6 @@ function setupTermSelector() {
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   REPORT HEADER
-═══════════════════════════════════════════════════════════════ */
 function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
@@ -283,9 +257,6 @@ function updateReportHeader() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LOAD ALL REPORT DATA
-═══════════════════════════════════════════════════════════════ */
 async function loadReportData() {
     resetTraitsAndRemarks();
     try {
@@ -301,29 +272,10 @@ async function loadReportData() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ACADEMIC RESULTS  —  v8.0.0
-   ─────────────────────────────────────────────────────────────
-   Uses two composite indexes directly:
-   
-   Index 1 — own results:
-     pupilId ASC + term ASC + session ASC + status ASC
-   
-   Index 2 — class results:
-     classId ASC + term ASC + session ASC + status ASC
-   
-   Flow:
-     1. Query own approved results  (Index 1)
-     2. Resolve effectiveClassId from pupil profile or own results
-     3. Query all classmates' approved results  (Index 2)
-     4. Compute per-subject stats (avg, position, class size)
-     5. Render
-═══════════════════════════════════════════════════════════════ */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
 
-    /* Wait for full initialization */
     if (!isInitialized || !currentPupilId || !currentSettings.session || !currentSettings.term) {
         tbody.innerHTML = loadingRow();
         let tries = 0;
@@ -348,9 +300,6 @@ async function loadAcademicResults() {
 
         console.log('Loading results | term:', TARGET_TERM, '| session:', TARGET_SESSION);
 
-        /* ── Step 1: Fetch this pupil's own approved results ─────────────
-           Uses index: pupilId + term + session + status
-        ──────────────────────────────────────────────────────────────── */
         const mySnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .where('term',    '==', TARGET_TERM)
@@ -366,7 +315,6 @@ async function loadAcademicResults() {
             return;
         }
 
-        /* Build own results array */
         const myResults = [];
         mySnap.forEach(doc => {
             const d = doc.data();
@@ -383,11 +331,6 @@ async function loadAcademicResults() {
 
         console.log('Own results count:', myResults.length);
 
-        /* ── Step 2: Resolve effectiveClassId ────────────────────────────
-           Priority:
-           1. classId from pupil profile (_resolvedClassId)
-           2. classId stored on own result docs
-        ──────────────────────────────────────────────────────────────── */
         let effectiveClassId = pupilProfile._resolvedClassId || null;
 
         if (!effectiveClassId) {
@@ -401,7 +344,6 @@ async function loadAcademicResults() {
         }
 
         if (!effectiveClassId) {
-            /* No classId available — show results but skip class stats */
             console.warn('No classId found — class stats will show –');
             renderResults(myResults.map(r => ({
                 ...r,
@@ -412,10 +354,6 @@ async function loadAcademicResults() {
             return;
         }
 
-        /* ── Step 3: Fetch all classmates' approved results ──────────────
-           Uses index: classId + term + session + status
-           Single query replaces all previous fallback Methods A–D.
-        ──────────────────────────────────────────────────────────────── */
         const classSnap = await db.collection('results')
             .where('classId', '==', effectiveClassId)
             .where('term',    '==', TARGET_TERM)
@@ -425,10 +363,6 @@ async function loadAcademicResults() {
 
         console.log('Class results fetched:', classSnap.size, 'documents');
 
-        /* ── Step 4: Build subject scores map ────────────────────────────
-           subjectScoresMap: normalisedSubjectName → [{ pupilId, total }]
-           Deduplicates per pupil per subject (keep first entry found).
-        ──────────────────────────────────────────────────────────────── */
         const subjectScoresMap = {};
 
         classSnap.forEach(doc => {
@@ -441,7 +375,6 @@ async function loadAcademicResults() {
 
             if (!subjectScoresMap[normKey]) subjectScoresMap[normKey] = [];
 
-            /* Prevent duplicate entries for the same pupil+subject */
             if (!subjectScoresMap[normKey].find(s => s.pupilId === pid)) {
                 subjectScoresMap[normKey].push({ pupilId: pid, total });
             }
@@ -449,7 +382,6 @@ async function loadAcademicResults() {
 
         console.log('Subjects with class data:', Object.keys(subjectScoresMap));
 
-        /* ── Step 5: Compute per-subject stats and attach to results ──── */
         const enrichedResults = myResults.map(r => {
             const normKey = normaliseSubject(r.subject);
             const scores  = subjectScoresMap[normKey];
@@ -478,7 +410,6 @@ async function loadAcademicResults() {
             };
         });
 
-        /* ── Step 6: Render ───────────────────────────────────────────── */
         renderResults(enrichedResults, tbody);
 
     } catch (err) {
@@ -488,14 +419,10 @@ async function loadAcademicResults() {
     }
 }
 
-/* ─── Subject name normalisation ────────────────────────────── */
 function normaliseSubject(name) {
     return (name || '').trim().toLowerCase();
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   RENDER TABLE ROWS
-═══════════════════════════════════════════════════════════════ */
 function renderResults(results, tbody) {
     tbody.innerHTML = '';
     results.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -560,7 +487,6 @@ function renderResults(results, tbody) {
     }
 }
 
-/* ─── Modal class size helper ───────────────────────────────── */
 function getModalClassSize(results) {
     const freq = {};
     results.forEach(r => {
@@ -574,9 +500,6 @@ function getModalClassSize(results) {
     return Number(entries[0][0]);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ATTENDANCE
-═══════════════════════════════════════════════════════════════ */
 async function loadAttendance() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -592,9 +515,6 @@ async function loadAttendance() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TRAITS & SKILLS
-═══════════════════════════════════════════════════════════════ */
 async function loadBehavioralTraits()  { await loadKeyedCollection('behavioral_traits',  'trait-'); }
 async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
 
@@ -617,9 +537,6 @@ async function loadKeyedCollection(collection, prefix) {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   REMARKS
-═══════════════════════════════════════════════════════════════ */
 async function loadRemarks() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -634,9 +551,6 @@ async function loadRemarks() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════════════════ */
 function clearPerformanceSummary() {
     setText('perf-total',      '–');
     setText('perf-subjects',   '–');
@@ -709,7 +623,6 @@ function getRemark(score) {
     return 'Fail';
 }
 
-/* Spin keyframes */
 const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
