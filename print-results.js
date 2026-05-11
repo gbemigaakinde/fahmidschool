@@ -24,6 +24,68 @@ function getSessionFromUrl() {
     return (s && s !== 'current') ? s : null;
 }
 
+/* ─── Signature helpers ─────────────────────────────────────────
+   File naming convention:
+     Teacher:     images/teacher-signature/{slug}.png
+     Head teacher: images/headteacher-signature/signature.png
+
+   Slug is derived from the class name:
+     "Primary 2"  → "primary-2"
+     "JSS 1A"     → "jss-1a"
+     "Nursery 1"  → "nursery-1"
+
+   The image tag is shown only when the file actually loads.
+   If the file is missing, the tag stays hidden — no broken icon.
+─────────────────────────────────────────────────────────────── */
+function classNameToSlug(name) {
+    return (name || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function loadSignatureImage(imgId, src) {
+    const el = document.getElementById(imgId);
+    if (!el) return;
+    el.classList.add('sig-img--hidden');
+    el.src = '';
+    const probe = new Image();
+    probe.onload = function () {
+        el.src = src;
+        el.classList.remove('sig-img--hidden');
+    };
+    probe.onerror = function () {
+        el.src = '';
+        el.classList.add('sig-img--hidden');
+    };
+    probe.src = src;
+}
+
+function loadSignatures(className) {
+    const slug = classNameToSlug(className);
+    if (slug) {
+        loadSignatureImage(
+            'teacher-sig-img',
+            `images/teacher-signature/${slug}.png`
+        );
+    }
+    loadSignatureImage(
+        'headteacher-sig-img',
+        'images/headteacher-signature/signature.png'
+    );
+}
+
+function clearSignatures() {
+    ['teacher-sig-img', 'headteacher-sig-img'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.src = ''; el.classList.add('sig-img--hidden'); }
+    });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH & INITIALIZATION
+═══════════════════════════════════════════════════════════════ */
 async function initPrintResultsWrapper() {
     firebase.auth().onAuthStateChanged(async user => {
         if (!user) { window.location.href = 'index.html'; return; }
@@ -133,6 +195,9 @@ async function initPrintResultsWrapper() {
 
 initPrintResultsWrapper();
 
+/* ═══════════════════════════════════════════════════════════════
+   SCHOOL SETTINGS
+═══════════════════════════════════════════════════════════════ */
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
@@ -148,6 +213,9 @@ async function fetchSchoolSettings() {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   PUPIL PROFILE
+═══════════════════════════════════════════════════════════════ */
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
@@ -209,12 +277,18 @@ async function fetchPupilProfile(uid) {
 
         setText('class-teacher', teacherName);
 
+        /* Load signatures now that we have the class name */
+        loadSignatures(className);
+
     } catch (error) {
         console.error('Error loading pupil profile:', error);
         throw error;
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TERM SELECTOR
+═══════════════════════════════════════════════════════════════ */
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) { console.error('Term selector not found'); return; }
@@ -236,6 +310,9 @@ function setupTermSelector() {
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   REPORT HEADER
+═══════════════════════════════════════════════════════════════ */
 function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
@@ -257,6 +334,9 @@ function updateReportHeader() {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LOAD ALL REPORT DATA
+═══════════════════════════════════════════════════════════════ */
 async function loadReportData() {
     resetTraitsAndRemarks();
     try {
@@ -272,6 +352,9 @@ async function loadReportData() {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ACADEMIC RESULTS
+═══════════════════════════════════════════════════════════════ */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
@@ -423,6 +506,9 @@ function normaliseSubject(name) {
     return (name || '').trim().toLowerCase();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   RENDER TABLE ROWS
+═══════════════════════════════════════════════════════════════ */
 function renderResults(results, tbody) {
     tbody.innerHTML = '';
     results.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -500,6 +586,9 @@ function getModalClassSize(results) {
     return Number(entries[0][0]);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ATTENDANCE
+═══════════════════════════════════════════════════════════════ */
 async function loadAttendance() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -515,6 +604,9 @@ async function loadAttendance() {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TRAITS & SKILLS
+═══════════════════════════════════════════════════════════════ */
 async function loadBehavioralTraits()  { await loadKeyedCollection('behavioral_traits',  'trait-'); }
 async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
 
@@ -537,6 +629,9 @@ async function loadKeyedCollection(collection, prefix) {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   REMARKS
+═══════════════════════════════════════════════════════════════ */
 async function loadRemarks() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -551,6 +646,9 @@ async function loadRemarks() {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
 function clearPerformanceSummary() {
     setText('perf-total',      '–');
     setText('perf-subjects',   '–');
@@ -571,6 +669,7 @@ function resetTraitsAndRemarks() {
     setText('times-opened',   '-');
     setText('times-present',  '-');
     setText('times-absent',   '-');
+    clearSignatures();
     clearPerformanceSummary();
 }
 
@@ -627,4 +726,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js v8.0.0 ready');
+console.log('✓ print-results.js v8.1.0 ready');
