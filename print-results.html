@@ -484,15 +484,31 @@
         padding: 7px 10px;
         flex: 1;
     }
-    .remark-blk__txt { font-size: 7pt; color: var(--ink); line-height: 1.5; min-height: 20px; }
-    .remark-blk__sig {
-        padding: 7px 10px;
-        border-top: 1px solid var(--rule);
+    .remark-blk__txt {
+        font-size: 7pt;
+        color: var(--ink);
+        line-height: 1.5;
+        min-height: 20px;
     }
+    .remark-blk__sig {
+        padding: 7px 10px 8px;
+        border-top: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .sig-img {
+        display: block;
+        height: 36px;
+        max-width: 140px;
+        object-fit: contain;
+        object-position: left bottom;
+    }
+    .sig-img--hidden { display: none; }
     .sig-blk__line {
         border-top: 1px solid var(--ink-2);
         padding-top: 3px;
-        margin-top: 22px;
+        margin-top: 4px;
         font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
@@ -805,6 +821,7 @@
                     <div class="remark-blk__txt" id="teacher-remark">–</div>
                 </div>
                 <div class="remark-blk__sig">
+                    <img id="teacher-sig-img" class="sig-img sig-img--hidden" alt="Class Teacher's Signature">
                     <div class="sig-blk__line">Class Teacher's Signature</div>
                 </div>
             </div>
@@ -814,6 +831,7 @@
                     <div class="remark-blk__txt" id="head-remark">–</div>
                 </div>
                 <div class="remark-blk__sig">
+                    <img id="headteacher-sig-img" class="sig-img sig-img--hidden" alt="Head Teacher's Signature">
                     <div class="sig-blk__line">Head Teacher's Signature</div>
                 </div>
             </div>
@@ -837,7 +855,6 @@
 </div>
 
 <canvas id="wm-canvas" style="display:none;"></canvas>
-
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="firebase-init.js"></script>
@@ -850,68 +867,47 @@
 
     function buildWatermarkOverlay() {
         if (wmOverlay) return Promise.resolve(wmOverlay);
-
         return new Promise(resolve => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.src = 'IMG_4629.png';
-
             img.onload = function () {
                 const size = 600;
                 const canvas = document.createElement('canvas');
                 canvas.width  = size;
                 canvas.height = size;
                 const ctx = canvas.getContext('2d');
-
                 ctx.globalAlpha = 0.045;
                 ctx.drawImage(img, 0, 0, size, size);
-
                 const dataUrl = canvas.toDataURL('image/png');
-
                 const overlay = document.createElement('div');
                 overlay.id = 'wm-print-overlay';
                 overlay.style.cssText = [
-                    'position:absolute',
-                    'top:0', 'left:0',
-                    'width:100%', 'height:100%',
-                    'pointer-events:none',
-                    'z-index:0',
-                    'display:flex',
-                    'align-items:center',
-                    'justify-content:center',
-                    'overflow:hidden',
+                    'position:absolute','top:0','left:0',
+                    'width:100%','height:100%',
+                    'pointer-events:none','z-index:0',
+                    'display:flex','align-items:center',
+                    'justify-content:center','overflow:hidden',
                 ].join(';');
-
                 const wmImg = document.createElement('img');
                 wmImg.src = dataUrl;
                 wmImg.style.cssText = [
-                    'width:58%',
-                    'max-width:58%',
-                    'opacity:1',
-                    'display:block',
-                    'pointer-events:none',
-                    'user-select:none',
+                    'width:58%','max-width:58%','opacity:1',
+                    'display:block','pointer-events:none','user-select:none',
                 ].join(';');
-
                 overlay.appendChild(wmImg);
                 wmOverlay = overlay;
                 resolve(overlay);
             };
-
-            img.onerror = function () {
-                wmOverlay = null;
-                resolve(null);
-            };
+            img.onerror = function () { wmOverlay = null; resolve(null); };
         });
     }
 
     window.addEventListener('beforeprint', async function () {
         const doc = document.querySelector('.doc');
         if (!doc) return;
-
         const cs = getComputedStyle(doc);
         if (cs.position === 'static') doc.style.position = 'relative';
-
         const overlay = await buildWatermarkOverlay();
         if (overlay && !doc.contains(overlay)) {
             doc.insertBefore(overlay, doc.firstChild);
@@ -920,9 +916,7 @@
 
     window.addEventListener('afterprint', function () {
         const overlay = document.getElementById('wm-print-overlay');
-        if (overlay && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-        }
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         wmOverlay = null;
     });
 })();
@@ -943,9 +937,7 @@ function handlePrint() {
     const btn = document.getElementById('print-btn');
     btn.disabled = true;
     btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;"></span> Preparing…</span>';
-
     window.print();
-
     window.addEventListener('afterprint', function restoreBtn() {
         btn.disabled = false;
         btn.innerHTML = '🖨 Print Report Card';
