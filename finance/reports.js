@@ -28,7 +28,7 @@ import {
   where,
   orderBy,
   limit,
-} from 'firebase/firestore';
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
