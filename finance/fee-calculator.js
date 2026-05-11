@@ -11,7 +11,7 @@ import {
   query,
   where,
   orderBy,
-  limit
+  limit,
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 // ============================================
@@ -32,6 +32,24 @@ export function getPreviousSessionName(currentSession) {
   return `${startYear - 1}/${endYear - 1}`;
 }
 
+/**
+ * Safely extract the class ID from a pupil's class field.
+ * Handles both the current object format { id, name } and returns null
+ * for legacy string-only records (ID cannot be recovered from the name alone).
+ *
+ * Exported so outstanding.js can import it without duplicating the logic.
+ */
+export function getClassIdSafely(pupilData) {
+  if (!pupilData || !pupilData.class) return null;
+
+  if (typeof pupilData.class === 'object' && pupilData.class.id) {
+    return pupilData.class.id;
+  }
+
+  // Old format: plain string class name — ID cannot be recovered
+  return null;
+}
+
 // ============================================
 // ENROLLMENT CHECK (internal — not exported)
 // ============================================
@@ -41,17 +59,12 @@ export function getPreviousSessionName(currentSession) {
  *
  * FIX 2: Uses admissionSession + admissionTerm directly instead of
  * relying on createdAt, which can be wrong for legacy/migrated records.
- *
- * @param {object} pupilData
- * @param {string} checkSession  e.g. "2024/2025"
- * @param {string} checkTerm     e.g. "Third Term"
- * @returns {boolean}
  */
-async function wasEnrolledIn(pupilData, checkSession, checkTerm) {
+function wasEnrolledIn(pupilData, checkSession, checkTerm) {
   const termOrder = {
     'First Term':  1,
     'Second Term': 2,
-    'Third Term':  3
+    'Third Term':  3,
   };
 
   const admissionSession = pupilData.admissionSession || null;
@@ -67,7 +80,6 @@ async function wasEnrolledIn(pupilData, checkSession, checkTerm) {
     return (termOrder[checkTerm] || 1) >= (termOrder[admissionTerm] || 1);
   }
 
-  // Compare sessions by start year
   const sessionStartYear = (s) => {
     const m = (s || '').match(/(\d{4})\//);
     return m ? parseInt(m[1]) : 0;
@@ -96,11 +108,6 @@ async function wasEnrolledIn(pupilData, checkSession, checkTerm) {
  * FIXED: Both adjustments apply to baseFee independently, then combine.
  * Previously: percent was applied first, then amount was applied to the
  * already-discounted result — causing unintended compounding.
- *
- * @param {object} pupilData
- * @param {number} baseFee
- * @param {string} currentTerm
- * @returns {number}
  */
 export function calculateAdjustedFee(pupilData, baseFee, currentTerm) {
   if (!pupilData || typeof baseFee !== 'number') {
@@ -111,7 +118,7 @@ export function calculateAdjustedFee(pupilData, baseFee, currentTerm) {
   const termOrder = {
     'First Term':  1,
     'Second Term': 2,
-    'Third Term':  3
+    'Third Term':  3,
   };
 
   const currentTermNum   = termOrder[currentTerm] || 1;
@@ -133,7 +140,10 @@ export function calculateAdjustedFee(pupilData, baseFee, currentTerm) {
   const adjustedFee     = Math.round(base + percentDiscount + amountAdjustment);
 
   if (percentAdjustment !== 0) {
-    console.log(`[fee-calculator] Applied ${percentAdjustment}% adjustment: ₦${base.toLocaleString()} → discount ₦${percentDiscount.toLocaleString()}`);
+    console.log(
+      `[fee-calculator] Applied ${percentAdjustment}% adjustment: ` +
+      `₦${base.toLocaleString()} → discount ₦${percentDiscount.toLocaleString()}`
+    );
   }
   if (amountAdjustment !== 0) {
     console.log(`[fee-calculator] Applied ₦${amountAdjustment.toLocaleString()} fixed adjustment`);
@@ -159,13 +169,10 @@ export function calculateAdjustedFee(pupilData, baseFee, currentTerm) {
  *   fee structure changes from retroactively altering balances).
  * - Falls back to current pupil class + live fee only when no history exists.
  *
- * NOTE: This function calculates ONE term's own balance only.
- * Arrears from previous terms are handled by calculateCompleteArrears separately.
- *
- * @param {string} pupilId
- * @param {string} session
- * @param {string} term
- * @returns {Promise<number>}
+ * NOTE: This function calculates ONE term's own balance only — no arrears cascade.
+ * It is the last-resort fallback. The preferred recalculation path goes through
+ * calculateCurrentOutstanding (injected into calculateCompleteArrears) so that
+ * the full arrears chain is preserved.
  */
 export async function _recalculateTermBalance(pupilId, session, term) {
   try {
@@ -201,7 +208,6 @@ export async function _recalculateTermBalance(pupilId, session, term) {
 
       if (!txSnap.empty) {
         const firstTx = txSnap.docs[0].data();
-
         if (firstTx.classId) {
           resolvedClassId = firstTx.classId;
           console.log(`[fee-calculator] Using historical classId: ${resolvedClassId}`);
@@ -212,19 +218,20 @@ export async function _recalculateTermBalance(pupilId, session, term) {
         }
       }
     } catch (txError) {
-      console.warn('[fee-calculator] Could not read payment_transactions for historical snapshot:', txError.message);
+      console.warn(
+        '[fee-calculator] Could not read payment_transactions for historical snapshot:',
+        txError.message
+      );
     }
 
     // ── FALLBACK: current pupil class ─────────────────────────────────────────
     if (!resolvedClassId) {
-      const classData = pupilData.class;
-      resolvedClassId = (classData && typeof classData === 'object' && classData.id) ? classData.id : null;
-
+      resolvedClassId = getClassIdSafely(pupilData);
       if (!resolvedClassId) {
         console.warn('[fee-calculator] No classId available (historical or current)');
         return 0;
       }
-      console.log(`[fee-calculator] No historical class found — using current class: ${resolvedClassId}`);
+      console.log(`[fee-calculator] No historical class — using current class: ${resolvedClassId}`);
     }
 
     // ── FEE RESOLUTION ────────────────────────────────────────────────────────
@@ -235,14 +242,15 @@ export async function _recalculateTermBalance(pupilId, session, term) {
         return 0;
       }
       resolvedBaseFee = Math.round(Number(feeDoc.data().total) || 0);
-      console.log(`[fee-calculator] No historical fee — using current fee structure: ₦${resolvedBaseFee.toLocaleString()}`);
+      console.log(
+        `[fee-calculator] No historical fee — using current fee structure: ₦${resolvedBaseFee.toLocaleString()}`
+      );
     }
 
     const amountDue = calculateAdjustedFee(pupilData, resolvedBaseFee, term);
 
-    // Check how much has actually been paid for this term
-    const encodedSession  = session.replace(/\//g, '-');
-    const paymentDocId    = `${pupilId}_${encodedSession}_${term}`;
+    const encodedSession = session.replace(/\//g, '-');
+    const paymentDocId   = `${pupilId}_${encodedSession}_${term}`;
     let totalPaid = 0;
 
     try {
@@ -257,7 +265,8 @@ export async function _recalculateTermBalance(pupilId, session, term) {
     const balance = Math.max(0, amountDue - totalPaid);
     console.log(
       `[fee-calculator] Recalculated ${term} ${session} for ${pupilData.name}: ` +
-      `due=₦${amountDue.toLocaleString()}, paid=₦${totalPaid.toLocaleString()}, balance=₦${balance.toLocaleString()}`
+      `due=₦${amountDue.toLocaleString()}, paid=₦${totalPaid.toLocaleString()}, ` +
+      `balance=₦${balance.toLocaleString()}`
     );
 
     return balance;
@@ -275,13 +284,23 @@ export async function _recalculateTermBalance(pupilId, session, term) {
 /**
  * Return the pupil's outstanding balance for an entire session by reading
  * the Third Term payment doc (which already cascades Second and First Term
- * arrears). Falls back to _recalculateTermBalance if the doc is missing.
+ * arrears). Falls back to calculateCurrentOutstanding (injected) when the
+ * doc is missing or corrupt, so prior arrears are included in the figure.
  *
- * @param {string} pupilId
- * @param {string} session
+ * FIX 4: Corrupt-balance and missing-doc paths now use the injected
+ * getOutstanding helper, not _recalculateTermBalance. This preserves the
+ * full arrears cascade for pupils in those edge cases.
+ *
+ * @param {string}   pupilId
+ * @param {string}   session
+ * @param {Function} [getOutstanding]  Injected resolver; falls back to _recalculateTermBalance.
  * @returns {Promise<number>}
  */
-export async function calculateSessionBalanceSafe(pupilId, session) {
+export async function calculateSessionBalanceSafe(
+  pupilId,
+  session,
+  getOutstanding = async (pid, sess, t) => ({ balance: await _recalculateTermBalance(pid, sess, t) })
+) {
   try {
     const encodedSession = session.replace(/\//g, '-');
     console.log(`[fee-calculator] Checking session balance for ${session}...`);
@@ -299,10 +318,24 @@ export async function calculateSessionBalanceSafe(pupilId, session) {
           const balance    = Number(rawBalance);
 
           if (rawBalance === undefined || rawBalance === null || isNaN(balance)) {
-            console.warn(`[fee-calculator] Invalid balance field in ${termName} doc — recalculating`);
-            const fallback = await _recalculateTermBalance(pupilId, session, termName);
-            console.log(`[fee-calculator] Recalculated ${termName} balance: ₦${fallback.toLocaleString()}`);
-            return fallback;
+            // FIX 4: Use injected getOutstanding so prior arrears are included.
+            console.warn(
+              `[fee-calculator] Invalid balance field in ${termName} doc — recalculating via getOutstanding`
+            );
+            try {
+              const result      = await getOutstanding(pupilId, session, termName);
+              const recalculated = result.balance || 0;
+              console.log(
+                `[fee-calculator] Recalculated ${termName} balance: ₦${recalculated.toLocaleString()}`
+              );
+              return recalculated;
+            } catch (e) {
+              console.error(
+                `[fee-calculator] getOutstanding fallback failed for ${termName}:`, e.message
+              );
+              // Last resort
+              return await _recalculateTermBalance(pupilId, session, termName);
+            }
           }
 
           if (balance > 0) {
@@ -314,11 +347,15 @@ export async function calculateSessionBalanceSafe(pupilId, session) {
           return Math.max(0, Math.round(balance));
 
         } else {
-          console.log(`[fee-calculator] No ${termName} document for ${session} — checking earlier term`);
+          console.log(
+            `[fee-calculator] No ${termName} document for ${session} — checking earlier term`
+          );
         }
 
       } catch (error) {
-        console.warn(`[fee-calculator] Could not fetch ${termName} for ${session}:`, error.message);
+        console.warn(
+          `[fee-calculator] Could not fetch ${termName} for ${session}:`, error.message
+        );
       }
     }
 
@@ -336,28 +373,30 @@ export async function calculateSessionBalanceSafe(pupilId, session) {
             const m = (s || '').match(/(\d{4})\//);
             return m ? parseInt(m[1]) : 0;
           };
-
-          const admissionYear = sessionStartYear(admissionSession);
-          const checkYear     = sessionStartYear(session);
-
-          if (checkYear < admissionYear) {
+          if (sessionStartYear(session) < sessionStartYear(admissionSession)) {
             console.log(
               `[fee-calculator] Pupil admitted in ${admissionSession} — not enrolled in ${session}. No arrears.`
             );
             return 0;
           }
         } else {
-          console.log(`[fee-calculator] No admissionSession on record — assuming enrolled in ${session}`);
+          console.log(
+            `[fee-calculator] No admissionSession on record — assuming enrolled in ${session}`
+          );
         }
       }
     } catch (enrollmentCheckError) {
       console.warn('[fee-calculator] Could not check enrolment:', enrollmentCheckError.message);
     }
 
-    // Pupil was (or may have been) enrolled — fall back to recalculation
-    console.log(`[fee-calculator] Recalculating Third Term of ${session} as session balance proxy`);
+    // Pupil was (or may have been) enrolled — fall back via getOutstanding so
+    // the Third Term proxy figure includes any cascaded arrears.
+    console.log(
+      `[fee-calculator] Recalculating Third Term of ${session} as session balance proxy`
+    );
     try {
-      const fallback = await _recalculateTermBalance(pupilId, session, 'Third Term');
+      const result   = await getOutstanding(pupilId, session, 'Third Term');
+      const fallback = result.balance || 0;
       console.log(`[fee-calculator] Fallback recalculated: ₦${fallback.toLocaleString()}`);
       return fallback;
     } catch (fallbackError) {
@@ -384,8 +423,12 @@ export async function calculateSessionBalanceSafe(pupilId, session) {
  * - Second / Third Term    → carry ONLY previous term balance (already cascaded)
  *
  * To avoid a circular dependency with finance/outstanding.js, this function
- * accepts `calculateCurrentOutstanding` via dependency injection.
+ * accepts calculateCurrentOutstanding via dependency injection.
  * When omitted (e.g. in tests), it falls back to _recalculateTermBalance.
+ *
+ * FIX 4: All corrupt-balance and missing-doc paths use getOutstanding (the
+ * injected calculateCurrentOutstanding), not _recalculateTermBalance, so the
+ * full arrears cascade is preserved for every fallback branch.
  *
  * @param {string} pupilId
  * @param {string} currentSession
@@ -406,7 +449,7 @@ export async function calculateCompleteArrears(
     const termOrder = {
       'First Term':  1,
       'Second Term': 2,
-      'Third Term':  3
+      'Third Term':  3,
     };
 
     const currentTermNum = termOrder[currentTerm] || 1;
@@ -425,12 +468,12 @@ export async function calculateCompleteArrears(
       return pupilDataCache;
     };
 
-    // ── Helper to fall back when calculateCurrentOutstanding is not injected ─
+    // ── FIX 4: Use injected calculateCurrentOutstanding for all fallback paths.
+    // Falls back to _recalculateTermBalance only as a last resort (no injection).
     const getOutstanding = async (pid, sess, term) => {
       if (typeof calculateCurrentOutstanding === 'function') {
         return calculateCurrentOutstanding(pid, sess, term);
       }
-      // Fallback: compute balance for just this one term
       const balance = await _recalculateTermBalance(pid, sess, term);
       return { balance };
     };
@@ -444,7 +487,7 @@ export async function calculateCompleteArrears(
 
         const pupilData = await getPupilData();
         if (pupilData) {
-          const enrolled = await wasEnrolledIn(pupilData, previousSession, 'Third Term');
+          const enrolled = wasEnrolledIn(pupilData, previousSession, 'Third Term');
           if (!enrolled) {
             console.log(
               `[fee-calculator] Pupil was not enrolled in ${previousSession}. No arrears to carry forward.`
@@ -454,16 +497,26 @@ export async function calculateCompleteArrears(
         }
 
         try {
-          const sessionArrears = await calculateSessionBalanceSafe(pupilId, previousSession);
+          // Pass getOutstanding into calculateSessionBalanceSafe so its own
+          // corrupt-balance fallbacks also use the full cascade.
+          const sessionArrears = await calculateSessionBalanceSafe(
+            pupilId,
+            previousSession,
+            getOutstanding
+          );
           totalArrears = sessionArrears;
 
           if (sessionArrears > 0) {
-            console.log(`[fee-calculator] Previous session arrears: ₦${sessionArrears.toLocaleString()}`);
+            console.log(
+              `[fee-calculator] Previous session arrears: ₦${sessionArrears.toLocaleString()}`
+            );
           } else {
             console.log(`[fee-calculator] No arrears from previous session`);
           }
         } catch (error) {
-          console.error(`[fee-calculator] Error fetching previous session balance:`, error.message);
+          console.error(
+            `[fee-calculator] Error fetching previous session balance:`, error.message
+          );
           totalArrears = 0;
         }
 
@@ -480,7 +533,7 @@ export async function calculateCompleteArrears(
       if (previousTermName) {
         const pupilData = await getPupilData();
         if (pupilData) {
-          const enrolled = await wasEnrolledIn(pupilData, currentSession, previousTermName);
+          const enrolled = wasEnrolledIn(pupilData, currentSession, previousTermName);
           if (!enrolled) {
             console.log(
               `[fee-calculator] Pupil was not enrolled in ${previousTermName} of ${currentSession}. No arrears.`
@@ -490,7 +543,9 @@ export async function calculateCompleteArrears(
         }
 
         const prevTermDocId = `${pupilId}_${encodedSession}_${previousTermName}`;
-        console.log(`[fee-calculator] Checking previous term: ${previousTermName} (doc: ${prevTermDocId})`);
+        console.log(
+          `[fee-calculator] Checking previous term: ${previousTermName} (doc: ${prevTermDocId})`
+        );
 
         try {
           const prevTermDoc = await getDoc(doc(db, 'payments', prevTermDocId));
@@ -500,24 +555,25 @@ export async function calculateCompleteArrears(
             const parsed     = Number(rawBalance);
 
             if (rawBalance === undefined || rawBalance === null || isNaN(parsed)) {
-              // Balance field missing or corrupt — recalculate recursively
-              // FIX 4: Use calculateCurrentOutstanding so the previous term's
-              // own arrears are included in the cascade.
+              // FIX 4: Use getOutstanding so prior-term arrears are included.
               console.warn(
-                `[fee-calculator] Invalid balance in ${previousTermName} doc. Recalculating...`
+                `[fee-calculator] Invalid balance in ${previousTermName} doc. ` +
+                `Recalculating via getOutstanding...`
               );
               try {
-                const outstanding = await getOutstanding(pupilId, currentSession, previousTermName);
-                totalArrears = outstanding.balance || 0;
+                const result = await getOutstanding(pupilId, currentSession, previousTermName);
+                totalArrears = result.balance || 0;
               } catch (e) {
-                console.error('[fee-calculator] Recursive recalculation failed:', e.message);
+                console.error('[fee-calculator] getOutstanding fallback failed:', e.message);
                 totalArrears = 0;
               }
 
             } else {
               totalArrears = Math.max(0, Math.round(parsed));
               if (totalArrears > 0) {
-                console.log(`[fee-calculator] ${previousTermName} outstanding: ₦${totalArrears.toLocaleString()}`);
+                console.log(
+                  `[fee-calculator] ${previousTermName} outstanding: ₦${totalArrears.toLocaleString()}`
+                );
               } else {
                 console.log(`[fee-calculator] ${previousTermName} fully paid`);
               }
@@ -525,34 +581,41 @@ export async function calculateCompleteArrears(
 
           } else {
             // No payment doc — pupil was enrolled but has no record.
-            // FIX 4: Use calculateCurrentOutstanding recursively so multi-term
-            // debt chains cascade correctly.
+            // FIX 4: Use getOutstanding so multi-term debt chains cascade correctly.
             console.warn(
               `[fee-calculator] No payment record for ${previousTermName} in ${currentSession}. ` +
               `Calculating full outstanding balance...`
             );
             try {
-              const outstanding = await getOutstanding(pupilId, currentSession, previousTermName);
-              totalArrears = outstanding.balance || 0;
+              const result = await getOutstanding(pupilId, currentSession, previousTermName);
+              totalArrears = result.balance || 0;
             } catch (e) {
-              console.error('[fee-calculator] calculateCurrentOutstanding fallback failed:', e.message);
-              // Last resort: fall back to single-term recalculation
+              console.error('[fee-calculator] getOutstanding fallback failed:', e.message);
+              // Last resort
               try {
-                totalArrears = await _recalculateTermBalance(pupilId, currentSession, previousTermName);
+                totalArrears = await _recalculateTermBalance(
+                  pupilId, currentSession, previousTermName
+                );
               } catch (e2) {
                 totalArrears = 0;
               }
             }
 
             if (totalArrears > 0) {
-              console.log(`[fee-calculator] Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`);
+              console.log(
+                `[fee-calculator] Calculated ${previousTermName} balance: ₦${totalArrears.toLocaleString()}`
+              );
             } else {
-              console.log(`[fee-calculator] ${previousTermName}: no fee configured or not enrolled`);
+              console.log(
+                `[fee-calculator] ${previousTermName}: no fee configured or not enrolled`
+              );
             }
           }
 
         } catch (readError) {
-          console.error(`[fee-calculator] Failed to read ${previousTermName}:`, readError.message);
+          console.error(
+            `[fee-calculator] Failed to read ${previousTermName}:`, readError.message
+          );
           totalArrears = 0;
         }
       }
