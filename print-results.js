@@ -41,23 +41,48 @@ function formatResumptionDate(date) {
 }
 
 function abbreviateSubject(name) {
+    if (!name) return '-';
+    
+    // Clean the name: lowercase and remove extra internal spaces
+    const cleanName = name.trim().toLowerCase().replace(/\s+/g, ' ');
+
     const abbr = {
-        'christian religious knowledge': 'Christian Rel. Knowledge',
-        'christian religious studies':   'Christian Rel. Studies',
-        'islamic religious knowledge':   'Islamic Rel. Knowledge',
-        'islamic religious studies':     'Islamic Rel. Studies',
+        'christian religious knowledge': 'C.R.K',
+        'christian religious studies':   'C.R.S',
+        'islamic religious knowledge':   'I.R.K',
+        'islamic religious studies':     'I.R.S',
         'social studies':                'Social Studies',
-        'physical and health education': 'Phy. & Health Edu.',
-        'physical education':            'Physical Education',
-        'cultural and creative arts':    'Cultural & Creative Arts',
-        'basic science and technology':  'Basic Science & Tech.',
-        'agricultural science':          'Agricultural Science',
-        'computer studies':              'Computer Studies',
-        'civic education':               'Civic Education',
-        'home economics':                'Home Economics',
-        'vocational aptitude':           'Vocational Aptitude',
+        'physical and health education': 'P.H.E',
+        'physical education':            'Phys. Edu.',
+        'health education':              'Health Edu.',
+        'cultural and creative arts':    'C.C.A',
+        'creative arts':                 'Creative Arts',
+        'basic science and technology':  'Basic Sci. & Tech.',
+        'basic science':                 'Basic Science',
+        'basic technology':              'Basic Tech.',
+        'agricultural science':          'Agric. Science',
+        'computer studies':              'Computer Stud.',
+        'information technology':        'ICT',
+        'civic education':               'Civic Edu.',
+        'home economics':                'Home Econ.',
+        'vocational aptitude':           'Vocational Apt.',
+        'quantitative reasoning':        'Quant. Reasoning',
+        'verbal reasoning':              'Verbal Reasoning',
+        'english language':              'English Lang.',
+        'literature in english':         'Literature',
+        'business studies':              'Business Stud.'
     };
-    return abbr[name.trim().toLowerCase()] || name;
+
+    // 1. Check for manual mapping
+    if (abbr[cleanName]) return abbr[cleanName];
+
+    // 2. If subject name is still very long and not in list, truncate it
+    // This prevents UI breaking for unknown long subjects
+    if (name.length > 22) {
+        return name.substring(0, 19) + '...';
+    }
+
+    return name;
 }
 
 function classNameToSlug(name) {
