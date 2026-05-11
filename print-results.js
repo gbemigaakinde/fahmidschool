@@ -24,42 +24,42 @@ function getSessionFromUrl() {
     return (s && s !== 'current') ? s : null;
 }
 
-/* ─── Date formatting ───────────────────────────────────────────
-   Formats a JS Date as e.g. "15th May, 2027"
-─────────────────────────────────────────────────────────────── */
 function formatResumptionDate(date) {
     if (!date || !(date instanceof Date) || isNaN(date)) return '-';
-
     const day   = date.getDate();
     const year  = date.getFullYear();
-
     const monthNames = [
         'January','February','March','April','May','June',
         'July','August','September','October','November','December'
     ];
     const month = monthNames[date.getMonth()];
-
     const suffix =
         day === 1 || day === 21 || day === 31 ? 'st' :
         day === 2 || day === 22               ? 'nd' :
         day === 3 || day === 23               ? 'rd' : 'th';
-
     return `${day}${suffix} ${month}, ${year}`;
 }
 
-/* ─── Signature helpers ─────────────────────────────────────────
-   File naming convention:
-     Teacher:     images/teacher-signature/{slug}.png
-     Head teacher: images/headteacher-signature/signature.png
+function abbreviateSubject(name) {
+    const abbr = {
+        'christian religious knowledge': 'Christian Rel. Knowledge',
+        'christian religious studies':   'Christian Rel. Studies',
+        'islamic religious knowledge':   'Islamic Rel. Knowledge',
+        'islamic religious studies':     'Islamic Rel. Studies',
+        'social studies':                'Social Studies',
+        'physical and health education': 'Phy. & Health Edu.',
+        'physical education':            'Physical Education',
+        'cultural and creative arts':    'Cultural & Creative Arts',
+        'basic science and technology':  'Basic Science & Tech.',
+        'agricultural science':          'Agricultural Science',
+        'computer studies':              'Computer Studies',
+        'civic education':               'Civic Education',
+        'home economics':                'Home Economics',
+        'vocational aptitude':           'Vocational Aptitude',
+    };
+    return abbr[name.trim().toLowerCase()] || name;
+}
 
-   Slug is derived from the class name:
-     "Primary 2"  → "primary-2"
-     "JSS 1A"     → "jss-1a"
-     "Nursery 1"  → "nursery-1"
-
-   The image tag is shown only when the file actually loads.
-   If the file is missing, the tag stays hidden — no broken icon.
-─────────────────────────────────────────────────────────────── */
 function classNameToSlug(name) {
     return (name || '')
         .trim()
@@ -106,9 +106,6 @@ function clearSignatures() {
     });
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   AUTH & INITIALIZATION
-═══════════════════════════════════════════════════════════════ */
 async function initPrintResultsWrapper() {
     firebase.auth().onAuthStateChanged(async user => {
         if (!user) { window.location.href = 'index.html'; return; }
@@ -218,9 +215,6 @@ async function initPrintResultsWrapper() {
 
 initPrintResultsWrapper();
 
-/* ═══════════════════════════════════════════════════════════════
-   SCHOOL SETTINGS
-═══════════════════════════════════════════════════════════════ */
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
@@ -236,9 +230,6 @@ async function fetchSchoolSettings() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   PUPIL PROFILE
-═══════════════════════════════════════════════════════════════ */
 async function fetchPupilProfile(uid) {
     try {
         const doc = await db.collection('pupils').doc(uid).get();
@@ -299,8 +290,6 @@ async function fetchPupilProfile(uid) {
         }
 
         setText('class-teacher', teacherName);
-
-        /* Load signatures now that we have the class name */
         loadSignatures(className);
 
     } catch (error) {
@@ -309,9 +298,6 @@ async function fetchPupilProfile(uid) {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TERM SELECTOR
-═══════════════════════════════════════════════════════════════ */
 function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) { console.error('Term selector not found'); return; }
@@ -333,9 +319,6 @@ function setupTermSelector() {
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   REPORT HEADER
-═══════════════════════════════════════════════════════════════ */
 function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
@@ -360,9 +343,6 @@ function updateReportHeader() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LOAD ALL REPORT DATA
-═══════════════════════════════════════════════════════════════ */
 async function loadReportData() {
     resetTraitsAndRemarks();
     try {
@@ -378,9 +358,6 @@ async function loadReportData() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ACADEMIC RESULTS
-═══════════════════════════════════════════════════════════════ */
 async function loadAcademicResults() {
     const tbody = document.getElementById('academic-tbody');
     if (!tbody) return;
@@ -532,9 +509,6 @@ function normaliseSubject(name) {
     return (name || '').trim().toLowerCase();
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   RENDER TABLE ROWS
-═══════════════════════════════════════════════════════════════ */
 function renderResults(results, tbody) {
     tbody.innerHTML = '';
     results.sort((a, b) => a.subject.localeCompare(b.subject));
@@ -566,7 +540,7 @@ function renderResults(results, tbody) {
 
         tbody.insertAdjacentHTML('beforeend', `
             <tr>
-                <td>${r.subject}</td>
+                <td>${abbreviateSubject(r.subject)}</td>
                 <td style="text-align:center;">${assignment !== null ? assignment : '–'}</td>
                 <td style="text-align:center;">${midterm    !== null ? midterm    : '–'}</td>
                 <td style="text-align:center;">${project    !== null ? project    : '–'}</td>
@@ -612,9 +586,6 @@ function getModalClassSize(results) {
     return Number(entries[0][0]);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   ATTENDANCE
-═══════════════════════════════════════════════════════════════ */
 async function loadAttendance() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -630,9 +601,6 @@ async function loadAttendance() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   TRAITS & SKILLS
-═══════════════════════════════════════════════════════════════ */
 async function loadBehavioralTraits()  { await loadKeyedCollection('behavioral_traits',  'trait-'); }
 async function loadPsychomotorSkills() { await loadKeyedCollection('psychomotor_skills', 'skill-'); }
 
@@ -655,9 +623,6 @@ async function loadKeyedCollection(collection, prefix) {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   REMARKS
-═══════════════════════════════════════════════════════════════ */
 async function loadRemarks() {
     if (!currentPupilId || !currentSettings.term || !currentSettings.session) return;
     const encodedSession = currentSettings.session.replace(/\//g, '-');
@@ -672,9 +637,6 @@ async function loadRemarks() {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════════════════ */
 function clearPerformanceSummary() {
     setText('perf-total',      '–');
     setText('perf-subjects',   '–');
@@ -752,4 +714,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js v8.1.0 ready');
+console.log('✓ print-results.js v8.2.0 ready');
