@@ -1,6 +1,8 @@
 // firebase-config.js
 // Firebase configuration and initialization (ES Module)
-// Assumes Firebase compat SDK is loaded via CDN script tags before this module runs.
+// Uses Firebase v9+ modular SDK.
+
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
@@ -12,8 +14,6 @@ export const firebaseConfig = {
   measurementId: "G-HEC84JXFY2"
 };
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export default firebase.app();
+export default app;
