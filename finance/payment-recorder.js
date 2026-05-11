@@ -7,7 +7,7 @@ import {
   getDoc,
   runTransaction,
   serverTimestamp,
-} from 'firebase/firestore';
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 export async function recordPayment(
   pupilId,
