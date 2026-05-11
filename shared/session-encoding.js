@@ -1,5 +1,6 @@
 // shared/session-encoding.js
 // Pure string utilities for encoding session names in Firestore document IDs.
+// No Firebase SDK calls — no changes needed for v9 migration.
 
 export function encodeSession(session) {
   if (!session) return '';
