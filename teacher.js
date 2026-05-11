@@ -707,6 +707,36 @@ async function loadResultsTable() {
     return;
   }
 
+  // ── SKELETON LOADER ──────────────────────────────────────────────────────
+  const skeletonRows = Array.from({ length: 5 }, () => `
+    <div class="tp-result-skeleton-card">
+      <div class="tp-skeleton-name tp-skeleton"></div>
+      <div class="tp-skeleton-fields">
+        <div class="tp-skeleton-field">
+          <div class="tp-skeleton tp-skeleton--label"></div>
+          <div class="tp-skeleton tp-skeleton--input"></div>
+        </div>
+        <div class="tp-skeleton-field">
+          <div class="tp-skeleton tp-skeleton--label"></div>
+          <div class="tp-skeleton tp-skeleton--input"></div>
+        </div>
+        <div class="tp-skeleton-field">
+          <div class="tp-skeleton tp-skeleton--label"></div>
+          <div class="tp-skeleton tp-skeleton--input"></div>
+        </div>
+      </div>
+      <div class="tp-skeleton tp-skeleton--total"></div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="tp-results-skeleton" aria-label="Loading results…">
+      ${skeletonRows}
+    </div>
+  `;
+  if (saveBtn) saveBtn.hidden = true;
+  // ────────────────────────────────────────────────────────────────────────
+
   const classFilteredPupils = allPupils.filter(p => p.class?.id === selectedClassId);
 
   if (classFilteredPupils.length === 0) {
@@ -750,27 +780,15 @@ async function loadResultsTable() {
         const submissionData = submissionDoc.data();
         if (submissionData.status === 'rejected' && submissionData.rejectionReason) {
           rejectionBanner = `
-            <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
-                        color: white; 
-                        padding: var(--space-lg); 
-                        border-radius: var(--radius-md); 
-                        margin-bottom: var(--space-lg);
-                        box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);">
-              <h3 style="margin: 0 0 var(--space-md) 0; font-size: var(--text-lg);">
-                ⚠️ Results Rejected by Admin
-              </h3>
-              <div style="background: rgba(255,255,255,0.15); 
-                          padding: var(--space-md); 
-                          border-radius: var(--radius-sm);
-                          border-left: 4px solid #fff;">
-                <strong>Reason for rejection:</strong>
-                <p style="margin: var(--space-sm) 0 0 0; font-size: var(--text-base);">
-                  ${submissionData.rejectionReason}
-                </p>
+            <div class="tp-rejection-banner" style="margin-bottom: var(--tp-space-5);">
+              <div style="display:flex;gap:var(--tp-space-3);align-items:flex-start;">
+                <div style="font-size:1.25rem;">⚠️</div>
+                <div>
+                  <strong style="color:#991b1b;">Results Rejected by Admin</strong>
+                  <p style="margin:6px 0 0;font-size:.875rem;color:#7f1d1d;">${submissionData.rejectionReason}</p>
+                  <p style="margin:8px 0 0;font-size:.8125rem;color:#b91c1c;">Your results are now editable. Please correct and resubmit.</p>
+                </div>
               </div>
-              <p style="margin: var(--space-md) 0 0 0; font-size: var(--text-sm); opacity: 0.9;">
-                ℹ️ Your results are now editable. Please make the necessary corrections and resubmit.
-              </p>
             </div>
           `;
         }
@@ -779,154 +797,177 @@ async function loadResultsTable() {
       console.log('No submission found or error checking submission:', submissionError.code);
     }
     
-    // Build table with sub-CA columns
+    // ── BUILD CARD-BASED LAYOUT (works on both mobile and desktop) ──────────
     container.innerHTML = `
       ${rejectionBanner}
-      <div style="background:#e0f2fe; border:1px solid #0284c7; border-radius:6px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#0c4a6e;">
-        <strong> CA Breakdown:</strong> Assignment (max 10) + Mid-term (max 20) + Project (max 10) = CA Total (40). 
+      <div class="tp-ca-info-bar">
+        <strong>CA Breakdown:</strong> Assignment (max 10) + Mid-term (max 20) + Project (max 10) = CA Total (40).
         The system auto-calculates the CA Total as you type. Exam is entered separately (max 60).
       </div>
-      <div class="table-container" style="overflow-x:auto;">
-        <table class="responsive-table" id="results-table" style="min-width:780px;">
-          <thead>
-            <tr>
-              <th rowspan="2" style="vertical-align:middle;">Pupil Name</th>
-              <th colspan="4" style="text-align:center; border-bottom:1px solid #e2e8f0;">
-                Continuous Assessment (CA) — Max 40
-              </th>
-              <th rowspan="2" style="vertical-align:middle;">Exam Score<br><small style="font-weight:400;">(Max 60)</small></th>
-              <th rowspan="2" style="vertical-align:middle;">Total<br><small style="font-weight:400;">(100)</small></th>
-            </tr>
-            <tr>
-              <th style="font-size:11px;">Assignment<br><small style="font-weight:400;">(Max 10)</small></th>
-              <th style="font-size:11px;">Mid-term<br><small style="font-weight:400;">(Max 20)</small></th>
-              <th style="font-size:11px;">Project<br><small style="font-weight:400;">(Max 10)</small></th>
-              <th style="font-size:11px; color:#1d4ed8;">CA Total<br><small style="font-weight:400;">(Auto)</small></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <div id="results-cards-container" class="tp-result-cards"></div>
+      <div id="results-pagination" class="pagination" style="display:none;"></div>
     `;
-    
-    paginateTable(classFilteredPupils, 'results-table', 20, (pupil, tbody) => {
-      const existing = resultsMap[pupil.id] || { ca: 0, exam: 0, assignment: '', midterm: '', project: '' };
-      const total = existing.ca + existing.exam;
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td data-label="Pupil Name">${pupil.name}</td>
-        <td data-label="Assignment (10)">
-          <input type="number" min="0" max="10" step="0.5" 
-                 value="${existing.assignment !== '' ? existing.assignment : ''}" 
-                 data-pupil="${pupil.id}" data-field="assignment" 
-                 style="width:100%; max-width:70px;"
-                 placeholder="0-10">
-        </td>
-        <td data-label="Mid-term (20)">
-          <input type="number" min="0" max="20" step="0.5" 
-                 value="${existing.midterm !== '' ? existing.midterm : ''}" 
-                 data-pupil="${pupil.id}" data-field="midterm" 
-                 style="width:100%; max-width:70px;"
-                 placeholder="0-20">
-        </td>
-        <td data-label="Project (10)">
-          <input type="number" min="0" max="10" step="0.5" 
-                 value="${existing.project !== '' ? existing.project : ''}" 
-                 data-pupil="${pupil.id}" data-field="project" 
-                 style="width:100%; max-width:70px;"
-                 placeholder="0-10">
-        </td>
-        <td data-label="CA Total (Auto)" 
-            id="ca-total-${pupil.id}"
-            style="font-weight:700; color:#1d4ed8; text-align:center;">
-          ${existing.ca || '–'}
-        </td>
-        <td data-label="Exam Score (60)">
-          <input type="number" min="0" max="60" step="0.5" 
-                 value="${existing.exam || ''}" 
-                 data-pupil="${pupil.id}" data-field="exam" 
-                 style="width:100%; max-width:80px;"
-                 placeholder="0-60">
-        </td>
-        <td data-label="Total" id="grand-total-${pupil.id}"
-            style="font-weight:700;">
-          ${total > 0 ? total : '–'}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
+
+    // ── RENDER CARDS WITH PAGINATION ────────────────────────────────────────
+    const ITEMS_PER_PAGE = 15;
+    let currentPage = 1;
+    const totalPages = Math.ceil(classFilteredPupils.length / ITEMS_PER_PAGE);
+
+    function renderResultCards(page) {
+      const cardsContainer = document.getElementById('results-cards-container');
+      if (!cardsContainer) return;
+
+      const start = (page - 1) * ITEMS_PER_PAGE;
+      const pageData = classFilteredPupils.slice(start, start + ITEMS_PER_PAGE);
+
+      cardsContainer.innerHTML = pageData.map(pupil => {
+        const existing = resultsMap[pupil.id] || { ca: 0, exam: 0, assignment: '', midterm: '', project: '' };
+        const caTotal = (parseFloat(existing.assignment) || 0) + (parseFloat(existing.midterm) || 0) + (parseFloat(existing.project) || 0);
+        const grandTotal = caTotal + (parseFloat(existing.exam) || 0);
+
+        return `
+          <div class="tp-result-card" data-pupil-id="${pupil.id}">
+            <div class="tp-result-card__name">${pupil.name}</div>
+
+            <div class="tp-result-card__ca-grid">
+              <div class="tp-result-card__field">
+                <label class="tp-result-card__label">ASSIGNMENT <span class="tp-result-card__max">(max 10)</span></label>
+                <input type="number" min="0" max="10" step="0.5"
+                       class="tp-result-card__input"
+                       value="${existing.assignment !== '' ? existing.assignment : ''}"
+                       data-pupil="${pupil.id}" data-field="assignment"
+                       placeholder="0–10">
+              </div>
+              <div class="tp-result-card__field">
+                <label class="tp-result-card__label">MID-TERM <span class="tp-result-card__max">(max 20)</span></label>
+                <input type="number" min="0" max="20" step="0.5"
+                       class="tp-result-card__input"
+                       value="${existing.midterm !== '' ? existing.midterm : ''}"
+                       data-pupil="${pupil.id}" data-field="midterm"
+                       placeholder="0–20">
+              </div>
+              <div class="tp-result-card__field">
+                <label class="tp-result-card__label">PROJECT <span class="tp-result-card__max">(max 10)</span></label>
+                <input type="number" min="0" max="10" step="0.5"
+                       class="tp-result-card__input"
+                       value="${existing.project !== '' ? existing.project : ''}"
+                       data-pupil="${pupil.id}" data-field="project"
+                       placeholder="0–10">
+              </div>
+            </div>
+
+            <div class="tp-result-card__totals">
+              <div class="tp-result-card__ca-total">
+                <span class="tp-result-card__total-label">CA TOTAL (AUTO)</span>
+                <span class="tp-result-card__total-value tp-result-card__total-value--ca"
+                      id="ca-total-${pupil.id}">${caTotal > 0 ? caTotal : '–'}</span>
+              </div>
+              <div class="tp-result-card__exam-field">
+                <label class="tp-result-card__label">EXAM SCORE <span class="tp-result-card__max">(max 60)</span></label>
+                <input type="number" min="0" max="60" step="0.5"
+                       class="tp-result-card__input tp-result-card__input--exam"
+                       value="${existing.exam || ''}"
+                       data-pupil="${pupil.id}" data-field="exam"
+                       placeholder="0–60">
+              </div>
+              <div class="tp-result-card__grand-total">
+                <span class="tp-result-card__total-label">TOTAL SCORE</span>
+                <span class="tp-result-card__total-value tp-result-card__total-value--grand"
+                      id="grand-total-${pupil.id}"
+                      data-score="${grandTotal}">${grandTotal > 0 ? grandTotal : '–'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Apply colour coding to already-saved totals
+      cardsContainer.querySelectorAll('.tp-result-card__total-value--grand').forEach(el => {
+        applyTotalColour(el, parseFloat(el.dataset.score) || 0);
+      });
+
+      // Pagination UI
+      const paginationEl = document.getElementById('results-pagination');
+      if (paginationEl) {
+        if (totalPages > 1) {
+          paginationEl.style.display = 'flex';
+          paginationEl.innerHTML = `
+            <button onclick="window._resultChangePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+            <span class="page-info">Page ${page} of ${totalPages}</span>
+            <button onclick="window._resultChangePage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>Next</button>
+          `;
+        } else {
+          paginationEl.style.display = 'none';
+        }
+      }
+
+      attachResultInputListeners();
+    }
+
+    window._resultChangePage = function(newPage) {
+      if (newPage < 1 || newPage > totalPages) return;
+      currentPage = newPage;
+      renderResultCards(currentPage);
+    };
+
+    renderResultCards(1);
+    // ────────────────────────────────────────────────────────────────────────
 
     if (saveBtn) saveBtn.hidden = false;
-    
-    // Live calculation: sub-CA fields auto-sum to CA Total, then CA+Exam = Total
-    container.querySelectorAll('input[type="number"]').forEach(input => {
-      input.addEventListener('input', (e) => {
-        const field  = e.target.dataset.field;
-        const pupilId = e.target.dataset.pupil;
-        let value    = parseFloat(e.target.value);
-
-        // Max validation per field
-        const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
-        const max    = maxMap[field];
-
-        if (!isNaN(value) && max !== undefined) {
-          if (value > max) {
-            e.target.value = max;
-            value = max;
-            window.showToast?.(
-              `Maximum for ${field} is ${max}`,
-              'warning', 2500
-            );
-          }
-          if (value < 0) { e.target.value = 0; value = 0; }
-        }
-
-        const row = e.target.closest('tr');
-        if (!row) return;
-
-        const assignmentInput = row.querySelector('[data-field="assignment"]');
-        const midtermInput    = row.querySelector('[data-field="midterm"]');
-        const projectInput    = row.querySelector('[data-field="project"]');
-        const examInput       = row.querySelector('[data-field="exam"]');
-
-        const assignment = parseFloat(assignmentInput?.value) || 0;
-        const midterm    = parseFloat(midtermInput?.value)    || 0;
-        const project    = parseFloat(projectInput?.value)    || 0;
-        const exam       = parseFloat(examInput?.value)       || 0;
-
-        const caTotal    = assignment + midterm + project;
-        const grandTotal = caTotal + exam;
-
-        // Update CA Total display cell
-        const caTotalCell = document.getElementById(`ca-total-${pupilId}`);
-        if (caTotalCell) {
-          caTotalCell.textContent = (caTotal > 0) ? caTotal.toFixed(caTotal % 1 !== 0 ? 1 : 0) : '–';
-        }
-
-        // Update Grand Total cell
-        const grandTotalCell = document.getElementById(`grand-total-${pupilId}`);
-        if (grandTotalCell) {
-          const displayTotal = grandTotal > 0 ? grandTotal.toFixed(grandTotal % 1 !== 0 ? 1 : 0) : '–';
-          grandTotalCell.textContent = displayTotal;
-          grandTotalCell.style.fontWeight = 'bold';
-          if      (grandTotal >= 75) grandTotalCell.style.color = '#4CAF50';
-          else if (grandTotal >= 50) grandTotalCell.style.color = '#2196F3';
-          else if (grandTotal >= 40) grandTotalCell.style.color = '#ff9800';
-          else if (grandTotal >  0)  grandTotalCell.style.color = '#f44336';
-          else                       { grandTotalCell.style.color = 'inherit'; grandTotalCell.style.fontWeight = 'normal'; }
-        }
-      });
-    });
     
   } catch (err) {
     console.error('Error loading results table:', err);
     window.handleError?.(err, 'Failed to load results');
-    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results</p>';
+    container.innerHTML = '<p style="text-align:center; color:var(--color-danger);">Error loading results. Please try again.</p>';
     if (saveBtn) saveBtn.hidden = true;
   }
   
   await checkResultLockStatus();
+}
+
+function applyTotalColour(el, score) {
+  if (score >= 75)      el.style.color = '#16a34a';
+  else if (score >= 50) el.style.color = '#2563eb';
+  else if (score >= 40) el.style.color = '#d97706';
+  else if (score > 0)   el.style.color = '#dc2626';
+  else                  el.style.color = '';
+}
+
+function attachResultInputListeners() {
+  const container = document.getElementById('results-entry-table-container');
+  if (!container) return;
+
+  container.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const field   = e.target.dataset.field;
+      const pupilId = e.target.dataset.pupil;
+      let value     = parseFloat(e.target.value);
+
+      const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
+      const max    = maxMap[field];
+
+      if (!isNaN(value) && max !== undefined) {
+        if (value > max) { e.target.value = max; value = max; window.showToast?.(`Maximum for ${field} is ${max}`, 'warning', 2500); }
+        if (value < 0)   { e.target.value = 0;   value = 0; }
+      }
+
+      const card = e.target.closest('.tp-result-card');
+      if (!card) return;
+
+      const get = (f) => parseFloat(card.querySelector(`[data-field="${f}"]`)?.value) || 0;
+      const caTotal    = get('assignment') + get('midterm') + get('project');
+      const grandTotal = caTotal + get('exam');
+
+      const caTotalEl    = document.getElementById(`ca-total-${pupilId}`);
+      const grandTotalEl = document.getElementById(`grand-total-${pupilId}`);
+
+      if (caTotalEl)    caTotalEl.textContent    = caTotal    > 0 ? caTotal.toFixed(caTotal % 1 !== 0 ? 1 : 0)       : '–';
+      if (grandTotalEl) {
+        grandTotalEl.textContent = grandTotal > 0 ? grandTotal.toFixed(grandTotal % 1 !== 0 ? 1 : 0) : '–';
+        applyTotalColour(grandTotalEl, grandTotal);
+      }
+    });
+  });
 }
 
 /**
