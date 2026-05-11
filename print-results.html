@@ -346,7 +346,13 @@ body {
 .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
 .ac-table tbody tr:last-child { border-bottom: none; }
 .ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
-.ac-table td:first-child { text-align: left; padding-left: 9px; font-weight: 500; }
+.ac-table td:first-child {
+    text-align: left;
+    padding-left: 9px;
+    font-weight: 500;
+    word-break: break-word;
+    hyphens: auto;
+}
 .ac-table td.col-total { font-weight: 700; color: var(--blue-deep); }
 
 .grade-A1            { color: var(--grade-a); font-weight: 700; }
