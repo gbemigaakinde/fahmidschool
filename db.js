@@ -1,12 +1,17 @@
 // db.js
 // Firestore database instance and convenience wrappers (ES Module)
+// Uses Firebase v9+ modular SDK.
 
-import _app from './firebase-config.js';
+import app from './firebase-config.js';
 import { retryWithBackoff } from './shared/retry.js';
+import {
+  getFirestore,
+  enableIndexedDbPersistence
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
-export const db = firebase.firestore();
+export const db = getFirestore(app);
 
-db.enablePersistence({ synchronizeTabs: true })
+enableIndexedDbPersistence(db, { synchronizeTabs: true })
   .catch((err) => {
     if (err.code === 'failed-precondition') {
       console.warn('⚠️ Persistence failed: Multiple tabs open');
@@ -18,7 +23,7 @@ db.enablePersistence({ synchronizeTabs: true })
   });
 
 export async function firestoreGet(ref, operationName = 'Fetch document') {
-  return retryWithBackoff(() => ref.get(), 3, operationName);
+  return retryWithBackoff(() => ref instanceof Function ? ref() : ref, 3, operationName);
 }
 
 export async function firestoreSet(ref, data, options = null, operationName = 'Save document') {
