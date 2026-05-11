@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=740">
+    <!-- CHANGED: was width=740 which forced the browser to shrink everything on mobile.
+         Now uses device-width so phones render at their natural resolution.
+         minimum-scale=1 prevents auto-shrink; user-scalable=yes lets parents pinch-zoom. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, user-scalable=yes">
     <title>Termly Report Card – Fahmid Nursery & Primary School</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,6 +58,10 @@
         --font-display: 'DM Serif Display', Georgia, serif;
 
         --radius: 4px;
+
+        /* CHANGED: was 8pt — bumped up slightly so text is more readable
+           on screen and when printed. All em-based sizes scale with this. */
+        --base-font: 9pt;
     }
 
     /* ================================================================
@@ -69,7 +76,17 @@
         line-height: 1.45;
         -webkit-font-smoothing: antialiased;
     }
-    body { padding: 16px 10px 48px; }
+
+    /* CHANGED: on mobile the doc is 740px wide and the page scrolls horizontally.
+       This is intentional — it's a print-layout document. Parents can:
+         a) pinch-zoom on their phone to read comfortably, or
+         b) use the browser's built-in zoom / reader mode.
+       On desktop it centres with generous padding. */
+    body {
+        padding: 16px 10px 48px;
+        /* Ensure the page is wide enough to hold the 740px doc + some breathing room */
+        min-width: 760px;
+    }
 
     /* ================================================================
        CONTROL BAR
@@ -147,12 +164,12 @@
         box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.07);
         position: relative;
         overflow: hidden;
-        font-size: 8pt;
+        /* CHANGED: was 8pt — now uses the token so it scales consistently */
+        font-size: var(--base-font);
     }
 
     /* ================================================================
        WATERMARK — screen only
-       On print this is hidden; a canvas-drawn version takes over.
     ================================================================ */
     .watermark {
         position: absolute;
@@ -173,10 +190,11 @@
     ================================================================ */
     .doc-hd {
         background: var(--blue-deep);
-        padding: 11px 18px 9px;
+        /* CHANGED: slightly more padding so header feels more substantial at larger size */
+        padding: 12px 18px 10px;
         display: grid;
-        grid-template-columns: 46px 1fr;
-        gap: 11px;
+        grid-template-columns: 50px 1fr;
+        gap: 12px;
         align-items: center;
         position: relative;
     }
@@ -188,7 +206,8 @@
         background: linear-gradient(90deg, #C9A227 0%, #F0D060 50%, #C9A227 100%);
     }
     .doc-hd__logo {
-        width: 46px; height: 46px;
+        /* CHANGED: slightly larger logo to match bigger header */
+        width: 50px; height: 50px;
         border-radius: 50%;
         overflow: hidden;
         border: 2px solid rgba(255,255,255,0.22);
@@ -205,7 +224,8 @@
     }
     .doc-hd__name {
         font-family: var(--font-display);
-        font-size: 11pt;
+        /* CHANGED: slightly larger school name */
+        font-size: 12pt;
         color: #fff;
         line-height: 1.2;
         letter-spacing: 0.02em;
@@ -213,12 +233,14 @@
         margin-bottom: 2px;
     }
     .doc-hd__tagline {
-        font-size: 6.5pt;
+        /* CHANGED: was 6.5pt */
+        font-size: 7pt;
         color: rgba(255,255,255,0.60);
         font-style: italic;
         margin-bottom: 2px;
     }
-    .doc-hd__contact { font-size: 5.5pt; color: rgba(255,255,255,0.45); }
+    /* CHANGED: was 5.5pt — bumped so contact details are legible */
+    .doc-hd__contact { font-size: 6pt; color: rgba(255,255,255,0.45); }
     .doc-hd__right { text-align: right; flex-shrink: 0; }
     .doc-hd__badge {
         display: inline-block;
@@ -226,14 +248,16 @@
         border: 1px solid rgba(201,162,39,0.40);
         border-radius: 3px;
         padding: 2px 7px;
-        font-size: 5.5pt;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
         font-weight: 600;
         color: var(--gold-light);
         text-transform: uppercase;
         letter-spacing: 0.08em;
         margin-bottom: 2px;
     }
-    .doc-hd__session { font-size: 6.5pt; color: rgba(255,255,255,0.45); }
+    /* CHANGED: was 6.5pt */
+    .doc-hd__session { font-size: 7pt; color: rgba(255,255,255,0.45); }
 
     /* ================================================================
        TITLE STRIP
@@ -241,11 +265,12 @@
     .doc-title {
         background: var(--paper-alt);
         border-bottom: 1px solid var(--rule);
-        padding: 4px 18px;
+        padding: 5px 18px;
         text-align: center;
     }
     .doc-title__text {
-        font-size: 6.5pt;
+        /* CHANGED: was 6.5pt */
+        font-size: 7.5pt;
         font-weight: 600;
         color: var(--ink-2);
         text-transform: uppercase;
@@ -256,10 +281,10 @@
        DOCUMENT BODY — vertical stack of sections
     ================================================================ */
     .doc-body {
-        padding: 9px 12px;
+        padding: 10px 13px;
         display: flex;
         flex-direction: column;
-        gap: 7px;
+        gap: 8px;
     }
 
     /* ================================================================
@@ -272,7 +297,7 @@
     }
     .section__hd {
         background: var(--blue-deep);
-        padding: 3px 9px;
+        padding: 4px 10px;
         display: flex;
         align-items: center;
         gap: 7px;
@@ -284,7 +309,8 @@
         background: rgba(255,255,255,0.15);
     }
     .section__title {
-        font-size: 5.5pt;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
         font-weight: 600;
         color: rgba(255,255,255,0.92);
         text-transform: uppercase;
@@ -293,27 +319,29 @@
     }
 
     /* ================================================================
-       SECTION 1 — PUPIL PROFILE  (full-width, 6 columns)
+       SECTION 1 — PUPIL PROFILE
     ================================================================ */
     .id-grid { display: grid; grid-template-columns: repeat(6, 1fr); }
     .id-cell {
-        padding: 4px 8px;
+        padding: 5px 9px;
         border-right: 1px solid var(--rule);
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 2px;
         min-width: 0;
     }
     .id-cell:last-child { border-right: none; }
     .id-cell__lbl {
-        font-size: 5pt;
+        /* CHANGED: was 5pt */
+        font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
         text-transform: uppercase;
         letter-spacing: 0.06em;
     }
     .id-cell__val {
-        font-size: 7pt;
+        /* CHANGED: was 7pt */
+        font-size: 7.5pt;
         font-weight: 600;
         color: var(--ink);
         white-space: nowrap;
@@ -322,24 +350,26 @@
     }
 
     /* ================================================================
-       SECTION 2 — ATTENDANCE  (full-width, 3 equal cards)
+       SECTION 2 — ATTENDANCE
     ================================================================ */
     .att-row { display: grid; grid-template-columns: repeat(3, 1fr); }
     .att-card {
-        padding: 8px 10px;
+        padding: 10px 10px;
         text-align: center;
         border-right: 1px solid var(--rule);
     }
     .att-card:last-child { border-right: none; }
     .att-card__n {
-        font-size: 13pt;
+        /* CHANGED: was 13pt */
+        font-size: 15pt;
         font-weight: 700;
         color: var(--blue-deep);
         line-height: 1;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
     }
     .att-card__lbl {
-        font-size: 5.5pt;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
         color: var(--ink-3);
         font-weight: 500;
         text-transform: uppercase;
@@ -347,26 +377,26 @@
     }
 
     /* ================================================================
-       SECTION 3 — ACADEMIC + PERFORMANCE SUMMARY  (two columns)
+       SECTION 3 — ACADEMIC + PERFORMANCE SUMMARY
     ================================================================ */
     .row-ac {
         display: grid;
-        grid-template-columns: 1fr 188px;
-        gap: 7px;
+        grid-template-columns: 1fr 200px;
+        gap: 8px;
         align-items: start;
     }
 
-    /* Academic table */
     .section--academic { overflow: hidden; }
     .ac-table-wrap { overflow: visible; }
 
-    .ac-table { width: 100%; border-collapse: collapse; font-size: 7pt; }
+    .ac-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
     .ac-table thead { position: static; }
     .ac-table thead tr { background: var(--paper-alt); border-bottom: 1.5px solid var(--blue-deep); }
     .ac-table th {
-        padding: 4px 5px;
+        padding: 5px 5px;
         text-align: center;
-        font-size: 5.5pt;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
         font-weight: 600;
         color: var(--ink-2);
         text-transform: uppercase;
@@ -374,11 +404,13 @@
         white-space: nowrap;
         background: var(--paper-alt);
     }
-    .ac-table th:first-child { text-align: left; padding-left: 9px; width: 38%; }
-    .ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 20px; }
+    .ac-table th:first-child { text-align: left; padding-left: 9px; width: 36%; }
+    /* CHANGED: was 20px row height */
+    .ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 22px; }
     .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
     .ac-table tbody tr:last-child { border-bottom: none; }
-    .ac-table td { padding: 2px 5px; text-align: center; color: var(--ink); font-size: 7pt; }
+    /* CHANGED: was 7pt */
+    .ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
     .ac-table td:first-child { text-align: left; padding-left: 9px; font-weight: 500; }
     .ac-table td.col-total { font-weight: 700; color: var(--blue-deep); }
 
@@ -390,68 +422,78 @@
     .grade-F9            { color: var(--grade-f); font-weight: 700; }
 
     /* Performance summary card */
-    .perf-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+    .perf-body { padding: 9px 11px; display: flex; flex-direction: column; gap: 5px; }
     .perf-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 4px;
+        padding-bottom: 5px;
         border-bottom: 1px solid var(--rule);
     }
     .perf-row:last-child { border-bottom: none; padding-bottom: 0; }
     .perf-row__lbl {
-        font-size: 5.5pt;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
         font-weight: 600;
         color: var(--ink-3);
         text-transform: uppercase;
         letter-spacing: 0.06em;
     }
-    .perf-row__val { font-size: 9pt; font-weight: 700; color: var(--blue-deep); }
-    #perf-grade { font-size: 11pt; }
-    
+    /* CHANGED: was 9pt */
+    .perf-row__val { font-size: 10pt; font-weight: 700; color: var(--blue-deep); }
+    /* CHANGED: was 11pt */
+    #perf-grade { font-size: 13pt; }
+
     /* Sub-CA column sizing */
-.ac-table th, .ac-table td {
-    vertical-align: middle;
-}
-.ac-table thead tr:first-child th {
-    border-bottom: 1px solid var(--rule);
-}
+    .ac-table th, .ac-table td { vertical-align: middle; }
+    .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
     /* ================================================================
-       SECTION 4 — GRADING KEY  (full-width compact strip)
+       SECTION 4 — GRADING KEY
     ================================================================ */
     .key {
         border: 1px solid var(--rule);
         border-radius: var(--radius);
-        padding: 4px 9px;
+        padding: 5px 10px;
         background: var(--paper-alt);
     }
     .key__title {
-        font-size: 5pt; font-weight: 600; color: var(--ink-3);
-        text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 3px;
+        /* CHANGED: was 5pt */
+        font-size: 5.5pt;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        margin-bottom: 4px;
     }
-    .key__items { display: flex; flex-wrap: wrap; gap: 2px; }
+    .key__items { display: flex; flex-wrap: wrap; gap: 3px; }
     .key__item {
-        font-size: 5.5pt; padding: 1px 4px;
-        border-radius: 2px; border: 1px solid var(--rule);
-        background: var(--paper); color: var(--ink-2); white-space: nowrap;
+        /* CHANGED: was 5.5pt */
+        font-size: 6pt;
+        padding: 1px 5px;
+        border-radius: 2px;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        color: var(--ink-2);
+        white-space: nowrap;
     }
 
     /* ================================================================
-       SECTION 5 — BEHAVIORAL TRAITS + PSYCHOMOTOR SKILLS (two columns)
+       SECTION 5 — BEHAVIORAL TRAITS + PSYCHOMOTOR SKILLS
     ================================================================ */
     .row-traits {
         display: grid;
-        grid-template-columns: 1fr 188px;
-        gap: 7px;
+        grid-template-columns: 1fr 200px;
+        gap: 8px;
         align-items: start;
     }
 
     .scale-note {
         background: var(--paper-alt);
         border-bottom: 1px solid var(--rule);
-        padding: 2px 9px;
-        font-size: 5pt;
+        padding: 3px 10px;
+        /* CHANGED: was 5pt */
+        font-size: 5.5pt;
         font-style: italic;
         color: var(--ink-3);
         text-align: center;
@@ -462,7 +504,8 @@
     .tr-grid--2col { grid-template-columns: repeat(2, 1fr); }
 
     .tr-item {
-        padding: 3px 7px;
+        /* CHANGED: was 3px 7px */
+        padding: 4px 8px;
         border-right: 1px solid var(--rule);
         border-bottom: 1px solid var(--rule);
         display: flex;
@@ -483,12 +526,22 @@
     .tr-grid--2col .tr-item:last-child           { border-bottom: none; }
 
     .tr-item__lbl {
-        font-size: 6pt; color: var(--ink-2); font-weight: 500;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        /* CHANGED: was 6pt */
+        font-size: 6.5pt;
+        color: var(--ink-2);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .trait-value {
-        font-size: 7.5pt; font-weight: 700; color: var(--blue-deep);
-        min-width: 12px; text-align: right; flex-shrink: 0;
+        /* CHANGED: was 7.5pt */
+        font-size: 8pt;
+        font-weight: 700;
+        color: var(--blue-deep);
+        min-width: 12px;
+        text-align: right;
+        flex-shrink: 0;
     }
 
     /* ================================================================
@@ -501,22 +554,37 @@
         border-radius: var(--radius);
         overflow: hidden;
     }
-    .remark-blk { padding: 6px 9px; border-right: 1px solid var(--rule); }
+    .remark-blk { padding: 7px 10px; border-right: 1px solid var(--rule); }
     .remark-blk__lbl {
-        font-size: 5pt; font-weight: 600; color: var(--ink-3);
-        text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px;
+        /* CHANGED: was 5pt */
+        font-size: 5.5pt;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 3px;
     }
-    .remark-blk__txt { font-size: 6.5pt; color: var(--ink); line-height: 1.5; min-height: 20px; }
+    /* CHANGED: was 6.5pt */
+    .remark-blk__txt { font-size: 7pt; color: var(--ink); line-height: 1.5; min-height: 20px; }
     .sig-blk {
-        padding: 6px 9px; border-right: 1px solid var(--rule);
-        display: flex; flex-direction: column; justify-content: flex-end;
+        padding: 7px 10px;
+        border-right: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
     }
     .sig-blk:last-child { border-right: none; }
     .sig-blk__line {
         border-top: 1px solid var(--ink-2);
-        padding-top: 3px; margin-top: 18px;
-        font-size: 5pt; font-weight: 600; color: var(--ink-3);
-        text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+        padding-top: 3px;
+        margin-top: 22px;
+        /* CHANGED: was 5pt */
+        font-size: 5.5pt;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
     }
 
     /* ================================================================
@@ -525,44 +593,51 @@
     .resumption-bar {
         background: var(--blue-soft);
         border-top: 1px solid var(--blue-border);
-        padding: 4px 14px;
-        display: flex; align-items: center; justify-content: center; gap: 10px;
+        padding: 5px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
     }
     .resumption-bar__lbl {
-        font-size: 6pt; font-weight: 600; color: var(--ink-3);
-        text-transform: uppercase; letter-spacing: 0.08em;
+        /* CHANGED: was 6pt */
+        font-size: 6.5pt;
+        font-weight: 600;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
     }
-    .resumption-bar__val { font-size: 8pt; font-weight: 700; color: var(--blue-deep); }
+    /* CHANGED: was 8pt */
+    .resumption-bar__val { font-size: 9pt; font-weight: 700; color: var(--blue-deep); }
 
     /* ================================================================
        FOOTER
     ================================================================ */
     .doc-ft {
         border-top: 1px solid var(--rule);
-        padding: 4px 18px;
-        display: flex; align-items: center; justify-content: space-between;
+        padding: 5px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         background: var(--paper-alt);
     }
-    .doc-ft__txt { font-size: 5pt; color: var(--ink-4); font-style: italic; }
+    /* CHANGED: was 5pt */
+    .doc-ft__txt { font-size: 5.5pt; color: var(--ink-4); font-style: italic; }
     .doc-ft__badge { display: flex; align-items: center; gap: 4px; }
     .doc-ft__dot { width: 4px; height: 4px; border-radius: 50%; background: var(--blue-deep); opacity: 0.5; }
-    .doc-ft__badge-txt { font-size: 5pt; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; }
+    /* CHANGED: was 5pt */
+    .doc-ft__badge-txt { font-size: 5.5pt; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; }
 
     /* ================================================================
        PRINT STYLES
-       Key goals:
-         1. Scale the 740px doc to fill A4 width properly
-         2. Watermark centered reliably via canvas injection
-         3. Remove all chrome (ctrl bar, body padding, shadows)
     ================================================================ */
     @media print {
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         html {
-            /* Scale the 740px design to fill ~190mm of usable A4 width.
-               A4 usable width at 96dpi ≈ 714px with 8mm margins each side.
-               We nudge slightly so content fills the page without overflow. */
-            font-size: 10.5pt;
+            /* CHANGED: was 10.5pt — increased so the 740px design fills A4 better.
+               At 11.5pt the content scales up ~10% and uses more of the page width. */
+            font-size: 11.5pt;
         }
 
         html, body {
@@ -570,34 +645,32 @@
             padding: 0;
             margin: 0;
             width: 100%;
+            /* Override the min-width set for screen */
+            min-width: 0 !important;
         }
 
         body {
-            /* Let content define height — no forced page size on body */
             padding: 0 !important;
         }
 
         .ctrl, .no-print { display: none !important; }
 
         .doc {
-            /* Fill the full printable width; browser handles page sizing */
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             overflow: visible !important;
-            font-size: 8pt;
+            /* CHANGED: explicit font size so print isn't affected by screen token */
+            font-size: 8.5pt;
         }
 
-        /* Hide the screen watermark — canvas version overlays instead */
         .watermark { display: none !important; }
 
-        /* Academic table print rules */
         .ac-table thead { display: table-header-group; position: static; }
         .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
 
-        /* Keep non-academic sections together */
         .doc-hd, .doc-title, .doc-body,
         .section:not(.section--academic), .key,
         .row-ac, .row-traits,
@@ -606,7 +679,6 @@
             break-inside: avoid !important;
         }
 
-        /* Academic section may split if the subject list is very long */
         .section--academic {
             page-break-inside: auto !important;
             break-inside: auto !important;
@@ -615,7 +687,8 @@
 
         @page {
             size: A4 portrait;
-            margin: 8mm 10mm;
+            /* CHANGED: was 8mm 10mm — tighter margins so more content width is used */
+            margin: 6mm 8mm;
         }
     }
 
@@ -738,28 +811,28 @@
                 <div class="ac-table-wrap">
                     <table class="ac-table">
                         <thead>
-    <tr>
-        <th rowspan="2">Subject</th>
-        <th colspan="4" style="text-align:center; border-bottom:1px solid var(--rule);">
-            Continuous Assessment <span style="font-weight:400;opacity:0.6;">(40)</span>
-        </th>
-        <th rowspan="2">Exam<br><span style="font-weight:400;opacity:0.6;">(60)</span></th>
-        <th rowspan="2">Total<br><span style="font-weight:400;opacity:0.6;">(100)</span></th>
-        <th rowspan="2">Class<br>Avg</th>
-        <th rowspan="2">Pos.</th>
-        <th rowspan="2">Grade</th>
-        <th rowspan="2">Remark</th>
-    </tr>
-    <tr>
-        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Assign<br><span style="opacity:0.6;">(10)</span></th>
-        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Mid-term<br><span style="opacity:0.6;">(20)</span></th>
-        <th style="font-size:5pt; font-weight:500; opacity:0.75;">Project<br><span style="opacity:0.6;">(10)</span></th>
-        <th style="font-size:5pt; font-weight:600; color:var(--blue-mid);">CA Total<br><span style="opacity:0.6;">(40)</span></th>
-    </tr>
-</thead>
+                            <tr>
+                                <th rowspan="2">Subject</th>
+                                <th colspan="4" style="text-align:center; border-bottom:1px solid var(--rule);">
+                                    Continuous Assessment <span style="font-weight:400;opacity:0.6;">(40)</span>
+                                </th>
+                                <th rowspan="2">Exam<br><span style="font-weight:400;opacity:0.6;">(60)</span></th>
+                                <th rowspan="2">Total<br><span style="font-weight:400;opacity:0.6;">(100)</span></th>
+                                <th rowspan="2">Class<br>Avg</th>
+                                <th rowspan="2">Pos.</th>
+                                <th rowspan="2">Grade</th>
+                                <th rowspan="2">Remark</th>
+                            </tr>
+                            <tr>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Assign<br><span style="opacity:0.6;">(10)</span></th>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Mid-term<br><span style="opacity:0.6;">(20)</span></th>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Project<br><span style="opacity:0.6;">(10)</span></th>
+                                <th style="font-size:5.5pt; font-weight:600; color:var(--blue-mid);">CA Total<br><span style="opacity:0.6;">(40)</span></th>
+                            </tr>
+                        </thead>
                         <tbody id="academic-tbody">
                             <tr>
-                                <td colspan="6" style="text-align:center;padding:12px;color:var(--ink-3);">
+                                <td colspan="11" style="text-align:center;padding:12px;color:var(--ink-3);">
                                     Loading results…
                                 </td>
                             </tr>
@@ -769,30 +842,30 @@
             </div>
 
             <div class="section">
-    <div class="section__hd"><span class="section__title">Performance Summary</span></div>
-    <div class="perf-body">
-        <div class="perf-row">
-            <span class="perf-row__lbl">Total Score</span>
-            <span class="perf-row__val" id="perf-total">–</span>
-        </div>
-        <div class="perf-row">
-            <span class="perf-row__lbl">No. of Subjects</span>
-            <span class="perf-row__val" id="perf-subjects">–</span>
-        </div>
-        <div class="perf-row">
-            <span class="perf-row__lbl">Average Score</span>
-            <span class="perf-row__val" id="perf-avg">–</span>
-        </div>
-        <div class="perf-row">
-            <span class="perf-row__lbl">Overall Grade</span>
-            <span class="perf-row__val" id="perf-grade">–</span>
-        </div>
-        <div class="perf-row">
-            <span class="perf-row__lbl">Class Size</span>
-            <span class="perf-row__val" id="perf-class-size">–</span>
-        </div>
-    </div>
-</div>
+                <div class="section__hd"><span class="section__title">Performance Summary</span></div>
+                <div class="perf-body">
+                    <div class="perf-row">
+                        <span class="perf-row__lbl">Total Score</span>
+                        <span class="perf-row__val" id="perf-total">–</span>
+                    </div>
+                    <div class="perf-row">
+                        <span class="perf-row__lbl">No. of Subjects</span>
+                        <span class="perf-row__val" id="perf-subjects">–</span>
+                    </div>
+                    <div class="perf-row">
+                        <span class="perf-row__lbl">Average Score</span>
+                        <span class="perf-row__val" id="perf-avg">–</span>
+                    </div>
+                    <div class="perf-row">
+                        <span class="perf-row__lbl">Overall Grade</span>
+                        <span class="perf-row__val" id="perf-grade">–</span>
+                    </div>
+                    <div class="perf-row">
+                        <span class="perf-row__lbl">Class Size</span>
+                        <span class="perf-row__val" id="perf-class-size">–</span>
+                    </div>
+                </div>
+            </div>
 
         </div><!-- /row-ac -->
 
@@ -901,7 +974,6 @@
     let wmOverlay = null;
 
     function buildWatermarkOverlay() {
-        // If already built, reuse
         if (wmOverlay) return Promise.resolve(wmOverlay);
 
         return new Promise(resolve => {
@@ -910,7 +982,6 @@
             img.src = 'IMG_4629.png';
 
             img.onload = function () {
-                // Draw onto an offscreen canvas at high resolution
                 const size = 600;
                 const canvas = document.createElement('canvas');
                 canvas.width  = size;
@@ -918,12 +989,10 @@
                 const ctx = canvas.getContext('2d');
 
                 ctx.globalAlpha = 0.045;
-                // Draw image centered and square
                 ctx.drawImage(img, 0, 0, size, size);
 
                 const dataUrl = canvas.toDataURL('image/png');
 
-                // Create an overlay div sized to the doc
                 const overlay = document.createElement('div');
                 overlay.id = 'wm-print-overlay';
                 overlay.style.cssText = [
@@ -943,7 +1012,7 @@
                 wmImg.style.cssText = [
                     'width:58%',
                     'max-width:58%',
-                    'opacity:1',    // opacity already baked into canvas pixels
+                    'opacity:1',
                     'display:block',
                     'pointer-events:none',
                     'user-select:none',
@@ -955,7 +1024,6 @@
             };
 
             img.onerror = function () {
-                // Image failed to load — resolve with null so print still works
                 wmOverlay = null;
                 resolve(null);
             };
@@ -966,7 +1034,6 @@
         const doc = document.querySelector('.doc');
         if (!doc) return;
 
-        // Make sure .doc is a positioned container
         const cs = getComputedStyle(doc);
         if (cs.position === 'static') doc.style.position = 'relative';
 
@@ -981,7 +1048,7 @@
         if (overlay && overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
         }
-        wmOverlay = null; // reset so it rebuilds fresh next time
+        wmOverlay = null;
     });
 })();
 </script>
@@ -1004,7 +1071,6 @@ function handlePrint() {
 
     window.print();
 
-    // Restore after print dialog closes (fires on confirm, cancel, or dismiss)
     window.addEventListener('afterprint', function restoreBtn() {
         btn.disabled = false;
         btn.innerHTML = '🖨 Print Report Card';
