@@ -2,9 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- CHANGED: was width=740 which forced the browser to shrink everything on mobile.
-         Now uses device-width so phones render at their natural resolution.
-         minimum-scale=1 prevents auto-shrink; user-scalable=yes lets parents pinch-zoom. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, user-scalable=yes">
     <title>Termly Report Card – Fahmid Nursery & Primary School</title>
 
@@ -27,46 +24,30 @@
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
 
     <style>
-    /* ================================================================
-       DESIGN TOKENS
-    ================================================================ */
     :root {
         --blue-deep:   #1565C0;
         --blue-mid:    #1976D2;
         --blue-soft:   #E3F0FB;
         --blue-border: #BBDEFB;
-
         --ink:         #111827;
         --ink-2:       #374151;
         --ink-3:       #6B7280;
         --ink-4:       #9CA3AF;
-
         --paper:       #FFFFFF;
         --paper-alt:   #F8F9FB;
         --rule:        #E5E7EB;
-
         --gold:        #C9A227;
         --gold-light:  #F0D060;
-
         --grade-a:     #15803D;
         --grade-b:     #1D4ED8;
         --grade-c:     #B45309;
         --grade-d:     #B91C1C;
         --grade-f:     #991B1B;
-
         --font:         'DM Sans', system-ui, sans-serif;
         --font-display: 'DM Serif Display', Georgia, serif;
-
         --radius: 4px;
-
-        /* CHANGED: was 8pt — bumped up slightly so text is more readable
-           on screen and when printed. All em-based sizes scale with this. */
-        --base-font: 9pt;
     }
 
-    /* ================================================================
-       RESET
-    ================================================================ */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
@@ -77,20 +58,11 @@
         -webkit-font-smoothing: antialiased;
     }
 
-    /* CHANGED: on mobile the doc is 740px wide and the page scrolls horizontally.
-       This is intentional — it's a print-layout document. Parents can:
-         a) pinch-zoom on their phone to read comfortably, or
-         b) use the browser's built-in zoom / reader mode.
-       On desktop it centres with generous padding. */
     body {
         padding: 16px 10px 48px;
-        /* Ensure the page is wide enough to hold the 740px doc + some breathing room */
         min-width: 760px;
     }
 
-    /* ================================================================
-       CONTROL BAR
-    ================================================================ */
     .ctrl {
         width: 740px;
         margin: 0 auto 10px;
@@ -99,6 +71,7 @@
         justify-content: space-between;
         gap: 8px;
     }
+
     .btn {
         display: inline-flex;
         align-items: center;
@@ -153,9 +126,6 @@
         background-position: right 0 center;
     }
 
-    /* ================================================================
-       DOCUMENT — fixed 740px, centred on screen
-    ================================================================ */
     .doc {
         width: 740px;
         margin: 0 auto;
@@ -164,13 +134,9 @@
         box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.07);
         position: relative;
         overflow: hidden;
-        /* CHANGED: was 8pt — now uses the token so it scales consistently */
-        font-size: var(--base-font);
+        font-size: 9pt;
     }
 
-    /* ================================================================
-       WATERMARK — screen only
-    ================================================================ */
     .watermark {
         position: absolute;
         top: 50%; left: 50%;
@@ -185,12 +151,8 @@
     }
     .doc > *:not(.watermark) { position: relative; z-index: 1; }
 
-    /* ================================================================
-       HEADER
-    ================================================================ */
     .doc-hd {
         background: var(--blue-deep);
-        /* CHANGED: slightly more padding so header feels more substantial at larger size */
         padding: 12px 18px 10px;
         display: grid;
         grid-template-columns: 50px 1fr;
@@ -206,7 +168,6 @@
         background: linear-gradient(90deg, #C9A227 0%, #F0D060 50%, #C9A227 100%);
     }
     .doc-hd__logo {
-        /* CHANGED: slightly larger logo to match bigger header */
         width: 50px; height: 50px;
         border-radius: 50%;
         overflow: hidden;
@@ -224,7 +185,6 @@
     }
     .doc-hd__name {
         font-family: var(--font-display);
-        /* CHANGED: slightly larger school name */
         font-size: 12pt;
         color: #fff;
         line-height: 1.2;
@@ -233,13 +193,11 @@
         margin-bottom: 2px;
     }
     .doc-hd__tagline {
-        /* CHANGED: was 6.5pt */
         font-size: 7pt;
         color: rgba(255,255,255,0.60);
         font-style: italic;
         margin-bottom: 2px;
     }
-    /* CHANGED: was 5.5pt — bumped so contact details are legible */
     .doc-hd__contact { font-size: 6pt; color: rgba(255,255,255,0.45); }
     .doc-hd__right { text-align: right; flex-shrink: 0; }
     .doc-hd__badge {
@@ -248,7 +206,6 @@
         border: 1px solid rgba(201,162,39,0.40);
         border-radius: 3px;
         padding: 2px 7px;
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         font-weight: 600;
         color: var(--gold-light);
@@ -256,12 +213,8 @@
         letter-spacing: 0.08em;
         margin-bottom: 2px;
     }
-    /* CHANGED: was 6.5pt */
     .doc-hd__session { font-size: 7pt; color: rgba(255,255,255,0.45); }
 
-    /* ================================================================
-       TITLE STRIP
-    ================================================================ */
     .doc-title {
         background: var(--paper-alt);
         border-bottom: 1px solid var(--rule);
@@ -269,7 +222,6 @@
         text-align: center;
     }
     .doc-title__text {
-        /* CHANGED: was 6.5pt */
         font-size: 7.5pt;
         font-weight: 600;
         color: var(--ink-2);
@@ -277,9 +229,6 @@
         letter-spacing: 0.12em;
     }
 
-    /* ================================================================
-       DOCUMENT BODY — vertical stack of sections
-    ================================================================ */
     .doc-body {
         padding: 10px 13px;
         display: flex;
@@ -287,9 +236,6 @@
         gap: 8px;
     }
 
-    /* ================================================================
-       SECTION SHELL
-    ================================================================ */
     .section {
         border: 1px solid var(--rule);
         border-radius: var(--radius);
@@ -309,7 +255,6 @@
         background: rgba(255,255,255,0.15);
     }
     .section__title {
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         font-weight: 600;
         color: rgba(255,255,255,0.92);
@@ -318,9 +263,6 @@
         white-space: nowrap;
     }
 
-    /* ================================================================
-       SECTION 1 — PUPIL PROFILE
-    ================================================================ */
     .id-grid { display: grid; grid-template-columns: repeat(6, 1fr); }
     .id-cell {
         padding: 5px 9px;
@@ -332,7 +274,6 @@
     }
     .id-cell:last-child { border-right: none; }
     .id-cell__lbl {
-        /* CHANGED: was 5pt */
         font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
@@ -340,7 +281,6 @@
         letter-spacing: 0.06em;
     }
     .id-cell__val {
-        /* CHANGED: was 7pt */
         font-size: 7.5pt;
         font-weight: 600;
         color: var(--ink);
@@ -349,9 +289,6 @@
         text-overflow: ellipsis;
     }
 
-    /* ================================================================
-       SECTION 2 — ATTENDANCE
-    ================================================================ */
     .att-row { display: grid; grid-template-columns: repeat(3, 1fr); }
     .att-card {
         padding: 10px 10px;
@@ -360,7 +297,6 @@
     }
     .att-card:last-child { border-right: none; }
     .att-card__n {
-        /* CHANGED: was 13pt */
         font-size: 15pt;
         font-weight: 700;
         color: var(--blue-deep);
@@ -368,7 +304,6 @@
         margin-bottom: 3px;
     }
     .att-card__lbl {
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         color: var(--ink-3);
         font-weight: 500;
@@ -376,9 +311,6 @@
         letter-spacing: 0.06em;
     }
 
-    /* ================================================================
-       SECTION 3 — ACADEMIC + PERFORMANCE SUMMARY
-    ================================================================ */
     .row-ac {
         display: grid;
         grid-template-columns: 1fr 200px;
@@ -395,7 +327,6 @@
     .ac-table th {
         padding: 5px 5px;
         text-align: center;
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         font-weight: 600;
         color: var(--ink-2);
@@ -405,23 +336,21 @@
         background: var(--paper-alt);
     }
     .ac-table th:first-child { text-align: left; padding-left: 9px; width: 36%; }
-    /* CHANGED: was 20px row height */
     .ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 22px; }
     .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
     .ac-table tbody tr:last-child { border-bottom: none; }
-    /* CHANGED: was 7pt */
     .ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
     .ac-table td:first-child { text-align: left; padding-left: 9px; font-weight: 500; }
     .ac-table td.col-total { font-weight: 700; color: var(--blue-deep); }
+    .ac-table th, .ac-table td { vertical-align: middle; }
+    .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
-    /* Grade colours */
     .grade-A1            { color: var(--grade-a); font-weight: 700; }
     .grade-B2,.grade-B3  { color: var(--grade-b); font-weight: 700; }
     .grade-C4,.grade-C5,.grade-C6 { color: var(--grade-c); font-weight: 700; }
     .grade-D7,.grade-D8  { color: var(--grade-d); font-weight: 700; }
     .grade-F9            { color: var(--grade-f); font-weight: 700; }
 
-    /* Performance summary card */
     .perf-body { padding: 9px 11px; display: flex; flex-direction: column; gap: 5px; }
     .perf-row {
         display: flex;
@@ -432,25 +361,15 @@
     }
     .perf-row:last-child { border-bottom: none; padding-bottom: 0; }
     .perf-row__lbl {
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         font-weight: 600;
         color: var(--ink-3);
         text-transform: uppercase;
         letter-spacing: 0.06em;
     }
-    /* CHANGED: was 9pt */
     .perf-row__val { font-size: 10pt; font-weight: 700; color: var(--blue-deep); }
-    /* CHANGED: was 11pt */
     #perf-grade { font-size: 13pt; }
 
-    /* Sub-CA column sizing */
-    .ac-table th, .ac-table td { vertical-align: middle; }
-    .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
-
-    /* ================================================================
-       SECTION 4 — GRADING KEY
-    ================================================================ */
     .key {
         border: 1px solid var(--rule);
         border-radius: var(--radius);
@@ -458,7 +377,6 @@
         background: var(--paper-alt);
     }
     .key__title {
-        /* CHANGED: was 5pt */
         font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
@@ -468,7 +386,6 @@
     }
     .key__items { display: flex; flex-wrap: wrap; gap: 3px; }
     .key__item {
-        /* CHANGED: was 5.5pt */
         font-size: 6pt;
         padding: 1px 5px;
         border-radius: 2px;
@@ -478,9 +395,6 @@
         white-space: nowrap;
     }
 
-    /* ================================================================
-       SECTION 5 — BEHAVIORAL TRAITS + PSYCHOMOTOR SKILLS
-    ================================================================ */
     .row-traits {
         display: grid;
         grid-template-columns: 1fr 200px;
@@ -492,7 +406,6 @@
         background: var(--paper-alt);
         border-bottom: 1px solid var(--rule);
         padding: 3px 10px;
-        /* CHANGED: was 5pt */
         font-size: 5.5pt;
         font-style: italic;
         color: var(--ink-3);
@@ -504,7 +417,6 @@
     .tr-grid--2col { grid-template-columns: repeat(2, 1fr); }
 
     .tr-item {
-        /* CHANGED: was 3px 7px */
         padding: 4px 8px;
         border-right: 1px solid var(--rule);
         border-bottom: 1px solid var(--rule);
@@ -515,18 +427,15 @@
         min-width: 0;
     }
 
-    /* 3-col borders */
     .tr-grid--3col .tr-item:nth-child(3n)        { border-right: none; }
     .tr-grid--3col .tr-item:nth-last-child(-n+3) { border-bottom: none; }
     .tr-grid--3col .tr-item:last-child           { border-bottom: none; }
 
-    /* 2-col borders */
     .tr-grid--2col .tr-item:nth-child(2n)        { border-right: none; }
     .tr-grid--2col .tr-item:nth-last-child(-n+2) { border-bottom: none; }
     .tr-grid--2col .tr-item:last-child           { border-bottom: none; }
 
     .tr-item__lbl {
-        /* CHANGED: was 6pt */
         font-size: 6.5pt;
         color: var(--ink-2);
         font-weight: 500;
@@ -535,7 +444,6 @@
         text-overflow: ellipsis;
     }
     .trait-value {
-        /* CHANGED: was 7.5pt */
         font-size: 8pt;
         font-weight: 700;
         color: var(--blue-deep);
@@ -544,9 +452,6 @@
         flex-shrink: 0;
     }
 
-    /* ================================================================
-       SECTION 6 — REMARKS + SIGNATURES
-    ================================================================ */
     .bottom-strip {
         display: grid;
         grid-template-columns: 1fr 1fr 108px 108px;
@@ -556,7 +461,6 @@
     }
     .remark-blk { padding: 7px 10px; border-right: 1px solid var(--rule); }
     .remark-blk__lbl {
-        /* CHANGED: was 5pt */
         font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
@@ -564,7 +468,6 @@
         letter-spacing: 0.07em;
         margin-bottom: 3px;
     }
-    /* CHANGED: was 6.5pt */
     .remark-blk__txt { font-size: 7pt; color: var(--ink); line-height: 1.5; min-height: 20px; }
     .sig-blk {
         padding: 7px 10px;
@@ -578,7 +481,6 @@
         border-top: 1px solid var(--ink-2);
         padding-top: 3px;
         margin-top: 22px;
-        /* CHANGED: was 5pt */
         font-size: 5.5pt;
         font-weight: 600;
         color: var(--ink-3);
@@ -587,9 +489,6 @@
         white-space: nowrap;
     }
 
-    /* ================================================================
-       RESUMPTION BANNER
-    ================================================================ */
     .resumption-bar {
         background: var(--blue-soft);
         border-top: 1px solid var(--blue-border);
@@ -600,19 +499,14 @@
         gap: 10px;
     }
     .resumption-bar__lbl {
-        /* CHANGED: was 6pt */
         font-size: 6.5pt;
         font-weight: 600;
         color: var(--ink-3);
         text-transform: uppercase;
         letter-spacing: 0.08em;
     }
-    /* CHANGED: was 8pt */
     .resumption-bar__val { font-size: 9pt; font-weight: 700; color: var(--blue-deep); }
 
-    /* ================================================================
-       FOOTER
-    ================================================================ */
     .doc-ft {
         border-top: 1px solid var(--rule);
         padding: 5px 18px;
@@ -621,52 +515,35 @@
         justify-content: space-between;
         background: var(--paper-alt);
     }
-    /* CHANGED: was 5pt */
     .doc-ft__txt { font-size: 5.5pt; color: var(--ink-4); font-style: italic; }
     .doc-ft__badge { display: flex; align-items: center; gap: 4px; }
     .doc-ft__dot { width: 4px; height: 4px; border-radius: 50%; background: var(--blue-deep); opacity: 0.5; }
-    /* CHANGED: was 5pt */
     .doc-ft__badge-txt { font-size: 5.5pt; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; }
 
-    /* ================================================================
-       PRINT STYLES
-    ================================================================ */
     @media print {
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-        html {
-            /* CHANGED: was 10.5pt — increased so the 740px design fills A4 better.
-               At 11.5pt the content scales up ~10% and uses more of the page width. */
-            font-size: 11.5pt;
-        }
-
         html, body {
-            background: #fff;
-            padding: 0;
-            margin: 0;
-            width: 100%;
-            /* Override the min-width set for screen */
-            min-width: 0 !important;
-        }
-
-        body {
+            background: #fff !important;
             padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            min-width: 0 !important;
         }
 
         .ctrl, .no-print { display: none !important; }
 
+        .watermark { display: none !important; }
+
         .doc {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
+            width: 190mm !important;
+            max-width: 190mm !important;
+            margin: 0 auto !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             overflow: visible !important;
-            /* CHANGED: explicit font size so print isn't affected by screen token */
-            font-size: 8.5pt;
+            font-size: 9pt !important;
         }
-
-        .watermark { display: none !important; }
 
         .ac-table thead { display: table-header-group; position: static; }
         .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
@@ -687,12 +564,10 @@
 
         @page {
             size: A4 portrait;
-            /* CHANGED: was 8mm 10mm — tighter margins so more content width is used */
-            margin: 6mm 8mm;
+            margin: 10mm 10mm;
         }
     }
 
-    /* Spin animation for loading spinner */
     @keyframes spin {
         0%  { transform: rotate(0deg); }
         100%{ transform: rotate(360deg); }
@@ -701,7 +576,6 @@
 </head>
 <body>
 
-<!-- CONTROL BAR (hidden on print) -->
 <div class="ctrl no-print">
     <div>
         <a href="pupil.html" class="btn btn-ghost">← Back to Portal</a>
@@ -719,15 +593,10 @@
     </div>
 </div>
 
-<!-- ============================================================
-     DOCUMENT
-============================================================ -->
 <div class="doc">
 
-    <!-- Screen-only watermark image (hidden on print; canvas takes over) -->
     <img class="watermark" src="IMG_4629.png" alt="" aria-hidden="true">
 
-    <!-- HEADER -->
     <div class="doc-hd">
         <div class="doc-hd__logo">
             <img src="IMG_4629.png" alt="Fahmid Nursery &amp; Primary School Logo">
@@ -745,15 +614,12 @@
         </div>
     </div>
 
-    <!-- TITLE STRIP -->
     <div class="doc-title">
         <div class="doc-title__text" id="report-title">Termly Report Card</div>
     </div>
 
-    <!-- BODY -->
     <div class="doc-body">
 
-        <!-- 1 ── PUPIL PROFILE ─────────────────────────── -->
         <div class="section">
             <div class="section__hd"><span class="section__title">Pupil Profile</span></div>
             <div class="id-grid">
@@ -784,7 +650,6 @@
             </div>
         </div>
 
-        <!-- 2 ── ATTENDANCE ────────────────────────────── -->
         <div class="section">
             <div class="section__hd"><span class="section__title">Attendance</span></div>
             <div class="att-row">
@@ -803,7 +668,6 @@
             </div>
         </div>
 
-        <!-- 3 ── ACADEMIC PERFORMANCE + PERFORMANCE SUMMARY ── -->
         <div class="row-ac">
 
             <div class="section section--academic">
@@ -867,9 +731,8 @@
                 </div>
             </div>
 
-        </div><!-- /row-ac -->
+        </div>
 
-        <!-- 4 ── GRADING KEY ───────────────────────────── -->
         <div class="key">
             <div class="key__title">Grading System</div>
             <div class="key__items">
@@ -885,7 +748,6 @@
             </div>
         </div>
 
-        <!-- 5 ── BEHAVIORAL TRAITS + PSYCHOMOTOR SKILLS ── -->
         <div class="row-traits">
 
             <div class="section">
@@ -918,9 +780,8 @@
                 </div>
             </div>
 
-        </div><!-- /row-traits -->
+        </div>
 
-        <!-- 6 ── REMARKS + SIGNATURES ─────────────────── -->
         <div class="bottom-strip">
             <div class="remark-blk">
                 <div class="remark-blk__lbl">Class Teacher's Remark</div>
@@ -938,15 +799,13 @@
             </div>
         </div>
 
-    </div><!-- /doc-body -->
+    </div>
 
-    <!-- RESUMPTION BANNER -->
     <div class="resumption-bar">
         <span class="resumption-bar__lbl">Next Term Resumes</span>
         <span class="resumption-bar__val" id="resumption-date">–</span>
     </div>
 
-    <!-- FOOTER -->
     <div class="doc-ft">
         <span class="doc-ft__txt">Official academic document — Fahmid Nursery &amp; Primary School</span>
         <div class="doc-ft__badge">
@@ -955,11 +814,9 @@
         </div>
     </div>
 
-</div><!-- /doc -->
+</div>
 
-<!-- Canvas watermark overlay — injected before print, removed after -->
 <canvas id="wm-canvas" style="display:none;"></canvas>
-
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="firebase-init.js"></script>
@@ -967,9 +824,6 @@
 <script src="print-results.js"></script>
 
 <script>
-/* ================================================================
-   CANVAS WATERMARK
-================================================================ */
 (function () {
     let wmOverlay = null;
 
@@ -987,35 +841,25 @@
                 canvas.width  = size;
                 canvas.height = size;
                 const ctx = canvas.getContext('2d');
-
                 ctx.globalAlpha = 0.045;
                 ctx.drawImage(img, 0, 0, size, size);
-
                 const dataUrl = canvas.toDataURL('image/png');
 
                 const overlay = document.createElement('div');
                 overlay.id = 'wm-print-overlay';
                 overlay.style.cssText = [
-                    'position:absolute',
-                    'top:0', 'left:0',
+                    'position:absolute', 'top:0', 'left:0',
                     'width:100%', 'height:100%',
-                    'pointer-events:none',
-                    'z-index:0',
-                    'display:flex',
-                    'align-items:center',
-                    'justify-content:center',
-                    'overflow:hidden',
+                    'pointer-events:none', 'z-index:0',
+                    'display:flex', 'align-items:center',
+                    'justify-content:center', 'overflow:hidden',
                 ].join(';');
 
                 const wmImg = document.createElement('img');
                 wmImg.src = dataUrl;
                 wmImg.style.cssText = [
-                    'width:58%',
-                    'max-width:58%',
-                    'opacity:1',
-                    'display:block',
-                    'pointer-events:none',
-                    'user-select:none',
+                    'width:58%', 'max-width:58%', 'opacity:1',
+                    'display:block', 'pointer-events:none', 'user-select:none',
                 ].join(';');
 
                 overlay.appendChild(wmImg);
@@ -1023,20 +867,14 @@
                 resolve(overlay);
             };
 
-            img.onerror = function () {
-                wmOverlay = null;
-                resolve(null);
-            };
+            img.onerror = function () { wmOverlay = null; resolve(null); };
         });
     }
 
     window.addEventListener('beforeprint', async function () {
         const doc = document.querySelector('.doc');
         if (!doc) return;
-
-        const cs = getComputedStyle(doc);
-        if (cs.position === 'static') doc.style.position = 'relative';
-
+        if (getComputedStyle(doc).position === 'static') doc.style.position = 'relative';
         const overlay = await buildWatermarkOverlay();
         if (overlay && !doc.contains(overlay)) {
             doc.insertBefore(overlay, doc.firstChild);
@@ -1045,9 +883,7 @@
 
     window.addEventListener('afterprint', function () {
         const overlay = document.getElementById('wm-print-overlay');
-        if (overlay && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-        }
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         wmOverlay = null;
     });
 })();
@@ -1057,7 +893,7 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-            .then(() => console.log('✓ Service Worker registered'))
+            .then(() => console.log('Service Worker registered'))
             .catch(e => console.error('SW error:', e));
     });
 }
@@ -1068,9 +904,7 @@ function handlePrint() {
     const btn = document.getElementById('print-btn');
     btn.disabled = true;
     btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;"></span> Preparing…</span>';
-
     window.print();
-
     window.addEventListener('afterprint', function restoreBtn() {
         btn.disabled = false;
         btn.innerHTML = '🖨 Print Report Card';
