@@ -2432,3 +2432,243 @@
         display: grid;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RESULTS — CARD LAYOUT (replaces broken mobile table)
+   Works on all screen sizes; compact on desktop, full-width
+   on mobile. Skeleton loader included.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── CA info bar ─────────────────────────────────────────── */
+.tp-ca-info-bar {
+  background: var(--tp-info-bg);
+  border: 1px solid var(--tp-info-border);
+  border-radius: var(--tp-radius-md);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  margin-bottom: var(--tp-space-5);
+  font-size: 0.8125rem;
+  color: #0c4a6e;
+  line-height: 1.5;
+}
+
+/* ── Card grid ───────────────────────────────────────────── */
+.tp-result-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-4);
+}
+
+/* ── Single result card ──────────────────────────────────── */
+.tp-result-card {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--tp-shadow-sm);
+}
+
+.tp-result-card__name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--tp-text-primary);
+  background: var(--tp-bg);
+  padding: var(--tp-space-3) var(--tp-space-4);
+  border-bottom: 1px solid var(--tp-border);
+  letter-spacing: -0.01em;
+}
+
+/* ── CA sub-fields: 3-column grid ───────────────────────── */
+.tp-result-card__ca-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-result-card__field {
+  display: flex;
+  flex-direction: column;
+  padding: var(--tp-space-3) var(--tp-space-3);
+  gap: 6px;
+  border-right: 1px solid var(--tp-border-light);
+}
+
+.tp-result-card__field:last-child {
+  border-right: none;
+}
+
+.tp-result-card__label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tp-text-muted);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tp-result-card__max {
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.tp-result-card__input {
+  width: 100%;
+  padding: 8px 6px;
+  font-family: var(--tp-font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-sm);
+  background: white;
+  color: var(--tp-text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -moz-appearance: textfield;
+}
+
+.tp-result-card__input::-webkit-inner-spin-button,
+.tp-result-card__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tp-result-card__input:focus {
+  outline: none;
+  border-color: var(--tp-accent);
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+}
+
+/* ── Totals row ─────────────────────────────────────────── */
+.tp-result-card__totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: var(--tp-bg);
+}
+
+.tp-result-card__ca-total,
+.tp-result-card__exam-field,
+.tp-result-card__grand-total {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--tp-space-3);
+  border-right: 1px solid var(--tp-border-light);
+}
+
+.tp-result-card__grand-total {
+  border-right: none;
+}
+
+.tp-result-card__total-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--tp-text-muted);
+  display: block;
+}
+
+.tp-result-card__total-value {
+  font-family: var(--tp-font-mono);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.tp-result-card__total-value--ca {
+  color: var(--tp-primary-light);
+}
+
+.tp-result-card__total-value--grand {
+  font-size: 1.25rem;
+}
+
+.tp-result-card__input--exam {
+  font-size: 1.0625rem;
+  padding: 9px 6px;
+}
+
+/* ── Desktop: 2-column grid for cards ────────────────────── */
+@media (min-width: 900px) {
+  .tp-result-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--tp-space-4);
+  }
+}
+
+@media (min-width: 1200px) {
+  .tp-result-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Skeleton loader ─────────────────────────────────────── */
+.tp-results-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tp-space-4);
+}
+
+@media (min-width: 900px) {
+  .tp-results-skeleton {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .tp-results-skeleton {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.tp-result-skeleton-card {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-lg);
+  overflow: hidden;
+  padding: 0 0 var(--tp-space-3);
+}
+
+.tp-skeleton-name {
+  height: 44px;
+  border-radius: 0;
+  margin-bottom: var(--tp-space-3);
+}
+
+.tp-skeleton-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--tp-space-2);
+  padding: 0 var(--tp-space-3) var(--tp-space-3);
+}
+
+.tp-skeleton-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tp-skeleton--label {
+  height: 10px;
+  width: 70%;
+  border-radius: var(--tp-radius-sm);
+}
+
+.tp-skeleton--input {
+  height: 38px;
+  border-radius: var(--tp-radius-sm);
+}
+
+.tp-skeleton--total {
+  height: 48px;
+  margin: 0 var(--tp-space-3);
+  border-radius: var(--tp-radius-sm);
+}
+
+/* ── Remove old results-table min-width that broke mobile ─ */
+#results-table { min-width: unset; }
