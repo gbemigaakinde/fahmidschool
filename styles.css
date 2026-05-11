@@ -839,18 +839,6 @@ p:not(:last-child) { margin-bottom: 1em; }
   max-width: 780px;
 }
 
-/* ================================================================
-   HERO HEADLINE + EYEBROW — COMPLETE FIX
-   Replace the matching blocks in styles.css
-   ================================================================ */
-
-
-/* ----------------------------------------------------------------
-   FIX 1 — Hero eyebrow (Est. 2007)
-   The key change: smaller padding, subtler background opacity,
-   and a lower border opacity so it reads as a quiet label,
-   not a badge demanding attention.
-   ---------------------------------------------------------------- */
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -871,18 +859,6 @@ p:not(:last-child) { margin-bottom: 1em; }
   height: 10px;
 }
 
-
-/* ----------------------------------------------------------------
-   FIX 2 — Hero h1: wrapping + per-line typing
-   
-   The problem with putting typed-word on the full sentence:
-   white-space:nowrap prevents line breaks → bleeds off screen.
-
-   Solution: Split into two separate lines in HTML.
-   Line 1 renders immediately (static).
-   Line 2 uses the typing animation.
-   Both lines can wrap naturally within the container width.
-   ---------------------------------------------------------------- */
 .hero h1 {
   font-family: var(--font-display);
   font-size: var(--text-display);
@@ -904,13 +880,6 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: block;
   font-style: italic;
   color: white;
-
-  /*
-    Clip reveal trick that RESPECTS line breaks:
-    Instead of animating width (which requires nowrap),
-    we animate clip-path from left to right.
-    This works on any multi-line content safely.
-  */
   clip-path: inset(0 100% 0 0);
   animation: hero-reveal 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
 }
@@ -1269,8 +1238,7 @@ p:not(:last-child) { margin-bottom: 1em; }
 }
 
 /* ================================================================
-   TESTIMONIAL MARQUEE FIX — paste these rules into styles.css,
-   replacing the existing "TESTIMONIALS — INFINITE MARQUEE" block
+   TESTIMONIAL MARQUEE 
    ================================================================ */
 
 /* Outer viewport */
