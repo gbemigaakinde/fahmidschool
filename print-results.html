@@ -29,23 +29,30 @@
         --blue-mid:    #1976D2;
         --blue-soft:   #E3F0FB;
         --blue-border: #BBDEFB;
+
         --ink:         #111827;
         --ink-2:       #374151;
         --ink-3:       #6B7280;
         --ink-4:       #9CA3AF;
+
         --paper:       #FFFFFF;
         --paper-alt:   #F8F9FB;
         --rule:        #E5E7EB;
+
         --gold:        #C9A227;
         --gold-light:  #F0D060;
+
         --grade-a:     #15803D;
         --grade-b:     #1D4ED8;
         --grade-c:     #B45309;
         --grade-d:     #B91C1C;
         --grade-f:     #991B1B;
+
         --font:         'DM Sans', system-ui, sans-serif;
         --font-display: 'DM Serif Display', Georgia, serif;
+
         --radius: 4px;
+        --base-font: 9pt;
     }
 
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -71,7 +78,6 @@
         justify-content: space-between;
         gap: 8px;
     }
-
     .btn {
         display: inline-flex;
         align-items: center;
@@ -134,7 +140,7 @@
         box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.07);
         position: relative;
         overflow: hidden;
-        font-size: 9pt;
+        font-size: var(--base-font);
     }
 
     .watermark {
@@ -342,8 +348,6 @@
     .ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
     .ac-table td:first-child { text-align: left; padding-left: 9px; font-weight: 500; }
     .ac-table td.col-total { font-weight: 700; color: var(--blue-deep); }
-    .ac-table th, .ac-table td { vertical-align: middle; }
-    .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
     .grade-A1            { color: var(--grade-a); font-weight: 700; }
     .grade-B2,.grade-B3  { color: var(--grade-b); font-weight: 700; }
@@ -369,6 +373,9 @@
     }
     .perf-row__val { font-size: 10pt; font-weight: 700; color: var(--blue-deep); }
     #perf-grade { font-size: 13pt; }
+
+    .ac-table th, .ac-table td { vertical-align: middle; }
+    .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
     .key {
         border: 1px solid var(--rule);
@@ -454,12 +461,18 @@
 
     .bottom-strip {
         display: grid;
-        grid-template-columns: 1fr 1fr 108px 108px;
+        grid-template-columns: 1fr 1fr;
         border: 1px solid var(--rule);
         border-radius: var(--radius);
         overflow: hidden;
     }
-    .remark-blk { padding: 7px 10px; border-right: 1px solid var(--rule); }
+    .remark-blk {
+        padding: 7px 10px 10px;
+        border-right: 1px solid var(--rule);
+        display: flex;
+        flex-direction: column;
+    }
+    .remark-blk:last-child { border-right: none; }
     .remark-blk__lbl {
         font-size: 5.5pt;
         font-weight: 600;
@@ -468,15 +481,7 @@
         letter-spacing: 0.07em;
         margin-bottom: 3px;
     }
-    .remark-blk__txt { font-size: 7pt; color: var(--ink); line-height: 1.5; min-height: 20px; }
-    .sig-blk {
-        padding: 7px 10px;
-        border-right: 1px solid var(--rule);
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-    }
-    .sig-blk:last-child { border-right: none; }
+    .remark-blk__txt { font-size: 7pt; color: var(--ink); line-height: 1.5; min-height: 20px; flex: 1; }
     .sig-blk__line {
         border-top: 1px solid var(--ink-2);
         padding-top: 3px;
@@ -523,27 +528,31 @@
     @media print {
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+        html { font-size: 11.5pt; }
+
         html, body {
-            background: #fff !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
+            background: #fff;
+            padding: 0;
+            margin: 0;
+            width: 100%;
             min-width: 0 !important;
         }
 
+        body { padding: 0 !important; }
+
         .ctrl, .no-print { display: none !important; }
 
-        .watermark { display: none !important; }
-
         .doc {
-            width: 190mm !important;
-            max-width: 190mm !important;
-            margin: 0 auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             overflow: visible !important;
-            font-size: 9pt !important;
+            font-size: 8.5pt;
         }
+
+        .watermark { display: none !important; }
 
         .ac-table thead { display: table-header-group; position: static; }
         .ac-table tbody tr { page-break-inside: avoid; break-inside: avoid; }
@@ -564,7 +573,7 @@
 
         @page {
             size: A4 portrait;
-            margin: 10mm 10mm;
+            margin: 6mm 8mm;
         }
     }
 
@@ -786,15 +795,11 @@
             <div class="remark-blk">
                 <div class="remark-blk__lbl">Class Teacher's Remark</div>
                 <div class="remark-blk__txt" id="teacher-remark">–</div>
+                <div class="sig-blk__line">Class Teacher's Signature</div>
             </div>
             <div class="remark-blk">
                 <div class="remark-blk__lbl">Head Teacher's Remark</div>
                 <div class="remark-blk__txt" id="head-remark">–</div>
-            </div>
-            <div class="sig-blk">
-                <div class="sig-blk__line">Class Teacher's Signature</div>
-            </div>
-            <div class="sig-blk">
                 <div class="sig-blk__line">Head Teacher's Signature</div>
             </div>
         </div>
@@ -817,6 +822,7 @@
 </div>
 
 <canvas id="wm-canvas" style="display:none;"></canvas>
+
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
 <script src="firebase-init.js"></script>
@@ -841,25 +847,35 @@
                 canvas.width  = size;
                 canvas.height = size;
                 const ctx = canvas.getContext('2d');
+
                 ctx.globalAlpha = 0.045;
                 ctx.drawImage(img, 0, 0, size, size);
+
                 const dataUrl = canvas.toDataURL('image/png');
 
                 const overlay = document.createElement('div');
                 overlay.id = 'wm-print-overlay';
                 overlay.style.cssText = [
-                    'position:absolute', 'top:0', 'left:0',
+                    'position:absolute',
+                    'top:0', 'left:0',
                     'width:100%', 'height:100%',
-                    'pointer-events:none', 'z-index:0',
-                    'display:flex', 'align-items:center',
-                    'justify-content:center', 'overflow:hidden',
+                    'pointer-events:none',
+                    'z-index:0',
+                    'display:flex',
+                    'align-items:center',
+                    'justify-content:center',
+                    'overflow:hidden',
                 ].join(';');
 
                 const wmImg = document.createElement('img');
                 wmImg.src = dataUrl;
                 wmImg.style.cssText = [
-                    'width:58%', 'max-width:58%', 'opacity:1',
-                    'display:block', 'pointer-events:none', 'user-select:none',
+                    'width:58%',
+                    'max-width:58%',
+                    'opacity:1',
+                    'display:block',
+                    'pointer-events:none',
+                    'user-select:none',
                 ].join(';');
 
                 overlay.appendChild(wmImg);
@@ -867,14 +883,20 @@
                 resolve(overlay);
             };
 
-            img.onerror = function () { wmOverlay = null; resolve(null); };
+            img.onerror = function () {
+                wmOverlay = null;
+                resolve(null);
+            };
         });
     }
 
     window.addEventListener('beforeprint', async function () {
         const doc = document.querySelector('.doc');
         if (!doc) return;
-        if (getComputedStyle(doc).position === 'static') doc.style.position = 'relative';
+
+        const cs = getComputedStyle(doc);
+        if (cs.position === 'static') doc.style.position = 'relative';
+
         const overlay = await buildWatermarkOverlay();
         if (overlay && !doc.contains(overlay)) {
             doc.insertBefore(overlay, doc.firstChild);
@@ -883,7 +905,9 @@
 
     window.addEventListener('afterprint', function () {
         const overlay = document.getElementById('wm-print-overlay');
-        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
         wmOverlay = null;
     });
 })();
@@ -893,7 +917,7 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-            .then(() => console.log('Service Worker registered'))
+            .then(() => console.log('✓ Service Worker registered'))
             .catch(e => console.error('SW error:', e));
     });
 }
@@ -904,7 +928,9 @@ function handlePrint() {
     const btn = document.getElementById('print-btn');
     btn.disabled = true;
     btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin 0.7s linear infinite;"></span> Preparing…</span>';
+
     window.print();
+
     window.addEventListener('afterprint', function restoreBtn() {
         btn.disabled = false;
         btn.innerHTML = '🖨 Print Report Card';
