@@ -201,7 +201,7 @@ async function initPrintResultsWrapper() {
             if (sessionOverride) currentSettings.session = sessionOverride;
 
             await fetchPupilProfile(currentPupilId);
-            setupTermSelector();
+            await setupTermSelector();
             updateReportHeader();
             isInitialized = true;
             await loadReportData();
