@@ -298,11 +298,46 @@ async function fetchPupilProfile(uid) {
     }
 }
 
-function setupTermSelector() {
+async function setupTermSelector() {
     const select = document.getElementById('print-term');
     if (!select) { console.error('Term selector not found'); return; }
 
-    const termToSelect = currentSettings.term;
+    const urlSession = getSessionFromUrl();
+    const isHistoricalSession = !!urlSession;
+
+    let termToSelect = currentSettings.term; // default: live current term
+
+    if (isHistoricalSession) {
+        // For a historical session, find which terms actually have approved
+        // results for this pupil, then default to the first one found.
+        try {
+            const snap = await db.collection('results')
+                .where('pupilId', '==', currentPupilId)
+                .where('session', '==', urlSession)
+                .where('status',  '==', 'approved')
+                .get();
+
+            const termsWithResults = new Set();
+            snap.forEach(doc => {
+                const t = doc.data().term;
+                if (t) termsWithResults.add(t);
+            });
+
+            // Prefer the term order: First → Second → Third
+            const termOrder = ['First Term', 'Second Term', 'Third Term'];
+            const firstAvailable = termOrder.find(t => termsWithResults.has(t));
+            if (firstAvailable) termToSelect = firstAvailable;
+
+            console.log(
+                'Historical session:', urlSession,
+                '| Terms with results:', [...termsWithResults],
+                '| Defaulting to:', termToSelect
+            );
+        } catch (e) {
+            console.warn('Could not determine terms for historical session:', e.message);
+        }
+    }
+
     setText('current-term', termToSelect);
 
     const newSelect = select.cloneNode(true);
@@ -317,6 +352,9 @@ function setupTermSelector() {
     });
 
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
+
+    // Update the in-memory term so loadReportData() uses the right one
+    currentSettings.term = termToSelect;
 }
 
 function updateReportHeader() {
