@@ -5,7 +5,7 @@ import {
   getClassIdSafely,
 } from './fee-calculator.js';
 
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 export async function calculateCurrentOutstanding(pupilId, session, term) {
   try {
