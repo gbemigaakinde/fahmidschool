@@ -1,7 +1,16 @@
 // shared/settings.js
 // Current settings fetcher and session cache manager (ES Module)
+// Uses Firebase v9+ modular SDK.
 
 import { db } from '../db.js';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
 // ============================================
 // DEFAULTS
@@ -64,9 +73,9 @@ async function fetchSettings(forceRefresh = false) {
   console.log('⟳ Fetching fresh settings from Firestore');
 
   try {
-    const settingsDoc = await db.collection('settings').doc('current').get();
+    const settingsDoc = await getDoc(doc(db, 'settings', 'current'));
 
-    if (!settingsDoc.exists) {
+    if (!settingsDoc.exists()) {
       console.warn('⚠️ Settings document not found, using defaults');
       cache.settings = DEFAULT_SETTINGS;
       cache.lastFetch.settings = Date.now();
@@ -147,9 +156,9 @@ async function fetchAllSessions(forceRefresh = false) {
     const settings = await fetchSettings();
     const currentSession = settings.session;
 
-    const sessionsSnap = await db.collection('sessions')
-      .orderBy('startYear', 'desc')
-      .get();
+    const sessionsSnap = await getDocs(
+      query(collection(db, 'sessions'), orderBy('startYear', 'desc'))
+    );
 
     const sessions = [{
       value:     'current',
@@ -158,8 +167,8 @@ async function fetchAllSessions(forceRefresh = false) {
       isCurrent: true
     }];
 
-    sessionsSnap.forEach(doc => {
-      const data = doc.data();
+    sessionsSnap.forEach(docSnap => {
+      const data = docSnap.data();
       sessions.push({
         value:     data.name,
         label:     `${data.name} Session`,
@@ -182,7 +191,7 @@ async function fetchAllSessions(forceRefresh = false) {
       return cache.sessions;
     }
 
-    // Minimal fallback — re-use already-cached/default settings
+    // Minimal fallback
     const settings = await fetchSettings();
     return [{
       value:     'current',
