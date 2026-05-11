@@ -1,5 +1,6 @@
 // shared/errors.js
 // Error messages and error handler utility (ES Module)
+// No Firebase SDK calls — no changes needed for v9 migration.
 
 import { showToast } from '../ui/toast.js';
 
