@@ -1,11 +1,30 @@
 // auth.js
 // Firebase Auth instance, session timeout, and auth helper functions (ES Module)
+// Uses Firebase v9+ modular SDK.
 
-import _app from './firebase-config.js';
+import app from './firebase-config.js';
 import { showToast } from './ui/toast.js';
 import { handleError } from './shared/errors.js';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js';
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  query,
+  where,
+  limit,
+  getDocs
+} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 
-export const auth = firebase.auth();
+export const auth = getAuth(app);
+const db = getFirestore(app);
 
 // ============================================
 // SESSION TIMEOUT
@@ -24,7 +43,7 @@ export function resetSessionTimeout() {
 
     console.log('Session timeout reached, logging out...');
     try {
-      await auth.signOut();
+      await signOut(auth);
       showToast(
         'Your session has expired due to inactivity. Please log in again.',
         'info',
@@ -37,6 +56,7 @@ export function resetSessionTimeout() {
   }, SESSION_TIMEOUT_MS);
 }
 
+// Wire up activity listeners
 const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
 activityEvents.forEach(event => {
   document.addEventListener(event, () => {
@@ -44,7 +64,8 @@ activityEvents.forEach(event => {
   }, { passive: true });
 });
 
-auth.onAuthStateChanged(user => {
+// Start/stop timeout tracking on auth state change
+onAuthStateChanged(auth, user => {
   if (user) {
     resetSessionTimeout();
     console.log('✓ Session timeout tracking started');
@@ -57,27 +78,22 @@ auth.onAuthStateChanged(user => {
 });
 
 // ============================================
-// ROLE & USER HELPERS
+// AUTH HELPERS
 // ============================================
 
 export async function getUserRole(uid) {
   try {
-    const doc = await firebase.firestore().collection('users').doc(uid).get();
-    return doc.exists ? (doc.data().role || 'pupil') : null;
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    return userDoc.exists() ? (userDoc.data().role || 'pupil') : null;
   } catch (error) {
     console.error('Error getting user role:', error);
     return null;
   }
 }
 
-/**
- * Verify the currently signed-in user has the required role.
- * Resolves with { uid, email, role } on success.
- * On failure, signs out and redirects to login.html.
- */
 export function checkRole(requiredRole) {
   return new Promise((resolve, reject) => {
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (!user) {
         showToast('Please log in to continue', 'warning');
         setTimeout(() => { window.location.href = 'login.html'; }, 1500);
@@ -86,14 +102,11 @@ export function checkRole(requiredRole) {
       }
 
       try {
-        const userDoc = await firebase.firestore()
-          .collection('users')
-          .doc(user.uid)
-          .get();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
 
-        if (!userDoc.exists) {
+        if (!userDoc.exists()) {
           showToast('User profile not found', 'danger');
-          await auth.signOut();
+          await signOut(auth);
           setTimeout(() => { window.location.href = 'login.html'; }, 1500);
           reject(new Error('User profile not found'));
           return;
@@ -103,7 +116,7 @@ export function checkRole(requiredRole) {
 
         if (userData.role !== requiredRole) {
           showToast('Access denied. Insufficient permissions.', 'danger');
-          await auth.signOut();
+          await signOut(auth);
           setTimeout(() => { window.location.href = 'login.html'; }, 2000);
           reject(new Error('Insufficient permissions'));
           return;
@@ -140,7 +153,7 @@ export function initPortalRedirect({ setStatus, markDone, markActive, steps, onE
   let authCheckComplete = false;
   let redirectTimeout   = null;
 
-  auth.onAuthStateChanged(async (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (redirectTimeout) {
       clearTimeout(redirectTimeout);
       redirectTimeout = null;
@@ -158,11 +171,8 @@ export function initPortalRedirect({ setStatus, markDone, markActive, steps, onE
 
         while (attempts < 3 && !userDoc) {
           try {
-            const doc = await firebase.firestore()
-              .collection('users')
-              .doc(user.uid)
-              .get();
-            if (doc.exists) { userDoc = doc; break; }
+            const docSnap = await getDoc(doc(db, 'users', user.uid));
+            if (docSnap.exists()) { userDoc = docSnap; break; }
           } catch (error) {
             attempts++;
             console.warn(`Attempt ${attempts}/3 failed:`, error.code);
@@ -172,7 +182,7 @@ export function initPortalRedirect({ setStatus, markDone, markActive, steps, onE
           }
         }
 
-        if (userDoc && userDoc.exists) {
+        if (userDoc && userDoc.exists()) {
           const role = userDoc.data().role;
 
           markDone(steps.role);
@@ -200,7 +210,7 @@ export function initPortalRedirect({ setStatus, markDone, markActive, steps, onE
 
         showToast('Unable to load your profile. Please log in again.', 'danger', 5000);
 
-        await auth.signOut();
+        await signOut(auth);
 
         redirectTimeout = setTimeout(() => {
           window.location.replace('login.html');
@@ -242,12 +252,12 @@ export function initPortalRedirect({ setStatus, markDone, markActive, steps, onE
  * Returns null if no matching pupil is found.
  */
 async function getEmailByAdmissionNumber(admissionNo) {
-  const snapshot = await firebase.firestore()
-    .collection('pupils')
-    .where('admissionNo', '==', admissionNo)
-    .limit(1)
-    .get();
-
+  const q = query(
+    collection(db, 'pupils'),
+    where('admissionNo', '==', admissionNo),
+    limit(1)
+  );
+  const snapshot = await getDocs(q);
   if (snapshot.empty) return null;
   return snapshot.docs[0].data().email || null;
 }
@@ -271,7 +281,7 @@ export async function login(identifier, password) {
   }
 
   try {
-    await auth.signInWithEmailAndPassword(email, password);
+    await signInWithEmailAndPassword(auth, email, password);
     showToast('Login successful! Redirecting…', 'success');
     setTimeout(() => { window.location.href = 'portal.html'; }, 1000);
   } catch (error) {
@@ -282,7 +292,7 @@ export async function login(identifier, password) {
 
 export async function logout() {
   try {
-    await auth.signOut();
+    await signOut(auth);
     showToast('Logged out successfully', 'success');
     setTimeout(() => { window.location.href = 'login.html'; }, 800);
   } catch (error) {
@@ -300,11 +310,12 @@ export async function logout() {
  * Throws on failure so the caller can update the UI accordingly.
  */
 export async function sendPasswordReset(email) {
-  const snapshot = await firebase.firestore()
-    .collection('pupils')
-    .where('email', '==', email)
-    .limit(1)
-    .get();
+  const q = query(
+    collection(db, 'pupils'),
+    where('email', '==', email),
+    limit(1)
+  );
+  const snapshot = await getDocs(q);
 
   if (snapshot.empty) {
     throw Object.assign(new Error('No account found with this email address.'), {
@@ -312,5 +323,5 @@ export async function sendPasswordReset(email) {
     });
   }
 
-  await auth.sendPasswordResetEmail(email);
+  await sendPasswordResetEmail(auth, email);
 }
