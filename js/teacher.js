@@ -2250,25 +2250,25 @@ function loadRemarksSection() {
 }
 
 async function loadRemarksData() {
-  const pupilId = document.getElementById('remarks-pupil')?.value;
-  const term = document.getElementById('remarks-term')?.value;
+  const pupilId   = document.getElementById('remarks-pupil')?.value;
+  const term      = document.getElementById('remarks-term')?.value;
   const container = document.getElementById('remarks-form-container');
 
   if (!container || !pupilId || !term) {
-    container.hidden = true;
+    if (container) container.hidden = true;
     return;
   }
 
   try {
-    const settings = await window.getCurrentSettings();
-    // BUG 1 FIX: Encode session for document ID
-    const encodedSession = settings.session.replace(/\//g, '-');
+    const settings        = await window.getCurrentSettings();
+    const encodedSession  = settings.session.replace(/\//g, '-');
 
-    const docSnap = await db.collection('remarks').doc(`${pupilId}_${encodedSession}_${term}`).get();
+    const docSnap = await db.collection('remarks')
+      .doc(`${pupilId}_${encodedSession}_${term}`).get();
     const data = docSnap.exists ? docSnap.data() : {};
 
     document.getElementById('teacher-remark').value = data.teacherRemark || '';
-    document.getElementById('head-remark').value = data.headRemark || '';
+    document.getElementById('head-remark').value    = data.headRemark    || '';
 
     container.hidden = false;
   } catch (err) {
@@ -2277,100 +2277,177 @@ async function loadRemarksData() {
   }
 
   await loadRemarkSuggestions();
+  await loadHeadRemarkSuggestions();
 }
 
 /**
  * Load remark suggestions based on pupil's performance
  */
 async function loadRemarkSuggestions() {
-    const pupilId = document.getElementById('remarks-pupil')?.value;
-    const term = document.getElementById('remarks-term')?.value;
-    const suggestionsDiv = document.getElementById('remark-suggestions');
-    const infoDiv = document.getElementById('suggestion-info');
-    const buttonsDiv = document.getElementById('suggestion-buttons');
-    
-    if (!pupilId || !term || !suggestionsDiv) {
-        if (suggestionsDiv) suggestionsDiv.style.display = 'none';
-        return;
+  const pupilId        = document.getElementById('remarks-pupil')?.value;
+  const term           = document.getElementById('remarks-term')?.value;
+  const suggestionsDiv = document.getElementById('remark-suggestions');
+  const infoDiv        = document.getElementById('suggestion-info');
+  const buttonsDiv     = document.getElementById('suggestion-buttons');
+
+  if (!pupilId || !term || !suggestionsDiv) {
+    if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+    return;
+  }
+
+  suggestionsDiv.style.display = 'block';
+  infoDiv.innerHTML    = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;"></span> Loading suggestions...';
+  buttonsDiv.innerHTML = '';
+
+  try {
+    const result = await window.remarkTemplates.getRemarkSuggestions(pupilId, term);
+
+    if (!result.success) {
+      infoDiv.innerHTML    = `<span style="color:var(--color-warning);">⚠️ ${result.message}</span>`;
+      buttonsDiv.innerHTML = '';
+      return;
     }
-    
-    // Show loading state
-    suggestionsDiv.style.display = 'block';
-    infoDiv.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; display:inline-block;"></span> Loading suggestions...';
+
+    const categoryLabels = {
+      excellent: '🌟 Excellent',
+      veryGood:  '✨ Very Good',
+      good:      '👍 Good',
+      average:   '📊 Average',
+      poor:      '⚠️ Needs Improvement'
+    };
+
+    infoDiv.innerHTML = `
+      Average: <strong>${result.average}%</strong> &bull;
+      Category: <strong style="color:var(--color-primary);">
+        ${categoryLabels[result.category] || result.category}
+      </strong>
+    `;
+
+    if (result.templates.length === 0) {
+      buttonsDiv.innerHTML = '<p style="color:var(--color-gray-600);margin:0;">No templates available</p>';
+      return;
+    }
+
     buttonsDiv.innerHTML = '';
-    
-    try {
-        const result = await window.remarkTemplates.getRemarkSuggestions(pupilId, term);
-        
-        if (!result.success) {
-            infoDiv.innerHTML = `<span style="color: var(--color-warning);">⚠️ ${result.message}</span>`;
-            buttonsDiv.innerHTML = '';
-            return;
-        }
-        
-        // Show average and category
-        const categoryLabels = {
-            excellent: '🌟 Excellent',
-            veryGood: '✨ Very Good',
-            good: '👍 Good',
-            average: '📊 Average',
-            poor: '⚠️ Needs Improvement'
-        };
-        
-        infoDiv.innerHTML = `
-            Average: <strong>${result.average}%</strong> • 
-            Category: <strong style="color: var(--color-primary);">${categoryLabels[result.category] || result.category}</strong>
-        `;
-        
-        // Display template buttons
-        if (result.templates.length === 0) {
-            buttonsDiv.innerHTML = '<p style="color: var(--color-gray-600); margin: 0;">No templates available</p>';
-            return;
-        }
-        
-        buttonsDiv.innerHTML = '';
-        
-        result.templates.forEach((template, index) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn-small btn-secondary';
-            btn.style.cssText = 'text-align: left; white-space: normal; max-width: 100%;';
-            btn.textContent = template;
-            btn.onclick = () => useRemarkTemplate(template);
-            buttonsDiv.appendChild(btn);
-        });
-        
-    } catch (error) {
-        console.error('Error loading suggestions:', error);
-        infoDiv.innerHTML = '<span style="color: var(--color-danger);">❌ Failed to load suggestions</span>';
-        buttonsDiv.innerHTML = '';
+    result.templates.forEach(template => {
+      const btn         = document.createElement('button');
+      btn.type          = 'button';
+      btn.className     = 'btn-small btn-secondary';
+      btn.style.cssText = 'text-align:left;white-space:normal;max-width:100%;';
+      btn.textContent   = template;
+      btn.onclick       = () => useRemarkTemplate(template);
+      buttonsDiv.appendChild(btn);
+    });
+
+  } catch (error) {
+    console.error('Error loading suggestions:', error);
+    infoDiv.innerHTML    = '<span style="color:var(--color-danger);">❌ Failed to load suggestions</span>';
+    buttonsDiv.innerHTML = '';
+  }
+}
+
+async function loadHeadRemarkSuggestions() {
+  const pupilId         = document.getElementById('remarks-pupil')?.value;
+  const term            = document.getElementById('remarks-term')?.value;
+  const suggestionsDiv  = document.getElementById('head-remark-suggestions');
+  const infoDiv         = document.getElementById('head-suggestion-info');
+  const buttonsDiv      = document.getElementById('head-suggestion-buttons');
+  const headRemarkField = document.getElementById('head-remark');
+
+  if (!pupilId || !term || !suggestionsDiv) {
+    if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+    return;
+  }
+
+  suggestionsDiv.style.display = 'block';
+  infoDiv.innerHTML    = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;"></span> Loading suggestions...';
+  buttonsDiv.innerHTML = '';
+
+  try {
+    const result = await window.remarkTemplates.getHeadRemarkSuggestions(pupilId, term);
+
+    if (!result.success) {
+      infoDiv.innerHTML    = `<span style="color:var(--color-warning);">⚠️ ${result.message}</span>`;
+      buttonsDiv.innerHTML = '';
+      return;
     }
+
+    const categoryLabels = {
+      excellent: '🌟 Excellent',
+      veryGood:  '✨ Very Good',
+      good:      '👍 Good',
+      average:   '📊 Average',
+      poor:      '⚠️ Needs Improvement'
+    };
+
+    infoDiv.innerHTML = `
+      Average: <strong>${result.average}%</strong> &bull;
+      Category: <strong style="color:var(--color-primary);">
+        ${categoryLabels[result.category] || result.category}
+      </strong>
+      <span style="margin-left:8px;font-size:0.8em;color:var(--color-gray-500);">(auto-filled below)</span>
+    `;
+
+    if (headRemarkField && !headRemarkField.value.trim() && result.autoSelected) {
+      headRemarkField.value = result.autoSelected;
+    }
+
+    if (result.templates.length === 0) {
+      buttonsDiv.innerHTML = '<p style="color:var(--color-gray-600);margin:0;">No templates available</p>';
+      return;
+    }
+
+    buttonsDiv.innerHTML = '';
+    result.templates.forEach(template => {
+      const btn         = document.createElement('button');
+      btn.type          = 'button';
+      btn.className     = 'btn-small btn-secondary';
+      btn.style.cssText = 'text-align:left;white-space:normal;max-width:100%;';
+      btn.textContent   = template;
+      btn.onclick       = () => useHeadRemarkTemplate(template);
+      buttonsDiv.appendChild(btn);
+    });
+
+  } catch (error) {
+    console.error('Error loading head remark suggestions:', error);
+    infoDiv.innerHTML    = '<span style="color:var(--color-danger);">❌ Failed to load suggestions</span>';
+    buttonsDiv.innerHTML = '';
+  }
 }
 
 /**
  * Use selected remark template
  */
 function useRemarkTemplate(template) {
-    const remarkTextarea = document.getElementById('teacher-remark');
-    if (!remarkTextarea) return;
-    
-    remarkTextarea.value = template;
-    remarkTextarea.focus();
-    
-    window.showToast?.('Template applied. You can edit it before saving.', 'success', 3000);
+  const remarkTextarea = document.getElementById('teacher-remark');
+  if (!remarkTextarea) return;
+  remarkTextarea.value = template;
+  remarkTextarea.focus();
+  window.showToast?.('Template applied. You can edit it before saving.', 'success', 3000);
+}
+
+function useHeadRemarkTemplate(template) {
+  const headRemarkTextarea = document.getElementById('head-remark');
+  if (!headRemarkTextarea) return;
+  headRemarkTextarea.value = template;
+  headRemarkTextarea.focus();
+  window.showToast?.('Head teacher template applied. You can edit it before saving.', 'success', 3000);
 }
 
 /**
  * Refresh remark suggestions
  */
 async function refreshRemarkSuggestions() {
-    await loadRemarkSuggestions();
+  await loadRemarkSuggestions();
+  await loadHeadRemarkSuggestions();
 }
 
 // Make functions globally available
-window.loadRemarkSuggestions = loadRemarkSuggestions;
-window.useRemarkTemplate = useRemarkTemplate;
-window.refreshRemarkSuggestions = refreshRemarkSuggestions;
+window.loadRemarkSuggestions     = loadRemarkSuggestions;
+window.loadHeadRemarkSuggestions = loadHeadRemarkSuggestions;
+window.useRemarkTemplate         = useRemarkTemplate;
+window.useHeadRemarkTemplate     = useHeadRemarkTemplate;
+window.refreshRemarkSuggestions  = refreshRemarkSuggestions;
 
 async function saveRemarks() {
   const pupilId = document.getElementById('remarks-pupil')?.value;
