@@ -420,23 +420,36 @@
                     </div>
 
                     <div class="tp-remarks-grid">
-                        <div class="tp-remark-block">
-                            <label class="tp-field-label" for="teacher-remark">
-                                <i data-lucide="pen-line"></i>
-                                Teacher's Remark
-                            </label>
-                            <textarea id="teacher-remark" class="tp-textarea" rows="5"
-                                placeholder="Write your remark, or click a suggestion above…"></textarea>
-                        </div>
-                        <div class="tp-remark-block">
-                            <label class="tp-field-label" for="head-remark">
-                                <i data-lucide="briefcase"></i>
-                                Headteacher's Remark
-                            </label>
-                            <textarea id="head-remark" class="tp-textarea" rows="5"
-                                placeholder="Write the headteacher's remark…"></textarea>
-                        </div>
-                    </div>
+    <div class="tp-remark-block">
+        <label class="tp-field-label" for="teacher-remark">
+            <i data-lucide="pen-line"></i>
+            Teacher's Remark
+        </label>
+        <textarea id="teacher-remark" class="tp-textarea" rows="5"
+            placeholder="Write your remark, or click a suggestion above…"></textarea>
+    </div>
+    <div class="tp-remark-block">
+        <label class="tp-field-label" for="head-remark">
+            <i data-lucide="briefcase"></i>
+            Headteacher's Remark
+        </label>
+
+        <!-- Head Teacher Suggestions Panel -->
+        <div id="head-remark-suggestions" class="tp-suggestions-panel" style="display:none; margin-bottom:10px;">
+            <div class="tp-suggestions-header">
+                <div class="tp-suggestions-icon"><i data-lucide="sparkles"></i></div>
+                <div>
+                    <div class="tp-suggestions-title">Suggested Remarks</div>
+                    <div id="head-suggestion-info" class="tp-suggestions-meta"></div>
+                </div>
+            </div>
+            <div id="head-suggestion-buttons" class="tp-suggestion-chips"></div>
+        </div>
+
+        <textarea id="head-remark" class="tp-textarea" rows="5"
+            placeholder="Write the headteacher's remark, or a suggestion will be auto-filled…"></textarea>
+    </div>
+</div>
 
                     <div class="tp-action-bar">
                         <button class="btn tp-btn-primary" onclick="saveRemarks()">
