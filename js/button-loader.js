@@ -17,7 +17,7 @@
  *
  * ZERO CHANGES NEEDED to teacher.js, attendance-teacher-ui.js, etc.
  *
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 'use strict';
@@ -129,24 +129,34 @@ function deriveLabel(btn) {
     if (!text) return 'Loading…';
     // Map common labels to their loading equivalents
     const map = {
-        'save': 'Saving…',
-        'saving': 'Saving…',
-        'submit': 'Submitting…',
-        'submitting': 'Submitting…',
-        'send': 'Sending…',
-        'approve': 'Approving…',
-        'reject': 'Rejecting…',
-        'delete': 'Deleting…',
-        'removing': 'Removing…',
-        'lock': 'Locking…',
-        'unlock': 'Unlocking…',
-        'publish': 'Publishing…',
-        'generate': 'Generating…',
-        'print': 'Preparing…',
-        'export': 'Exporting…',
-        'upload': 'Uploading…',
-        'mark': 'Saving…',
-        'promote': 'Submitting…',
+        'save':        'Saving…',
+        'saving':      'Saving…',
+        'submit':      'Submitting…',
+        'submitting':  'Submitting…',
+        'send':        'Sending…',
+        'approve':     'Approving…',
+        'reject':      'Rejecting…',
+        'delete':      'Deleting…',
+        'removing':    'Removing…',
+        'lock':        'Locking…',
+        'unlock':      'Unlocking…',
+        'publish':     'Publishing…',
+        'generate':    'Generating…',
+        'print':       'Preparing…',
+        'export':      'Exporting…',
+        'upload':      'Uploading…',
+        'mark':        'Saving…',
+        'promote':     'Submitting…',
+        'assign':      'Assigning…',
+        'migrate':     'Migrating…',
+        'refresh':     'Refreshing…',
+        'record':      'Recording…',
+        'download':    'Downloading…',
+        'fix':         'Fixing…',
+        'restore':     'Restoring…',
+        'create':      'Creating…',
+        'add':         'Adding…',
+        'update':      'Updating…',
     };
     const lower = text.toLowerCase();
     for (const [key, val] of Object.entries(map)) {
@@ -157,44 +167,96 @@ function deriveLabel(btn) {
 
 /* ═══════════════════════════════════════════════════════════════
    ACTION REGISTRY
-   Maps data-action names → window function names.
+   Maps data-action names → the actual window function names.
    Add new entries here as you add more async buttons.
 ═══════════════════════════════════════════════════════════════ */
 const ACTION_REGISTRY = {
     // Results
-    'saveAllResults':              'saveAllResults',
-    'submitResultsForApproval':    'submitResultsForApproval',
+    'saveAllResults':                       'saveAllResults',
+    'submitResultsForApproval':             'submitResultsForApproval',
     // Attendance
-    'saveAllAttendance':           'saveAllAttendance',
-    'saveModalAttendance':         'saveModalAttendance',
-    'saveAllAttendanceManual':     'saveAllAttendanceManual',
-    'printAttendanceRegister':     'printAttendanceRegister',
+    'saveAllAttendance':                    'saveAllAttendance',
+    'saveModalAttendance':                  'saveModalAttendance',
+    'saveAllAttendanceManual':              'saveAllAttendanceManual',
+    'printAttendanceRegister':              'printAttendanceRegister',
     // Traits & skills
-    'saveBulkTraitsAndSkills':     'saveBulkTraitsAndSkills',
+    'saveBulkTraitsAndSkills':              'saveBulkTraitsAndSkills',
     // Remarks
-    'saveRemarks':                 'saveRemarks',
-    'refreshRemarkSuggestions':    'refreshRemarkSuggestions',
-    // Promotions
-    'submitPromotionRequest':      'submitPromotionRequest',
+    'saveRemarks':                          'saveRemarks',
+    'refreshRemarkSuggestions':             'refreshRemarkSuggestions',
+    // Promotions (teacher)
+    'submitPromotionRequest':               'submitPromotionRequest',
     // CBT
-    'saveCbtTest':                 'saveCbtTest',
-    'publishCbtTest':              'publishCbtTest',
-    'deleteCbtTest':               'deleteCbtTest',
+    'saveCbtTest':                          'saveCbtTest',
+    'publishCbtTest':                       'publishCbtTest',
+    'deleteCbtTest':                        'deleteCbtTest',
     // Lesson notes
-    'saveLessonNote':              'saveLessonNote',
-    'submitLessonNote':            'submitLessonNote',
-    'deleteLessonNote':            'deleteLessonNote',
+    'saveLessonNote':                       'saveLessonNote',
+    'submitLessonNote':                     'submitLessonNote',
+    'deleteLessonNote':                     'deleteLessonNote',
     // Admin — results approval
-    'approveResults':              'approveResults',
-    'rejectResults':               'rejectResults',
-    'lockResults':                 'lockResults',
-    'unlockResults':               'unlockResults',
+    'approveResultSubmission':              'approveResultSubmission',
+    'rejectResultSubmission':               'rejectResultSubmission',
+    'approveAllPendingResults':             'approveAllPendingResults',
+    'unlockApprovedResult':                 'unlockApprovedResult',
     // Admin — promotions
-    'approvePromotion':            'approvePromotion',
-    'rejectPromotion':             'rejectPromotion',
+    'approvePromotion':                     'approvePromotion',
+    'rejectPromotion':                      'rejectPromotion',
+    'quickApprovePromotion':                'quickApprovePromotion',
+    'quickRejectPromotion':                 'quickRejectPromotion',
+    'approveAllPendingPromotions':          'approveAllPendingPromotions',
+    'rejectAllPendingPromotions':           'rejectAllPendingPromotions',
+    'togglePromotionPeriod':                'togglePromotionPeriod',
+    // Admin — fee management
+    'saveFeeStructure':                     'saveFeeStructure',
+    'ensureAllPupilsHavePaymentRecords':    'ensureAllPupilsHavePaymentRecords',
+    'migrateArrearsToNewSession':           'migrateArrearsToNewSession',
+    'migratePaymentRecordsToAdjustedFees': 'migratePaymentRecordsToAdjustedFees',
+    'fixDuplicateFees':                     'fixDuplicateFees',
+    'editFeeStructure':                     'editFeeStructure',
+    'deleteFeeStructure':                   'deleteFeeStructure',
+    // Admin — payments
+    'recordPayment':                        'recordPayment',
+    'loadPupilPaymentStatus':               'loadPupilPaymentStatus',
+    'loadPupilsForPayment':                 'loadPupilsForPayment',
+    'printReceipt':                         'printReceipt',
+    // Admin — reports
+    'loadOutstandingFeesReport':            'loadOutstandingFeesReport',
+    'loadFinancialReports':                 'loadFinancialReports',
+    'exportFinancialReport':                'exportFinancialReport',
+    'exportPupilsData':                     'exportPupilsData',
+    'exportResultsData':                    'exportResultsData',
+    'exportTeachersPDF':                    'exportTeachersPDF',
+    'exportPupilResults':                   'exportPupilResults',
+    'downloadAuditLog':                     'downloadAuditLog',
+    // Admin — settings & session
+    'updateSessionSettings':                'updateSessionSettings',
+    'confirmStartNewSession':               'confirmStartNewSession',
+    'backfillSessionData':                  'backfillSessionData',
+    'saveHierarchyOrder':                   'saveHierarchyOrder',
+    'refreshHierarchyUI':                   'refreshHierarchyUI',
+    'migrateArrearsOnTermChange':           'migrateArrearsOnTermChange',
+    // Admin — users & classes
+    'deleteItem':                           'deleteItem',
+    'deleteAlumni':                         'deleteAlumni',
+    'applyBulkAction':                      'applyBulkAction',
+    'assignTeacherToClass':                 'assignTeacherToClass',
+    'unassignTeacher':                      'unassignTeacher',
+    'addClass':                             'addClass',
+    'addSubject':                           'addSubject',
+    'addAnnouncement':                      'addAnnouncement',
+    'saveClassSubjects':                    'saveClassSubjects',
+    // Admin — audit log
+    'loadAuditLog':                         'loadAuditLog',
+    'viewAuditDetails':                     'viewAuditDetails',
+    // Admin — results viewing
+    'loadPupilResults':                     'loadPupilResults',
+    'loadSessionComparison':                'loadSessionComparison',
+    'loadFilteredClasses':                  'loadFilteredClasses',
+    'loadFilteredPupils':                   'loadFilteredPupils',
     // Admin — general
-    'saveSettings':                'saveSettings',
-    'saveSchoolCalendar':          'saveSchoolCalendar',
+    'saveSettings':                         'saveSettings',
+    'saveSchoolCalendar':                   'saveSchoolCalendar',
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -227,8 +289,7 @@ async function interceptButtonClick(e) {
     // Only intercept if it's an actual async function
     if (typeof fn !== 'function') return;
 
-    // Check if it's async (returns a Promise) by inspecting the constructor name,
-    // OR by duck-typing — we attempt a dry run only if safe
+    // Check if it's async (returns a Promise) by inspecting the constructor name
     const isAsync = fn.constructor?.name === 'AsyncFunction';
     if (!isAsync) return;
 
@@ -237,7 +298,6 @@ async function interceptButtonClick(e) {
     e.stopImmediatePropagation();
 
     // Parse arguments from onclick attribute: fnName(arg1, arg2)
-    // We re-call with the original arguments by re-reading the attribute
     let fnArgs = [];
     try {
         const attr = btn.getAttribute('onclick') || '';
@@ -357,7 +417,7 @@ function init() {
     // Watch for buttons added later (section loads, modals, etc.)
     startMutationObserver();
 
-    console.log('✓ ButtonLoader v2.0.0 — global auto-intercept active');
+    console.log('✓ ButtonLoader v2.1.0 — global auto-intercept active');
 }
 
 if (document.readyState === 'loading') {
