@@ -167,8 +167,9 @@ function deriveLabel(btn) {
 
 /* ═══════════════════════════════════════════════════════════════
    ACTION REGISTRY
-   Maps data-action names → the actual window function names.
-   Add new entries here as you add more async buttons.
+   Only functions WITHOUT their own internal loading state go here.
+   Functions that already disable their own button are excluded
+   to avoid double loading states.
 ═══════════════════════════════════════════════════════════════ */
 const ACTION_REGISTRY = {
     // Results
@@ -194,49 +195,36 @@ const ACTION_REGISTRY = {
     'saveLessonNote':                       'saveLessonNote',
     'submitLessonNote':                     'submitLessonNote',
     'deleteLessonNote':                     'deleteLessonNote',
-    // Admin — results approval
-    'approveResultSubmission':              'approveResultSubmission',
+    // Admin — results approval (no internal loading state)
     'rejectResultSubmission':               'rejectResultSubmission',
     'approveAllPendingResults':             'approveAllPendingResults',
     'unlockApprovedResult':                 'unlockApprovedResult',
-    // Admin — promotions
-    'approvePromotion':                     'approvePromotion',
+    // Admin — promotions (no internal loading state)
     'rejectPromotion':                      'rejectPromotion',
     'quickApprovePromotion':                'quickApprovePromotion',
     'quickRejectPromotion':                 'quickRejectPromotion',
     'approveAllPendingPromotions':          'approveAllPendingPromotions',
     'rejectAllPendingPromotions':           'rejectAllPendingPromotions',
     'togglePromotionPeriod':                'togglePromotionPeriod',
-    // Admin — fee management
-    'saveFeeStructure':                     'saveFeeStructure',
-    'ensureAllPupilsHavePaymentRecords':    'ensureAllPupilsHavePaymentRecords',
-    'migrateArrearsToNewSession':           'migrateArrearsToNewSession',
-    'migratePaymentRecordsToAdjustedFees': 'migratePaymentRecordsToAdjustedFees',
+    // Admin — fee management (no internal loading state)
     'fixDuplicateFees':                     'fixDuplicateFees',
     'editFeeStructure':                     'editFeeStructure',
     'deleteFeeStructure':                   'deleteFeeStructure',
-    // Admin — payments
-    'recordPayment':                        'recordPayment',
-    'loadPupilPaymentStatus':               'loadPupilPaymentStatus',
+    // Admin — payments (no internal loading state)
     'loadPupilsForPayment':                 'loadPupilsForPayment',
     'printReceipt':                         'printReceipt',
-    // Admin — reports
+    // Admin — reports (no internal loading state)
     'loadOutstandingFeesReport':            'loadOutstandingFeesReport',
     'loadFinancialReports':                 'loadFinancialReports',
     'exportFinancialReport':                'exportFinancialReport',
     'exportPupilsData':                     'exportPupilsData',
     'exportResultsData':                    'exportResultsData',
-    'exportTeachersPDF':                    'exportTeachersPDF',
     'exportPupilResults':                   'exportPupilResults',
     'downloadAuditLog':                     'downloadAuditLog',
-    // Admin — settings & session
-    'updateSessionSettings':                'updateSessionSettings',
-    'confirmStartNewSession':               'confirmStartNewSession',
-    'backfillSessionData':                  'backfillSessionData',
+    // Admin — settings & hierarchy (no internal loading state)
     'saveHierarchyOrder':                   'saveHierarchyOrder',
     'refreshHierarchyUI':                   'refreshHierarchyUI',
-    'migrateArrearsOnTermChange':           'migrateArrearsOnTermChange',
-    // Admin — users & classes
+    // Admin — users & classes (no internal loading state)
     'deleteItem':                           'deleteItem',
     'deleteAlumni':                         'deleteAlumni',
     'applyBulkAction':                      'applyBulkAction',
@@ -246,16 +234,15 @@ const ACTION_REGISTRY = {
     'addSubject':                           'addSubject',
     'addAnnouncement':                      'addAnnouncement',
     'saveClassSubjects':                    'saveClassSubjects',
-    // Admin — audit log
+    // Admin — audit log (no internal loading state)
     'loadAuditLog':                         'loadAuditLog',
     'viewAuditDetails':                     'viewAuditDetails',
-    // Admin — results viewing
+    // Admin — results viewing (no internal loading state)
     'loadPupilResults':                     'loadPupilResults',
     'loadSessionComparison':                'loadSessionComparison',
     'loadFilteredClasses':                  'loadFilteredClasses',
     'loadFilteredPupils':                   'loadFilteredPupils',
-    // Admin — general
-    'saveSettings':                         'saveSettings',
+    // Admin — general (no internal loading state)
     'saveSchoolCalendar':                   'saveSchoolCalendar',
 };
 
