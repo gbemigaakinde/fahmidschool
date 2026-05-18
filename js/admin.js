@@ -11072,15 +11072,15 @@ function renderHierarchyUI(orderedClasses) {
     console.error('❌ hierarchy-container element not found in DOM');
     return;
   }
-  
+
   if (!Array.isArray(orderedClasses) || orderedClasses.length === 0) {
     console.warn('⚠️ No classes provided to renderHierarchyUI');
     renderEmptyHierarchyUI();
     return;
   }
-  
+
   console.log(`🎨 Rendering ${orderedClasses.length} classes in UI`);
-  
+
   container.innerHTML = `
     <div class="hierarchy-instructions">
       <p><strong>📋 Class Progression Order (${orderedClasses.length} classes found)</strong></p>
@@ -11089,9 +11089,9 @@ function renderHierarchyUI(orderedClasses) {
         💡 <strong>Tip:</strong> To add/remove classes, go to the "Classes" section above, then click "🔄 Refresh from Classes" below.
       </p>
     </div>
-    
+
     <div id="sortable-class-list" class="sortable-list"></div>
-    
+
     <div style="margin-top:var(--space-lg); display:flex; gap:var(--space-md); flex-wrap:wrap;">
       <button class="btn btn-primary" onclick="window.saveHierarchyOrder()">
         💾 Save Progression Order
@@ -11100,234 +11100,194 @@ function renderHierarchyUI(orderedClasses) {
         🔄 Refresh from Classes
       </button>
     </div>
-    
-    <div style="margin-top:var(--space-lg); padding:var(--space-md); background:var(--color-info-light); border-radius:var(--radius-sm);">
-      <p style="margin:0; color:var(--color-info-dark); font-size:var(--text-sm);">
+
+    <div style="margin-top:var(--space-lg); padding:var(--space-md); background:#e3f2fd; border-radius:var(--radius-sm);">
+      <p style="margin:0; color:#1565c0; font-size:var(--text-sm);">
         ℹ️ <strong>Currently showing ${orderedClasses.length} class(es)</strong> from your Classes section.
         If you added new classes, click "🔄 Refresh from Classes" to see them here.
       </p>
     </div>
   `;
-  
+
   const listContainer = document.getElementById('sortable-class-list');
-  
   if (!listContainer) {
     console.error('❌ sortable-class-list not found after innerHTML update');
     return;
   }
 
-orderedClasses.forEach((cls, index) => {
-  const itemDiv = document.createElement('div');
-  itemDiv.className = 'hierarchy-item draggable';
-  itemDiv.draggable = true;
-  itemDiv.dataset.classId = cls.id;
-  itemDiv.dataset.index = index;
-  
-  const isTerminal = index === orderedClasses.length - 1;
-  
-  itemDiv.innerHTML = `
-    <span class="drag-handle">☰</span>
-    <span class="hierarchy-number">${index + 1}</span>
-    <span class="class-name">${cls.name}</span>
-    ${isTerminal ? '<span class="terminal-badge">🎓 Terminal/Graduation Class</span>' : ''}
-  `;
-  
-  // NO INDIVIDUAL EVENT LISTENERS - using delegation instead!
-  listContainer.appendChild(itemDiv);
-});
+  // ── Build items ──────────────────────────────────────────────────────────
+  orderedClasses.forEach((cls, index) => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'hierarchy-item draggable';
+    itemDiv.draggable = true;
+    itemDiv.dataset.classId = cls.id;
+    itemDiv.dataset.index = index;
 
-// CRITICAL FIX: Use event delegation on parent container
-// Add this AFTER the forEach loop, BEFORE the console.log
+    const isTerminal = index === orderedClasses.length - 1;
 
-// Remove old delegation if exists
-if (listContainer.dataset.delegationActive === 'true') {
-  console.log('⚠️ Event delegation already active, skipping');
-} else {
-  // Add single set of event listeners to container
-  listContainer.addEventListener('dragstart', function(e) {
-    if (e.target.classList.contains('hierarchy-item')) {
-      handleDragStart.call(e.target, e);
-    }
+    itemDiv.innerHTML = `
+      <span class="drag-handle" style="cursor:grab;">☰</span>
+      <span class="hierarchy-number">${index + 1}</span>
+      <span class="class-name">${cls.name}</span>
+      ${isTerminal ? '<span class="terminal-badge">🎓 Terminal/Graduation Class</span>' : ''}
+    `;
+
+    listContainer.appendChild(itemDiv);
   });
-  
-  listContainer.addEventListener('dragover', function(e) {
-    const item = e.target.closest('.hierarchy-item');
-    if (item) {
-      handleDragOver.call(item, e);
-    }
-  });
-  
-  listContainer.addEventListener('drop', function(e) {
-    const item = e.target.closest('.hierarchy-item');
-    if (item) {
-      handleDrop.call(item, e);
-    }
-  });
-  
-  listContainer.addEventListener('dragend', function(e) {
-    if (e.target.classList.contains('hierarchy-item')) {
-      handleDragEnd.call(e.target, e);
-    }
-  });
-  
-  listContainer.dataset.delegationActive = 'true';
-  console.log('✓ Event delegation set up for class hierarchy');
-}
 
-console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
+  // ── Drag state ───────────────────────────────────────────────────────────
+  let dragSrc = null;         // the element being dragged
+  let dragSrcIndex = -1;      // its original position
 
-// Drag and drop handlers - FIXED
-let draggedElement = null;
+  // ── Helper: re-number all items and update terminal badge ─────────────────
+  function updateNumbers() {
+    const items = listContainer.querySelectorAll('.hierarchy-item');
+    items.forEach((item, idx) => {
+      const numEl = item.querySelector('.hierarchy-number');
+      if (numEl) numEl.textContent = idx + 1;
 
-function handleDragStart(e) {
-  draggedElement = this;
-  this.classList.add('dragging');
-  this.style.opacity = '0.4';
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', this.innerHTML);
-}
+      const badge = item.querySelector('.terminal-badge');
+      const isLast = idx === items.length - 1;
 
-function handleDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
-  e.dataTransfer.dropEffect = 'move';
-  
-  // Visual feedback
-  const afterElement = getDragAfterElement(this.parentElement, e.clientY);
-  const draggable = document.querySelector('.dragging');
-  
-  if (afterElement == null) {
-    this.parentElement.appendChild(draggable);
-  } else {
-    this.parentElement.insertBefore(draggable, afterElement);
-  }
-  
-  return false;
-}
-
-function handleDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation();
-  }
-  
-  if (draggedElement !== this) {
-    // Get all items
-    const allItems = Array.from(document.querySelectorAll('.hierarchy-item'));
-    const draggedIndex = allItems.indexOf(draggedElement);
-    const targetIndex = allItems.indexOf(this);
-    
-    // Reorder in DOM
-    if (draggedIndex < targetIndex) {
-      this.parentNode.insertBefore(draggedElement, this.nextSibling);
-    } else {
-      this.parentNode.insertBefore(draggedElement, this);
-    }
-    
-    // Update numbers and terminal badge
-    updateHierarchyNumbers();
-  }
-  
-  return false;
-}
-
-function handleDragEnd(e) {
-  this.style.opacity = '1';
-  this.classList.remove('dragging');
-  
-  document.querySelectorAll('.hierarchy-item').forEach(item => {
-    item.classList.remove('over');
-  });
-}
-
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.hierarchy-item:not(.dragging)')];
-  
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-function updateHierarchyNumbers() {
-  const items = document.querySelectorAll('.hierarchy-item');
-  items.forEach((item, index) => {
-    const numberSpan = item.querySelector('.hierarchy-number');
-    if (numberSpan) numberSpan.textContent = index + 1;
-    
-    // Update terminal badge
-    const terminalBadge = item.querySelector('.terminal-badge');
-    if (index === items.length - 1) {
-      if (!terminalBadge) {
-        item.insertAdjacentHTML('beforeend', '<span class="terminal-badge">🎓 Terminal/Graduation Class</span>');
+      if (isLast && !badge) {
+        const span = document.createElement('span');
+        span.className = 'terminal-badge';
+        span.textContent = '🎓 Terminal/Graduation Class';
+        item.appendChild(span);
+      } else if (!isLast && badge) {
+        badge.remove();
       }
+    });
+  }
+
+  // ── Helper: get element directly below the cursor in the list ─────────────
+  function getDragAfterElement(y) {
+    const draggables = [...listContainer.querySelectorAll('.hierarchy-item:not(.dragging)')];
+
+    return draggables.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      }
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  // ── Attach listeners to each item ────────────────────────────────────────
+  function attachListeners(item) {
+    item.addEventListener('dragstart', function (e) {
+      dragSrc = this;
+      dragSrcIndex = [...listContainer.children].indexOf(this);
+      this.classList.add('dragging');
+      this.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', this.dataset.classId);
+    });
+
+    item.addEventListener('dragend', function () {
+      this.classList.remove('dragging');
+      this.style.opacity = '';
+      dragSrc = null;
+      dragSrcIndex = -1;
+      // Clear any hover highlights
+      listContainer.querySelectorAll('.hierarchy-item').forEach(el => {
+        el.style.borderTop = '';
+        el.style.borderBottom = '';
+      });
+      updateNumbers();
+    });
+
+    item.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    item.addEventListener('drop', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!dragSrc || dragSrc === this) return;
+
+      // Determine drop position relative to the target's midpoint
+      const box = this.getBoundingClientRect();
+      const midY = box.top + box.height / 2;
+      const insertBefore = e.clientY < midY;
+
+      if (insertBefore) {
+        listContainer.insertBefore(dragSrc, this);
+      } else {
+        listContainer.insertBefore(dragSrc, this.nextSibling);
+      }
+    });
+  }
+
+  listContainer.querySelectorAll('.hierarchy-item').forEach(attachListeners);
+
+  // ── Container-level dragover: handle dragging over the empty bottom area ──
+  listContainer.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (!dragSrc) return;
+
+    const afterEl = getDragAfterElement(e.clientY);
+    if (afterEl == null) {
+      listContainer.appendChild(dragSrc);
     } else {
-      if (terminalBadge) terminalBadge.remove();
+      listContainer.insertBefore(dragSrc, afterEl);
     }
   });
-}
 
-async function saveHierarchyOrder() {
-  const items = document.querySelectorAll('.hierarchy-item');
-  
-  if (items.length === 0) {
-    window.showToast?.('No classes to save', 'warning');
-    return;
-  }
-  
-  const orderedClassIds = Array.from(items).map(item => item.dataset.classId);
-  
-  try {
-    const result = await window.classHierarchy.saveClassHierarchy(orderedClassIds);
-    
-    if (result.success) {
-      window.showToast?.('✓ Class progression order saved successfully!', 'success');
-      await loadClassHierarchyUI(); // Reload to confirm
-    } else {
-      window.showToast?.('Failed to save progression order', 'danger');
+  // ── saveHierarchyOrder ────────────────────────────────────────────────────
+  window.saveHierarchyOrder = async function () {
+    const items = listContainer.querySelectorAll('.hierarchy-item');
+
+    if (items.length === 0) {
+      window.showToast?.('No classes to save', 'warning');
+      return;
     }
-  } catch (error) {
-    console.error('Error saving hierarchy order:', error);
-    window.handleError(error, 'Failed to save progression order');
-  }
-}
 
-async function refreshHierarchyUI() {
-  console.log('🔄 Refreshing hierarchy from classes...');
-  
-  const btn = event?.target;
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-loading">Refreshing...</span>';
-  }
-  
-  try {
-    // Re-initialize hierarchy from classes collection
-    await window.classHierarchy.initializeClassHierarchy();
-    
-    // Reload the UI
-    await loadClassHierarchyUI();
-    
-    window.showToast?.('✓ Refreshed from Classes section', 'success');
-  } catch (error) {
-    console.error('❌ Error refreshing hierarchy:', error);
-    window.showToast?.('Failed to refresh hierarchy', 'danger');
-  } finally {
+    const orderedClassIds = Array.from(items).map(item => item.dataset.classId);
+
+    try {
+      const result = await window.classHierarchy.saveClassHierarchy(orderedClassIds);
+
+      if (result.success) {
+        window.showToast?.('✓ Class progression order saved successfully!', 'success');
+        await loadClassHierarchyUI();
+      } else {
+        window.showToast?.('Failed to save progression order', 'danger');
+      }
+    } catch (error) {
+      console.error('Error saving hierarchy order:', error);
+      window.handleError?.(error, 'Failed to save progression order');
+    }
+  };
+
+  // ── refreshHierarchyUI ────────────────────────────────────────────────────
+  window.refreshHierarchyUI = async function () {
+    console.log('🔄 Refreshing hierarchy from classes...');
+
+    const btn = document.querySelector('#hierarchy-container button.btn-secondary');
     if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '🔄 Refresh from Classes';
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-loading">Refreshing...</span>';
     }
-  }
-}
-// Make functions globally available
-window.saveHierarchyOrder = saveHierarchyOrder;
-window.refreshHierarchyUI = refreshHierarchyUI;
+
+    try {
+      await window.classHierarchy.initializeClassHierarchy();
+      await loadClassHierarchyUI();
+      window.showToast?.('✓ Refreshed from Classes section', 'success');
+    } catch (error) {
+      console.error('❌ Error refreshing hierarchy:', error);
+      window.showToast?.('Failed to refresh hierarchy', 'danger');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Refresh from Classes';
+      }
+    }
+  };
+
+  console.log(`✓ Successfully rendered ${orderedClasses.length} classes in hierarchy UI`);
 }
 
 /**
