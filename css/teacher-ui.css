@@ -1632,6 +1632,10 @@
     display: flex;
 }
 
+#attendance-action-bar {
+    display: flex !important;
+}
+
 /* Attendance save button compatibility */
 #save-attendance-btn { display: none; }
 #save-attendance-btn:not([hidden]) { display: inline-flex; }
