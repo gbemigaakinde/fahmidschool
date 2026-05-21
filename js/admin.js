@@ -7364,56 +7364,52 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--color-danger);">Invalid data format</td></tr>';
     return;
   }
-  
-  // CRITICAL FIX: Clean up existing pagination function to prevent memory leak
-  const paginationFuncName = `changePage_${tbodyId}`;
+
+  // CRITICAL FIX: Sanitize tbodyId to create a valid JS identifier
+  // Hyphens in IDs cause "table is not defined" ReferenceError
+  const safeFuncKey = tbodyId.replace(/[^a-zA-Z0-9_]/g, '_');
+  const paginationFuncName = `changePage_${safeFuncKey}`;
+
+  // Clean up existing pagination function to prevent memory leak
   if (window[paginationFuncName]) {
     delete window[paginationFuncName];
-    console.log(`Cleaned up old pagination function: ${paginationFuncName}`);
   }
   
   let currentPage = 1;
   const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
 
-function renderPage(page) {
-  tbody.innerHTML = '';
-  
-  // Validate page number
-  if (page < 1) page = 1;
-  if (page > totalPages) page = totalPages;
-  
-  const start = (page - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  
-  // CRITICAL FIX: Check if start is beyond data length
-  if (start >= data.length && data.length > 0) {
-    // Go back to last valid page
-    console.warn(`⚠️ Page ${page} is beyond data, going to page ${totalPages}`);
-    renderPage(totalPages);
-    return;
-  }
-  
-  const pageData = data.slice(start, end);
-  
-  // Handle empty page data
-  if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
-    updatePaginationControls(1, 1); // Show page 1 of 1
-    return;
-  }
-  
-  // Render each row
-  pageData.forEach(item => {
-    try {
-      renderRowCallback(item, tbody);
-    } catch (error) {
-      console.error('❌ Error rendering row:', error);
-      // Don't break the entire table, just skip this row
+  function renderPage(page) {
+    tbody.innerHTML = '';
+    
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    
+    if (start >= data.length && data.length > 0) {
+      renderPage(totalPages);
+      return;
     }
-  });
-  
-  updatePaginationControls(page, totalPages);
-}
+    
+    const pageData = data.slice(start, end);
+    
+    if (pageData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+      updatePaginationControls(1, 1);
+      return;
+    }
+    
+    pageData.forEach(item => {
+      try {
+        renderRowCallback(item, tbody);
+      } catch (error) {
+        console.error('Error rendering row:', error);
+      }
+    });
+    
+    updatePaginationControls(page, totalPages);
+  }
   
   function updatePaginationControls(page, total) {
     const table = tbody.parentElement;
@@ -7422,45 +7418,77 @@ function renderPage(page) {
     const container = table.parentElement;
     if (!container) return;
     
-    // FIXED: Use consistent pagination container ID
-    let paginationContainer = container.querySelector(`#pagination-${tbodyId}`);
+    let paginationContainer = container.querySelector(`#pagination-${safeFuncKey}`);
     
     if (!paginationContainer) {
       paginationContainer = document.createElement('div');
       paginationContainer.className = 'pagination';
-      paginationContainer.id = `pagination-${tbodyId}`;
+      paginationContainer.id = `pagination-${safeFuncKey}`;
       container.appendChild(paginationContainer);
     }
-    
-    // FIXED: Add keyboard navigation support
-    // Hide controls if only 1 page
-if (total <= 1) {
-  paginationContainer.innerHTML = '';
-  paginationContainer.style.display = 'none';
-  return;
-}
 
-paginationContainer.style.display = 'flex';
-paginationContainer.innerHTML = `
-  <button 
-    onclick="window.${paginationFuncName}(${page - 1})" 
-    ${page === 1 ? 'disabled' : ''}
-    aria-label="Previous page">
-    Previous
-  </button>
-  <span class="page-info" role="status" aria-live="polite">
-    Page ${page} of ${total}
-  </span>
-  <button 
-    onclick="window.${paginationFuncName}(${page + 1})" 
-    ${page === total ? 'disabled' : ''}
-    aria-label="Next page">
-    Next
-  </button>
-`;
+    // FIX: Center the pagination controls
+    paginationContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px 0;
+      flex-wrap: wrap;
+    `;
+
+    if (total <= 1) {
+      paginationContainer.innerHTML = '';
+      paginationContainer.style.display = 'none';
+      return;
+    }
+
+    paginationContainer.style.display = 'flex';
+
+    // FIX: Use data attributes + addEventListener instead of inline onclick
+    // This avoids the hyphen-in-identifier ReferenceError entirely
+    paginationContainer.innerHTML = `
+      <button
+        class="pagination-prev"
+        ${page === 1 ? 'disabled' : ''}
+        aria-label="Previous page"
+        style="padding:6px 16px; border:1.5px solid #e2e8f0; background:${page === 1 ? '#f8fafc' : 'white'}; border-radius:8px; cursor:${page === 1 ? 'not-allowed' : 'pointer'}; color:${page === 1 ? '#94a3b8' : '#0f172a'}; font-weight:600; font-size:0.875rem;">
+        ← Prev
+      </button>
+      <span
+        class="page-info"
+        role="status"
+        aria-live="polite"
+        style="font-size:0.875rem; color:#64748b; font-weight:500; white-space:nowrap;">
+        Page ${page} of ${total}
+      </span>
+      <button
+        class="pagination-next"
+        ${page === total ? 'disabled' : ''}
+        aria-label="Next page"
+        style="padding:6px 16px; border:1.5px solid #e2e8f0; background:${page === total ? '#f8fafc' : 'white'}; border-radius:8px; cursor:${page === total ? 'not-allowed' : 'pointer'}; color:${page === total ? '#94a3b8' : '#0f172a'}; font-weight:600; font-size:0.875rem;">
+        Next →
+      </button>
+    `;
+
+    // FIX: Use addEventListener instead of inline onclick to avoid identifier issues
+    const prevBtn = paginationContainer.querySelector('.pagination-prev');
+    const nextBtn = paginationContainer.querySelector('.pagination-next');
+
+    if (prevBtn && page > 1) {
+      prevBtn.addEventListener('click', function() {
+        window[paginationFuncName](currentPage - 1);
+      });
+    }
+
+    if (nextBtn && page < total) {
+      nextBtn.addEventListener('click', function() {
+        window[paginationFuncName](currentPage + 1);
+      });
+    }
   }
   
-  // Create pagination function
+  // Expose page-change function using sanitized key
   window[paginationFuncName] = function(newPage) {
     if (newPage < 1 || newPage > totalPages) return;
     currentPage = newPage;
