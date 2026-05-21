@@ -197,39 +197,47 @@ function getValidSubjects() {
 ======================================== */
 
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
-  const tbody = document.querySelector(`#${tbodyId} tbody`);
+  const table = document.getElementById(tbodyId);
+  const tbody = table ? table.querySelector('tbody') : null;
+
   if (!tbody) {
-    console.error(`Tbody not found: #${tbodyId} tbody`);
+    console.error(`paginateTable: no tbody found inside #${tbodyId}`);
     return;
   }
-  
+
   if (!Array.isArray(data)) {
     console.error('paginateTable: data must be an array');
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--color-danger);">Invalid data format</td></tr>';
     return;
   }
-  
-  // CRITICAL FIX: Clean up existing pagination function to prevent memory leak
-  const paginationFuncName = `changePage_${tbodyId}`;
+
+  // Sanitize ID so hyphens don't break the JS function name
+  const safeFuncKey = tbodyId.replace(/[^a-zA-Z0-9_]/g, '_');
+  const paginationFuncName = `changePage_${safeFuncKey}`;
+
+  // Clean up old pagination function to prevent memory leaks
   if (window[paginationFuncName]) {
     delete window[paginationFuncName];
-    console.log(`Cleaned up old pagination function: ${paginationFuncName}`);
   }
-  
+
   let currentPage = 1;
   const totalPages = Math.ceil(data.length / itemsPerPage) || 1;
-  
+
   function renderPage(page) {
     tbody.innerHTML = '';
+
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
     const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const pageData = data.slice(start, end);
-    
+    const pageData = data.slice(start, start + itemsPerPage);
+
     if (pageData.length === 0) {
       tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: var(--space-xl); color: var(--color-gray-600);">No data available</td></tr>';
+      updatePaginationControls(1, 1);
       return;
     }
-    
+
     pageData.forEach(item => {
       try {
         renderRowCallback(item, tbody);
@@ -237,35 +245,88 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
         console.error('Error rendering row:', error);
       }
     });
+
     updatePaginationControls(page, totalPages);
   }
-  
+
   function updatePaginationControls(page, total) {
-    let paginationContainer = document.getElementById(`pagination-${tbodyId}`);
-    
+    const tableEl = tbody.parentElement;
+    if (!tableEl || !tableEl.parentElement) return;
+
+    const container = tableEl.parentElement;
+    let paginationContainer = container.querySelector(`#pagination-${safeFuncKey}`);
+
     if (!paginationContainer) {
-      const table = tbody.parentElement;
-      if (!table || !table.parentElement) return;
-      
       paginationContainer = document.createElement('div');
       paginationContainer.className = 'pagination';
-      paginationContainer.id = `pagination-${tbodyId}`;
-      table.parentElement.appendChild(paginationContainer);
+      paginationContainer.id = `pagination-${safeFuncKey}`;
+      container.appendChild(paginationContainer);
     }
-    
-    paginationContainer.innerHTML = `
-      <button onclick="window.${paginationFuncName}(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
-      <span class="page-info">Page ${page} of ${total}</span>
-      <button onclick="window.${paginationFuncName}(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+
+    paginationContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px 0;
+      flex-wrap: wrap;
     `;
+
+    if (total <= 1) {
+      paginationContainer.innerHTML = '';
+      paginationContainer.style.display = 'none';
+      return;
+    }
+
+    paginationContainer.style.display = 'flex';
+
+    // Use data attributes + addEventListener — avoids hyphen identifier crash
+    paginationContainer.innerHTML = `
+      <button
+        class="pagination-prev"
+        ${page === 1 ? 'disabled' : ''}
+        aria-label="Previous page"
+        style="padding:6px 16px; border:1.5px solid #e2e8f0; background:${page === 1 ? '#f8fafc' : 'white'}; border-radius:8px; cursor:${page === 1 ? 'not-allowed' : 'pointer'}; color:${page === 1 ? '#94a3b8' : '#0f172a'}; font-weight:600; font-size:0.875rem;">
+        ← Prev
+      </button>
+      <span
+        class="page-info"
+        role="status"
+        aria-live="polite"
+        style="font-size:0.875rem; color:#64748b; font-weight:500; white-space:nowrap;">
+        Page ${page} of ${total}
+      </span>
+      <button
+        class="pagination-next"
+        ${page === total ? 'disabled' : ''}
+        aria-label="Next page"
+        style="padding:6px 16px; border:1.5px solid #e2e8f0; background:${page === total ? '#f8fafc' : 'white'}; border-radius:8px; cursor:${page === total ? 'not-allowed' : 'pointer'}; color:${page === total ? '#94a3b8' : '#0f172a'}; font-weight:600; font-size:0.875rem;">
+        Next →
+      </button>
+    `;
+
+    const prevBtn = paginationContainer.querySelector('.pagination-prev');
+    const nextBtn = paginationContainer.querySelector('.pagination-next');
+
+    if (prevBtn && page > 1) {
+      prevBtn.addEventListener('click', function () {
+        window[paginationFuncName](currentPage - 1);
+      });
+    }
+
+    if (nextBtn && page < total) {
+      nextBtn.addEventListener('click', function () {
+        window[paginationFuncName](currentPage + 1);
+      });
+    }
   }
-  
-  window[paginationFuncName] = function(newPage) {
+
+  window[paginationFuncName] = function (newPage) {
     if (newPage < 1 || newPage > totalPages) return;
     currentPage = newPage;
     renderPage(currentPage);
   };
-  
+
   renderPage(1);
   console.log(`✓ Pagination initialized for ${tbodyId} (${data.length} items, ${totalPages} pages)`);
 }
