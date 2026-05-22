@@ -1272,11 +1272,11 @@ p:not(:last-child) { margin-bottom: 1em; }
 
 .testimonials-track {
   display: flex;
+  align-items: flex-start;
   gap: var(--s-6);
   width: max-content;
   will-change: transform;
   transform: translateZ(0);
-  /* --set-width and --marquee-duration are set by JS */
   animation: marquee-scroll var(--marquee-duration, 44s) linear infinite;
 }
 
@@ -1326,7 +1326,6 @@ p:not(:last-child) { margin-bottom: 1em; }
   font-size: var(--text-lg);
   color: var(--ink-800);
   line-height: 1.5;
-  flex: 1;
 }
 
 .testimonial-author {
