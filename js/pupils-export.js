@@ -31,6 +31,7 @@ async function exportPupilsToExcel() {
     
     const excelData = [];
     
+    // Main header row
     excelData.push([
       'S/N',
       'Full Name',
@@ -43,6 +44,21 @@ async function exportPupilsToExcel() {
       'Parent Email',
       'Contact Number',
       'Address'
+    ]);
+
+    // Sub-header row with italic note under Full Name
+    excelData.push([
+      '',
+      '(First name first)',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ''
     ]);
     
     let serialNumber = 1;
@@ -93,6 +109,14 @@ async function exportPupilsToExcel() {
     
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Style the sub-header cell (row index 1, col index 1 = B2) as italic grey
+    const subHeaderCellRef = XLSX.utils.encode_cell({ r: 1, c: 1 });
+    if (!ws[subHeaderCellRef]) ws[subHeaderCellRef] = { v: '(First name first)', t: 's' };
+    ws[subHeaderCellRef].s = {
+      font: { italic: true, color: { rgb: '888888' }, sz: 9 },
+      alignment: { horizontal: 'left' }
+    };
     
     ws['!cols'] = [
       { wch: 6 },   // S/N
@@ -162,7 +186,7 @@ async function exportPupilsToPDF() {
     const pageWidth  = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
-    // ── Header (page 1 only — autoTable startY handles the rest) ──────────
+    // ── Header ──────────────────────────────────────────────────────────────
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(33, 150, 243);
@@ -182,7 +206,7 @@ async function exportPupilsToPDF() {
     });
     doc.text(`Generated: ${dateStr}`, pageWidth / 2, 29, { align: 'center' });
     
-    // ── Build table data ────────────────────────────────────────────────────
+    // ── Build table data ─────────────────────────────────────────────────────
     const tableData = [];
     let serialNumber = 1;
     
@@ -231,11 +255,14 @@ async function exportPupilsToPDF() {
       ]);
     });
     
-    // ── Draw table (NO didDrawPage footer here) ─────────────────────────────
+    // ── Draw table ───────────────────────────────────────────────────────────
+    // The "Full Name" header is split into two lines using autoTable's
+    // didDrawCell hook so we can render the italic subtitle in a different
+    // style without a separate sub-header row (which would break row shading).
     doc.autoTable({
       head: [[
         'S/N',
-        'Full Name',
+        'Full Name',       // italic note added via didDrawCell below
         'Admission No',
         'DOB',
         'Gender',
@@ -254,7 +281,9 @@ async function exportPupilsToPDF() {
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8,
-        halign: 'center'
+        halign: 'center',
+        // Extra height so the italic subtitle fits comfortably
+        minCellHeight: 14
       },
       bodyStyles: {
         fontSize: 7,
@@ -277,11 +306,35 @@ async function exportPupilsToPDF() {
         10: { cellWidth: 32 }                      // Address
       },
       margin: { left: 8, right: 8 },
-      // Repeat header on every page automatically (autoTable default: true)
-      showHead: 'everyPage'
+      showHead: 'everyPage',
+
+      // ── Custom cell drawing for the "Full Name" header ───────────────────
+      didDrawCell: function (data) {
+        // Only target the header row, column index 1 (Full Name)
+        if (data.section !== 'head' || data.column.index !== 1) return;
+
+        const cell = data.cell;
+
+        // Draw the italic subtitle below the bold header text
+        doc.setFontSize(6.5);
+        doc.setFont(undefined, 'italic');
+        doc.setTextColor(220, 235, 255); // light blue-white so it reads on the blue bg
+
+        doc.text(
+          '(first name first)',
+          cell.x + cell.width / 2,          // horizontally centred in cell
+          cell.y + cell.height - 3,          // near the bottom of the header cell
+          { align: 'center' }
+        );
+
+        // Reset font so autoTable internals are not affected
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+      }
     });
     
-    // ── Total count below table on final page ───────────────────────────────
+    // ── Total count below table on final page ────────────────────────────────
     const finalY = doc.lastAutoTable.finalY || 35;
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
@@ -292,8 +345,7 @@ async function exportPupilsToPDF() {
       finalY + 10
     );
     
-    // ── Add page numbers AFTER table is fully drawn ─────────────────────────
-    // This is the correct approach — all pages now exist so the count is accurate.
+    // ── Page footers — added AFTER table so total page count is known ────────
     const totalPages = doc.internal.getNumberOfPages();
     
     for (let i = 1; i <= totalPages; i++) {
@@ -319,7 +371,7 @@ async function exportPupilsToPDF() {
       );
     }
     
-    // ── Save ────────────────────────────────────────────────────────────────
+    // ── Save ─────────────────────────────────────────────────────────────────
     const filename = `Fahmid_Pupils_Data_${today.toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
     
