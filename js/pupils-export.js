@@ -20,7 +20,6 @@ async function exportPupilsToExcel() {
   try {
     window.showToast?.('Preparing Excel export...', 'info', 3000);
     
-    // Fetch all pupils data
     const pupilsSnapshot = await window.db.collection('pupils')
       .orderBy('name')
       .get();
@@ -30,10 +29,8 @@ async function exportPupilsToExcel() {
       return;
     }
     
-    // Prepare data for Excel
     const excelData = [];
     
-    // Add header row with styling info
     excelData.push([
       'S/N',
       'Full Name',
@@ -48,12 +45,10 @@ async function exportPupilsToExcel() {
       'Address'
     ]);
     
-    // Add pupil data rows
     let serialNumber = 1;
     pupilsSnapshot.forEach(doc => {
       const pupil = doc.data();
       
-      // Extract class name safely
       let className = '-';
       if (pupil.class) {
         if (typeof pupil.class === 'object' && pupil.class.name) {
@@ -63,7 +58,6 @@ async function exportPupilsToExcel() {
         }
       }
       
-      // Extract teacher name safely
       let teacherName = '-';
       if (pupil.assignedTeacher) {
         if (typeof pupil.assignedTeacher === 'object' && pupil.assignedTeacher.name) {
@@ -73,7 +67,6 @@ async function exportPupilsToExcel() {
         }
       }
       
-      // Format date of birth
       let dob = '-';
       if (pupil.dob) {
         try {
@@ -98,11 +91,9 @@ async function exportPupilsToExcel() {
       ]);
     });
     
-    // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(excelData);
     
-    // Set column widths for better readability
     ws['!cols'] = [
       { wch: 6 },   // S/N
       { wch: 25 },  // Full Name
@@ -117,15 +108,12 @@ async function exportPupilsToExcel() {
       { wch: 35 }   // Address
     ];
     
-    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, 'Pupils Data');
     
-    // Generate filename with current date
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0];
     const filename = `Fahmid_Pupils_Data_${dateStr}.xlsx`;
     
-    // Download the file
     XLSX.writeFile(wb, filename);
     
     window.showToast?.(
@@ -159,7 +147,6 @@ async function exportPupilsToPDF() {
   try {
     window.showToast?.('Preparing PDF export...', 'info', 3000);
     
-    // Fetch all pupils data
     const pupilsSnapshot = await window.db.collection('pupils')
       .orderBy('name')
       .get();
@@ -169,25 +156,22 @@ async function exportPupilsToPDF() {
       return;
     }
     
-    // Create new PDF document (A4 landscape for better table fit)
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape', 'mm', 'a4');
     
-    // School header
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageWidth  = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     
-    // Title
+    // ── Header (page 1 only — autoTable startY handles the rest) ──────────
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
-    doc.setTextColor(33, 150, 243); // Primary blue color
+    doc.setTextColor(33, 150, 243);
     doc.text('FAHMID NURSERY & PRIMARY SCHOOL', pageWidth / 2, 15, { align: 'center' });
     
-    // Subtitle
     doc.setFontSize(14);
     doc.setTextColor(100, 100, 100);
     doc.text('Pupils Data Report', pageWidth / 2, 23, { align: 'center' });
     
-    // Export date
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     const today = new Date();
@@ -198,14 +182,13 @@ async function exportPupilsToPDF() {
     });
     doc.text(`Generated: ${dateStr}`, pageWidth / 2, 29, { align: 'center' });
     
-    // Prepare table data
+    // ── Build table data ────────────────────────────────────────────────────
     const tableData = [];
     let serialNumber = 1;
     
-    pupilsSnapshot.forEach(doc => {
-      const pupil = doc.data();
+    pupilsSnapshot.forEach(docSnap => {
+      const pupil = docSnap.data();
       
-      // Extract class name safely
       let className = '-';
       if (pupil.class) {
         if (typeof pupil.class === 'object' && pupil.class.name) {
@@ -215,7 +198,6 @@ async function exportPupilsToPDF() {
         }
       }
       
-      // Extract teacher name safely
       let teacherName = '-';
       if (pupil.assignedTeacher) {
         if (typeof pupil.assignedTeacher === 'object' && pupil.assignedTeacher.name) {
@@ -225,7 +207,6 @@ async function exportPupilsToPDF() {
         }
       }
       
-      // Format date of birth
       let dob = '-';
       if (pupil.dob) {
         try {
@@ -245,11 +226,12 @@ async function exportPupilsToPDF() {
         teacherName,
         pupil.parentName || '-',
         pupil.parentEmail || '-',
-        pupil.contact || '-'
+        pupil.contact || '-',
+        pupil.address || '-'
       ]);
     });
     
-    // Generate table with beautiful styling
+    // ── Draw table (NO didDrawPage footer here) ─────────────────────────────
     doc.autoTable({
       head: [[
         'S/N',
@@ -261,64 +243,45 @@ async function exportPupilsToPDF() {
         'Teacher',
         'Parent Name',
         'Parent Email',
-        'Contact'
+        'Contact',
+        'Address'
       ]],
       body: tableData,
       startY: 35,
       theme: 'grid',
       headStyles: {
-        fillColor: [33, 150, 243], // Primary blue
+        fillColor: [33, 150, 243],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8,
         halign: 'center'
       },
       bodyStyles: {
-        fontSize: 8,
-        cellPadding: 3
+        fontSize: 7,
+        cellPadding: 2
       },
       alternateRowStyles: {
-        fillColor: [245, 247, 250] // Light gray for alternate rows
+        fillColor: [245, 247, 250]
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 12 }, // S/N
-        1: { cellWidth: 35 }, // Full Name
-        2: { halign: 'center', cellWidth: 22 }, // Admission No
-        3: { halign: 'center', cellWidth: 20 }, // DOB
-        4: { halign: 'center', cellWidth: 18 }, // Gender
-        5: { cellWidth: 25 }, // Class
-        6: { cellWidth: 30 }, // Teacher
-        7: { cellWidth: 30 }, // Parent Name
-        8: { cellWidth: 35 }, // Parent Email
-        9: { cellWidth: 25 }  // Contact
+        0:  { halign: 'center', cellWidth: 10 },  // S/N
+        1:  { cellWidth: 32 },                     // Full Name
+        2:  { halign: 'center', cellWidth: 20 },   // Admission No
+        3:  { halign: 'center', cellWidth: 18 },   // DOB
+        4:  { halign: 'center', cellWidth: 15 },   // Gender
+        5:  { cellWidth: 22 },                     // Class
+        6:  { cellWidth: 28 },                     // Teacher
+        7:  { cellWidth: 28 },                     // Parent Name
+        8:  { cellWidth: 33 },                     // Parent Email
+        9:  { cellWidth: 22 },                     // Contact
+        10: { cellWidth: 32 }                      // Address
       },
-      margin: { left: 10, right: 10 },
-      didDrawPage: function(data) {
-        // Footer with page numbers
-        const pageCount = doc.internal.getNumberOfPages();
-        const currentPage = doc.internal.getCurrentPageInfo().pageNumber;
-        
-        doc.setFontSize(9);
-        doc.setTextColor(150);
-        doc.text(
-          `Page ${currentPage} of ${pageCount}`,
-          pageWidth / 2,
-          doc.internal.pageSize.getHeight() - 10,
-          { align: 'center' }
-        );
-        
-        // School footer
-        doc.setFontSize(8);
-        doc.text(
-          'Fahmid Nursery & Primary School - Confidential Document',
-          pageWidth / 2,
-          doc.internal.pageSize.getHeight() - 5,
-          { align: 'center' }
-        );
-      }
+      margin: { left: 8, right: 8 },
+      // Repeat header on every page automatically (autoTable default: true)
+      showHead: 'everyPage'
     });
     
-    // Add total count on last page
+    // ── Total count below table on final page ───────────────────────────────
     const finalY = doc.lastAutoTable.finalY || 35;
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
@@ -329,10 +292,35 @@ async function exportPupilsToPDF() {
       finalY + 10
     );
     
-    // Generate filename
-    const filename = `Fahmid_Pupils_Data_${today.toISOString().split('T')[0]}.pdf`;
+    // ── Add page numbers AFTER table is fully drawn ─────────────────────────
+    // This is the correct approach — all pages now exist so the count is accurate.
+    const totalPages = doc.internal.getNumberOfPages();
     
-    // Save the PDF
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(150, 150, 150);
+      
+      doc.text(
+        `Page ${i} of ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
+      
+      doc.setFontSize(8);
+      doc.text(
+        'Fahmid Nursery & Primary School - Confidential Document',
+        pageWidth / 2,
+        pageHeight - 5,
+        { align: 'center' }
+      );
+    }
+    
+    // ── Save ────────────────────────────────────────────────────────────────
+    const filename = `Fahmid_Pupils_Data_${today.toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
     
     window.showToast?.(
