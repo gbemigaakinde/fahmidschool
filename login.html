@@ -786,218 +786,262 @@
 <script>
   'use strict';
 
-  let currentMode = 'login';
+let currentMode = 'login';
 
-  function switchMode(mode) {
-    currentMode = mode;
+function switchMode(mode) {
+  currentMode = mode;
 
-    // Update tabs
-    document.getElementById('tab-login').classList.toggle('active', mode === 'login');
-    document.getElementById('tab-register').classList.toggle('active', mode === 'register');
-    document.getElementById('tab-login').setAttribute('aria-selected', mode === 'login');
-    document.getElementById('tab-register').setAttribute('aria-selected', mode === 'register');
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('tab-login').setAttribute('aria-selected', mode === 'login');
+  document.getElementById('tab-register').setAttribute('aria-selected', mode === 'register');
 
-    // Show/hide panels
-    document.getElementById('panel-login').style.display = mode === 'login' ? 'block' : 'none';
-    document.getElementById('panel-register').style.display = mode === 'register' ? 'block' : 'none';
-    document.getElementById('panel-forgot').style.display = 'none';
+  document.getElementById('panel-login').style.display = mode === 'login' ? 'block' : 'none';
+  document.getElementById('panel-register').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('panel-forgot').style.display = 'none';
 
-    // Update headings
-    if (mode === 'login') {
-      document.getElementById('auth-heading').textContent = 'Welcome Back';
-      document.getElementById('auth-subheading').textContent = 'Sign in to access your portal';
-    } else {
-      document.getElementById('auth-heading').textContent = 'Create an Account';
-      document.getElementById('auth-subheading').textContent = 'Registration is managed by the school';
+  if (mode === 'login') {
+    document.getElementById('auth-heading').textContent = 'Welcome Back';
+    document.getElementById('auth-subheading').textContent = 'Sign in to access your portal';
+  } else {
+    document.getElementById('auth-heading').textContent = 'Create an Account';
+    document.getElementById('auth-subheading').textContent = 'Registration is managed by the school';
+  }
+}
+
+function showForgotPanel() {
+  document.getElementById('panel-login').style.display = 'none';
+  document.getElementById('panel-register').style.display = 'none';
+  document.getElementById('panel-forgot').style.display = 'block';
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-heading').textContent = 'Forgot Password';
+  document.getElementById('auth-subheading').textContent = 'We\'ll send a reset link to your inbox';
+  document.getElementById('forgot-form-wrap').style.display = 'block';
+  document.getElementById('forgot-success').style.display = 'none';
+  document.getElementById('forgot-email').value = '';
+  document.getElementById('forgot-email').classList.remove('input-error');
+  document.getElementById('forgot-email').focus();
+}
+
+function hideForgotPanel() {
+  document.getElementById('panel-forgot').style.display = 'none';
+  document.getElementById('auth-tabs').style.display = '';
+  switchMode('login');
+}
+
+/**
+ * Look up email by admission number (pupils collection)
+ */
+async function getEmailByAdmissionNumber(admissionNo) {
+  try {
+    const snapshot = await db.collection('pupils')
+      .where('admissionNo', '==', admissionNo)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data().email;
+  } catch (err) {
+    throw err;
+  }
+}
+
+/**
+ * Look up email by employee ID / staff number (teachers collection)
+ */
+async function getEmailByEmployeeId(employeeId) {
+  try {
+    const snapshot = await db.collection('teachers')
+      .where('employeeId', '==', employeeId)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return snapshot.docs[0].data().email;
+  } catch (err) {
+    throw err;
+  }
+}
+
+/**
+ * Resolve whatever the user typed into a Firebase-ready email address.
+ * Priority order:
+ *  1. If it contains '@' — treat it as an email directly.
+ *  2. Try pupils collection (admission number).
+ *  3. Try teachers collection (employee ID / staff number).
+ * Returns { email, role } or throws if nothing found.
+ */
+async function resolveIdentifier(identifier) {
+  const trimmed = identifier.trim();
+
+  // Already an email address — pass straight through
+  if (trimmed.includes('@')) {
+    return { email: trimmed, role: null };
+  }
+
+  // Try pupils first (admission number)
+  const pupilEmail = await getEmailByAdmissionNumber(trimmed);
+  if (pupilEmail) {
+    return { email: pupilEmail, role: 'pupil' };
+  }
+
+  // Try teachers (employee ID / staff number)
+  const teacherEmail = await getEmailByEmployeeId(trimmed);
+  if (teacherEmail) {
+    return { email: teacherEmail, role: 'teacher' };
+  }
+
+  // Nothing found
+  return null;
+}
+
+async function handleLogin(identifier, password) {
+  const result = await resolveIdentifier(identifier);
+
+  if (!result) {
+    window.showToast(
+      'No account found with this admission number or employee ID.',
+      'danger'
+    );
+    throw new Error('Identifier not found');
+  }
+
+  await auth.signInWithEmailAndPassword(result.email, password);
+  window.showToast('Login successful! Redirecting…', 'success');
+  setTimeout(() => {
+    window.location.href = 'portal.html';
+  }, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  const form            = document.getElementById('login-form');
+  const btn             = document.getElementById('login-btn');
+  const identifierInput = document.getElementById('login-identifier');
+  const passwordInput   = document.getElementById('login-password');
+
+  // Password visibility toggle
+  const passwordToggle = document.getElementById('password-toggle');
+  const eyeIcon        = passwordToggle.querySelector('.icon-eye');
+  const eyeOffIcon     = passwordToggle.querySelector('.icon-eye-off');
+
+  passwordToggle.addEventListener('click', () => {
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    eyeIcon.style.display    = isHidden ? 'none' : '';
+    eyeOffIcon.style.display = isHidden ? ''     : 'none';
+    passwordToggle.setAttribute('aria-label',  isHidden ? 'Hide password' : 'Show password');
+    passwordToggle.setAttribute('aria-pressed', String(isHidden));
+  });
+
+  // Forgot password
+  document.getElementById('forgot-btn').addEventListener('click', showForgotPanel);
+  document.getElementById('forgot-back-btn').addEventListener('click', hideForgotPanel);
+  document.getElementById('forgot-success-back-btn').addEventListener('click', hideForgotPanel);
+
+  // Forgot password form submit
+  document.getElementById('forgot-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const emailInput = document.getElementById('forgot-email');
+    const submitBtn  = document.getElementById('forgot-submit-btn');
+    const email      = emailInput.value.trim();
+
+    if (!email) {
+      emailInput.classList.add('input-error');
+      window.showToast('Please enter your email address.', 'warning');
+      return;
     }
-  }
 
-  function showForgotPanel() {
-    document.getElementById('panel-login').style.display = 'none';
-    document.getElementById('panel-register').style.display = 'none';
-    document.getElementById('panel-forgot').style.display = 'block';
-    document.getElementById('auth-tabs').style.display = 'none';
-    document.getElementById('auth-heading').textContent = 'Forgot Password';
-    document.getElementById('auth-subheading').textContent = 'We\'ll send a reset link to your inbox';
-    // Reset to form state (in case they've been here before)
-    document.getElementById('forgot-form-wrap').style.display = 'block';
-    document.getElementById('forgot-success').style.display = 'none';
-    document.getElementById('forgot-email').value = '';
-    document.getElementById('forgot-email').classList.remove('input-error');
-    document.getElementById('forgot-email').focus();
-  }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      emailInput.classList.add('input-error');
+      window.showToast('Please enter a valid email address.', 'warning');
+      return;
+    }
 
-  function hideForgotPanel() {
-    document.getElementById('panel-forgot').style.display = 'none';
-    document.getElementById('auth-tabs').style.display = '';
-    switchMode('login');
-  }
+    emailInput.classList.remove('input-error');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
 
-  async function getEmailByAdmissionNumber(admissionNo) {
     try {
-      const snapshot = await db.collection('pupils')
-        .where('admissionNo', '==', admissionNo)
-        .limit(1)
-        .get();
-      if (snapshot.empty) return null;
-      return snapshot.docs[0].data().email;
+      // Check email exists in either pupils or teachers before sending reset link
+      const [pupilSnap, teacherSnap] = await Promise.all([
+        db.collection('pupils').where('email', '==', email).limit(1).get(),
+        db.collection('teachers').where('email', '==', email).limit(1).get()
+      ]);
+
+      if (pupilSnap.empty && teacherSnap.empty) {
+        emailInput.classList.add('input-error');
+        window.showToast('No account found with this email address.', 'danger');
+        return;
+      }
+
+      await auth.sendPasswordResetEmail(email);
+      document.getElementById('forgot-sent-to').textContent = email;
+      document.getElementById('forgot-form-wrap').style.display = 'none';
+      document.getElementById('forgot-success').style.display   = 'block';
     } catch (err) {
-      throw err;
+      window.showToast('Something went wrong. Please try again or contact the school.', 'danger');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('loading');
     }
-  }
+  });
 
-  async function handleLogin(identifier, password) {
-    let email = identifier.trim();
-    const isAdmissionNo = !email.includes('@');
+  // Login form submit
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
 
-    if (isAdmissionNo) {
-      const found = await getEmailByAdmissionNumber(email);
-      if (!found) {
-        window.showToast('No account found with this admission number.', 'danger');
-        throw new Error('Invalid admission number');
-      }
-      email = found;
+    const identifier = identifierInput.value.trim();
+    const password   = passwordInput.value;
+    let valid        = true;
+
+    if (!identifier) {
+      identifierInput.classList.add('input-error');
+      window.showToast('Please enter your email, admission number, or employee ID.', 'warning');
+      valid = false;
+    } else {
+      identifierInput.classList.remove('input-error');
     }
 
-    await auth.signInWithEmailAndPassword(email, password);
-    window.showToast('Login successful! Redirecting…', 'success');
-    setTimeout(() => {
-      window.location.href = 'portal.html';
-    }, 1000);
-  }
+    if (!password || password.length < 6) {
+      passwordInput.classList.add('input-error');
+      window.showToast('Please enter your password (at least 6 characters).', 'warning');
+      valid = false;
+    } else {
+      passwordInput.classList.remove('input-error');
+    }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // Lucide icons
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (!valid) return;
 
-    const form = document.getElementById('login-form');
-    const btn = document.getElementById('login-btn');
-    const identifierInput = document.getElementById('login-identifier');
-    const passwordInput = document.getElementById('login-password');
+    btn.disabled = true;
+    btn.classList.add('loading');
 
-    // Password visibility toggle
-    const passwordToggle = document.getElementById('password-toggle');
-    const eyeIcon = passwordToggle.querySelector('.icon-eye');
-    const eyeOffIcon = passwordToggle.querySelector('.icon-eye-off');
-
-    passwordToggle.addEventListener('click', () => {
-      const isHidden = passwordInput.type === 'password';
-      passwordInput.type = isHidden ? 'text' : 'password';
-      eyeIcon.style.display = isHidden ? 'none' : '';
-      eyeOffIcon.style.display = isHidden ? '' : 'none';
-      passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-      passwordToggle.setAttribute('aria-pressed', String(isHidden));
-    });
-
-    // Forgot password — show inline panel
-    document.getElementById('forgot-btn').addEventListener('click', showForgotPanel);
-    document.getElementById('forgot-back-btn').addEventListener('click', hideForgotPanel);
-    document.getElementById('forgot-success-back-btn').addEventListener('click', hideForgotPanel);
-
-    // Forgot password form submit
-    document.getElementById('forgot-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const emailInput = document.getElementById('forgot-email');
-      const submitBtn = document.getElementById('forgot-submit-btn');
-      const email = emailInput.value.trim();
-
-      if (!email) {
-        emailInput.classList.add('input-error');
-        window.showToast('Please enter your email address.', 'warning');
-        return;
-      }
-
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        emailInput.classList.add('input-error');
-        window.showToast('Please enter a valid email address.', 'warning');
-        return;
-      }
-
-      emailInput.classList.remove('input-error');
-      submitBtn.disabled = true;
-      submitBtn.classList.add('loading');
-
-      try {
-        // Check email exists in Firestore before sending reset link
-        const snapshot = await db.collection('pupils')
-          .where('email', '==', email)
-          .limit(1)
-          .get();
-
-        if (snapshot.empty) {
-          emailInput.classList.add('input-error');
-          window.showToast('No account found with this email address.', 'danger');
-          return;
-        }
-
-        // Email confirmed — send the reset link
-        await auth.sendPasswordResetEmail(email);
-        document.getElementById('forgot-sent-to').textContent = email;
-        document.getElementById('forgot-form-wrap').style.display = 'none';
-        document.getElementById('forgot-success').style.display = 'block';
-      } catch (err) {
-        window.showToast('Something went wrong. Please try again or contact the school.', 'danger');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('loading');
-      }
-    });
-
-    // Form submit
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-
-      const identifier = identifierInput.value.trim();
-      const password = passwordInput.value;
-
-      let valid = true;
-
-      if (!identifier) {
-        identifierInput.classList.add('input-error');
-        window.showToast('Please enter your email or admission number.', 'warning');
-        valid = false;
+    try {
+      await handleLogin(identifier, password);
+    } catch (err) {
+      if (err.message === 'Identifier not found') {
+        // Toast already shown inside handleLogin
+      } else if (err.code === 'auth/user-not-found') {
+        window.showToast('No account found with this email.', 'danger');
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        window.showToast('Incorrect password. Please try again.', 'danger');
+      } else if (err.code === 'auth/too-many-requests') {
+        window.showToast('Too many attempts. Please wait a moment and try again.', 'danger');
       } else {
-        identifierInput.classList.remove('input-error');
+        window.showToast('Login failed. Please check your details and try again.', 'danger');
       }
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  });
 
-      if (!password || password.length < 6) {
-        passwordInput.classList.add('input-error');
-        window.showToast('Please enter your password (at least 6 characters).', 'warning');
-        valid = false;
-      } else {
-        passwordInput.classList.remove('input-error');
-      }
-
-      if (!valid) return;
-
-      btn.disabled = true;
-      btn.classList.add('loading');
-
-      try {
-        await handleLogin(identifier, password);
-      } catch (err) {
-
-        let msg = 'Login failed. Please check your details and try again.';
-        if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
-        if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please try again.';
-        if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait a moment and try again.';
-
-        if (err.message !== 'Invalid admission number') {
-          window.showToast(msg, 'danger');
-        }
-      } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
-      }
-    });
-
-    // Clear error styling on input
-    [identifierInput, passwordInput].forEach(input => {
-      input.addEventListener('input', () => {
-        input.classList.remove('input-error');
-      });
+  // Clear error styling on input
+  [identifierInput, passwordInput].forEach(input => {
+    input.addEventListener('input', () => {
+      input.classList.remove('input-error');
     });
   });
+});
 </script>
 <script>if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }</script>
 </body>
