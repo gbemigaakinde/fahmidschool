@@ -8829,36 +8829,36 @@ window.renderTeachersTable = renderTeachersTable;
    PUPILS MANAGEMENT - FIXED
 ======================================== */
 
-async function showPupilForm() {
+async function showPupilForm(isEditing = false) {
   const form = document.getElementById('pupil-form');
   if (!form) return;
 
   // Populate class dropdown first
   await populateClassDropdown();
 
-  // Show credentials section (new pupil mode)
-  const credentialsSection = document.getElementById('pupil-credentials-section');
-  if (credentialsSection) credentialsSection.style.display = 'block';
+  if (!isEditing) {
+    // New pupil mode: show credentials section
+    const credentialsSection = document.getElementById('pupil-credentials-section');
+    if (credentialsSection) credentialsSection.style.display = 'block';
 
-  // Reset password to required
-  const passwordField = document.getElementById('pupil-password');
-  if (passwordField) {
-    passwordField.setAttribute('required', '');
-    passwordField.value = '';
+    const passwordField = document.getElementById('pupil-password');
+    if (passwordField) {
+      passwordField.setAttribute('required', '');
+      passwordField.value = '';
+    }
+
+    const emailField = document.getElementById('pupil-email');
+    if (emailField) {
+      emailField.removeAttribute('readonly');
+      emailField.style.background = '';
+      emailField.style.color = '';
+      emailField.setAttribute('required', '');
+    }
+
+    const editNote = document.getElementById('pupil-credentials-edit-note');
+    if (editNote) editNote.style.display = 'none';
   }
-
-  // Reset email to editable
-  const emailField = document.getElementById('pupil-email');
-  if (emailField) {
-    emailField.removeAttribute('readonly');
-    emailField.style.background = '';
-    emailField.style.color = '';
-    emailField.setAttribute('required', '');
-  }
-
-  // Hide edit note
-  const editNote = document.getElementById('pupil-credentials-edit-note');
-  if (editNote) editNote.style.display = 'none';
+  // If isEditing=true, credentials state is already set by editPupil() before this call
 
   form.style.display = 'block';
   document.getElementById('pupil-name')?.focus();
@@ -8869,19 +8869,22 @@ function cancelPupilForm() {
   document.getElementById('add-pupil-form').reset();
   document.getElementById('pupil-id').value = '';
 
-  // Reset form title and button text
   document.getElementById('pupil-form-title').textContent = 'Add / Edit Pupil';
   document.getElementById('save-pupil-btn').textContent = 'Save Pupil';
 
-  // Reset credentials section to default state
+  // Reset credentials section back to new-pupil state
   const credentialsSection = document.getElementById('pupil-credentials-section');
   if (credentialsSection) credentialsSection.style.display = 'block';
 
   const passwordField = document.getElementById('pupil-password');
-  if (passwordField) passwordField.setAttribute('required', '');
+  if (passwordField) {
+    passwordField.setAttribute('required', '');
+    passwordField.value = '';
+  }
 
   const emailField = document.getElementById('pupil-email');
   if (emailField) {
+    emailField.value = '';
     emailField.removeAttribute('readonly');
     emailField.style.background = '';
     emailField.style.color = '';
@@ -9418,37 +9421,16 @@ console.log('✅ Bulk operations module loaded and exposed globally');
 async function editPupil(uid) {
   try {
     console.log(`📝 Loading pupil for edit: ${uid}`);
-    
+
     const doc = await db.collection('pupils').doc(uid).get();
     if (!doc.exists) throw new Error('Pupil not found');
 
     const data = doc.data();
-    console.log('Pupil data loaded:', data);
 
-    const classId = getClassIdFromPupilData(data.class);
-    console.log('Class ID extracted:', classId);
-
-    await populateClassDropdown(classId);
-    console.log('Class dropdown populated');
-
-    document.getElementById('pupil-id').value = uid;
-    document.getElementById('pupil-name').value = data.name || '';
-    document.getElementById('pupil-admission-no').value = data.admissionNo || '';
-    console.log('Admission No loaded:', data.admissionNo);
-    
-    document.getElementById('pupil-dob').value = data.dob || '';
-    document.getElementById('pupil-gender').value = data.gender || '';
-    document.getElementById('pupil-parent-name').value = data.parentName || '';
-    document.getElementById('pupil-parent-email').value = data.parentEmail || '';
-    document.getElementById('pupil-contact').value = data.contact || '';
-    document.getElementById('pupil-address').value = data.address || '';
-
-    // --- EDIT MODE: handle credentials section ---
-    // Hide the credentials inputs entirely
+    // Set up credentials section BEFORE showPupilForm so it won't be overwritten
     const credentialsSection = document.getElementById('pupil-credentials-section');
     if (credentialsSection) credentialsSection.style.display = 'none';
 
-    // Show informational note instead
     const editNote = document.getElementById('pupil-credentials-edit-note');
     if (editNote) {
       editNote.style.display = 'block';
@@ -9461,12 +9443,37 @@ async function editPupil(uid) {
       `;
     }
 
-    // Password not required when editing
     const passwordField = document.getElementById('pupil-password');
     if (passwordField) {
       passwordField.removeAttribute('required');
       passwordField.value = '';
     }
+
+    const emailField = document.getElementById('pupil-email');
+    if (emailField) {
+      emailField.value = data.email || '';
+      emailField.setAttribute('readonly', '');
+      emailField.style.background = '#f1f5f9';
+      emailField.style.color = '#64748b';
+      emailField.removeAttribute('required');
+    }
+
+    // Now call showPupilForm with isEditing=true so it won't reset credentials
+    await showPupilForm(true);
+
+    // Populate all other fields after form is shown
+    const classId = getClassIdFromPupilData(data.class);
+    await populateClassDropdown(classId);
+
+    document.getElementById('pupil-id').value = uid;
+    document.getElementById('pupil-name').value = data.name || '';
+    document.getElementById('pupil-admission-no').value = data.admissionNo || '';
+    document.getElementById('pupil-dob').value = data.dob || '';
+    document.getElementById('pupil-gender').value = data.gender || '';
+    document.getElementById('pupil-parent-name').value = data.parentName || '';
+    document.getElementById('pupil-parent-email').value = data.parentEmail || '';
+    document.getElementById('pupil-contact').value = data.contact || '';
+    document.getElementById('pupil-address').value = data.address || '';
 
     const classSelect = document.getElementById('pupil-class');
     if (classSelect && classId) {
@@ -9476,13 +9483,11 @@ async function editPupil(uid) {
 
     const admissionTermSelect = document.getElementById('pupil-admission-term');
     const exitTermSelect = document.getElementById('pupil-exit-term');
-    
     if (admissionTermSelect) admissionTermSelect.value = data.admissionTerm || 'First Term';
     if (exitTermSelect) exitTermSelect.value = data.exitTerm || 'Third Term';
 
     const percentInput = document.getElementById('pupil-fee-adjustment-percent');
     const amountInput = document.getElementById('pupil-fee-adjustment-amount');
-    
     if (percentInput) percentInput.value = data.feeAdjustmentPercent || 0;
     if (amountInput) amountInput.value = data.feeAdjustmentAmount || 0;
 
@@ -9490,7 +9495,7 @@ async function editPupil(uid) {
     if (!classId && data.class && typeof data.class === 'string') {
       const className = data.class;
       console.warn(`⚠️ Old class format detected: "${className}"`);
-      
+
       const classesSnapshot = await db.collection('classes')
         .where('name', '==', className)
         .get();
@@ -9505,12 +9510,12 @@ async function editPupil(uid) {
           `⚠️ Multiple classes named "${className}" found. Please select the correct one manually.`,
           'warning', 10000
         );
-        const classSelect = document.getElementById('pupil-class');
-        if (classSelect) {
-          classSelect.value = '';
-          classSelect.style.background = '#fff3cd';
-          classSelect.style.border = '2px solid #ffc107';
-          classSelect.addEventListener('change', function removeHighlight() {
+        const cs = document.getElementById('pupil-class');
+        if (cs) {
+          cs.value = '';
+          cs.style.background = '#fff3cd';
+          cs.style.border = '2px solid #ffc107';
+          cs.addEventListener('change', function removeHighlight() {
             this.style.background = '';
             this.style.border = '';
             this.removeEventListener('change', removeHighlight);
@@ -9518,8 +9523,8 @@ async function editPupil(uid) {
         }
       } else {
         const matchedClassId = classesSnapshot.docs[0].id;
-        const classSelect = document.getElementById('pupil-class');
-        if (classSelect) classSelect.value = matchedClassId;
+        const cs = document.getElementById('pupil-class');
+        if (cs) cs.value = matchedClassId;
         window.showToast?.('Note: Old class data format detected. Saving will upgrade it.', 'info', 5000);
       }
     } else if (!classId) {
@@ -9530,23 +9535,16 @@ async function editPupil(uid) {
     document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
     document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
 
-    showPupilForm();
-
-    // Re-hide credentials after showPupilForm() (which resets them to visible)
-    if (credentialsSection) credentialsSection.style.display = 'none';
-    if (editNote) editNote.style.display = 'block';
-    if (passwordField) passwordField.removeAttribute('required');
-
     document.getElementById('pupil-name')?.focus();
     console.log('✅ Pupil form loaded successfully for editing');
-    
+
   } catch (error) {
     console.error('❌ Error loading pupil for edit:', error);
     window.showToast?.('Failed to load pupil details for editing', 'danger');
   }
 }
 
-// ✅ Make globally available
+// Make globally available
 window.editPupil = editPupil;
 
 /* ======================================== 
