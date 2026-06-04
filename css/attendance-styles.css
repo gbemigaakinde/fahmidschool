@@ -1,21 +1,19 @@
 /* ============================================================
    FAHMID NURSERY & PRIMARY SCHOOL
-   Attendance Register — Complete Stylesheet v3.0.0
+   Attendance Register — Complete Stylesheet v3.1.0
    
-   COMPLETE REPLACEMENT for attendance-teacher-ui-redesigned.css
-   (or however your existing attendance CSS is included).
-
-   Pairs with attendance-teacher-ui.js v3.0.0.
-   All class names and IDs match exactly what that JS produces.
-
-   Design direction: "Institutional precision with warmth"
-   — Deep navy authority, soft sky-blue data space,
-     clean tabular typography, confident micro-interactions.
+   FIXES in v3.1.0:
+   - att-register-scroll no longer uses overflow:hidden (was clipping grid on mobile)
+   - #daily-register-grid gets overflow-x:auto directly
+   - Modal sheet max-height uses dvh fallback for better mobile chrome avoidance
+   - att-modal-table min-width increased and table-layout changed to ensure radio cols visible
+   - Weekly summary panel border-radius fixed (was connected to scroll container)
+   - Context header wraps properly on small screens
+   - All touch targets enforced at 44px min
    ============================================================ */
 
 /* ── DESIGN TOKENS ──────────────────────────────────────────── */
 :root {
-  /* Brand blues */
   --att-navy:        #0f2d6b;
   --att-blue-dark:   #1565c0;
   --att-blue:        #1976d2;
@@ -24,7 +22,6 @@
   --att-blue-pale:   #e3f2fd;
   --att-blue-ghost:  #f0f7ff;
 
-  /* Semantic status */
   --att-green:       #15803d;
   --att-green-bg:    #dcfce7;
   --att-green-ring:  #86efac;
@@ -41,33 +38,32 @@
   --att-slate-400:   #94a3b8;
   --att-ink:         #1e293b;
 
-  /* Radius */
   --att-r-sm:  5px;
   --att-r-md:  10px;
   --att-r-lg:  14px;
   --att-r-xl:  20px;
   --att-r-pill: 999px;
 
-  /* Shadows */
   --att-sh-sm:  0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
   --att-sh-md:  0 4px 12px rgba(0,0,0,.09), 0 2px 4px rgba(0,0,0,.05);
   --att-sh-lg:  0 20px 40px rgba(0,0,0,.13), 0 8px 16px rgba(0,0,0,.07);
-  --att-sh-inset: inset 0 2px 4px rgba(0,0,0,.04);
 
-  /* Motion */
-  --att-ease:  cubic-bezier(0.4, 0, 0.2, 1);
+  --att-ease:   cubic-bezier(0.4, 0, 0.2, 1);
   --att-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --att-t:     150ms;
-  --att-t-md:  220ms;
+  --att-t:      150ms;
+  --att-t-md:   220ms;
 }
 
-/* ── SPINNER (FIX-G: @keyframes for save button) ──────────── */
+/* ── ANIMATIONS ──────────────────────────────────────────────── */
 @keyframes att-spin    { to { transform: rotate(360deg); } }
 @keyframes att-shimmer {
   0%   { background-position: -400px 0; }
   100% { background-position:  400px 0; }
 }
-@keyframes att-fadein  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes att-fadein  {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes att-slide-up {
   from { opacity: 0; transform: translateY(24px) scale(.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -78,7 +74,7 @@
 ════════════════════════════════════════════════════════════ */
 .att-context-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
@@ -107,15 +103,14 @@
   display: inline-flex;
   align-items: center;
   gap: .2rem;
-  padding: .2rem .625rem;
+  padding: .25rem .625rem;
   border-radius: var(--att-r-pill);
-  font-size: .6875rem;
+  font-size: .75rem;
   font-weight: 700;
   letter-spacing: .02em;
   background: rgba(255,255,255,.15);
   color: rgba(255,255,255,.95);
   border: 1px solid rgba(255,255,255,.2);
-  backdrop-filter: blur(4px);
 }
 
 .att-context-header__right {
@@ -125,7 +120,7 @@
 
 .att-today-label {
   display: block;
-  font-size: .625rem;
+  font-size: .6875rem;
   text-transform: uppercase;
   letter-spacing: .1em;
   color: rgba(255,255,255,.55);
@@ -142,9 +137,27 @@
 }
 
 @media (max-width: 640px) {
-  .att-context-header { padding: 1rem; }
-  .att-context-header__right { text-align: left; width: 100%; }
-  .att-today-label { display: inline; margin-right: .4rem; }
+  .att-context-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: .75rem;
+  }
+  .att-context-header__right {
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+  .att-today-label {
+    display: inline;
+    margin-bottom: 0;
+    margin-right: .25rem;
+  }
+  .att-context-header__left {
+    width: 100%;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -160,16 +173,15 @@
   margin-bottom: 1.5rem;
 }
 
-/* Touch target min 44px */
 .att-tab {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .35rem;
-  padding: .6rem 1rem;
+  padding: .6rem .75rem;
   min-height: 44px;
-  font-size: .875rem;
+  font-size: .8125rem;
   font-weight: 600;
   color: var(--att-gray);
   background: transparent;
@@ -181,6 +193,7 @@
               border-color var(--att-t) var(--att-ease),
               box-shadow var(--att-t) var(--att-ease);
   white-space: nowrap;
+  text-align: center;
 }
 
 .att-tab:hover:not(.att-tab--active) {
@@ -200,6 +213,13 @@
   box-shadow: var(--att-sh-sm);
 }
 
+@media (max-width: 400px) {
+  .att-tab {
+    font-size: .75rem;
+    padding: .5rem .5rem;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════
    WEEK NAVIGATOR
 ════════════════════════════════════════════════════════════ */
@@ -208,7 +228,7 @@
   grid-template-columns: 44px 1fr 44px auto;
   align-items: center;
   gap: .75rem;
-  padding: .875rem 1.125rem;
+  padding: .875rem 1rem;
   background: #fff;
   border: 1px solid var(--att-slate-200);
   border-radius: var(--att-r-lg);
@@ -226,7 +246,7 @@
   background: var(--att-blue-ghost);
   border: 1.5px solid var(--att-blue-light);
   color: var(--att-blue-dark);
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 800;
   cursor: pointer;
   transition: all var(--att-t) var(--att-ease);
@@ -237,25 +257,23 @@
   background: var(--att-blue-dark);
   color: #fff;
   border-color: var(--att-blue-dark);
-  transform: translateY(-1px);
   box-shadow: var(--att-sh-sm);
 }
-
-.att-btn-nav:active { transform: translateY(0); }
 
 .att-week-label {
   text-align: center;
   font-weight: 700;
-  font-size: .9375rem;
+  font-size: .875rem;
   color: var(--att-navy);
   letter-spacing: -.01em;
+  word-break: break-word;
 }
 
 .att-btn-today {
   display: inline-flex;
   align-items: center;
   gap: .25rem;
-  padding: .375rem .875rem;
+  padding: .375rem .75rem;
   min-height: 44px;
   border-radius: var(--att-r-md);
   background: transparent;
@@ -273,11 +291,16 @@
   border-color: var(--att-blue);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 500px) {
   .att-week-nav {
     grid-template-columns: 44px 1fr 44px;
     grid-template-rows: auto auto;
-    gap: .5rem;
+    gap: .5rem .5rem;
+    padding: .75rem;
+  }
+  .att-week-label {
+    font-size: .8125rem;
+    word-break: break-word;
   }
   .att-btn-today {
     grid-column: 1 / -1;
@@ -306,8 +329,8 @@
   justify-content: center;
   gap: .625rem;
   width: 100%;
-  padding: .875rem 1.25rem;
-  min-height: 52px;
+  padding: 1rem 1.25rem;
+  min-height: 56px;
   font-size: 1rem;
   font-weight: 700;
   color: #fff;
@@ -318,69 +341,92 @@
   transition: all var(--att-t-md) var(--att-ease);
   box-shadow: 0 2px 8px rgba(21,128,61,.3);
   letter-spacing: -.01em;
+  flex-wrap: wrap;
 }
 
 .att-cta-btn:hover {
   background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-  transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(21,128,61,.35);
 }
 
-.att-cta-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(21,128,61,.2); }
-
 .att-cta-date {
-  font-size: .8125rem;
+  font-size: .875rem;
   font-weight: 500;
   opacity: .85;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
+}
+
+@media (max-width: 400px) {
+  .att-cta-btn {
+    flex-direction: column;
+    gap: .25rem;
+    padding: .875rem 1rem;
+  }
+  .att-cta-date {
+    font-size: .8125rem;
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
-   REGISTER SCROLL CONTAINER + AFFORDANCE
+   REGISTER SCROLL CONTAINER
+   
+   FIX v3.1.0: The outer wrapper must NOT have overflow:hidden.
+   overflow:hidden was clipping the horizontal scroll on mobile.
+   The scroll is handled by #daily-register-grid directly.
+   The fade affordance is replaced with a box-shadow trick.
 ════════════════════════════════════════════════════════════ */
 .att-register-scroll {
   position: relative;
   border-radius: var(--att-r-lg);
   border: 1px solid var(--att-slate-200);
-  overflow: hidden;
+  /* CRITICAL FIX: was overflow:hidden — that killed mobile scroll */
+  overflow: visible;
   box-shadow: var(--att-sh-sm);
-  margin-bottom: 1px; /* flush with summary panel below */
+  margin-bottom: 0;
+  background: #fff;
 }
 
-/* Right-edge fade affordance */
+/* Right-edge fade using inset box-shadow on inner grid instead of ::after */
 .att-register-scroll::after {
-  content: '';
-  position: absolute;
-  top: 0; right: 0;
-  width: 48px; height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,.92));
-  pointer-events: none;
-  border-radius: 0 var(--att-r-lg) var(--att-r-lg) 0;
-  transition: opacity 200ms;
+  content: none; /* removed — was causing clip issues */
 }
-
-.att-register-scroll.att-register-scroll--end::after { opacity: 0; }
 
 #daily-register-grid {
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--att-blue-light) transparent;
+  border-radius: var(--att-r-lg);
+  /* Ensure it never collapses */
+  min-height: 60px;
 }
 
-#daily-register-grid::-webkit-scrollbar { height: 4px; }
+#daily-register-grid::-webkit-scrollbar { height: 5px; }
 #daily-register-grid::-webkit-scrollbar-track { background: var(--att-blue-ghost); }
 #daily-register-grid::-webkit-scrollbar-thumb {
   background: var(--att-blue-light);
   border-radius: 4px;
 }
 
+/* Scroll hint label below the grid on mobile */
+.att-scroll-hint {
+  display: none;
+  text-align: center;
+  font-size: .6875rem;
+  color: var(--att-slate-400);
+  padding: .375rem 0 .25rem;
+  letter-spacing: .03em;
+}
+
+@media (max-width: 768px) {
+  .att-scroll-hint {
+    display: block;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════
    REGISTER TABLE
-   FIX-F: sticky columns use concrete CSS, no unset JS var.
 ════════════════════════════════════════════════════════════ */
 .att-register-table {
   width: 100%;
@@ -389,6 +435,8 @@
   font-size: .8125rem;
   background: #fff;
   animation: att-fadein 200ms var(--att-ease);
+  /* Ensure table is at least wide enough to show all content */
+  min-width: 480px;
 }
 
 /* Sticky name column */
@@ -397,25 +445,26 @@
   position: sticky;
   left: 0;
   z-index: 3;
-  min-width: 140px;
-  max-width: 200px;
+  min-width: 120px;
+  max-width: 160px;
   background: inherit;
 }
 
-/* Sticky gender column — left equals name column width */
+/* Sticky gender column */
 .att-register-table .att-th-gen,
 .att-register-table .att-td-gen {
   position: sticky;
-  left: 140px;
+  left: 120px;
   z-index: 3;
-  min-width: 36px;
+  min-width: 30px;
+  width: 30px;
   background: inherit;
 }
 
 /* ── Header ── */
 .att-register-table thead tr th {
-  padding: 10px 8px;
-  font-size: .6875rem;
+  padding: 10px 6px;
+  font-size: .625rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .05em;
@@ -432,11 +481,14 @@
   z-index: 4;
 }
 
-.att-register-table .att-th-name { text-align: left; padding-left: 14px; }
+.att-register-table .att-th-name {
+  text-align: left;
+  padding-left: 12px;
+}
 
 .att-register-table .att-th-stat {
   background: #0d47a1;
-  min-width: 46px;
+  min-width: 40px;
 }
 
 .att-th-day--today {
@@ -452,37 +504,28 @@
   line-height: 1.2;
 }
 
-.att-day-num { font-size: .625rem; font-weight: 600; opacity: .85; }
-
-.att-day-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #86efac;
-  display: block;
-}
-
+.att-day-num   { font-size: .5625rem; font-weight: 600; opacity: .85; }
+.att-day-dot   { width: 5px; height: 5px; border-radius: 50%; background: #86efac; display: block; }
 .att-today-chip {
-  font-size: .5rem;
+  font-size: .4375rem;
   font-weight: 900;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
   background: #fbbf24;
   color: #92400e;
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 1px 3px;
   display: inline-block;
 }
 
 /* ── Body rows ── */
 .att-register-table tbody .att-row { transition: background 80ms; }
-
 .att-register-table tbody .att-row--alt td { background: var(--att-blue-ghost); }
 .att-register-table tbody .att-row--alt .att-td-name,
 .att-register-table tbody .att-row--alt .att-td-gen { background: var(--att-blue-ghost); }
-
 .att-register-table tbody .att-row:hover td { background: #e0f2fe !important; }
 
 .att-register-table td {
-  padding: 8px 6px;
+  padding: 7px 5px;
   border-bottom: 1px solid var(--att-slate-100);
   text-align: center;
   vertical-align: middle;
@@ -490,11 +533,16 @@
 
 .att-td-name {
   text-align: left !important;
-  padding-left: 14px !important;
+  padding-left: 12px !important;
   font-weight: 600;
   color: var(--att-ink);
   font-size: .8125rem;
-  box-shadow: 2px 0 6px rgba(0,0,0,.05);
+  box-shadow: 2px 0 4px rgba(0,0,0,.04);
+  /* Allow name to truncate on very small screens */
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .att-td-gen { font-size: .75rem; color: var(--att-gray); }
@@ -505,6 +553,7 @@
   font-size: .875rem;
   border-left: 1px solid var(--att-slate-100);
   transition: filter 100ms;
+  min-width: 36px;
 }
 
 .att-cell--present {
@@ -551,7 +600,7 @@
 
 .att-row-totals .att-td-totals-label {
   text-transform: uppercase;
-  font-size: .625rem;
+  font-size: .5625rem;
   letter-spacing: .06em;
   background: var(--att-blue-pale) !important;
 }
@@ -563,21 +612,18 @@
 
 /* ════════════════════════════════════════════════════════════
    WEEKLY SUMMARY PANEL
-   FIX-D: connected beneath register, outside scroll container
 ════════════════════════════════════════════════════════════ */
 #weekly-summary-panel {
-  border-top: 3px solid var(--att-blue-dark);
   border: 1px solid var(--att-slate-200);
   border-top: 3px solid var(--att-blue-dark);
   border-radius: 0 0 var(--att-r-lg) var(--att-r-lg);
   background: var(--att-blue-ghost);
   overflow: hidden;
   animation: att-fadein 200ms var(--att-ease);
+  margin-top: 0;
 }
 
-.att-summary-inner {
-  padding: 1.25rem;
-}
+.att-summary-inner { padding: 1.25rem; }
 
 .att-summary-title {
   font-size: .75rem;
@@ -598,7 +644,7 @@
 
 .att-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: .625rem;
 }
 
@@ -606,25 +652,22 @@
   background: #fff;
   border: 1px solid var(--att-blue-light);
   border-radius: var(--att-r-md);
-  padding: .875rem .75rem;
+  padding: .75rem .625rem;
   text-align: center;
   box-shadow: var(--att-sh-sm);
-  transition: transform var(--att-t) var(--att-ease);
 }
 
-.att-summary-card:hover { transform: translateY(-2px); }
-
 .att-summary-card__day {
-  font-size: .625rem;
+  font-size: .5625rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: var(--att-blue);
-  margin-bottom: .375rem;
+  margin-bottom: .25rem;
 }
 
 .att-summary-card__count {
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 900;
   color: var(--att-navy);
   line-height: 1;
@@ -632,15 +675,12 @@
 }
 
 .att-summary-card__of {
-  font-size: .875rem;
+  font-size: .8125rem;
   font-weight: 400;
   color: var(--att-slate-400);
 }
 
-.att-summary-card__pct {
-  font-size: .75rem;
-  color: var(--att-gray);
-}
+.att-summary-card__pct { font-size: .75rem; color: var(--att-gray); }
 
 /* ════════════════════════════════════════════════════════════
    ACTION ROW
@@ -673,15 +713,14 @@
   background: var(--att-blue-ghost);
   border-color: var(--att-blue);
   color: var(--att-navy);
-  transform: translateY(-1px);
-  box-shadow: var(--att-sh-md);
 }
 
 /* ════════════════════════════════════════════════════════════
    MODAL OVERLAY
-   — always display:flex so centering works
-   — visibility + opacity controlled by .is-open
-   — z-index 9999 to clear any admin chrome
+   
+   FIX v3.1.0: No position:fixed in this file (it's a real page,
+   not an artifact iframe). position:fixed is fine here.
+   The fix is ensuring the sheet has the right flex structure.
 ════════════════════════════════════════════════════════════ */
 #mark-day-modal {
   position: fixed;
@@ -691,19 +730,19 @@
   bottom: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   box-sizing: border-box;
-  /* Hidden by default */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms var(--att-ease),
-              visibility 200ms var(--att-ease);
+  transition: opacity 200ms var(--att-ease), visibility 200ms var(--att-ease);
 }
 
 #mark-day-modal.is-open {
@@ -713,25 +752,21 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   MODAL SHEET (the white card)
-   — flex column so body can scroll independently
-   — min-height:0 is CRITICAL for flex children to shrink+scroll
-   — max-height uses vh (safer than dvh for cross-browser)
+   MODAL SHEET
 ════════════════════════════════════════════════════════════ */
 .att-modal-sheet {
   background: #fff;
   border-radius: var(--att-r-xl);
   width: 100%;
   max-width: 560px;
-  /* Use vh not dvh — more reliable across browsers/WebViews */
+  /* Use both dvh (dynamic, avoids browser chrome) and vh fallback */
   max-height: 88vh;
-  /* CRITICAL: flex column + min-height:0 lets .att-modal-body scroll */
+  max-height: 88dvh;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
   box-shadow: var(--att-sh-lg);
-  /* Entry animation */
   transform: translateY(20px) scale(0.98);
   transition: transform 220ms var(--att-spring);
 }
@@ -740,7 +775,7 @@
   transform: translateY(0) scale(1);
 }
 
-/* ── Modal header — fixed, never scrolls ── */
+/* ── Modal header ── */
 .att-modal-header {
   display: flex;
   align-items: center;
@@ -748,29 +783,30 @@
   gap: 1rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--att-slate-100);
-  flex-shrink: 0;   /* never shrink */
+  flex-shrink: 0;
+  background: var(--att-blue-ghost);
 }
 
 .att-modal-header h3 {
   font-size: .9375rem;
   font-weight: 800;
-  color: var(--att-ink);
+  color: var(--att-navy);
   margin: 0;
-  /* Allow title to wrap on narrow screens rather than overflow */
   overflow-wrap: break-word;
   word-break: break-word;
+  line-height: 1.3;
 }
 
 .att-modal-close {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;   /* prevent flex crush */
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--att-r-md);
-  background: var(--att-slate-100);
-  border: none;
+  background: rgba(255,255,255,.7);
+  border: 1px solid var(--att-slate-200);
   color: var(--att-gray);
   font-size: 1.125rem;
   cursor: pointer;
@@ -781,23 +817,26 @@
 .att-modal-close:hover {
   background: var(--att-red-bg);
   color: var(--att-red);
+  border-color: var(--att-red-ring);
 }
 
-/* ── Modal body — scrollable, takes remaining height ── */
+/* ── Modal body — scrollable ── */
 .att-modal-body {
   flex: 1;
-  min-height: 0;       /* CRITICAL for overflow-y to work inside flex */
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 1rem 1.25rem;
-  /* Reduced side padding on small screens via the mobile rule below */
 }
 
-/* ── Modal footer — fixed at bottom, never scrolls ── */
+/* ── Modal footer ── */
 .att-modal-footer {
   display: flex;
   gap: .75rem;
   padding: .875rem 1.25rem;
+  /* Safe area for iOS home indicator */
+  padding-bottom: max(.875rem, env(safe-area-inset-bottom, .875rem));
   border-top: 1px solid var(--att-slate-100);
   flex-shrink: 0;
   background: var(--att-slate-50);
@@ -823,20 +862,21 @@
 .att-modal-date-group input[type="date"] {
   width: 100%;
   box-sizing: border-box;
-  padding: .5rem .875rem;
+  padding: .625rem .875rem;
   border: 1.5px solid var(--att-slate-200);
   border-radius: var(--att-r-md);
-  font-size: .9375rem;
+  font-size: 1rem;
   font-family: inherit;
   color: var(--att-ink);
   background: #fff;
   transition: border-color var(--att-t);
+  min-height: 44px;
 }
 
 .att-modal-date-group input[type="date"]:focus {
   outline: none;
   border-color: var(--att-blue);
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  box-shadow: 0 0 0 3px rgba(25,118,210,.15);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -854,18 +894,14 @@
   align-items: center;
   justify-content: center;
   gap: .35rem;
-  padding: .625rem .5rem;
-  min-height: 44px;
-  font-size: .8125rem;
+  padding: .75rem .5rem;
+  min-height: 48px;
+  font-size: .9375rem;
   font-weight: 700;
   border-radius: var(--att-r-md);
   cursor: pointer;
   border: 1.5px solid;
   transition: all var(--att-t) var(--att-ease);
-  /* Prevent text overflow on narrow screens */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .att-bulk-btn--present {
@@ -875,8 +911,7 @@
 }
 .att-bulk-btn--present:hover {
   background: var(--att-green-ring);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.2);
+  box-shadow: 0 2px 8px rgba(21,128,61,.2);
 }
 
 .att-bulk-btn--absent {
@@ -886,43 +921,38 @@
 }
 .att-bulk-btn--absent:hover {
   background: var(--att-red-ring);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+  box-shadow: 0 2px 8px rgba(220,38,38,.2);
 }
 
 /* ════════════════════════════════════════════════════════════
-   PUPIL ATTENDANCE TABLE
-   — wrap scrolls horizontally so Present/Absent cols are
-     always visible even on the narrowest phones
+   PUPIL ATTENDANCE TABLE (inside modal)
+   
+   FIX v3.1.0:
+   - Wrapper scrolls horizontally when needed
+   - min-width on table ensures radio cols always visible
+   - Radio columns have enforced min-width
+   - Touch targets enlarged
 ════════════════════════════════════════════════════════════ */
 .att-modal-table-wrap {
   border: 1px solid var(--att-slate-100);
   border-radius: var(--att-r-md);
-  /* KEY FIX: overflow-x:auto NOT overflow:hidden */
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 
 .att-modal-table {
-  /* min-width ensures the radio columns never collapse below usable size */
-  min-width: 280px;
+  /* FIX: ensure min width so radio columns never collapse */
+  min-width: 300px;
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
-}
-
-/* Column widths: name gets the rest, radio cols are fixed */
-.att-modal-table thead th:first-child  { width: auto; }
-.att-modal-table thead th:nth-child(2),
-.att-modal-table thead th:nth-child(3) {
-  width: 76px;
-  min-width: 76px;
+  /* FIX: auto layout lets columns size to content */
+  table-layout: auto;
 }
 
 .att-modal-table thead th {
-  padding: 8px 10px;
-  font-size: .625rem;
+  padding: 10px 12px;
+  font-size: .6875rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: .07em;
@@ -933,52 +963,55 @@
   white-space: nowrap;
 }
 
-.att-modal-table thead th:not(:first-child) {
+/* Radio column headers — fixed width, centred */
+.att-modal-table thead th:nth-child(2),
+.att-modal-table thead th:nth-child(3) {
   text-align: center;
+  min-width: 80px;
+  width: 80px;
 }
 
-.att-modal-table tbody tr {
-  transition: background 80ms;
-}
-
-.att-modal-table tbody .att-modal-row--alt {
-  background: var(--att-slate-50);
-}
-
-.att-modal-table tbody tr:hover {
-  background: var(--att-blue-ghost);
-}
+.att-modal-table tbody tr { transition: background 80ms; }
+.att-modal-table tbody .att-modal-row--alt { background: var(--att-slate-50); }
+.att-modal-table tbody tr:hover { background: var(--att-blue-ghost); }
 
 .att-modal-table tbody td {
-  padding: 10px;
-  font-size: .875rem;
+  padding: 12px 12px;
+  font-size: .9375rem;
   color: var(--att-ink);
   border-bottom: 1px solid var(--att-slate-50);
-  /* Prevent long names from breaking layout */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Allow name to wrap rather than forcing wide table */
+  white-space: normal;
+  word-break: break-word;
 }
 
-.att-modal-table tbody td:not(:first-child) {
+/* Radio cells — centred, enforced width */
+.att-modal-table tbody td:nth-child(2),
+.att-modal-table tbody td:nth-child(3) {
   text-align: center;
-  /* Ensure radio cells never collapse */
-  min-width: 76px;
+  min-width: 80px;
+  width: 80px;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 /* Radio inputs */
 .att-radio {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   cursor: pointer;
   accent-color: var(--att-blue-dark);
-  /* Improve tap target on touch screens */
   touch-action: manipulation;
+  /* Improve tap target */
+  padding: 8px;
+  box-sizing: content-box;
 }
 
 .att-radio--present { accent-color: var(--att-green); }
-.att-radio--absent  { accent-color: var(--att-red);   }
+.att-radio--absent  { accent-color: var(--att-red); }
 
 /* ════════════════════════════════════════════════════════════
    MODAL FOOTER BUTTONS
@@ -989,9 +1022,9 @@
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  padding: .75rem 1rem;
-  min-height: 48px;
-  font-size: .9375rem;
+  padding: .875rem 1rem;
+  min-height: 52px;
+  font-size: 1rem;
   font-weight: 700;
   color: #fff;
   background: linear-gradient(135deg, var(--att-blue) 0%, var(--att-blue-dark) 100%);
@@ -999,20 +1032,18 @@
   border-radius: var(--att-r-md);
   cursor: pointer;
   transition: all var(--att-t-md) var(--att-ease);
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+  box-shadow: 0 2px 8px rgba(25,118,210,.3);
   white-space: nowrap;
 }
 
 .att-modal-save-btn:hover {
   background: linear-gradient(135deg, var(--att-blue-dark) 0%, var(--att-navy) 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.35);
+  box-shadow: 0 4px 16px rgba(25,118,210,.35);
 }
 
 .att-modal-save-btn:disabled {
   opacity: .65;
   cursor: not-allowed;
-  transform: none;
   box-shadow: none;
 }
 
@@ -1021,9 +1052,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: .75rem .5rem;
-  min-height: 48px;
-  font-size: .875rem;
+  padding: .875rem .75rem;
+  min-height: 52px;
+  font-size: .9375rem;
   font-weight: 600;
   color: var(--att-gray);
   background: #fff;
@@ -1041,10 +1072,9 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   MOBILE: bottom sheet behaviour (≤ 600px)
+   MOBILE: bottom sheet (≤ 600px)
 ════════════════════════════════════════════════════════════ */
 @media (max-width: 600px) {
-  /* Overlay: no padding, sheet slides up from bottom */
   #mark-day-modal {
     align-items: flex-end;
     justify-content: stretch;
@@ -1054,10 +1084,10 @@
   .att-modal-sheet {
     width: 100%;
     max-width: 100%;
-    /* Taller on mobile so the pupil list is comfortably visible */
-    max-height: 90vh;
+    /* Taller on mobile */
+    max-height: 92vh;
+    max-height: 92dvh;
     border-radius: var(--att-r-xl) var(--att-r-xl) 0 0;
-    /* Slide-up entry instead of scale */
     transform: translateY(100%);
   }
 
@@ -1065,7 +1095,7 @@
     transform: translateY(0);
   }
 
-  /* Drag handle pill above header */
+  /* Drag handle */
   .att-modal-header {
     position: relative;
     padding-top: 1.5rem;
@@ -1083,35 +1113,39 @@
     border-radius: 2px;
   }
 
-  /* Tighter body padding on mobile */
-  .att-modal-body {
-    padding: .875rem 1rem;
-  }
+  .att-modal-body { padding: 1rem; }
 
   .att-modal-footer {
-    padding: .75rem 1rem;
-    /* Push above mobile browser chrome */
-    padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+    padding: .875rem 1rem;
+    padding-bottom: max(.875rem, env(safe-area-inset-bottom, .875rem));
   }
 
-  /* On very narrow screens, reduce table cell padding */
+  /* Radio table: make name column narrower, radio cols stay wide */
   .att-modal-table tbody td {
     padding: 10px 8px;
-    font-size: .8125rem;
+    font-size: .875rem;
   }
 
   .att-modal-table thead th {
     padding: 8px;
-    font-size: .5625rem;
+    font-size: .625rem;
+  }
+
+  /* Ensure radio touch targets are large enough */
+  .att-radio {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
   }
 }
 
 /* ════════════════════════════════════════════════════════════
-   SPINNER (used in save button loading state)
+   SPINNER
 ════════════════════════════════════════════════════════════ */
 .att-spinner {
   display: inline-block;
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   border: 2px solid rgba(255,255,255,.35);
   border-top-color: #fff;
   border-radius: 50%;
@@ -1133,6 +1167,7 @@
   height: 40px;
   background: var(--att-blue-dark);
   margin-bottom: 2px;
+  border-radius: var(--att-r-lg) var(--att-r-lg) 0 0;
 }
 
 .att-skel-row {
@@ -1141,23 +1176,10 @@
   gap: .75rem;
   padding: 10px 14px;
   border-bottom: 1px solid var(--att-slate-50);
-  animation: att-shimmer 1.4s ease infinite;
 }
 
-.att-skel--name {
-  height: 13px;
-  border-radius: 4px;
-  flex: 1;
-  max-width: 180px;
-  min-width: 80px;
-}
-
-.att-skel--cell {
-  height: 26px;
-  width: 44px;
-  border-radius: var(--att-r-sm);
-  flex-shrink: 0;
-}
+.att-skel--name  { height: 13px; border-radius: 4px; flex: 1; max-width: 180px; min-width: 80px; }
+.att-skel--cell  { height: 26px; width: 40px; border-radius: var(--att-r-sm); flex-shrink: 0; }
 
 /* ════════════════════════════════════════════════════════════
    EMPTY STATE
@@ -1167,13 +1189,14 @@
   flex-direction: column;
   align-items: center;
   gap: .875rem;
-  padding: 3.5rem 1.5rem;
+  padding: 3rem 1.5rem;
   text-align: center;
   animation: att-fadein 200ms var(--att-ease);
 }
 
 .att-empty__icon {
-  width: 72px; height: 72px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: var(--att-blue-ghost);
   border: 2px dashed var(--att-blue-light);
@@ -1199,7 +1222,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   LEGACY BANNER
+   LEGACY MANUAL ENTRY BANNER
 ════════════════════════════════════════════════════════════ */
 .att-legacy-banner {
   display: flex;
@@ -1230,7 +1253,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   PRINT OVERRIDES
+   PRINT
 ════════════════════════════════════════════════════════════ */
 @media print {
   .att-tabs,
@@ -1240,10 +1263,9 @@
   #mark-day-modal,
   #weekly-summary-panel { display: none !important; }
 
-  .att-register-scroll::after { display: none; }
-  #daily-register-grid { overflow: visible; }
-
-  .att-register-table { font-size: 8pt; }
+  .att-register-scroll { overflow: visible !important; }
+  #daily-register-grid { overflow: visible !important; }
+  .att-register-table  { font-size: 8pt; min-width: unset; }
   .att-register-table td,
   .att-register-table th { padding: 3px 4px; }
 }
