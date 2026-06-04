@@ -187,7 +187,7 @@ function initTestimonialMarquee() {
       track.style.setProperty('--set-width', `${setWidth}px`);
 
       // ~85px/s feels smooth for testimonial cards
-      const duration = Math.max(20, Math.round(setWidth / 45));
+      const duration = Math.max(20, Math.round(setWidth / 20));
       track.style.setProperty('--marquee-duration', `${duration}s`);
 
     });
