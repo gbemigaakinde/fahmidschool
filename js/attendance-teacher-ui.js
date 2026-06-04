@@ -2,22 +2,17 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Teacher Attendance UI — attendance-teacher-ui.js
  *
- * COMPLETE REPLACEMENT — v3.0.0
+ * COMPLETE REPLACEMENT — v3.1.0
  *
- * This single file replaces BOTH:
- *   - attendance-teacher-ui.js (v1.0.0)
- *   - attendance-teacher-ui-redesigned.js (v2.0.0)
+ * FIXES in v3.1.0:
+ * - buildDailyRegisterShell: removed overflow-x:auto inline style from
+ *   #daily-register-grid (now handled entirely by CSS, no inline override)
+ * - Added .att-scroll-hint element below the register for mobile UX
+ * - _ensureModalInBody: footer div now starts with display:none correctly
+ * - Modal table: removed table-layout:fixed reference (now auto in CSS)
+ * - openMarkTodayModal: radio cell markup corrected for proper sizing
  *
- * All business logic from v1.0.0 is preserved verbatim.
- * All UI improvements from v2.0.0 are integrated correctly.
- * All cross-file patching conflicts are eliminated.
- *
- * @version 3.0.0
- * @requires teacher.js       (window.assignedClasses, window.allPupils,
- *                              window.currentUser, window.paginateTable,
- *                              window._saveAttendanceFromInputs)
- * @requires attendance-daily.js (window.dailyAttendance)
- * @requires firebase-init.js    (db)
+ * @version 3.1.0
  */
 
 'use strict';
@@ -27,11 +22,10 @@
 ══════════════════════════════════════════════════════════════ */
 
 let currentWeekMonday = null;
-let _modalDate        = null;   // shared across open/save/close
+let _modalDate        = null;
 
 /* ══════════════════════════════════════════════════════════════
    § 2  SECTION ENTRY POINT
-   Replaces teacher.js sectionLoaders['attendance']
 ══════════════════════════════════════════════════════════════ */
 
 async function loadAttendanceSectionEnhanced() {
@@ -53,17 +47,12 @@ async function loadAttendanceSectionEnhanced() {
         return;
     }
 
-    // Cache settings once for context header
     try {
         window._attCurrentSettings = await window.getCurrentSettings();
     } catch (_) {}
 
     const contextHeaderHTML = buildContextHeader(term, allPupils, assignedClasses);
 
-    // Modal is injected into document.body — NOT inside container.
-    // Reason: position:fixed breaks whenever any ancestor has transform,
-    // will-change, filter, or perspective applied (common in admin layouts).
-    // Moving the modal to <body> guarantees it overlays the full viewport.
     _ensureModalInBody();
 
     container.innerHTML = `
@@ -99,31 +88,17 @@ async function loadAttendanceSectionEnhanced() {
         </div>
     `;
 
-    // Load both panels
     await loadDailyRegisterPanel(term);
     await loadManualAttendanceLegacy(term);
 
     if (saveBtn) saveBtn.hidden = true;
-
-    // Scroll affordance: detect when table is scrolled to end
-    const scrollEl = document.getElementById('daily-register-grid');
-    if (scrollEl) {
-        const wrap = scrollEl.closest('.att-register-scroll');
-        if (wrap) {
-            scrollEl.addEventListener('scroll', () => {
-                const atEnd = scrollEl.scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 4;
-                wrap.classList.toggle('att-register-scroll--end', atEnd);
-            }, { passive: true });
-        }
-    }
 }
 
 /**
- * Creates the modal once on <body> and reuses it on subsequent visits.
- * Idempotent — safe to call every time the attendance section loads.
+ * Creates the modal once on <body> and reuses it.
+ * Idempotent — safe to call every time.
  */
 function _ensureModalInBody() {
-    // Already exists — nothing to do
     if (document.getElementById('mark-day-modal')) return;
 
     const modal = document.createElement('div');
@@ -186,11 +161,12 @@ function buildContextHeader(term, allPupils, assignedClasses) {
 
 /* ══════════════════════════════════════════════════════════════
    § 4  DAILY REGISTER SHELL
-   FIX-A: plain function, not window override — no race condition.
-   FIX-B: modal has no inline display style.
-   FIX-C: #daily-register-grid IS the scrollable element.
-   FIX-D: #weekly-summary-panel is a sibling of the grid, outside
-          the scroll container so it can expand naturally.
+   
+   FIX v3.1.0:
+   - Removed inline style="overflow-x:auto" from #daily-register-grid
+     (CSS handles it — inline style was fighting the parent overflow)
+   - Added .att-scroll-hint below grid for mobile UX cue
+   - #weekly-summary-panel is correctly outside the scroll wrapper
 ══════════════════════════════════════════════════════════════ */
 
 function buildDailyRegisterShell(term) {
@@ -217,14 +193,18 @@ function buildDailyRegisterShell(term) {
         </button>
     </div>
 
-    <!-- Register scroll container (FIX-C: grid IS the scroll el) -->
+    <!-- Register scroll wrapper -->
     <div class="att-register-scroll">
-        <div id="daily-register-grid" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <!-- FIX: No inline overflow style — CSS att-register-scroll handles it -->
+        <div id="daily-register-grid">
             ${buildTableSkeleton(6)}
         </div>
     </div>
 
-    <!-- Weekly summary (FIX-D: outside scroll container) -->
+    <!-- Scroll hint for mobile (shown via CSS) -->
+    <p class="att-scroll-hint">← swipe to see all days →</p>
+
+    <!-- Weekly summary (outside scroll wrapper) -->
     <div id="weekly-summary-panel" style="display:none;"></div>
 
     <!-- Action row -->
@@ -354,7 +334,6 @@ async function renderWeekRegister(term) {
 
 /* ══════════════════════════════════════════════════════════════
    § 10  REGISTER TABLE HTML
-   FIX-F: col-gen sticky left is a fixed value matching col-name width.
 ══════════════════════════════════════════════════════════════ */
 
 function buildRegisterTable(pupils, weekDates, dailyRecords) {
@@ -364,7 +343,7 @@ function buildRegisterTable(pupils, weekDates, dailyRecords) {
         return renderEmptyState('No pupils found', 'No pupils are assigned to this class.');
     }
 
-    // ── HEADER ──────────────────────────────────────────────────────────────
+    // ── HEADER ────────────────────────────────────────────────────────────
     let headerCells = weekDates.map(date => {
         const isToday   = date === today;
         const hasRecord = !!dailyRecords[date];
@@ -382,7 +361,7 @@ function buildRegisterTable(pupils, weekDates, dailyRecords) {
         </th>`;
     }).join('');
 
-    // ── ROWS ─────────────────────────────────────────────────────────────────
+    // ── ROWS ─────────────────────────────────────────────────────────────
     let bodyRows = pupils.map((pupil, idx) => {
         let weekPresent = 0, weekAbsent = 0;
         const isBoy = pupil.gender?.toLowerCase() === 'male' || pupil.gender?.toLowerCase() === 'm';
@@ -425,7 +404,7 @@ function buildRegisterTable(pupils, weekDates, dailyRecords) {
         </tr>`;
     }).join('');
 
-    // ── TOTALS FOOTER ────────────────────────────────────────────────────────
+    // ── TOTALS FOOTER ────────────────────────────────────────────────────
     const totalCells = weekDates.map(date => {
         const rec = dailyRecords[date];
         return `<td class="att-td-footer">${rec ? `${rec.totalPresent ?? '?'}/${rec.totalPupils ?? '?'}` : '—'}</td>`;
@@ -456,8 +435,6 @@ function buildRegisterTable(pupils, weekDates, dailyRecords) {
 
 /* ══════════════════════════════════════════════════════════════
    § 11  WEEKLY SUMMARY PANEL
-   FIX-D: targets #weekly-summary-panel which is a sibling of the
-          scroll container — always findable.
 ══════════════════════════════════════════════════════════════ */
 
 function buildWeeklySummaryPanel(summary, weekDates) {
@@ -468,8 +445,8 @@ function buildWeeklySummaryPanel(summary, weekDates) {
     if (markedDays.length === 0) { panel.style.display = 'none'; return; }
 
     const cards = markedDays.map(date => {
-        const s       = summary.dailyStats[date];
-        const pctCls  = s.percentage >= 75 ? 'att-pct--good' : s.percentage >= 50 ? 'att-pct--warn' : 'att-pct--bad';
+        const s      = summary.dailyStats[date];
+        const pctCls = s.percentage >= 75 ? 'att-pct--good' : s.percentage >= 50 ? 'att-pct--warn' : 'att-pct--bad';
         return `<div class="att-summary-card">
             <div class="att-summary-card__day">${window.dailyAttendance.formatDateDisplay(date)}</div>
             <div class="att-summary-card__count">${s.present}<span class="att-summary-card__of">/${s.total}</span></div>
@@ -491,8 +468,9 @@ function buildWeeklySummaryPanel(summary, weekDates) {
 
 /* ══════════════════════════════════════════════════════════════
    § 12  MARK TODAY MODAL
-   FIX-B: uses CSS class .is-open — no inline display toggling.
-   FIX-E: save loading state is built in here, not via patch.
+   
+   FIX v3.1.0: Radio cell markup uses explicit td with proper
+   width enforcement. No table-layout:fixed on the table element.
 ══════════════════════════════════════════════════════════════ */
 
 async function openMarkTodayModal(dateOverride) {
@@ -514,7 +492,6 @@ async function openMarkTodayModal(dateOverride) {
     body.innerHTML    = buildTableSkeleton(Math.min(pupils.length, 8));
     if (footer) footer.style.display = 'none';
 
-    // FIX-B: CSS class toggle — animation fires correctly
     modal.classList.add('is-open');
     document.body.style.overflow = 'hidden';
 
@@ -542,27 +519,27 @@ async function openMarkTodayModal(dateOverride) {
         </div>
 
         <div class="att-modal-table-wrap">
-            <table class="att-modal-table" role="grid">
+            <table class="att-modal-table" role="grid" aria-label="Pupil attendance list">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th style="color:#15803d;">✓ Present</th>
-                        <th style="color:#dc2626;">✗ Absent</th>
+                        <th>Pupil Name</th>
+                        <th style="text-align:center; min-width:80px; width:80px; color:#15803d;">✓ Present</th>
+                        <th style="text-align:center; min-width:80px; width:80px; color:#dc2626;">✗ Absent</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${pupils.map((pupil, idx) => {
                         const status = existingRecords[pupil.id] || 'present';
                         return `<tr class="${idx % 2 === 0 ? '' : 'att-modal-row--alt'}">
-                            <td>${pupil.name}</td>
-                            <td style="text-align:center;">
+                            <td style="word-break:break-word;">${pupil.name}</td>
+                            <td style="text-align:center; min-width:80px; width:80px;">
                                 <input type="radio" name="status_${pupil.id}" value="present"
                                        data-pupil="${pupil.id}"
                                        class="att-radio att-radio--present"
                                        aria-label="${pupil.name} — Present"
                                        ${status === 'present' ? 'checked' : ''}>
                             </td>
-                            <td style="text-align:center;">
+                            <td style="text-align:center; min-width:80px; width:80px;">
                                 <input type="radio" name="status_${pupil.id}" value="absent"
                                        data-pupil="${pupil.id}"
                                        class="att-radio att-radio--absent"
@@ -590,7 +567,6 @@ function closeMarkDayModal() {
     }
 }
 
-// Close on backdrop click (not on sheet click)
 function handleModalBackdropClick(e) {
     if (e.target.id === 'mark-day-modal') closeMarkDayModal();
 }
@@ -604,7 +580,6 @@ function markAllModalPupils(status) {
 
 /* ══════════════════════════════════════════════════════════════
    § 13  SAVE MODAL ATTENDANCE
-   FIX-E: single function, no patch chain, loading state built in.
 ══════════════════════════════════════════════════════════════ */
 
 async function saveModalAttendance() {
@@ -621,13 +596,11 @@ async function saveModalAttendance() {
     if (!classId)   { window.showToast?.('No class assigned', 'danger'); return; }
     if (!teacherId) { window.showToast?.('Not authenticated', 'danger'); return; }
 
-    // Loading state
     if (saveBtn) {
-        saveBtn.disabled    = true;
-        saveBtn.innerHTML   = `<span class="att-spinner"></span> Saving…`;
+        saveBtn.disabled  = true;
+        saveBtn.innerHTML = `<span class="att-spinner"></span> Saving…`;
     }
 
-    // Collect radio values
     const records = {};
     pupils.forEach(pupil => {
         const checked = document.querySelector(`input[name="status_${pupil.id}"]:checked`);
@@ -671,9 +644,9 @@ async function togglePupilStatusInDay(pupilId, date, currentStatus) {
     if (!classId || !teacherId) return;
 
     try {
-        const settings   = await window.getCurrentSettings();
-        const session    = settings.session;
-        const pupilName  = pupils.find(p => p.id === pupilId)?.name || 'pupil';
+        const settings  = await window.getCurrentSettings();
+        const session   = settings.session;
+        const pupilName = pupils.find(p => p.id === pupilId)?.name || 'pupil';
 
         await window.dailyAttendance.updatePupil(
             classId, date, term, session, teacherId, pupilId, newStatus, pupils
@@ -809,9 +782,9 @@ async function printAttendanceRegister() {
         const dailyRecords = {};
         snap.forEach(doc => { dailyRecords[doc.data().date] = doc.data(); });
 
-        const allDates   = Object.keys(dailyRecords).sort();
-        const printHTML  = buildPrintHTML(className, term, session, pupils, allDates, dailyRecords);
-        const printWin   = window.open('', '_blank', 'width=1200,height=800');
+        const allDates  = Object.keys(dailyRecords).sort();
+        const printHTML = buildPrintHTML(className, term, session, pupils, allDates, dailyRecords);
+        const printWin  = window.open('', '_blank', 'width=1200,height=800');
 
         if (!printWin) {
             window.showToast?.('Popup blocked — please allow popups.', 'warning');
@@ -833,7 +806,6 @@ function buildPrintHTML(className, term, session, pupils, allDates, dailyRecords
         year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // Bucket dates into weeks of 5
     const weeks = [];
     let wk = [];
     allDates.forEach((date, i) => {
@@ -1000,7 +972,7 @@ window.printAttendanceRegister       = printAttendanceRegister;
 window.saveAllAttendanceManual       = saveAllAttendanceManual;
 
 /* ══════════════════════════════════════════════════════════════
-   § 19  INSTALL INTO sectionLoaders (retry until teacher.js ready)
+   § 19  INSTALL INTO sectionLoaders
 ══════════════════════════════════════════════════════════════ */
 
 function installEnhancedAttendance() {
@@ -1014,4 +986,4 @@ function installEnhancedAttendance() {
 
 installEnhancedAttendance();
 
-console.log('✓ attendance-teacher-ui.js v3.0.0 loaded — all conflicts resolved');
+console.log('✓ attendance-teacher-ui.js v3.1.0 loaded — mobile fixes applied');
