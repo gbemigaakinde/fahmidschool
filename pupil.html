@@ -1000,23 +1000,23 @@
     </div>
 
     <nav class="pp-topbar__nav" aria-label="Portal sections">
-      <a href="#pp-profile" class="pp-nav-link" data-section="profile">
-        <i data-lucide="user" aria-hidden="true"></i>
-        <span>Profile</span>
-      </a>
-      <a href="#pp-results" class="pp-nav-link" data-section="results">
-        <i data-lucide="bar-chart-2" aria-hidden="true"></i>
-        <span>Results</span>
-      </a>
-      <a href="#pp-tests" class="pp-nav-link" data-section="tests">
-        <i data-lucide="monitor" aria-hidden="true"></i>
-        <span>Online Tests/Exams</span>
-      </a>
-      <a href="#pp-fees" class="pp-nav-link" data-section="fees">
-        <i data-lucide="credit-card" aria-hidden="true"></i>
-        <span>Fees</span>
-      </a>
-    </nav>
+  <a href="#pp-profile" class="pp-nav-link" data-section="profile">
+    <i data-lucide="user" aria-hidden="true"></i>
+    <span>Profile</span>
+  </a>
+  <a href="#pp-tests" class="pp-nav-link" data-section="tests">
+    <i data-lucide="monitor" aria-hidden="true"></i>
+    <span>Online Tests/Exams</span>
+  </a>
+  <a href="#pp-results" class="pp-nav-link" data-section="results">
+    <i data-lucide="bar-chart-2" aria-hidden="true"></i>
+    <span>Results</span>
+  </a>
+  <a href="#pp-fees" class="pp-nav-link" data-section="fees">
+    <i data-lucide="credit-card" aria-hidden="true"></i>
+    <span>Fees</span>
+  </a>
+</nav>
 
     <button class="pp-btn-logout" onclick="logout()" aria-label="Log out of pupil portal">
       <i data-lucide="log-out" aria-hidden="true"></i>
@@ -1261,13 +1261,13 @@
       <i data-lucide="user" aria-hidden="true"></i>
       <span>Profile</span>
     </a>
+    <a href="#pp-tests" class="pp-bottom-nav__link" data-section="tests">
+      <i data-lucide="monitor" aria-hidden="true"></i>
+      <span>Tests/Exams</span>
+    </a>
     <a href="#pp-results" class="pp-bottom-nav__link" data-section="results">
       <i data-lucide="bar-chart-2" aria-hidden="true"></i>
       <span>Results</span>
-    </a>
-   <a href="#pp-tests" class="pp-bottom-nav__link" data-section="tests">
-      <i data-lucide="monitor" aria-hidden="true"></i>
-      <span>Tests/Exams</span>
     </a>
     <a href="#pp-fees" class="pp-bottom-nav__link" data-section="fees">
       <i data-lucide="credit-card" aria-hidden="true"></i>
@@ -1326,19 +1326,49 @@ document.addEventListener('DOMContentLoaded', () => {
     if (b) b.classList.add('pp-bottom-nav__link--active');
   }
 
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-  }, { threshold: 0.35 });
+  // Track which section is currently most visible
+  const visibilityMap = {};
 
-  ['pp-profile', 'pp-results'].forEach(id => {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      visibilityMap[e.target.id] = e.intersectionRatio;
+    });
+
+    // Pick the section with the highest intersection ratio
+    let bestId = null;
+    let bestRatio = 0;
+    for (const [id, ratio] of Object.entries(visibilityMap)) {
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        bestId = id;
+      }
+    }
+
+    if (bestId && bestRatio > 0) {
+      setActive(bestId);
+    }
+  }, {
+    threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0]
+  });
+
+  // Register the three always-present sections
+  ['pp-profile', 'pp-tests', 'pp-results'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) observer.observe(el);
+    if (el) {
+      visibilityMap[id] = 0;
+      observer.observe(el);
+    }
   });
 
   setActive('pp-profile');
 
   // Expose for scrollToSection to register fees section once shown
-  window.__ppRegisterFeesObserver = el => observer.observe(el);
+  window.__ppRegisterFeesObserver = el => {
+    if (!visibilityMap.hasOwnProperty(el.id)) {
+      visibilityMap[el.id] = 0;
+      observer.observe(el);
+    }
+  };
 });
 
 
