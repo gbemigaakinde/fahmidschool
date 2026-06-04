@@ -60,7 +60,7 @@
               </svg>
               <p class="pp-empty__title">No Results Available</p>
               <p class="pp-empty__text">${text.includes('soon') 
-                ? 'Your teachers will upload scores and admin will approve them soon.'
+                ? 'Your teacher will upload your scores soon.'
                 : 'No approved results found for this session.'}</p>
             </div>`;
         }
