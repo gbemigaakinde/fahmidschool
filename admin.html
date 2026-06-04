@@ -680,21 +680,27 @@
         </div>
 
         <!-- Section: Login Credentials -->
-        <div style="font-size:0.6875rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#94a3b8; padding:0.875rem 0 0.5rem; border-top:1px solid #eef1f6; margin-top:0.75rem; margin-bottom:0.75rem;">
-            Login Credentials
-        </div>
+<div style="font-size:0.6875rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#94a3b8; padding:0.875rem 0 0.5rem; border-top:1px solid #eef1f6; margin-top:0.75rem; margin-bottom:0.75rem;">
+    Login Credentials
+</div>
 
-        <div class="form-row form-row-2">
-            <div class="form-group">
-                <label for="teacher-email">Email (Login) <span class="required">*</span></label>
-                <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
-            </div>
-            <div class="form-group">
-                <label for="teacher-password">Temporary Password <span class="required">*</span></label>
-                <input type="password" id="teacher-password" placeholder="Min. 6 characters" required minlength="6">
-                <small>Teacher will receive a password reset email.</small>
-            </div>
+<!-- Edit-mode note (hidden by default, shown when editing) -->
+<div id="teacher-credentials-edit-note" style="display:none;"></div>
+
+<!-- New teacher credentials (hidden when editing) -->
+<div id="teacher-credentials-section">
+    <div class="form-row form-row-2">
+        <div class="form-group">
+            <label for="teacher-email">Email (Login) <span class="required">*</span></label>
+            <input type="email" id="teacher-email" placeholder="teacher@example.com" required>
         </div>
+        <div class="form-group">
+            <label for="teacher-password">Temporary Password <span class="required">*</span></label>
+            <input type="password" id="teacher-password" placeholder="Min. 6 characters" required minlength="6">
+            <small>Teacher will receive a password reset email.</small>
+        </div>
+    </div>
+</div>
 
         <div class="form-actions">
             <button type="submit" class="btn" id="save-teacher-btn">
@@ -816,16 +822,22 @@
                     </div>
 
                     <!-- Login credentials -->
-                    <div class="form-row form-row-2">
-                        <div class="form-group">
-                            <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
-                            <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="pupil-password">Temporary Password <span class="required">*</span></label>
-                            <input type="password" id="pupil-password" placeholder="Min. 6 characters" required minlength="6">
-                        </div>
-                    </div>
+<!-- Edit-mode note (hidden by default, shown when editing) -->
+<div id="pupil-credentials-edit-note" style="display:none;"></div>
+
+<!-- New pupil credentials (hidden when editing) -->
+<div id="pupil-credentials-section">
+    <div class="form-row form-row-2">
+        <div class="form-group">
+            <label for="pupil-email">Pupil Email (Login) <span class="required">*</span></label>
+            <input type="email" id="pupil-email" placeholder="pupil@example.com" required>
+        </div>
+        <div class="form-group">
+            <label for="pupil-password">Temporary Password <span class="required">*</span></label>
+            <input type="password" id="pupil-password" placeholder="Min. 6 characters" required minlength="6">
+        </div>
+    </div>
+</div>
 
                     <!-- Enrollment Period -->
                     <div class="form-group">
