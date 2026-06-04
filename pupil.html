@@ -1362,6 +1362,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setActive('pp-profile');
 
+  // Watch for fees section becoming visible (pupil.js sets display:block on it)
+  const feesEl = document.getElementById('pp-fees');
+  if (feesEl) {
+    const feesDisplayObs = new MutationObserver(() => {
+      if (feesEl.style.display !== 'none' && feesEl.style.display !== '') {
+        if (!visibilityMap.hasOwnProperty('pp-fees')) {
+          visibilityMap['pp-fees'] = 0;
+          observer.observe(feesEl);
+        }
+        feesDisplayObs.disconnect();
+      }
+    });
+    feesDisplayObs.observe(feesEl, { attributes: true, attributeFilter: ['style'] });
+  }
+
   // Expose for scrollToSection to register fees section once shown
   window.__ppRegisterFeesObserver = el => {
     if (!visibilityMap.hasOwnProperty(el.id)) {
