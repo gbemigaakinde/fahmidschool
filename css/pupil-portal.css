@@ -1084,10 +1084,21 @@
     padding: var(--pp-gap-xl) 0 calc(var(--pp-gap-xl) + 20px);
   }
 
-  .pp-hero__actions { width: 100%; }
-  .pp-action-btn { flex: 1; justify-content: center; }
+  /* FIX 3: prevent buttons being too narrow on small screens */
+  .pp-hero__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .pp-action-btn {
+    flex: 1 1 140px;
+    min-width: 140px;
+    justify-content: center;
+  }
 
   .pp-main {
+    /* FIX 1: smaller negative margin on mobile */
+    margin-top: -12px;
     padding: 0 var(--pp-gap-md) var(--pp-gap-2xl);
     gap: var(--pp-gap-md);
   }
@@ -1097,13 +1108,16 @@
     padding: 0 var(--pp-gap-md) var(--pp-gap-md);
   }
 
+  /* FIX 2: consistent card header padding on mobile */
   .pp-card__header {
     padding: var(--pp-gap-md) var(--pp-gap-md) 0;
     margin-bottom: var(--pp-gap-md);
   }
 
+  /* FIX 5: give footer button side breathing room */
   .pp-card__footer {
-    padding: var(--pp-gap-md);
+    padding: var(--pp-gap-md) var(--pp-gap-md);
+    flex-direction: column;
   }
 
   .pp-field-row {
@@ -1128,9 +1142,13 @@
 
   .pp-btn { width: 100%; justify-content: center; }
 
-  .pp-card__footer { flex-direction: column; }
+  /* FIX 7: results table horizontal scroll fallback */
+  .results-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--pp-r-md);
+  }
 
-  /* Results table mobile scroll */
   .results-table {
     font-size: 12px;
     display: block;
@@ -1151,6 +1169,35 @@
   .pp-card {
     border-radius: var(--pp-r-lg);
   }
+
+  /* FIX 4: bottom nav label size on very small screens */
+  .pp-bottom-nav__link {
+    font-size: 10px;
+  }
+
+  .pp-bottom-nav__link i[data-lucide] {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* FIX 6: fee stat card numbers scale down on small screens */
+  #pp-fees > div[style*="display: grid"] > div > div:nth-child(2) {
+    font-size: 1.35rem !important;
+    letter-spacing: -0.02em !important;
+    word-break: break-all;
+  }
+}
+
+@media (max-width: 360px) {
+  /* FIX 4: further reduce bottom nav on very narrow phones */
+  .pp-bottom-nav__link {
+    font-size: 9px;
+    gap: 2px;
+  }
+
+  .pp-bottom-nav__link span {
+    letter-spacing: -0.01em;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1162,7 +1209,6 @@
     margin-bottom: var(--pp-gap-sm);
   }
 
-  /* Add a visual label above the academic column on mobile */
   .pp-profile-col--academic::before {
     content: '';
     display: block;
@@ -1171,42 +1217,6 @@
     background: var(--pp-blue);
     border-radius: var(--pp-r-full);
     margin-bottom: var(--pp-gap-md);
-  }
-}
-
-/* ── Print ───────────────────────────────────────────────────── */
-@media print {
-  .pp-topbar,
-  .pp-hero__actions,
-  .pp-session-bar,
-  .pp-card__footer,
-  .pp-footer { display: none !important; }
-
-  .pp-body { background: white; }
-  .pp-card { box-shadow: none; border: 1px solid #e4e4e7; }
-  .pp-main { margin-top: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pp-card {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-  .pp-skeleton,
-  .pp-skeleton * {
-    animation: none;
-  }
-  .spinner {
-    animation: none;
-    border: 3px solid var(--pp-blue);
-    border-radius: 50%;
-  }
-  .pp-action-btn--solid:hover {
-    transform: none;
-  }
-  .pp-btn--primary:hover {
-    transform: none;
   }
 }
 
@@ -1278,13 +1288,49 @@
     display: flex;
   }
 
-  /* Push main content up from bottom nav */
   .pp-main {
     padding-bottom: calc(var(--pp-gap-2xl) + 72px);
   }
 
   .pp-footer {
-    margin-bottom: 72px;
+    margin-bottom: 0;
+    padding-bottom: calc(72px + max(16px, env(safe-area-inset-bottom)));
+  }
+}
+
+/* ── Print ───────────────────────────────────────────────────── */
+@media print {
+  .pp-topbar,
+  .pp-hero__actions,
+  .pp-session-bar,
+  .pp-card__footer,
+  .pp-footer { display: none !important; }
+
+  .pp-body { background: white; }
+  .pp-card { box-shadow: none; border: 1px solid #e4e4e7; }
+  .pp-main { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .pp-skeleton,
+  .pp-skeleton * {
+    animation: none;
+  }
+  .spinner {
+    animation: none;
+    border: 3px solid var(--pp-blue);
+    border-radius: 50%;
+  }
+  .pp-action-btn--solid:hover {
+    transform: none;
+  }
+  .pp-btn--primary:hover {
+    transform: none;
   }
 }
 
