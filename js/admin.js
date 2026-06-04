@@ -7885,6 +7885,29 @@ function showTeacherForm() {
     dateJoinedInput.value = new Date().toISOString().split('T')[0];
   }
 
+  // Show credentials section (new teacher mode)
+  const credentialsSection = document.getElementById('teacher-credentials-section');
+  if (credentialsSection) credentialsSection.style.display = 'block';
+
+  // Reset password field to required
+  const passwordField = document.getElementById('teacher-password');
+  if (passwordField) {
+    passwordField.setAttribute('required', '');
+    passwordField.value = '';
+  }
+
+  // Reset email to editable
+  const emailField = document.getElementById('teacher-email');
+  if (emailField) {
+    emailField.removeAttribute('readonly');
+    emailField.style.background = '';
+    emailField.style.color = '';
+  }
+
+  // Hide the edit-mode note if present
+  const editNote = document.getElementById('teacher-credentials-edit-note');
+  if (editNote) editNote.style.display = 'none';
+
   form.style.display = 'block';
   document.getElementById('teacher-name')?.focus();
 
@@ -7897,6 +7920,23 @@ function cancelTeacherForm() {
   document.getElementById('teacher-id').value = '';
   document.getElementById('teacher-form-title').innerHTML = '<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Add New Teacher';
   document.getElementById('save-teacher-btn').textContent = 'Save Teacher';
+
+  // Reset credentials section to default state
+  const credentialsSection = document.getElementById('teacher-credentials-section');
+  if (credentialsSection) credentialsSection.style.display = 'block';
+
+  const passwordField = document.getElementById('teacher-password');
+  if (passwordField) passwordField.setAttribute('required', '');
+
+  const emailField = document.getElementById('teacher-email');
+  if (emailField) {
+    emailField.removeAttribute('readonly');
+    emailField.style.background = '';
+    emailField.style.color = '';
+  }
+
+  const editNote = document.getElementById('teacher-credentials-edit-note');
+  if (editNote) editNote.style.display = 'none';
 }
 
 /* =====================================================
@@ -8573,11 +8613,40 @@ async function editTeacher(uid) {
     document.getElementById('teacher-qualification').value  = data.qualification || '';
     document.getElementById('teacher-specialization').value = data.specialization || '';
     document.getElementById('teacher-notes').value       = data.notes || '';
-    document.getElementById('teacher-email').value       = data.email || '';
-    document.getElementById('teacher-password').value   = ''; // always blank for security
+
+    // --- EDIT MODE: handle credentials section ---
+    // Show email as read-only (can't be changed via admin portal)
+    const emailField = document.getElementById('teacher-email');
+    if (emailField) {
+      emailField.value = data.email || '';
+      emailField.setAttribute('readonly', '');
+      emailField.style.background = '#f1f5f9';
+      emailField.style.color = '#64748b';
+    }
+
+    // Hide password field entirely — not needed when editing
+    const credentialsSection = document.getElementById('teacher-credentials-section');
+    if (credentialsSection) credentialsSection.style.display = 'none';
+
+    // Show an informational note instead
+    const editNote = document.getElementById('teacher-credentials-edit-note');
+    if (editNote) {
+      editNote.style.display = 'block';
+      editNote.innerHTML = `
+        <div style="padding:0.75rem 1rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:0.8125rem; color:#1e40af; margin-bottom:0.5rem;">
+          <strong>🔒 Login credentials cannot be changed here.</strong><br>
+          Email: <strong>${data.email || 'Not set'}</strong><br>
+          To reset the teacher's password, ask them to use "Forgot Password" on the login page.
+        </div>
+      `;
+    }
 
     // Password not required when editing
-    document.getElementById('teacher-password').removeAttribute('required');
+    const passwordField = document.getElementById('teacher-password');
+    if (passwordField) {
+      passwordField.removeAttribute('required');
+      passwordField.value = '';
+    }
 
     document.getElementById('teacher-form-title').innerHTML = `<i data-lucide="pencil" style="width:16px;height:16px;"></i> Edit Teacher: ${data.name}`;
     document.getElementById('save-teacher-btn').textContent = 'Update Teacher';
@@ -8767,6 +8836,30 @@ async function showPupilForm() {
   // Populate class dropdown first
   await populateClassDropdown();
 
+  // Show credentials section (new pupil mode)
+  const credentialsSection = document.getElementById('pupil-credentials-section');
+  if (credentialsSection) credentialsSection.style.display = 'block';
+
+  // Reset password to required
+  const passwordField = document.getElementById('pupil-password');
+  if (passwordField) {
+    passwordField.setAttribute('required', '');
+    passwordField.value = '';
+  }
+
+  // Reset email to editable
+  const emailField = document.getElementById('pupil-email');
+  if (emailField) {
+    emailField.removeAttribute('readonly');
+    emailField.style.background = '';
+    emailField.style.color = '';
+    emailField.setAttribute('required', '');
+  }
+
+  // Hide edit note
+  const editNote = document.getElementById('pupil-credentials-edit-note');
+  if (editNote) editNote.style.display = 'none';
+
   form.style.display = 'block';
   document.getElementById('pupil-name')?.focus();
 }
@@ -8775,10 +8868,28 @@ function cancelPupilForm() {
   document.getElementById('pupil-form').style.display = 'none';
   document.getElementById('add-pupil-form').reset();
   document.getElementById('pupil-id').value = '';
-  
+
   // Reset form title and button text
   document.getElementById('pupil-form-title').textContent = 'Add / Edit Pupil';
   document.getElementById('save-pupil-btn').textContent = 'Save Pupil';
+
+  // Reset credentials section to default state
+  const credentialsSection = document.getElementById('pupil-credentials-section');
+  if (credentialsSection) credentialsSection.style.display = 'block';
+
+  const passwordField = document.getElementById('pupil-password');
+  if (passwordField) passwordField.setAttribute('required', '');
+
+  const emailField = document.getElementById('pupil-email');
+  if (emailField) {
+    emailField.removeAttribute('readonly');
+    emailField.style.background = '';
+    emailField.style.color = '';
+    emailField.setAttribute('required', '');
+  }
+
+  const editNote = document.getElementById('pupil-credentials-edit-note');
+  if (editNote) editNote.style.display = 'none';
 }
 
 /**
@@ -9314,19 +9425,14 @@ async function editPupil(uid) {
     const data = doc.data();
     console.log('Pupil data loaded:', data);
 
-    // ✅ FIX #1: Safely extract class ID
     const classId = getClassIdFromPupilData(data.class);
     console.log('Class ID extracted:', classId);
 
-    // ✅ FIX #1: Populate class dropdown FIRST, then select current class
     await populateClassDropdown(classId);
     console.log('Class dropdown populated');
 
-    // ✅ FIX #1: Fill ALL form fields (including admissionNo)
     document.getElementById('pupil-id').value = uid;
     document.getElementById('pupil-name').value = data.name || '';
-    
-    // ✅ FIX #1a: CRITICAL - Load admission number
     document.getElementById('pupil-admission-no').value = data.admissionNo || '';
     console.log('Admission No loaded:', data.admissionNo);
     
@@ -9336,54 +9442,53 @@ async function editPupil(uid) {
     document.getElementById('pupil-parent-email').value = data.parentEmail || '';
     document.getElementById('pupil-contact').value = data.contact || '';
     document.getElementById('pupil-address').value = data.address || '';
-    document.getElementById('pupil-email').value = data.email || '';
-    document.getElementById('pupil-password').value = ''; // always blank for security
 
-    // ✅ FIX #1b: CRITICAL - Select current class in dropdown
+    // --- EDIT MODE: handle credentials section ---
+    // Hide the credentials inputs entirely
+    const credentialsSection = document.getElementById('pupil-credentials-section');
+    if (credentialsSection) credentialsSection.style.display = 'none';
+
+    // Show informational note instead
+    const editNote = document.getElementById('pupil-credentials-edit-note');
+    if (editNote) {
+      editNote.style.display = 'block';
+      editNote.innerHTML = `
+        <div style="padding:0.75rem 1rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:0.8125rem; color:#1e40af; margin-bottom:0.5rem;">
+          <strong>🔒 Login credentials cannot be changed here.</strong><br>
+          Email: <strong>${data.email || 'Not set'}</strong><br>
+          To reset the pupil's password, ask them to use "Forgot Password" on the login page.
+        </div>
+      `;
+    }
+
+    // Password not required when editing
+    const passwordField = document.getElementById('pupil-password');
+    if (passwordField) {
+      passwordField.removeAttribute('required');
+      passwordField.value = '';
+    }
+
     const classSelect = document.getElementById('pupil-class');
     if (classSelect && classId) {
       classSelect.value = classId;
       console.log('Class selected in dropdown:', classId);
     }
 
-    // ✅ FIX #2: Load Enrollment Period fields
-    const admissionTerm = data.admissionTerm || 'First Term';
-    const exitTerm = data.exitTerm || 'Third Term';
-    
     const admissionTermSelect = document.getElementById('pupil-admission-term');
     const exitTermSelect = document.getElementById('pupil-exit-term');
     
-    if (admissionTermSelect) {
-      admissionTermSelect.value = admissionTerm;
-      console.log('Admission term loaded:', admissionTerm);
-    }
-    
-    if (exitTermSelect) {
-      exitTermSelect.value = exitTerm;
-      console.log('Exit term loaded:', exitTerm);
-    }
+    if (admissionTermSelect) admissionTermSelect.value = data.admissionTerm || 'First Term';
+    if (exitTermSelect) exitTermSelect.value = data.exitTerm || 'Third Term';
 
-    // ✅ FIX #3: Load Fee Adjustment fields
-    const feeAdjustmentPercent = data.feeAdjustmentPercent || 0;
-    const feeAdjustmentAmount = data.feeAdjustmentAmount || 0;
-    
     const percentInput = document.getElementById('pupil-fee-adjustment-percent');
     const amountInput = document.getElementById('pupil-fee-adjustment-amount');
     
-    if (percentInput) {
-      percentInput.value = feeAdjustmentPercent;
-      console.log('Fee adjustment percent loaded:', feeAdjustmentPercent);
-    }
-    
-    if (amountInput) {
-      amountInput.value = feeAdjustmentAmount;
-      console.log('Fee adjustment amount loaded:', feeAdjustmentAmount);
-    }
+    if (percentInput) percentInput.value = data.feeAdjustmentPercent || 0;
+    if (amountInput) amountInput.value = data.feeAdjustmentAmount || 0;
 
-    // ✅ Handle old-format class data (for legacy records)
+    // Handle old-format class data
     if (!classId && data.class && typeof data.class === 'string') {
       const className = data.class;
-      
       console.warn(`⚠️ Old class format detected: "${className}"`);
       
       const classesSnapshot = await db.collection('classes')
@@ -9392,26 +9497,19 @@ async function editPupil(uid) {
 
       if (classesSnapshot.empty) {
         window.showToast?.(
-          `Warning: Class "${className}" not found in database. Please select the correct class manually.`,
-          'warning',
-          6000
+          `Warning: Class "${className}" not found. Please select the correct class manually.`,
+          'warning', 6000
         );
       } else if (classesSnapshot.size > 1) {
-        // Multiple classes with same name found
         window.showToast?.(
-          `⚠️ AMBIGUOUS CLASS DATA DETECTED!\n\n` +
-          `This pupil's record shows class "${className}", but ${classesSnapshot.size} classes ` +
-          `have this name in the database.\n\n` +
-          `Please manually select the correct class from the dropdown and save to fix this issue.`,
-          'warning',
-          10000
+          `⚠️ Multiple classes named "${className}" found. Please select the correct one manually.`,
+          'warning', 10000
         );
-
+        const classSelect = document.getElementById('pupil-class');
         if (classSelect) {
-          classSelect.value = ''; // force manual selection
+          classSelect.value = '';
           classSelect.style.background = '#fff3cd';
           classSelect.style.border = '2px solid #ffc107';
-
           classSelect.addEventListener('change', function removeHighlight() {
             this.style.background = '';
             this.style.border = '';
@@ -9419,36 +9517,27 @@ async function editPupil(uid) {
           });
         }
       } else {
-        // Exactly one match - safe to auto-select
         const matchedClassId = classesSnapshot.docs[0].id;
-        if (classSelect) {
-          classSelect.value = matchedClassId;
-        }
-
-        window.showToast?.(
-          'Note: This pupil has old class data format. Saving will upgrade it automatically.',
-          'info',
-          5000
-        );
+        const classSelect = document.getElementById('pupil-class');
+        if (classSelect) classSelect.value = matchedClassId;
+        window.showToast?.('Note: Old class data format detected. Saving will upgrade it.', 'info', 5000);
       }
     } else if (!classId) {
-      // classId is missing and className is invalid
       const className = data.class?.name || data.class || 'Unknown';
-      window.showToast?.(
-        `Warning: Could not find class "${className}". Please select the correct class.`,
-        'warning',
-        6000
-      );
+      window.showToast?.(`Warning: Could not find class "${className}". Please select the correct class.`, 'warning', 6000);
     }
 
-    // Update form title and button
     document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
     document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
 
-    // Show the form and focus first field
     showPupilForm();
+
+    // Re-hide credentials after showPupilForm() (which resets them to visible)
+    if (credentialsSection) credentialsSection.style.display = 'none';
+    if (editNote) editNote.style.display = 'block';
+    if (passwordField) passwordField.removeAttribute('required');
+
     document.getElementById('pupil-name')?.focus();
-    
     console.log('✅ Pupil form loaded successfully for editing');
     
   } catch (error) {
