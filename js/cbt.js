@@ -6,9 +6,9 @@
 'use strict';
 
 // ── State ──────────────────────────────────────────────────────────────────
-let testData       = null;   // the cbt_tests doc
-let questions      = [];     // array of question objects
-let answers        = {};     // { questionIndex: 'A'|'B'|'C'|'D' }
+let testData       = null;   
+let questions      = [];    
+let answers        = {};   
 let flagged        = new Set();
 let currentQ       = 0;
 let timerInterval  = null;
