@@ -4,13 +4,6 @@
  *
  * @version 4.0.0 - FULLY CONSISTENT WITH ADMIN/PUPIL LOGIC
  * @date 2026-02-02
- * 
- * DESIGN PRINCIPLES:
- * ✅ Single source of truth for all financial calculations
- * ✅ NO stale data - always recalculates from base fee + adjustments
- * ✅ Consistent arrears logic (First Term: full session, Later Terms: previous term only)
- * ✅ Atomic payment recording with Firestore transactions
- * ✅ All functions used by admin.js and pupil.js
  */
 
 'use strict';
