@@ -14,8 +14,6 @@ const finance = {
    * ═══════════════════════════════════════════════════════════
    * CORE CALCULATION: Current Outstanding Balance
    * ═══════════════════════════════════════════════════════════
-   * This is the SINGLE SOURCE OF TRUTH for all balance queries.
-   * Admin reports, pupil portal, and payment recording ALL use this.
    */
   async calculateCurrentOutstanding(pupilId, session, term) {
     try {
@@ -120,14 +118,10 @@ const finance = {
       // Step 7: Calculate outstanding
       const totalDue   = amountDue + arrears;
 
-      // FIXED: Preserve signed balance so overpayments surface.
-      // balance is clamped to 0 (never negative) so downstream callers
-      // that read balance as an amount-owed are unaffected.
       const rawBalance = totalDue - totalPaid;
       const balance    = Math.max(0, rawBalance);
       const credit     = rawBalance < 0 ? Math.abs(rawBalance) : 0;
 
-      // FIXED: Status now includes 'overpaid'.
       let status;
       if (rawBalance < 0) {
         status = 'overpaid';
@@ -225,9 +219,6 @@ const finance = {
     const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
     const amountAdjustment  = Number(pupilData.feeAdjustmentAmount)  || 0;
 
-    // FIXED: Both adjustments apply to baseFee independently, then combine.
-    // Previously: percent was applied first, then amount was applied to the
-    // already-discounted result — causing unintended compounding between the two.
     const percentDiscount = Math.round(base * (percentAdjustment / 100));
     const adjustedFee     = Math.round(base + percentDiscount + amountAdjustment);
 
@@ -254,9 +245,6 @@ const finance = {
    * ═══════════════════════════════════════════════════════════
    * CORE CALCULATION: Complete Arrears (No Double-Counting)
    * ═══════════════════════════════════════════════════════════
-   * LOGIC:
-   * - First Term of session: Add ENTIRE previous session balance
-   * - Second/Third Term: Add ONLY previous term balance (already cascaded)
    */
   async calculateCompleteArrears(pupilId, currentSession, currentTerm) {
     try {
@@ -274,8 +262,6 @@ const finance = {
       console.log(`   [FINANCE] Calculating arrears for ${currentTerm} in ${currentSession}...`);
 
       // ── Helper: was this pupil enrolled in a given session + term? ──────────
-      // FIX 2: Uses admissionSession + admissionTerm directly instead of
-      // relying on createdAt, which can be wrong for legacy/migrated records.
       const wasEnrolledIn = async (pupilData, checkSession, checkTerm) => {
         const admissionSession = pupilData.admissionSession || null;
         const admissionTerm    = pupilData.admissionTerm    || 'First Term';
@@ -380,8 +366,6 @@ const finance = {
 
               if (rawBalance === undefined || rawBalance === null || isNaN(parsed)) {
                 // Balance field missing or corrupt — recalculate recursively
-                // FIX 4: Use calculateCurrentOutstanding so the previous term's
-                // own arrears are included in the cascade.
                 console.warn(
                   `     ⚠️ Invalid balance field in ${previousTermName} doc. Recalculating...`
                 );
@@ -405,8 +389,6 @@ const finance = {
 
             } else {
               // No payment doc — pupil was enrolled but has no record.
-              // FIX 4: Use calculateCurrentOutstanding recursively so
-              // multi-term debt chains cascade correctly.
               console.warn(
                 `     ⚠️ No payment record for ${previousTermName} in ${currentSession}. ` +
                 `Calculating full outstanding balance...`
@@ -475,7 +457,6 @@ const finance = {
 
             if (rawBalance === undefined || rawBalance === null || isNaN(balance)) {
               // Balance field missing or corrupt — recalculate recursively
-              // FIX 4: Use calculateCurrentOutstanding so arrears cascade correctly.
               console.warn(`     ⚠️ Invalid balance field in ${termName} doc — recalculating`);
               try {
                 const outstanding = await this.calculateCurrentOutstanding(
@@ -508,8 +489,6 @@ const finance = {
       }
 
       // No payment docs found at all for this session.
-      // FIX 2: Check admissionSession to decide whether pupil was ever enrolled,
-      // rather than using createdAt which can be wrong for legacy records.
       console.log(`     ℹ️ No payment records for ${session} — checking enrolment`);
 
       try {
@@ -535,8 +514,6 @@ const finance = {
             }
           } else {
             // Legacy record: no admissionSession stored.
-            // Fall through to recalculate — safer to assume enrolled than to
-            // silently forgive a genuine debt.
             console.log(`     ℹ️ No admissionSession on record — assuming pupil was enrolled in ${session}`);
           }
         }
@@ -545,9 +522,6 @@ const finance = {
       }
 
       // Pupil was (or may have been) enrolled but has no docs.
-// Use _recalculateTermBalance for Third Term — this resolves historical
-// class and fee from payment_transactions, preventing promotion from
-// corrupting prior-session arrears calculations.
 console.log(`     ℹ️ Recalculating Third Term of ${session} as session balance proxy`);
 try {
   const fallback = await this._recalculateTermBalance(pupilId, session, 'Third Term');
@@ -569,12 +543,6 @@ return 0;
  * ═══════════════════════════════════════════════════════════
  * HELPER: Recalculate a single term's balance from fee structure
  * ═══════════════════════════════════════════════════════════
- * FIXES APPLIED:
- * - Uses historical classId from payment_transactions (prevents promotion
- *   from retroactively altering prior-term fee calculations)
- * - Uses historical baseFee from payment_transactions when available
- *   (prevents fee structure changes from retroactively altering balances)
- * - Falls back to current pupil class + live fee only when no history exists
  */
 async _recalculateTermBalance(pupilId, session, term) {
   try {
