@@ -786,6 +786,18 @@
 <script>
   'use strict';
 
+  // If the user is already authenticated, skip login and go straight to the portal.
+  // Runs immediately before any other login logic so there's no flash of the login UI.
+  (function redirectIfAuthenticated() {
+    // firebase-init.js loads before this script, so window.auth is available.
+    if (!window.auth) return;
+    window.auth.onAuthStateChanged(function(user) {
+      if (user) {
+        window.location.replace('portal.html');
+      }
+    });
+  })();
+
   let currentMode = 'login';
 
   function switchMode(mode) {
