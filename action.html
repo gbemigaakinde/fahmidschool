@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1B3A7A">
+  <title>Account Action — Fahmid Nursery &amp; Primary School</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+
+  <style>
+    :root {
+      --ink-900:   #0D0F14;
+      --ink-800:   #1C1F2A;
+      --ink-700:   #2E3347;
+      --ink-600:   #4B5268;
+      --ink-500:   #6B7490;
+      --ink-400:   #9299AD;
+      --ink-300:   #B8BCC9;
+      --ink-200:   #D8DAE4;
+      --ink-100:   #EDEEF3;
+      --ink-50:    #F6F7FA;
+      --surface:        #FFFFFF;
+      --surface-alt:    #F3F4F8;
+      --surface-border: #E2E4EC;
+      --accent:         #1B3A7A;
+      --accent-mid:     #2451A8;
+      --accent-light:   #3A68C8;
+      --accent-pale:    #EAF0FD;
+      --accent-hover:   #132C60;
+      --gold:           #C89F4D;
+      --green:          #0E7A4F;
+      --green-pale:     #E6F6EE;
+      --red:            #B91C1C;
+      --red-pale:       #FEF2F2;
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --text-xs:    0.6875rem;
+      --text-sm:    0.8125rem;
+      --text-base:  1rem;
+      --text-lg:    1.1875rem;
+      --text-xl:    1.375rem;
+      --text-2xl:   1.625rem;
+      --text-3xl:   2rem;
+      --w-light:   300;
+      --w-regular: 400;
+      --w-medium:  500;
+      --w-semibold:600;
+      --w-bold:    700;
+      --s-2: 0.5rem;
+      --s-3: 0.75rem;
+      --s-4: 1rem;
+      --s-5: 1.25rem;
+      --s-6: 1.5rem;
+      --s-8: 2rem;
+      --s-10: 2.5rem;
+      --s-12: 3rem;
+      --radius-md:   8px;
+      --radius-lg:   12px;
+      --radius-xl:   16px;
+      --radius-2xl:  24px;
+      --radius-pill: 9999px;
+      --shadow-sm:  0 2px 6px rgba(13,15,20,0.06), 0 1px 2px rgba(13,15,20,0.04);
+      --shadow-md:  0 4px 16px rgba(13,15,20,0.08), 0 2px 4px rgba(13,15,20,0.04);
+      --shadow-xl:  0 16px 48px rgba(13,15,20,0.12), 0 4px 12px rgba(13,15,20,0.06);
+      --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
+      --t-fast: 150ms;
+      --t-base: 250ms;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { -webkit-font-smoothing: antialiased; font-size: 16px; }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: var(--w-regular);
+      line-height: 1.7;
+      color: var(--ink-800);
+      background: var(--ink-900);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--s-6);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Background orbs */
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-orb--1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(27,58,122,0.55) 0%, transparent 70%);
+      top: -180px; right: -140px;
+    }
+    .bg-orb--2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(200,159,77,0.18) 0%, transparent 70%);
+      bottom: -140px; left: -120px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Card */
+    .action-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border-radius: var(--radius-2xl);
+      padding: var(--s-10) var(--s-8);
+      box-shadow: var(--shadow-xl);
+      animation: card-in 0.6s var(--ease-out) both;
+    }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(24px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Logo */
+    .action-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      margin-bottom: var(--s-8);
+      text-decoration: none;
+    }
+
+    .action-logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .action-logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .action-logo-name {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: var(--ink-900);
+    }
+
+    /* State panels */
+    .state-panel { display: none; }
+    .state-panel.active { display: block; }
+
+    /* Icon wrap */
+    .icon-wrap {
+      width: 60px;
+      height: 60px;
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--s-5);
+    }
+
+    .icon-wrap svg { width: 28px; height: 28px; }
+    .icon-wrap--blue { background: var(--accent-pale); color: var(--accent); }
+    .icon-wrap--green { background: var(--green-pale); color: var(--green); }
+    .icon-wrap--red { background: var(--red-pale); color: var(--red); }
+    .icon-wrap--spin svg { animation: spin 1s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Typography */
+    .state-heading {
+      font-family: var(--font-display);
+      font-size: var(--text-3xl);
+      color: var(--ink-900);
+      margin-bottom: var(--s-2);
+      line-height: 1.2;
+    }
+
+    .state-subtext {
+      font-size: var(--text-sm);
+      color: var(--ink-500);
+      line-height: 1.7;
+      margin-bottom: var(--s-6);
+    }
+
+    /* Form */
+    .form-group { margin-bottom: var(--s-5); }
+
+    .form-group label {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      font-size: var(--text-sm);
+      font-weight: var(--w-semibold);
+      color: var(--ink-700);
+      margin-bottom: var(--s-2);
+    }
+
+    .form-group label svg {
+      width: 15px; height: 15px;
+      color: var(--ink-400);
+      flex-shrink: 0;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1.5px solid var(--surface-border);
+      border-radius: var(--radius-lg);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--ink-900);
+      background: var(--surface);
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+      outline: none;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--accent-light);
+      box-shadow: 0 0 0 3px rgba(58,104,200,0.12);
+    }
+
+    input.input-error {
+      border-color: var(--red) !important;
+    }
+
+    /* Password field wrap */
+    .password-field-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-field-wrap input {
+      padding-right: 3rem;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px; height: 32px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-400);
+      border-radius: var(--radius-md);
+      transition: color var(--t-fast), background var(--t-fast);
+      padding: 0;
+    }
+
+    .password-toggle:hover { color: var(--accent); background: var(--accent-pale); }
+    .password-toggle svg { width: 18px; height: 18px; pointer-events: none; }
+
+    /* Password strength */
+    .strength-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: var(--s-2);
+    }
+
+    .strength-segment {
+      flex: 1;
+      height: 3px;
+      border-radius: 99px;
+      background: var(--surface-border);
+      transition: background 0.3s;
+    }
+
+    .strength-label {
+      font-size: var(--text-xs);
+      color: var(--ink-400);
+      margin-top: 4px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 0.875rem var(--s-6);
+      background: var(--accent);
+      color: white;
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: var(--w-semibold);
+      cursor: pointer;
+      transition: all var(--t-base) var(--ease-out);
+      position: relative;
+      margin-top: var(--s-2);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-primary.loading { color: transparent; }
+
+    .btn-primary.loading::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      top: 50%; left: 50%;
+      margin: -10px 0 0 -10px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--s-2);
+      width: 100%;
+      padding: 0.875rem var(--s-6);
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      font-weight: var(--w-semibold);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all var(--t-base) var(--ease-out);
+      margin-top: var(--s-3);
+    }
+
+    .btn-secondary:hover {
+      background: var(--accent-pale);
+      transform: translateY(-1px);
+    }
+
+    /* Toast */
+    #toast-container {
+      position: fixed;
+      bottom: var(--s-6);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-5);
+      border-radius: var(--radius-pill);
+      font-size: var(--text-sm);
+      font-weight: var(--w-medium);
+      color: white;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: auto;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.hide { opacity: 0; transform: translateY(12px); }
+    .toast-success { background: #0E7A4F; }
+    .toast-danger  { background: #B91C1C; }
+    .toast-warning { background: #92400E; }
+    .toast-info    { background: var(--accent); }
+
+    /* Branding footer */
+    .action-brand {
+      margin-top: var(--s-8);
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .action-brand-name {
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      color: rgba(255,255,255,0.3);
+    }
+
+    @media (max-width: 520px) {
+      .action-card { padding: var(--s-8) var(--s-5); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-orb bg-orb--1" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb--2" aria-hidden="true"></div>
+
+  <div class="action-card" role="main">
+
+    <!-- Logo -->
+    <a href="index.html" class="action-logo" aria-label="Fahmid School — Home">
+      <div class="action-logo-icon">
+        <img src="IMG_4629.png" alt="Fahmid School logo">
+      </div>
+      <span class="action-logo-name">Fahmid School</span>
+    </a>
+
+    <!-- STATE: Loading -->
+    <div class="state-panel active" id="state-loading">
+      <div class="icon-wrap icon-wrap--blue icon-wrap--spin">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+      </div>
+      <h1 class="state-heading">Please wait…</h1>
+      <p class="state-subtext">We are verifying your request. This will only take a moment.</p>
+    </div>
+
+    <!-- STATE: Reset Password Form -->
+    <div class="state-panel" id="state-reset-form">
+      <div class="icon-wrap icon-wrap--blue">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h1 class="state-heading">Set a new password</h1>
+      <p class="state-subtext">Choose a strong password for your Fahmid School portal account.</p>
+
+      <div class="form-group">
+        <label for="new-password">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          New password <span style="color:var(--red);" aria-hidden="true">*</span>
+        </label>
+        <div class="password-field-wrap">
+          <input type="password" id="new-password" placeholder="At least 8 characters" autocomplete="new-password">
+          <button type="button" class="password-toggle" id="toggle-new" aria-label="Show password" aria-pressed="false">
+            <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+        <div class="strength-bar" id="strength-bar" aria-hidden="true">
+          <div class="strength-segment" id="seg-1"></div>
+          <div class="strength-segment" id="seg-2"></div>
+          <div class="strength-segment" id="seg-3"></div>
+          <div class="strength-segment" id="seg-4"></div>
+        </div>
+        <div class="strength-label" id="strength-label" aria-live="polite"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirm-password">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Confirm password <span style="color:var(--red);" aria-hidden="true">*</span>
+        </label>
+        <div class="password-field-wrap">
+          <input type="password" id="confirm-password" placeholder="Re-enter your new password" autocomplete="new-password">
+          <button type="button" class="password-toggle" id="toggle-confirm" aria-label="Show password" aria-pressed="false">
+            <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="reset-submit-btn">Reset Password</button>
+    </div>
+
+    <!-- STATE: Success -->
+    <div class="state-panel" id="state-success">
+      <div class="icon-wrap icon-wrap--green">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h1 class="state-heading">Password updated</h1>
+      <p class="state-subtext">Your password has been changed successfully. You can now sign in to your portal account with your new password.</p>
+      <a href="login.html" class="btn-primary" style="display:flex;align-items:center;justify-content:center;gap:0.5rem;text-decoration:none;margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Go to Login
+      </a>
+    </div>
+
+    <!-- STATE: Invalid / Expired -->
+    <div class="state-panel" id="state-invalid">
+      <div class="icon-wrap icon-wrap--red">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h1 class="state-heading">Link invalid or expired</h1>
+      <p class="state-subtext" id="invalid-reason">This password reset link has expired or has already been used. Please request a new one from the login page.</p>
+      <a href="login.html" class="btn-secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Back to Login
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Branding -->
+  <div class="action-brand" aria-hidden="true">
+    <div class="action-brand-name">Fahmid School</div>
+  </div>
+
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    'use strict';
+
+    // ── Firebase config ──
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0A1zJ9bGCwk_UioAbgsNWrV2M9C51aDo",
+      authDomain: "fahmid-school.firebaseapp.com",
+      projectId: "fahmid-school",
+      storageBucket: "fahmid-school.firebasestorage.app",
+      messagingSenderId: "48604608508",
+      appId: "1:48604608508:web:5b387a2de260b9851a6479"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // ── Toast ──
+    function showToast(message, type = 'info', duration = 4000) {
+      let container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.setAttribute('role', 'alert');
+      toast.textContent = message;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(() => toast.remove(), 350);
+      }, duration);
+    }
+
+    // ── State switcher ──
+    function showState(id) {
+      document.querySelectorAll('.state-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // ── Password toggle ──
+    function setupToggle(toggleId, inputId) {
+      const btn = document.getElementById(toggleId);
+      const input = document.getElementById(inputId);
+      if (!btn || !input) return;
+      btn.addEventListener('click', () => {
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        btn.querySelector('.icon-eye').style.display = isHidden ? 'none' : '';
+        btn.querySelector('.icon-eye-off').style.display = isHidden ? '' : 'none';
+        btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        btn.setAttribute('aria-pressed', String(isHidden));
+      });
+    }
+
+    setupToggle('toggle-new', 'new-password');
+    setupToggle('toggle-confirm', 'confirm-password');
+
+    // ── Password strength ──
+    const segments = [
+      document.getElementById('seg-1'),
+      document.getElementById('seg-2'),
+      document.getElementById('seg-3'),
+      document.getElementById('seg-4')
+    ];
+    const strengthLabel = document.getElementById('strength-label');
+    const colors = ['#B91C1C', '#D97706', '#2563EB', '#0E7A4F'];
+    const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+
+    function getStrength(password) {
+      let score = 0;
+      if (password.length >= 8) score++;
+      if (password.length >= 12) score++;
+      if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+      if (/[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) score++;
+      return Math.max(0, Math.min(score, 4));
+    }
+
+    document.getElementById('new-password').addEventListener('input', function () {
+      const score = getStrength(this.value);
+      segments.forEach((seg, i) => {
+        seg.style.background = i < score ? colors[score - 1] : 'var(--surface-border)';
+      });
+      strengthLabel.textContent = this.value ? labels[score - 1] || '' : '';
+      strengthLabel.style.color = score > 0 ? colors[score - 1] : 'var(--ink-400)';
+    });
+
+    // ── Read URL parameters ──
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const oobCode = params.get('oobCode');
+
+    // ── Verify the code with Firebase ──
+    async function init() {
+      if (!oobCode) {
+        document.getElementById('invalid-reason').textContent =
+          'No reset code was found in this link. Please request a new password reset from the login page.';
+        showState('state-invalid');
+        return;
+      }
+
+      if (mode === 'resetPassword') {
+        try {
+          // Verify the code is still valid before showing the form
+          await auth.verifyPasswordResetCode(oobCode);
+          showState('state-reset-form');
+          document.getElementById('new-password').focus();
+        } catch (err) {
+          const reason =
+            err.code === 'auth/expired-action-code'
+              ? 'This reset link has expired. Please request a new one.'
+              : err.code === 'auth/invalid-action-code'
+              ? 'This reset link has already been used or is invalid. Please request a new one.'
+              : 'This link is no longer valid. Please request a new password reset.';
+          document.getElementById('invalid-reason').textContent = reason;
+          showState('state-invalid');
+        }
+      } else {
+        document.getElementById('invalid-reason').textContent =
+          'This link is not recognised. Please return to the login page.';
+        showState('state-invalid');
+      }
+    }
+
+    init();
+
+    // ── Handle form submission ──
+    document.getElementById('reset-submit-btn').addEventListener('click', async () => {
+      const newPass = document.getElementById('new-password').value;
+      const confirmPass = document.getElementById('confirm-password').value;
+      const submitBtn = document.getElementById('reset-submit-btn');
+      const newInput = document.getElementById('new-password');
+      const confirmInput = document.getElementById('confirm-password');
+
+      // Clear previous errors
+      newInput.classList.remove('input-error');
+      confirmInput.classList.remove('input-error');
+
+      if (!newPass || newPass.length < 8) {
+        newInput.classList.add('input-error');
+        showToast('Password must be at least 8 characters.', 'warning');
+        newInput.focus();
+        return;
+      }
+
+      if (newPass !== confirmPass) {
+        confirmInput.classList.add('input-error');
+        showToast('Passwords do not match. Please try again.', 'warning');
+        confirmInput.focus();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.classList.add('loading');
+
+      try {
+        await auth.confirmPasswordReset(oobCode, newPass);
+        showState('state-success');
+      } catch (err) {
+        const msg =
+          err.code === 'auth/expired-action-code'
+            ? 'This reset link has expired. Please request a new one from the login page.'
+            : err.code === 'auth/weak-password'
+            ? 'Password is too weak. Please choose a stronger password.'
+            : 'Something went wrong. Please try again or contact the school office.';
+        showToast(msg, 'danger', 6000);
+
+        if (err.code === 'auth/expired-action-code') {
+          showState('state-invalid');
+        }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+      }
+    });
+
+    // Allow Enter key on confirm field to submit
+    document.getElementById('confirm-password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('reset-submit-btn').click();
+    });
+  </script>
+
+</body>
+</html>
