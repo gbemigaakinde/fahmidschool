@@ -37,9 +37,17 @@ let isLoadingData = false;
 window.checkRole('teacher')
   .then(async user => {
     currentUser = user;
-    window.currentUser = user; // ← EXPOSE TO OTHER SCRIPTS
+    window.currentUser = user;
     const info = document.getElementById('teacher-info');
-    if (info) info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
+    if (info) {
+      try {
+        const teacherDoc = await db.collection('teachers').doc(user.uid).get();
+        const teacherName = teacherDoc.exists ? (teacherDoc.data().name || user.email) : user.email;
+        info.innerHTML = `<strong>${teacherName}</strong>`;
+      } catch (e) {
+        info.innerHTML = `<strong>${user.email}</strong>`;
+      }
+    }
     
     try {
       console.log('Starting teacher data load...');
