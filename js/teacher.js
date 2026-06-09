@@ -43,9 +43,9 @@ window.checkRole('teacher')
       try {
         const teacherDoc = await db.collection('teachers').doc(user.uid).get();
         const teacherName = teacherDoc.exists ? (teacherDoc.data().name || user.email) : user.email;
-        info.innerHTML = `<strong>${teacherName}</strong>`;
+        info.innerHTML = `Logged in as:<br><strong>${teacherName}</strong>`;
       } catch (e) {
-        info.innerHTML = `<strong>${user.email}</strong>`;
+        info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
       }
     }
     
