@@ -10215,10 +10215,22 @@ async function addAnnouncement() {
   const content = document.getElementById('announce-content')?.value.trim();
   const audienceType = document.getElementById('announce-audience')?.value || 'all';
   const priority     = document.getElementById('announce-priority')?.value  || 'normal';
+  const expiresAtInput = document.getElementById('announce-expires-at')?.value;
 
   if (!title || !content) {
     window.showToast?.('Title and content are required', 'warning');
     return;
+  }
+
+  // Validate expiry is in the future if provided
+  let expiresAt = null;
+  if (expiresAtInput) {
+    const expiresDate = new Date(expiresAtInput);
+    if (expiresDate <= new Date()) {
+      window.showToast?.('Expiry date must be in the future', 'warning');
+      return;
+    }
+    expiresAt = firebase.firestore.Timestamp.fromDate(expiresDate);
   }
 
   // Resolve the final targetAudience value
@@ -10242,20 +10254,30 @@ async function addAnnouncement() {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = 'Publishing...'; }
 
   try {
-    await db.collection('announcements').add({
+    const docData = {
       title,
       content,
       targetAudience,
       priority,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: firebase.auth().currentUser?.uid || 'admin'
-    });
+    };
+
+    // Only write expiresAt if the admin actually set one
+    if (expiresAt) {
+      docData.expiresAt = expiresAt;
+    }
+
+    await db.collection('announcements').add(docData);
+
+    // Clean up any already-expired announcements while we're here
+    await _deleteExpiredAnnouncements();
 
     window.showToast?.('Announcement published successfully', 'success');
     document.getElementById('announce-form').style.display = 'none';
 
     // Reset form fields
-    ['announce-title', 'announce-content'].forEach(id => {
+    ['announce-title', 'announce-content', 'announce-expires-at'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -10274,11 +10296,35 @@ async function addAnnouncement() {
   }
 }
 
+// Delete all announcements whose expiresAt is in the past.
+// Called on publish and on page load of the announcements section.
+async function _deleteExpiredAnnouncements() {
+  try {
+    const now = firebase.firestore.Timestamp.now();
+    const snap = await db.collection('announcements')
+      .where('expiresAt', '<=', now)
+      .get();
+
+    if (snap.empty) return;
+
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    console.log(`Auto-deleted ${snap.size} expired announcement(s)`);
+  } catch (err) {
+    // Non-critical — fail silently
+    console.warn('Could not delete expired announcements:', err);
+  }
+}
+
 async function loadAdminAnnouncements() {
   const list = document.getElementById('announcements-list');
   if (!list) return;
 
   list.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>Loading announcements...</p></div>';
+
+  // Clean up expired announcements every time admin views this section
+  await _deleteExpiredAnnouncements();
 
   function getAudienceBadge(audience) {
     const map = {
@@ -10301,6 +10347,38 @@ async function loadAdminAnnouncements() {
       return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;background:#fef3c7;color:#d97706;">Important</span>';
     }
     return '';
+  }
+
+  function getExpiryHTML(ann) {
+    if (!ann.expiresAt) return '';
+    const expiryDate = ann.expiresAt.toDate ? ann.expiresAt.toDate() : new Date(ann.expiresAt);
+    const now = new Date();
+    const diffMs = expiryDate - now;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    const dateStr = expiryDate.toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    // Colour-code by urgency: red if expiring within 24 h, amber within 3 days, grey otherwise
+    let color = '#64748b';
+    let bg = '#f1f5f9';
+    let icon = '⏳';
+
+    if (diffHours < 0) {
+      // Should have been deleted — still show it until next cleanup
+      color = '#dc2626'; bg = '#fef2f2'; icon = '🗑️';
+    } else if (diffHours < 24) {
+      color = '#dc2626'; bg = '#fef2f2'; icon = '⚠️';
+    } else if (diffDays < 3) {
+      color = '#d97706'; bg = '#fffbeb'; icon = '⏳';
+    }
+
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:${bg};color:${color};">
+      ${icon} Expires ${dateStr}
+    </span>`;
   }
 
   function getAudienceIconClass(audience) {
@@ -10331,8 +10409,17 @@ async function loadAdminAnnouncements() {
       return;
     }
 
+    const now = new Date();
+
     snapshot.forEach(doc => {
-      const ann  = Object.assign({ id: doc.id }, doc.data());
+      const ann = Object.assign({ id: doc.id }, doc.data());
+
+      // Skip any that slipped through the cleanup (edge case)
+      if (ann.expiresAt) {
+        const exp = ann.expiresAt.toDate ? ann.expiresAt.toDate() : new Date(ann.expiresAt);
+        if (exp < now) return;
+      }
+
       const badge = getAudienceBadge(ann.targetAudience);
       const postedDate = ann.createdAt
         ? ann.createdAt.toDate().toLocaleDateString('en-GB', {
@@ -10366,6 +10453,7 @@ async function loadAdminAnnouncements() {
                 ${badge.label}
               </span>
               <span style="font-size:12px;color:#94a3b8;">Posted: ${postedDate}</span>
+              ${getExpiryHTML(ann)}
             </div>
           </div>
           <button
@@ -10379,6 +10467,18 @@ async function loadAdminAnnouncements() {
       `;
       list.appendChild(div);
     });
+
+    // If all were expired and filtered out
+    if (list.children.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <i data-lucide="megaphone"></i>
+          <p class="empty-state-title">No announcements yet</p>
+          <p class="empty-state-desc">Use the form above to publish your first announcement.</p>
+        </div>`;
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
   } catch (error) {
     console.error('Error loading announcements:', error);
