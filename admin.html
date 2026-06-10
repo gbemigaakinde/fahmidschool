@@ -12,6 +12,7 @@
 
     <link rel="stylesheet" href="css/portal-base.css">
     <link rel="stylesheet" href="css/admin-portal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 
     <!-- PWA -->
@@ -248,6 +249,7 @@
     <script src="js/pupils-export.js"></script>
     <script src="js/result-locking.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/announcements.js"></script>
     <script src="js/lesson-notes-admin.js"></script>
     <script src="js/school-calendar-admin.js"></script>
     <script src="script.js"></script>
@@ -1693,25 +1695,95 @@
             </div>
 
             <div id="announce-form" class="form-section" style="display:none;">
-                <h3><i data-lucide="megaphone" style="width:15px;height:15px;"></i> Create Announcement</h3>
-                <form id="add-announcement-form" class="admin-form">
-                    <div class="form-group">
-                        <label for="announce-title">Title <span class="required">*</span></label>
-                        <input type="text" id="announce-title" placeholder="Announcement title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="announce-content">Content <span class="required">*</span></label>
-                        <textarea id="announce-content" rows="6" placeholder="Write your announcement here..." required></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn" onclick="addAnnouncement()">
-                            <i data-lucide="send" style="width:15px;height:15px;"></i> Publish
-                        </button>
-                        <button type="button" class="btn btn-secondary"
-                                onclick="document.getElementById('announce-form').style.display='none'">Cancel</button>
-                    </div>
-                </form>
-            </div>
+  <h3>
+    <i data-lucide="megaphone" style="width:15px;height:15px;"></i>
+    Create Announcement
+  </h3>
+
+  <form id="add-announcement-form" class="admin-form"
+        onsubmit="event.preventDefault(); addAnnouncement();">
+
+    <div class="form-group">
+      <label for="announce-title">Title <span class="required">*</span></label>
+      <input type="text" id="announce-title"
+             placeholder="Enter announcement title" required>
+    </div>
+
+    <div class="form-group">
+      <label for="announce-content">Content <span class="required">*</span></label>
+      <textarea id="announce-content" rows="5"
+                placeholder="Write the announcement body here..." required></textarea>
+    </div>
+
+    <div class="form-row form-row-2">
+
+      <div class="form-group">
+        <label for="announce-audience">Send To <span class="required">*</span></label>
+        <select id="announce-audience" onchange="toggleAudienceFields()">
+          <option value="all">Everyone (all users)</option>
+          <option value="teachers">All Teachers</option>
+          <option value="specific-teacher">Specific Teacher</option>
+          <option value="pupils">All Pupils</option>
+          <option value="specific-class">Specific Class (all pupils in that class)</option>
+          <option value="specific-pupil">Specific Pupil</option>
+        </select>
+        <small>Controls who sees this announcement in their portal.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="announce-priority">Priority Level</label>
+        <select id="announce-priority">
+          <option value="normal">Normal</option>
+          <option value="important">Important</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <small>Urgent = red banner. Important = amber banner. Normal = blue banner.</small>
+      </div>
+
+    </div>
+
+    <!-- Conditional rows — toggled by toggleAudienceFields() -->
+
+    <div id="announce-teacher-row" class="form-group" style="display:none;">
+      <label for="announce-target-teacher">
+        Select Teacher <span class="required">*</span>
+      </label>
+      <select id="announce-target-teacher">
+        <option value="">-- Select Teacher --</option>
+      </select>
+    </div>
+
+    <div id="announce-class-row" class="form-group" style="display:none;">
+      <label for="announce-target-class">
+        Select Class <span class="required">*</span>
+      </label>
+      <select id="announce-target-class">
+        <option value="">-- Select Class --</option>
+      </select>
+    </div>
+
+    <div id="announce-pupil-row" class="form-group" style="display:none;">
+      <label for="announce-target-pupil">
+        Select Pupil <span class="required">*</span>
+      </label>
+      <select id="announce-target-pupil">
+        <option value="">-- Select Pupil --</option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn" id="save-announcement-btn">
+        <i data-lucide="send" style="width:15px;height:15px;"></i>
+        Publish Announcement
+      </button>
+      <button type="button" class="btn btn-secondary"
+              onclick="document.getElementById('announce-form').style.display='none'">
+        Cancel
+      </button>
+    </div>
+
+  </form>
+</div>
 
             <div id="announcements-list" class="announcements-list">
                 <div class="loading-container">
