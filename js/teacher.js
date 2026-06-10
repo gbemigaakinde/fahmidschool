@@ -567,6 +567,16 @@ function initTeacherPortal() {
     
     showSection('dashboard');
     console.log('✓ Teacher portal ready (v8.1.0) - Current term:', settings.term);
+
+    // Load targeted announcements for this teacher
+    if (typeof window.loadAnnouncementsForUser === 'function' && currentUser) {
+      window.loadAnnouncementsForUser(
+        'teacher',
+        currentUser.uid,
+        null,
+        'announcements-banner-container'
+      );
+    }
     
     // Setup sidebar navigation
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(link => {
