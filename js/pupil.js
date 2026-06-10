@@ -251,6 +251,17 @@ async function loadPupilProfile(user) {
         await loadResults();
         await loadFeeBalance();
 
+        // Load targeted announcements for this pupil
+        if (typeof window.loadAnnouncementsForUser === 'function' && currentPupilId) {
+          const annClassId = getClassIdFromPupilData(data.class);
+          window.loadAnnouncementsForUser(
+            'pupil',
+            currentPupilId,
+            annClassId,
+            'announcements-banner-container'
+          );
+        }
+
         let pupilUpdateTimeout = null;
         let classUpdateTimeout = null;
 
