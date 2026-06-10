@@ -42,7 +42,6 @@
         return;
       }
 
-      // Build the list of audience keys this user matches
       const audienceKeys = [
         'all',
         role === 'teacher' ? 'teachers' : 'pupils'
@@ -52,21 +51,24 @@
       }
       audienceKeys.push('user:' + userId);
 
-      // Fetch recent announcements, filter client-side to avoid
-      // requiring a composite Firestore index
       const snap = await db
         .collection('announcements')
         .orderBy('createdAt', 'desc')
         .limit(60)
         .get();
 
+      const now = new Date();
+
       const relevant = [];
       snap.forEach(function (doc) {
         const data = doc.data();
         const audience = data.targetAudience || 'all';
-        if (audienceKeys.indexOf(audience) !== -1) {
-          relevant.push(Object.assign({ id: doc.id }, data));
-        }
+        if (audienceKeys.indexOf(audience) === -1) return;
+
+        // Skip expired announcements
+        if (data.expiresAt && data.expiresAt.toDate && data.expiresAt.toDate() < now) return;
+
+        relevant.push(Object.assign({ id: doc.id }, data));
       });
 
       if (relevant.length === 0) {
@@ -75,7 +77,6 @@
         return;
       }
 
-      // Filter out announcements dismissed this session
       const storageKey = 'dismissed_ann_' + userId;
       var dismissed = [];
       try {
@@ -97,7 +98,6 @@
 
     } catch (err) {
       console.error('loadAnnouncementsForUser error:', err);
-      // Non-critical — fail silently
     }
   };
 
