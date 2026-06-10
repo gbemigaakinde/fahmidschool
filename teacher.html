@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/portal-base.css">
     <link rel="stylesheet" href="css/attendance-styles.css">
     <link rel="stylesheet" href="css/teacher-ui.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
     <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 
     <!-- PWA Manifest -->
@@ -146,12 +147,16 @@
 
             <!-- ── DASHBOARD ────────────────────── -->
             <section id="dashboard" class="tp-section admin-card" tabindex="-1">
-                <div class="tp-section-header">
-                    <div>
-                        <h1 class="tp-section-title">Dashboard</h1>
-                        <p class="tp-section-subtitle section-description">Welcome back — here's a snapshot of your classes.</p>
-                    </div>
-                </div>
+
+    <!-- Targeted announcements from admin — populated by js/announcements.js -->
+    <div id="announcements-banner-container" style="display:none; margin-bottom:16px;"></div>
+
+    <div class="tp-section-header">
+        <div>
+            <h1 class="tp-section-title">Dashboard</h1>
+            <p class="tp-section-subtitle section-description">Welcome back — here's a snapshot of your classes.</p>
+        </div>
+    </div>
 
                 <div class="tp-stats-grid stats-grid">
                     <div class="tp-stat-card stat-card stat-card-primary">
@@ -595,6 +600,7 @@
     <script src="js/school-calendar-admin.js"></script>
     <script src="js/attendance-daily.js"></script>
     <script src="js/attendance-teacher-ui.js"></script>
+    <script src="js/announcements.js"></script>
     <script src="js/teacher.js"></script>
     <script src="session-cache.js"></script>
     <script src="js/button-loader.js"></script>
