@@ -283,14 +283,55 @@
   .screen-mock-bar .dot.r { background: #ff5f57; }
   .screen-mock-bar .dot.y { background: #febc2e; }
   .screen-mock-bar .dot.g { background: #28c840; }
+
+  /* ── Dashboard mock (dark background so white text is visible) ── */
+  .screen-mock-dashboard {
+    background: #0f172a;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin: 1.25rem 0;
+    font-size: .825rem;
+  }
+  .screen-mock-dashboard .screen-mock-bar {
+    background: #080f1c;
+  }
+  .screen-mock-dashboard .screen-mock-content {
+    padding: 1.25rem;
+    background: #0f172a;
+  }
+
   .screen-mock-content { padding: 1.25rem; }
 
   /* ── Mini table ── */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: .875rem 0;
+  }
+
+  /* Scroll hint label — only visible on small screens */
+  @media (max-width: 640px) {
+    .table-scroll::before {
+      content: "← Scroll to see full table →";
+      display: block;
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-soft);
+      border: 1px solid #c7d7f9;
+      border-radius: 4px;
+      padding: .25rem .6rem;
+      margin-bottom: .4rem;
+      text-align: center;
+      letter-spacing: .02em;
+    }
+  }
   .mini-table {
     width: 100%;
     border-collapse: collapse;
     font-size: .85rem;
-    margin: .875rem 0;
+    min-width: 480px;
   }
   .mini-table th {
     background: var(--surface);
@@ -302,6 +343,7 @@
     padding: .5rem .75rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
   .mini-table td {
     padding: .6rem .75rem;
@@ -311,6 +353,9 @@
   }
   .mini-table tr:last-child td { border-bottom: none; }
   .mini-table td strong { color: var(--dark); }
+
+  /* Checklist table needs more room */
+  .mini-table.checklist-table { min-width: 640px; }
 
   /* ── Badge pill ── */
   .pill {
@@ -452,9 +497,6 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     HEADER
-══════════════════════════════════════════ -->
 <header class="guide-header" id="top">
   <p class="school-name">Fahmid Nursery &amp; Primary School</p>
   <h1>Admin Portal<br>Complete User Guide</h1>
@@ -464,9 +506,6 @@
 
 <div class="guide-body">
 
-<!-- ══════════════════════════════════════════
-     TABLE OF CONTENTS
-══════════════════════════════════════════ -->
 <div class="toc" id="toc">
   <h2>📋 What's in this guide</h2>
   <div class="toc-grid">
@@ -494,9 +533,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 1 — DASHBOARD
-══════════════════════════════════════════ -->
+<!-- SECTION 1 — DASHBOARD -->
 <div class="section-card" id="s1">
   <div class="section-header">
     <div class="section-icon" style="background:#1e3a5f; color:#93c5fd;">📊</div>
@@ -511,49 +548,52 @@
       <h3>What you see on the Dashboard</h3>
       <p>The dashboard is your school's at-a-glance summary. It has a dark navy background and shows four large number cards at the top.</p>
 
-      <div class="screen-mock">
+      <!-- FIX: Use .screen-mock-dashboard so the dark background makes white text visible -->
+      <div class="screen-mock-dashboard">
         <div class="screen-mock-bar">
           <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
           <span style="margin-left:.5rem;">Admin Dashboard</span>
         </div>
         <div class="screen-mock-content">
           <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:1rem;">
-            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
-              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Teachers</div>
-              <div style="font-size:1.75rem; font-weight:800;">12</div>
+            <div style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Teachers</div>
+              <div style="font-size:1.75rem; font-weight:800; color:#fff;">12</div>
             </div>
-            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
-              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Pupils</div>
-              <div style="font-size:1.75rem; font-weight:800;">247</div>
+            <div style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Pupils</div>
+              <div style="font-size:1.75rem; font-weight:800; color:#fff;">247</div>
             </div>
-            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
-              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Classes</div>
-              <div style="font-size:1.75rem; font-weight:800;">8</div>
+            <div style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Classes</div>
+              <div style="font-size:1.75rem; font-weight:800; color:#fff;">8</div>
             </div>
-            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
-              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Announcements</div>
-              <div style="font-size:1.75rem; font-weight:800;">3</div>
+            <div style="background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Announcements</div>
+              <div style="font-size:1.75rem; font-weight:800; color:#fff;">3</div>
             </div>
           </div>
-          <div style="border-top:1px solid rgba(255,255,255,.1); padding-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-            <span style="font-size:.65rem; opacity:.5; margin-right:.25rem; text-transform:uppercase; letter-spacing:.07em; align-self:center; color:white;">Quick Actions</span>
-            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">💳 Record Payment</span>
-            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">✅ Approve Results</span>
-            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">👤 Add Pupil</span>
-            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">⚠️ Outstanding Fees</span>
+          <div style="border-top:1px solid rgba(255,255,255,.15); padding-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+            <span style="font-size:.65rem; opacity:.55; text-transform:uppercase; letter-spacing:.07em; color:white; white-space:nowrap;">Quick Actions</span>
+            <span style="background:rgba(255,255,255,.15); color:rgba(255,255,255,.9); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">💳 Record Payment</span>
+            <span style="background:rgba(255,255,255,.15); color:rgba(255,255,255,.9); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">✅ Approve Results</span>
+            <span style="background:rgba(255,255,255,.15); color:rgba(255,255,255,.9); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">👤 Add Pupil</span>
+            <span style="background:rgba(255,255,255,.15); color:rgba(255,255,255,.9); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">⚠️ Outstanding Fees</span>
           </div>
         </div>
       </div>
 
-      <table class="mini-table">
-        <thead><tr><th>Card</th><th>What it shows</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Total Teachers</strong></td><td>All active staff accounts in the system</td></tr>
-          <tr><td><strong>Total Pupils</strong></td><td>All enrolled pupils (does not count alumni)</td></tr>
-          <tr><td><strong>Total Classes</strong></td><td>All classes that have been created</td></tr>
-          <tr><td><strong>Announcements</strong></td><td>How many announcements have been posted</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table">
+          <thead><tr><th>Card</th><th>What it shows</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Total Teachers</strong></td><td>All active staff accounts in the system</td></tr>
+            <tr><td><strong>Total Pupils</strong></td><td>All enrolled pupils (does not count alumni)</td></tr>
+            <tr><td><strong>Total Classes</strong></td><td>All classes that have been created</td></tr>
+            <tr><td><strong>Announcements</strong></td><td>How many announcements have been posted</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="subsection">
@@ -580,9 +620,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 2 — TEACHERS
-══════════════════════════════════════════ -->
+<!-- SECTION 2 — TEACHERS -->
 <div class="section-card" id="s2">
   <div class="section-header">
     <div class="section-icon" style="background:#eff3ff; color:#1a56db;">👩‍🏫</div>
@@ -655,9 +693,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 3 — PUPILS
-══════════════════════════════════════════ -->
+<!-- SECTION 3 — PUPILS -->
 <div class="section-card" id="s3">
   <div class="section-header">
     <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">👦</div>
@@ -721,13 +757,15 @@
           </div>
         </div>
       </div>
-      <table class="mini-table" style="margin-top:.5rem;">
-        <thead><tr><th>Action</th><th>What it does</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Reassign to Class</strong></td><td>Moves all selected pupils to a different class. A popup asks you to choose the new class. Their subjects and assigned teacher update automatically.</td></tr>
-          <tr><td><strong>Delete Selected</strong></td><td>Permanently deletes all selected pupils and their payment records. You must type DELETE to confirm. This cannot be undone.</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table" style="margin-top:.5rem;">
+          <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Reassign to Class</strong></td><td>Moves all selected pupils to a different class. A popup asks you to choose the new class. Their subjects and assigned teacher update automatically.</td></tr>
+            <tr><td><strong>Delete Selected</strong></td><td>Permanently deletes all selected pupils and their payment records. You must type DELETE to confirm. This cannot be undone.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="subsection">
@@ -742,9 +780,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 4 — ALUMNI
-══════════════════════════════════════════ -->
+<!-- SECTION 4 — ALUMNI -->
 <div class="section-card" id="s4">
   <div class="section-header">
     <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">🎓</div>
@@ -779,9 +815,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 5 — CLASSES
-══════════════════════════════════════════ -->
+<!-- SECTION 5 — CLASSES -->
 <div class="section-card" id="s5">
   <div class="section-header">
     <div class="section-icon" style="background:#fff7ed; color:#c2410c;">🏫</div>
@@ -834,9 +868,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 6 — SUBJECTS
-══════════════════════════════════════════ -->
+<!-- SECTION 6 — SUBJECTS -->
 <div class="section-card" id="s6">
   <div class="section-header">
     <div class="section-icon" style="background:#eff6ff; color:#1a56db;">📚</div>
@@ -876,9 +908,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 7 — ASSIGN TEACHERS
-══════════════════════════════════════════ -->
+<!-- SECTION 7 — ASSIGN TEACHERS -->
 <div class="section-card" id="s7">
   <div class="section-header">
     <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">🔗</div>
@@ -917,9 +947,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 8 — LESSON NOTES
-══════════════════════════════════════════ -->
+<!-- SECTION 8 — LESSON NOTES -->
 <div class="section-card" id="s8">
   <div class="section-header">
     <div class="section-icon" style="background:#fefce8; color:#a16207;">📝</div>
@@ -975,9 +1003,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 9 — RESULT APPROVALS
-══════════════════════════════════════════ -->
+<!-- SECTION 9 — RESULT APPROVALS -->
 <div class="section-card" id="s9">
   <div class="section-header">
     <div class="section-icon" style="background:#eff6ff; color:#1a56db;">✅</div>
@@ -1041,9 +1067,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 10 — VIEW RESULTS
-══════════════════════════════════════════ -->
+<!-- SECTION 10 — VIEW RESULTS -->
 <div class="section-card" id="s10">
   <div class="section-header">
     <div class="section-icon" style="background:#fefce8; color:#a16207;">📊</div>
@@ -1077,42 +1101,46 @@
       <div class="screen-mock">
         <div class="screen-mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
         <div class="screen-mock-content">
-          <table style="width:100%; font-size:.8rem; border-collapse:collapse;">
-            <thead style="background:#f8fafc;">
-              <tr>
-                <th style="padding:.4rem .75rem; text-align:left; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Subject</th>
-                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">CA (40)</th>
-                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Exam (60)</th>
-                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Total</th>
-                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Grade</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">Mathematics</td><td style="text-align:center; padding:.5rem .75rem;">35</td><td style="text-align:center; padding:.5rem .75rem;">52</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">87</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
-              <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">English Language</td><td style="text-align:center; padding:.5rem .75rem;">30</td><td style="text-align:center; padding:.5rem .75rem;">45</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">75</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
-              <tr style="background:#f1f5f9; font-weight:700;"><td style="padding:.5rem .75rem;" colspan="3">TERM AVERAGE</td><td style="text-align:center; padding:.5rem .75rem;" colspan="2">81.0% (A1)</td></tr>
-            </tbody>
-          </table>
+          <div class="table-scroll">
+            <table style="width:100%; font-size:.8rem; border-collapse:collapse; min-width:380px;">
+              <thead style="background:#f8fafc;">
+                <tr>
+                  <th style="padding:.4rem .75rem; text-align:left; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Subject</th>
+                  <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">CA (40)</th>
+                  <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Exam (60)</th>
+                  <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Total</th>
+                  <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">Mathematics</td><td style="text-align:center; padding:.5rem .75rem;">35</td><td style="text-align:center; padding:.5rem .75rem;">52</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">87</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">English Language</td><td style="text-align:center; padding:.5rem .75rem;">30</td><td style="text-align:center; padding:.5rem .75rem;">45</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">75</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
+                <tr style="background:#f1f5f9; font-weight:700;"><td style="padding:.5rem .75rem;" colspan="3">TERM AVERAGE</td><td style="text-align:center; padding:.5rem .75rem;" colspan="2">81.0% (A1)</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="subsection">
       <h3>Grading scale reference</h3>
-      <table class="mini-table">
-        <thead><tr><th>Score range</th><th>Grade</th><th>Remark</th></tr></thead>
-        <tbody>
-          <tr><td>75 – 100</td><td><strong style="color:#059669;">A1</strong></td><td>Excellent</td></tr>
-          <tr><td>70 – 74</td><td><strong style="color:#10b981;">B2</strong></td><td>Very Good</td></tr>
-          <tr><td>65 – 69</td><td><strong style="color:#34d399;">B3</strong></td><td>Good</td></tr>
-          <tr><td>60 – 64</td><td><strong style="color:#3b82f6;">C4</strong></td><td>Credit</td></tr>
-          <tr><td>55 – 59</td><td><strong style="color:#60a5fa;">C5</strong></td><td>Credit</td></tr>
-          <tr><td>50 – 54</td><td><strong style="color:#93c5fd;">C6</strong></td><td>Credit</td></tr>
-          <tr><td>45 – 49</td><td><strong style="color:#f59e0b;">D7</strong></td><td>Pass</td></tr>
-          <tr><td>40 – 44</td><td><strong style="color:#fb923c;">D8</strong></td><td>Pass</td></tr>
-          <tr><td>0 – 39</td><td><strong style="color:#ef4444;">F9</strong></td><td>Fail</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table">
+          <thead><tr><th>Score range</th><th>Grade</th><th>Remark</th></tr></thead>
+          <tbody>
+            <tr><td>75 – 100</td><td><strong style="color:#059669;">A1</strong></td><td>Excellent</td></tr>
+            <tr><td>70 – 74</td><td><strong style="color:#10b981;">B2</strong></td><td>Very Good</td></tr>
+            <tr><td>65 – 69</td><td><strong style="color:#34d399;">B3</strong></td><td>Good</td></tr>
+            <tr><td>60 – 64</td><td><strong style="color:#3b82f6;">C4</strong></td><td>Credit</td></tr>
+            <tr><td>55 – 59</td><td><strong style="color:#60a5fa;">C5</strong></td><td>Credit</td></tr>
+            <tr><td>50 – 54</td><td><strong style="color:#93c5fd;">C6</strong></td><td>Credit</td></tr>
+            <tr><td>45 – 49</td><td><strong style="color:#f59e0b;">D7</strong></td><td>Pass</td></tr>
+            <tr><td>40 – 44</td><td><strong style="color:#fb923c;">D8</strong></td><td>Pass</td></tr>
+            <tr><td>0 – 39</td><td><strong style="color:#ef4444;">F9</strong></td><td>Fail</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="subsection">
@@ -1134,9 +1162,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 11 — PROMOTION REQUESTS
-══════════════════════════════════════════ -->
+<!-- SECTION 11 — PROMOTION REQUESTS -->
 <div class="section-card" id="s11">
   <div class="section-header">
     <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">📈</div>
@@ -1224,9 +1250,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 12 — FEE MANAGEMENT
-══════════════════════════════════════════ -->
+<!-- SECTION 12 — FEE MANAGEMENT -->
 <div class="section-card" id="s12">
   <div class="section-header">
     <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">💰</div>
@@ -1287,9 +1311,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 13 — RECORD PAYMENT
-══════════════════════════════════════════ -->
+<!-- SECTION 13 — RECORD PAYMENT -->
 <div class="section-card" id="s13">
   <div class="section-header">
     <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">💳</div>
@@ -1372,9 +1394,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 14 — OUTSTANDING FEES
-══════════════════════════════════════════ -->
+<!-- SECTION 14 — OUTSTANDING FEES -->
 <div class="section-card" id="s14">
   <div class="section-header">
     <div class="section-icon" style="background:#fef2f2; color:#dc2626;">⚠️</div>
@@ -1394,18 +1414,20 @@
       <h3>What you see</h3>
       <p>Two summary tiles at the top show: total number of pupils owing, and the total amount outstanding across all of them.</p>
       <p>Below is a table listing every pupil with an unpaid balance, showing:</p>
-      <table class="mini-table">
-        <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Pupil Name</strong></td><td>The pupil's full name</td></tr>
-          <tr><td><strong>Class</strong></td><td>Their current class</td></tr>
-          <tr><td><strong>Amount Due</strong></td><td>The fee for this term (if different from standard due to a scholarship, both amounts are shown — the original with a strikethrough and the discounted one)</td></tr>
-          <tr><td><strong>Paid</strong></td><td>How much has been paid so far</td></tr>
-          <tr><td><strong>Balance</strong></td><td>How much is still owed (shown in red)</td></tr>
-          <tr><td><strong>Status</strong></td><td><span class="pill pill-pending">Partial</span> = some paid, <span class="pill pill-rejected">Owing</span> = nothing paid, <span class="pill" style="background:#fef2f2; color:#dc2626;">With Arrears</span> = includes unpaid balance from a previous term</td></tr>
-          <tr><td><strong>Term</strong></td><td>The current term</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table">
+          <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Pupil Name</strong></td><td>The pupil's full name</td></tr>
+            <tr><td><strong>Class</strong></td><td>Their current class</td></tr>
+            <tr><td><strong>Amount Due</strong></td><td>The fee for this term (if different from standard due to a scholarship, both amounts are shown — the original with a strikethrough and the discounted one)</td></tr>
+            <tr><td><strong>Paid</strong></td><td>How much has been paid so far</td></tr>
+            <tr><td><strong>Balance</strong></td><td>How much is still owed (shown in red)</td></tr>
+            <tr><td><strong>Status</strong></td><td><span class="pill pill-pending">Partial</span> = some paid, <span class="pill pill-rejected">Owing</span> = nothing paid, <span class="pill" style="background:#fef2f2; color:#dc2626;">With Arrears</span> = includes unpaid balance from a previous term</td></tr>
+            <tr><td><strong>Term</strong></td><td>The current term</td></tr>
+          </tbody>
+        </table>
+      </div>
       <p>The table is sorted with the highest outstanding balances at the top.</p>
     </div>
 
@@ -1418,9 +1440,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 15 — FINANCIAL REPORTS
-══════════════════════════════════════════ -->
+<!-- SECTION 15 — FINANCIAL REPORTS -->
 <div class="section-card" id="s15">
   <div class="section-header">
     <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">📈</div>
@@ -1439,16 +1459,18 @@
     <div class="subsection">
       <h3>Summary statistics</h3>
       <p>Five stat cards at the top give you a quick financial health snapshot:</p>
-      <table class="mini-table">
-        <thead><tr><th>Stat</th><th>What it means</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Total Expected</strong></td><td>Sum of all fees owed by all active pupils this term, including arrears</td></tr>
-          <tr><td><strong>Total Collected</strong></td><td>Sum of all payments received this term</td></tr>
-          <tr><td><strong>Outstanding</strong></td><td>The difference — how much is still uncollected</td></tr>
-          <tr><td><strong>Overall Collection Rate</strong></td><td>Percentage of all money owed (current fees + arrears) that has been collected</td></tr>
-          <tr><td><strong>Current Term Rate</strong></td><td>Percentage of this term's fees only (not counting old arrears) that has been collected</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table">
+          <thead><tr><th>Stat</th><th>What it means</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Total Expected</strong></td><td>Sum of all fees owed by all active pupils this term, including arrears</td></tr>
+            <tr><td><strong>Total Collected</strong></td><td>Sum of all payments received this term</td></tr>
+            <tr><td><strong>Outstanding</strong></td><td>The difference — how much is still uncollected</td></tr>
+            <tr><td><strong>Overall Collection Rate</strong></td><td>Percentage of all money owed (current fees + arrears) that has been collected</td></tr>
+            <tr><td><strong>Current Term Rate</strong></td><td>Percentage of this term's fees only (not counting old arrears) that has been collected</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="subsection">
@@ -1469,9 +1491,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 16 — ANNOUNCEMENTS
-══════════════════════════════════════════ -->
+<!-- SECTION 16 — ANNOUNCEMENTS -->
 <div class="section-card" id="s16">
   <div class="section-header">
     <div class="section-icon" style="background:#fef9c3; color:#a16207;">📢</div>
@@ -1506,9 +1526,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 17 — SCHOOL CALENDAR
-══════════════════════════════════════════ -->
+<!-- SECTION 17 — SCHOOL CALENDAR -->
 <div class="section-card" id="s17">
   <div class="section-header">
     <div class="section-icon" style="background:#e0f2fe; color:#0369a1;">📅</div>
@@ -1560,9 +1578,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 18 — SCHOOL SETTINGS
-══════════════════════════════════════════ -->
+<!-- SECTION 18 — SCHOOL SETTINGS -->
 <div class="section-card" id="s18">
   <div class="section-header">
     <div class="section-icon" style="background:#f1f5f9; color:#334155;">⚙️</div>
@@ -1633,22 +1649,22 @@
     <div class="subsection">
       <h3>Advanced Data Maintenance Tools (for technical issues only)</h3>
       <p>These are tucked inside a collapsible section at the bottom. Only use them if directed to:</p>
-      <table class="mini-table">
-        <thead><tr><th>Tool</th><th>When to use</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Fix Payment Record Amounts</strong></td><td>If fee amounts appear incorrect or scholarships were not applied correctly to existing records</td></tr>
-          <tr><td><strong>Add Session Info to Old Results</strong></td><td>For results that existed before session tracking was added — run once to fix historical data. Never run more than once.</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="mini-table">
+          <thead><tr><th>Tool</th><th>When to use</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Fix Payment Record Amounts</strong></td><td>If fee amounts appear incorrect or scholarships were not applied correctly to existing records</td></tr>
+            <tr><td><strong>Add Session Info to Old Results</strong></td><td>For results that existed before session tracking was added — run once to fix historical data. Never run more than once.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 19 — AUDIT LOG
-══════════════════════════════════════════ -->
+<!-- SECTION 19 — AUDIT LOG -->
 <div class="section-card" id="s19">
   <div class="section-header">
     <div class="section-icon" style="background:#f1f5f9; color:#334155;">🛡️</div>
@@ -1701,9 +1717,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     SECTION 20 — END-OF-SESSION WORKFLOW
-══════════════════════════════════════════ -->
+<!-- SECTION 20 — END-OF-SESSION WORKFLOW -->
 <div class="section-card" id="s20">
   <div class="section-header">
     <div class="section-icon" style="background:#fef2f2; color:#dc2626;">🔄</div>
@@ -1721,84 +1735,86 @@
 
     <div class="subsection">
       <h3>Complete End-of-Session Checklist</h3>
-
-      <table class="mini-table">
-        <thead><tr><th>#</th><th>Step</th><th>Where</th><th>What to do</th></tr></thead>
-        <tbody>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">1</td>
-            <td><strong>All results approved</strong></td>
-            <td>Approve Results</td>
-            <td>Ensure every teacher has submitted and you have approved results for all three terms. Check the Pending tab is empty.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">2</td>
-            <td><strong>All fees collected (or noted)</strong></td>
-            <td>Outstanding Fees</td>
-            <td>Review the outstanding fees list. Decide which unpaid balances to carry forward as arrears into the new session.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">3</td>
-            <td><strong>Open Promotion Period</strong></td>
-            <td>Promotion Requests</td>
-            <td>Click "Open Promotion Period" so teachers can submit their recommendations.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">4</td>
-            <td><strong>Teachers submit promotions</strong></td>
-            <td>(Teacher side)</td>
-            <td>Inform all teachers to log in and submit their promotion recommendations before a set deadline.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">5</td>
-            <td><strong>Approve all promotions</strong></td>
-            <td>Promotion Requests</td>
-            <td>Review each request, make any necessary overrides, and approve. Confirm that terminal-class pupils have moved to Alumni.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">6</td>
-            <td><strong>Close Promotion Period</strong></td>
-            <td>Promotion Requests</td>
-            <td>Click "Close Promotion Period" once all promotions are done.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">7</td>
-            <td><strong>Start New Session</strong></td>
-            <td>School Settings</td>
-            <td>Click "Start New Academic Session". Confirm. The system archives the old session, creates the new one, sets term to First Term, and carries unpaid balances forward as arrears. You will need to type "START NEW SESSION" to confirm.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">8</td>
-            <td><strong>Verify fee structures</strong></td>
-            <td>Fee Management</td>
-            <td>Check that fee amounts for each class are still correct for the new year. Update any that have changed.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">9</td>
-            <td><strong>Assign teachers to new classes</strong></td>
-            <td>Assign Teachers</td>
-            <td>If teacher assignments have changed (e.g. a teacher moved from Primary 2 to Primary 3), update the assignments.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">10</td>
-            <td><strong>Update session dates</strong></td>
-            <td>School Settings</td>
-            <td>Set the start date, end date, and next resumption date for the new session.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">11</td>
-            <td><strong>Generate missing payment records</strong></td>
-            <td>Fee Management</td>
-            <td>Click "Generate All Missing Payment Records" to ensure every pupil has a First Term payment record in the new session.</td>
-          </tr>
-          <tr>
-            <td style="font-weight:700; color:#0f172a;">12</td>
-            <td><strong>Post an announcement</strong></td>
-            <td>Announcements</td>
-            <td>Optional: post a welcome-back announcement with the resumption date and any important information.</td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- FIX: wrapped in .table-scroll for horizontal scrolling on small screens -->
+      <div class="table-scroll">
+        <table class="mini-table checklist-table">
+          <thead><tr><th>#</th><th>Step</th><th>Where</th><th>What to do</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">1</td>
+              <td><strong>All results approved</strong></td>
+              <td style="white-space:nowrap;">Approve Results</td>
+              <td>Ensure every teacher has submitted and you have approved results for all three terms. Check the Pending tab is empty.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">2</td>
+              <td><strong>All fees collected (or noted)</strong></td>
+              <td style="white-space:nowrap;">Outstanding Fees</td>
+              <td>Review the outstanding fees list. Decide which unpaid balances to carry forward as arrears into the new session.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">3</td>
+              <td><strong>Open Promotion Period</strong></td>
+              <td style="white-space:nowrap;">Promotion Requests</td>
+              <td>Click "Open Promotion Period" so teachers can submit their recommendations.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">4</td>
+              <td><strong>Teachers submit promotions</strong></td>
+              <td style="white-space:nowrap;">(Teacher side)</td>
+              <td>Inform all teachers to log in and submit their promotion recommendations before a set deadline.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">5</td>
+              <td><strong>Approve all promotions</strong></td>
+              <td style="white-space:nowrap;">Promotion Requests</td>
+              <td>Review each request, make any necessary overrides, and approve. Confirm that terminal-class pupils have moved to Alumni.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">6</td>
+              <td><strong>Close Promotion Period</strong></td>
+              <td style="white-space:nowrap;">Promotion Requests</td>
+              <td>Click "Close Promotion Period" once all promotions are done.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">7</td>
+              <td><strong>Start New Session</strong></td>
+              <td style="white-space:nowrap;">School Settings</td>
+              <td>Click "Start New Academic Session". Confirm. The system archives the old session, creates the new one, sets term to First Term, and carries unpaid balances forward as arrears. You will need to type "START NEW SESSION" to confirm.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">8</td>
+              <td><strong>Verify fee structures</strong></td>
+              <td style="white-space:nowrap;">Fee Management</td>
+              <td>Check that fee amounts for each class are still correct for the new year. Update any that have changed.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">9</td>
+              <td><strong>Assign teachers to new classes</strong></td>
+              <td style="white-space:nowrap;">Assign Teachers</td>
+              <td>If teacher assignments have changed (e.g. a teacher moved from Primary 2 to Primary 3), update the assignments.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">10</td>
+              <td><strong>Update session dates</strong></td>
+              <td style="white-space:nowrap;">School Settings</td>
+              <td>Set the start date, end date, and next resumption date for the new session.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">11</td>
+              <td><strong>Generate missing payment records</strong></td>
+              <td style="white-space:nowrap;">Fee Management</td>
+              <td>Click "Generate All Missing Payment Records" to ensure every pupil has a First Term payment record in the new session.</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700; color:#0f172a; white-space:nowrap;">12</td>
+              <td><strong>Post an announcement</strong></td>
+              <td style="white-space:nowrap;">Announcements</td>
+              <td>Optional: post a welcome-back announcement with the resumption date and any important information.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div class="callout callout-success">
         <span class="callout-icon">✅</span>
@@ -1820,9 +1836,7 @@
 </div>
 
 
-<!-- ══════════════════════════════════════════
-     QUICK REFERENCE CARD
-══════════════════════════════════════════ -->
+<!-- QUICK REFERENCE CARD -->
 <div class="section-card">
   <div class="section-header">
     <div class="section-icon" style="background:#fef9c3; color:#a16207;">⚡</div>
@@ -1832,31 +1846,32 @@
     </div>
   </div>
   <div class="section-body">
-    <table class="mini-table">
-      <thead><tr><th>I want to…</th><th>Go to…</th></tr></thead>
-      <tbody>
-        <tr><td>Add a new teacher or pupil</td><td>User Management → Teachers / Pupils → click + Add</td></tr>
-        <tr><td>Reset a teacher or pupil's password</td><td>Ask them to use "Forgot Password" on the login page. You cannot do it from here.</td></tr>
-        <tr><td>Record a fee payment</td><td>Finance → Record Payment</td></tr>
-        <tr><td>Print a receipt again</td><td>Finance → Record Payment → select the pupil → find the payment in history → click Print Receipt</td></tr>
-        <tr><td>See who still owes money</td><td>Finance → Outstanding Fees</td></tr>
-        <tr><td>Approve teacher results</td><td>Results &amp; Assessments → Approve Results</td></tr>
-        <tr><td>See a pupil's report card</td><td>Results &amp; Assessments → View Results → select session, class, pupil → View Results → Open Full Report / Print</td></tr>
-        <tr><td>Move pupils to next class</td><td>Results &amp; Assessments → Promotion Requests → Open Promotion Period</td></tr>
-        <tr><td>Change to the next term</td><td>System &amp; Security → School Settings → change Current Term → Save</td></tr>
-        <tr><td>Add a public holiday</td><td>System &amp; Security → School Calendar → Add Non-School Day</td></tr>
-        <tr><td>See who did what in the system</td><td>System &amp; Security → Audit Log</td></tr>
-        <tr><td>Post a notice for all staff and pupils</td><td>Announcements → New Announcement</td></tr>
-        <tr><td>Change school fees</td><td>Finance → Fee Management → find the class card → Edit</td></tr>
-        <tr><td>Export all pupils to Excel</td><td>User Management → Pupils → Excel button</td></tr>
-        <tr><td>See financial collection summary</td><td>Finance → Financial Reports</td></tr>
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table class="mini-table">
+        <thead><tr><th>I want to…</th><th>Go to…</th></tr></thead>
+        <tbody>
+          <tr><td>Add a new teacher or pupil</td><td>User Management → Teachers / Pupils → click + Add</td></tr>
+          <tr><td>Reset a teacher or pupil's password</td><td>Ask them to use "Forgot Password" on the login page. You cannot do it from here.</td></tr>
+          <tr><td>Record a fee payment</td><td>Finance → Record Payment</td></tr>
+          <tr><td>Print a receipt again</td><td>Finance → Record Payment → select the pupil → find the payment in history → click Print Receipt</td></tr>
+          <tr><td>See who still owes money</td><td>Finance → Outstanding Fees</td></tr>
+          <tr><td>Approve teacher results</td><td>Results &amp; Assessments → Approve Results</td></tr>
+          <tr><td>See a pupil's report card</td><td>Results &amp; Assessments → View Results → select session, class, pupil → View Results → Open Full Report / Print</td></tr>
+          <tr><td>Move pupils to next class</td><td>Results &amp; Assessments → Promotion Requests → Open Promotion Period</td></tr>
+          <tr><td>Change to the next term</td><td>System &amp; Security → School Settings → change Current Term → Save</td></tr>
+          <tr><td>Add a public holiday</td><td>System &amp; Security → School Calendar → Add Non-School Day</td></tr>
+          <tr><td>See who did what in the system</td><td>System &amp; Security → Audit Log</td></tr>
+          <tr><td>Post a notice for all staff and pupils</td><td>Announcements → New Announcement</td></tr>
+          <tr><td>Change school fees</td><td>Finance → Fee Management → find the class card → Edit</td></tr>
+          <tr><td>Export all pupils to Excel</td><td>User Management → Pupils → Excel button</td></tr>
+          <tr><td>See financial collection summary</td><td>Finance → Financial Reports</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
 
-<!-- Footer -->
 <div style="text-align:center; padding:2rem 0 1rem; color:var(--muted); font-size:.825rem;">
   <p>Fahmid Nursery &amp; Primary School — Admin Portal User Guide</p>
   <p style="margin-top:.25rem; opacity:.7;">Keep this guide available for reference at all times.</p>
