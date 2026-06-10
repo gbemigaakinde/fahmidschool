@@ -173,8 +173,8 @@
     border-radius: var(--r-xl);
     box-shadow: var(--sh);
     margin-bottom: 2.5rem;
-    overflow: hidden;
     animation: fadein .4s ease both;
+    /* overflow: hidden intentionally removed — it was clipping .table-scroll */
   }
 
   .section-header {
@@ -184,6 +184,7 @@
     padding: 1.75rem 2rem 1.5rem;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
   }
 
   .section-icon {
@@ -222,7 +223,11 @@
     margin: 0;
   }
 
-  .section-body { padding: 1.75rem 2rem; }
+  .section-body {
+    padding: 1.75rem 2rem;
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+    overflow-x: auto;
+  }
 
   /* ── STEP ── */
   .steps { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -623,22 +628,22 @@
     width: 100%;
     border-collapse: collapse;
     font-size: .75rem;
-    min-width: 420px;
+    min-width: 500px;
   }
   .att-mock th {
-    padding: 5px 5px;
+    padding: 6px 8px;
     background: var(--navy);
     color: white;
     text-align: center;
-    font-size: .5rem;
+    font-size: .5625rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: .04em;
+    letter-spacing: .05em;
     white-space: nowrap;
   }
-  .att-mock th.name-col { text-align: left; background: #0a1c42; min-width: 80px; }
-  .att-mock td { padding: 5px 5px; border-bottom: 1px solid var(--border); text-align: center; font-size: .6875rem; white-space: nowrap; }
-  .att-mock td.name-col { text-align: left; font-weight: 600; color: var(--ink); background: white; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  .att-mock th.name-col { text-align: left; background: #0a1c42; }
+  .att-mock td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: center; font-size: .75rem; white-space: nowrap; }
+  .att-mock td.name-col { text-align: left; font-weight: 600; color: var(--ink); background: white; white-space: nowrap; }
   .att-mock td.present  { background: #dcfce7; color: var(--green); font-weight: 800; }
   .att-mock td.absent   { background: #fee2e2; color: var(--red); font-weight: 800; }
   .att-mock td.total    { background: var(--blue-pale); color: var(--navy); font-weight: 700; }
@@ -657,10 +662,10 @@
 
   /* traits mock */
   .traits-mock {
-    width: 100%; border-collapse: collapse; font-size: .75rem; min-width: 360px;
+    width: 100%; border-collapse: collapse; font-size: .75rem; min-width: 420px;
   }
   .traits-mock th {
-    padding: 5px 4px;
+    padding: 5px 6px;
     background: var(--navy);
     color: white;
     font-size: .5rem;
@@ -668,12 +673,11 @@
     text-transform: uppercase;
     text-align: center;
     white-space: nowrap;
-    letter-spacing: .03em;
   }
-  .traits-mock th.name-th { text-align: left; min-width: 90px; background: #0a1c42; }
-  .traits-mock td { padding: 5px 4px; border-bottom: 1px solid var(--border); text-align: center; }
-  .traits-mock td.name-td { text-align: left; font-weight: 600; color: var(--ink); font-size: .75rem; white-space: nowrap; max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
-  .traits-mock select { width: 38px; border: 1px solid var(--border); border-radius: 3px; font-size: .6875rem; padding: 2px 1px; background: white; }
+  .traits-mock th.name-th { text-align: left; min-width: 100px; background: #0a1c42; }
+  .traits-mock td { padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: center; }
+  .traits-mock td.name-td { text-align: left; font-weight: 600; color: var(--ink); font-size: .75rem; white-space: nowrap; }
+  .traits-mock select { width: 46px; border: 1px solid var(--border); border-radius: 3px; font-size: .75rem; padding: 2px; background: white; }
 
   /* ── CBT CARD ── */
   .cbt-card {
@@ -730,19 +734,6 @@
     /* week navigator on mobile */
     .week-nav { flex-wrap: wrap; gap: .375rem; }
     .week-nav-label { width: 100%; text-align: center; order: -1; }
-
-    /* attendance table on mobile */
-    .att-mock { font-size: .625rem; min-width: 340px; }
-    .att-mock th { padding: 4px 3px; font-size: .4375rem; }
-    .att-mock td { padding: 4px 3px; font-size: .625rem; }
-    .att-mock td.name-col { max-width: 70px; }
-
-    /* traits table on mobile */
-    .traits-mock { font-size: .625rem; min-width: 300px; }
-    .traits-mock th { padding: 4px 3px; font-size: .4375rem; }
-    .traits-mock td { padding: 4px 3px; }
-    .traits-mock td.name-td { max-width: 70px; }
-    .traits-mock select { width: 34px; font-size: .625rem; }
   }
 
   @keyframes fadein {
