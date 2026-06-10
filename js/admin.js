@@ -10133,42 +10133,144 @@ async function unassignTeacher(classId) {
 ANNOUNCEMENTS
 ======================================== */
 
-function showAnnounceForm() {
+async function showAnnounceForm() {
   const form = document.getElementById('announce-form');
   if (!form) return;
+
+  // Populate teacher dropdown if not already done
+  const teacherSel = document.getElementById('announce-target-teacher');
+  if (teacherSel && teacherSel.options.length <= 1) {
+    try {
+      const snap = await db.collection('teachers').orderBy('name').get();
+      teacherSel.innerHTML = '<option value="">-- Select Teacher --</option>';
+      snap.forEach(doc => {
+        const opt = document.createElement('option');
+        opt.value = 'user:' + doc.id;
+        opt.textContent = doc.data().name || doc.data().email || doc.id;
+        teacherSel.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Could not load teachers for announcement form:', e);
+    }
+  }
+
+  // Populate class dropdown if not already done
+  const classSel = document.getElementById('announce-target-class');
+  if (classSel && classSel.options.length <= 1) {
+    try {
+      const snap = await db.collection('classes').orderBy('name').get();
+      classSel.innerHTML = '<option value="">-- Select Class --</option>';
+      snap.forEach(doc => {
+        const opt = document.createElement('option');
+        opt.value = 'class:' + doc.id;
+        opt.textContent = doc.data().name || doc.id;
+        classSel.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Could not load classes for announcement form:', e);
+    }
+  }
+
+  // Populate individual pupil dropdown if not already done
+  const pupilSel = document.getElementById('announce-target-pupil');
+  if (pupilSel && pupilSel.options.length <= 1) {
+    try {
+      const snap = await db.collection('pupils').orderBy('name').get();
+      pupilSel.innerHTML = '<option value="">-- Select Pupil --</option>';
+      snap.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'alumni') return;
+        const opt = document.createElement('option');
+        opt.value = 'user:' + doc.id;
+        const cls = typeof data.class === 'object' && data.class
+          ? ' (' + (data.class.name || '') + ')'
+          : '';
+        opt.textContent = (data.name || doc.id) + cls;
+        pupilSel.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Could not load pupils for announcement form:', e);
+    }
+  }
 
   form.style.display = 'block';
   document.getElementById('announce-title')?.focus();
 }
 
+function toggleAudienceFields() {
+  const type = document.getElementById('announce-audience')?.value;
+  const rows = {
+    'specific-teacher': document.getElementById('announce-teacher-row'),
+    'specific-class':   document.getElementById('announce-class-row'),
+    'specific-pupil':   document.getElementById('announce-pupil-row')
+  };
+  Object.keys(rows).forEach(key => {
+    if (rows[key]) rows[key].style.display = (type === key) ? '' : 'none';
+  });
+}
+window.toggleAudienceFields = toggleAudienceFields;
+
 async function addAnnouncement() {
-  const title = document.getElementById('announce-title')?.value.trim();
+  const title   = document.getElementById('announce-title')?.value.trim();
   const content = document.getElementById('announce-content')?.value.trim();
+  const audienceType = document.getElementById('announce-audience')?.value || 'all';
+  const priority     = document.getElementById('announce-priority')?.value  || 'normal';
 
   if (!title || !content) {
     window.showToast?.('Title and content are required', 'warning');
     return;
   }
 
+  // Resolve the final targetAudience value
+  let targetAudience = audienceType;
+  if (audienceType === 'specific-teacher') {
+    const val = document.getElementById('announce-target-teacher')?.value;
+    if (!val) { window.showToast?.('Please select a teacher', 'warning'); return; }
+    targetAudience = val;
+  } else if (audienceType === 'specific-class') {
+    const val = document.getElementById('announce-target-class')?.value;
+    if (!val) { window.showToast?.('Please select a class', 'warning'); return; }
+    targetAudience = val;
+  } else if (audienceType === 'specific-pupil') {
+    const val = document.getElementById('announce-target-pupil')?.value;
+    if (!val) { window.showToast?.('Please select a pupil', 'warning'); return; }
+    targetAudience = val;
+  }
+
+  const saveBtn = document.getElementById('save-announcement-btn');
+  const origHTML = saveBtn?.innerHTML;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = 'Publishing...'; }
+
   try {
     await db.collection('announcements').add({
       title,
       content,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      targetAudience,
+      priority,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: firebase.auth().currentUser?.uid || 'admin'
     });
 
     window.showToast?.('Announcement published successfully', 'success');
-
     document.getElementById('announce-form').style.display = 'none';
-    document.getElementById('announce-title').value = '';
-    document.getElementById('announce-content').value = '';
+
+    // Reset form fields
+    ['announce-title', 'announce-content'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const audEl = document.getElementById('announce-audience');
+    if (audEl) { audEl.value = 'all'; toggleAudienceFields(); }
+    const priEl = document.getElementById('announce-priority');
+    if (priEl) priEl.value = 'normal';
 
     loadAdminAnnouncements();
     loadDashboardStats();
-
   } catch (error) {
     console.error('Error adding announcement:', error);
-    window.handleError(error, 'Failed to publish announcement');
+    window.handleError?.(error, 'Failed to publish announcement');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = origHTML; }
   }
 }
 
@@ -10176,8 +10278,39 @@ async function loadAdminAnnouncements() {
   const list = document.getElementById('announcements-list');
   if (!list) return;
 
-  list.innerHTML =
-    '<div class="skeleton-container"><div class="skeleton"></div><div class="skeleton"></div></div>';
+  list.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>Loading announcements...</p></div>';
+
+  function getAudienceBadge(audience) {
+    const map = {
+      'all':      { label: 'Everyone',      color: '#1a56db', bg: '#eff6ff' },
+      'teachers': { label: 'All Teachers',  color: '#7c3aed', bg: '#faf5ff' },
+      'pupils':   { label: 'All Pupils',    color: '#0f9764', bg: '#ecfdf5' }
+    };
+    if (!audience || audience === 'all') return map['all'];
+    if (map[audience]) return map[audience];
+    if (audience.startsWith('class:')) return { label: 'Specific Class',  color: '#d97706', bg: '#fffbeb' };
+    if (audience.startsWith('user:'))  return { label: 'Individual User', color: '#dc2626', bg: '#fef2f2' };
+    return map['all'];
+  }
+
+  function getPriorityHTML(priority) {
+    if (priority === 'urgent') {
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;background:#fee2e2;color:#dc2626;">Urgent</span>';
+    }
+    if (priority === 'important') {
+      return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;background:#fef3c7;color:#d97706;">Important</span>';
+    }
+    return '';
+  }
+
+  function getAudienceIconClass(audience) {
+    if (!audience || audience === 'all') return 'ph ph-megaphone';
+    if (audience === 'teachers')         return 'ph ph-chalkboard-teacher';
+    if (audience === 'pupils')           return 'ph ph-student';
+    if (audience.startsWith('class:'))   return 'ph ph-door';
+    if (audience.startsWith('user:'))    return 'ph ph-user';
+    return 'ph ph-megaphone';
+  }
 
   try {
     const snapshot = await db
@@ -10188,48 +10321,68 @@ async function loadAdminAnnouncements() {
     list.innerHTML = '';
 
     if (snapshot.empty) {
-      list.innerHTML =
-        '<p style="text-align:center; color:var(--color-gray-600);">No announcements yet. Add one above.</p>';
+      list.innerHTML = `
+        <div class="empty-state">
+          <i data-lucide="megaphone"></i>
+          <p class="empty-state-title">No announcements yet</p>
+          <p class="empty-state-desc">Use the form above to publish your first announcement.</p>
+        </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }
 
     snapshot.forEach(doc => {
-      const ann = { id: doc.id, ...doc.data() };
-
+      const ann  = Object.assign({ id: doc.id }, doc.data());
+      const badge = getAudienceBadge(ann.targetAudience);
       const postedDate = ann.createdAt
-        ? ann.createdAt.toDate().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+        ? ann.createdAt.toDate().toLocaleDateString('en-GB', {
+            year: 'numeric', month: 'long', day: 'numeric'
           })
         : 'Just now';
 
       const div = document.createElement('div');
-      div.className = 'admin-card';
-      div.style.marginBottom = 'var(--space-8)';
+      div.style.cssText = [
+        'background:white',
+        'border:1px solid #e2e8f0',
+        'border-left:4px solid ' + badge.color,
+        'border-radius:10px',
+        'padding:16px 20px',
+        'margin-bottom:10px',
+        'transition:box-shadow 0.2s ease'
+      ].join(';');
+      div.onmouseenter = () => { div.style.boxShadow = '0 4px 12px rgba(0,0,0,.08)'; };
+      div.onmouseleave = () => { div.style.boxShadow = 'none'; };
 
       div.innerHTML = `
-        <h3 style="margin-top:0;">${ann.title}</h3>
-        <p>${ann.content}</p>
-        <small style="color:var(--color-gray-600);">Posted: ${postedDate}</small>
-        <div style="margin-top:var(--space-4);">
-          <button class="btn-small btn-danger" onclick="deleteItem('announcements', '${ann.id}')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <span style="font-size:0.9375rem;font-weight:700;color:#0f172a;">${ann.title}</span>
+              ${getPriorityHTML(ann.priority)}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:5px;background:${badge.bg};color:${badge.color};padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;">
+                <i class="${getAudienceIconClass(ann.targetAudience)}" style="font-size:12px;"></i>
+                ${badge.label}
+              </span>
+              <span style="font-size:12px;color:#94a3b8;">Posted: ${postedDate}</span>
+            </div>
+          </div>
+          <button
+            class="btn btn-small btn-danger"
+            onclick="deleteItem('announcements', '${ann.id}')"
+            style="flex-shrink:0;">
             Delete
           </button>
         </div>
+        <p style="margin:0;font-size:0.875rem;color:#475569;line-height:1.6;white-space:pre-wrap;">${ann.content}</p>
       `;
-
       list.appendChild(div);
     });
 
   } catch (error) {
     console.error('Error loading announcements:', error);
-    window.showToast?.(
-      'Failed to load announcements. Check connection and try again.',
-      'danger'
-    );
-    list.innerHTML =
-      '<p style="text-align:center; color:var(--color-danger);">Error loading announcements please refresh</p>';
+    list.innerHTML = '<p style="text-align:center;color:var(--color-danger);">Error loading announcements. Please refresh.</p>';
   }
 }
 
