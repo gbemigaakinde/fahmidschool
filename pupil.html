@@ -11,6 +11,7 @@
 <link rel="icon" type="image/jpeg" href="IMG_4628.jpeg">
 <link rel="stylesheet" href="css/portal-base.css">
 <link rel="stylesheet" href="css/pupil-portal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
 <link rel="stylesheet" href="css/cbt-portal.css">
 
 <script src="https://unpkg.com/lucide@latest"></script>
@@ -1076,6 +1077,10 @@
   <!-- ─── PROFILE SECTION ─────────────────── -->
   <section class="pp-card pp-card--profile" id="pp-profile" aria-labelledby="profile-heading">
 
+    <!-- Targeted announcements from admin — populated by js/announcements.js -->
+    <div id="announcements-banner-container"
+         style="display:none; padding:20px 32px 0;"></div>
+
     <div class="pp-card__header">
       <div class="pp-card__header-icon pp-icon-chip pp-icon-chip--blue" aria-hidden="true">
         <i data-lucide="user-circle-2"></i>
@@ -1289,6 +1294,7 @@
 <script src="script.js"></script>
 <script src="js/finance.js"></script>
 <script src="js/pupil.js"></script>
+<script src="js/announcements.js"></script>
 
 <script>
 /* ──────────────────────────────────────────────────────────────
