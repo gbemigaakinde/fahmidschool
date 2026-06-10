@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fahmid Admin Portal — Complete User Guide</title>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-soft: #eff3ff;
+    --dark: #0f172a;
+    --mid: #475569;
+    --muted: #94a3b8;
+    --border: #e2e8f0;
+    --surface: #f8fafc;
+    --success: #0f9764;
+    --success-soft: #ecfdf5;
+    --warning: #d97706;
+    --warning-soft: #fffbeb;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
+    --purple: #7c3aed;
+    --purple-soft: #f5f3ff;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f4f8;
+    color: var(--dark);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── Header ── */
+  .guide-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    color: white;
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+  }
+  .guide-header .school-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    margin-bottom: .75rem;
+  }
+  .guide-header h1 {
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    margin-bottom: .75rem;
+    line-height: 1.15;
+  }
+  .guide-header p {
+    color: rgba(255,255,255,.65);
+    font-size: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .header-badge {
+    display: inline-block;
+    margin-top: 1.25rem;
+    padding: .3rem .9rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #93c5fd;
+  }
+
+  /* ── Layout ── */
+  .guide-body {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+
+  /* ── Table of Contents ── */
+  .toc {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.75rem 2rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  }
+  .toc h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: .4rem .75rem;
+  }
+  .toc a {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: 500;
+    padding: .3rem .1rem;
+    border-radius: 4px;
+    transition: color .15s;
+  }
+  .toc a:hover { color: #0f3db0; text-decoration: underline; }
+  .toc a .toc-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: .7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Section card ── */
+  .section-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .section-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+  .section-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    margin: 0;
+  }
+  .section-header .section-subtitle {
+    font-size: .825rem;
+    color: var(--muted);
+    margin-top: .1rem;
+  }
+  .section-body { padding: 1.75rem; }
+
+  /* ── Subsection ── */
+  .subsection {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .subsection:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .subsection h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: .875rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .subsection h3 .h3-tag {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .subsection p { color: var(--mid); margin-bottom: .75rem; }
+  .subsection p:last-child { margin-bottom: 0; }
+
+  /* ── Step list ── */
+  .steps {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    margin: .75rem 0;
+  }
+  .steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    color: var(--mid);
+    font-size: .9rem;
+  }
+  .steps li .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: .7rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+  .steps li strong { color: var(--dark); }
+
+  /* ── Info / warning / tip boxes ── */
+  .callout {
+    display: flex;
+    gap: .875rem;
+    padding: .875rem 1.1rem;
+    border-radius: var(--radius-sm);
+    margin: 1rem 0;
+    font-size: .875rem;
+    line-height: 1.6;
+  }
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; }
+  .callout-info { background: #eff6ff; border-left: 3px solid var(--primary); }
+  .callout-info .callout-icon { color: var(--primary); }
+  .callout-info .callout-text { color: #1e40af; }
+  .callout-warn { background: var(--warning-soft); border-left: 3px solid var(--warning); }
+  .callout-warn .callout-icon { color: var(--warning); }
+  .callout-warn .callout-text { color: #92400e; }
+  .callout-danger { background: var(--danger-soft); border-left: 3px solid var(--danger); }
+  .callout-danger .callout-icon { color: var(--danger); }
+  .callout-danger .callout-text { color: #991b1b; }
+  .callout-success { background: var(--success-soft); border-left: 3px solid var(--success); }
+  .callout-success .callout-icon { color: var(--success); }
+  .callout-success .callout-text { color: #065f46; }
+  .callout-text strong { display: block; margin-bottom: .2rem; }
+
+  /* ── Screen mock ── */
+  .screen-mock {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin: 1.25rem 0;
+    font-size: .825rem;
+  }
+  .screen-mock-bar {
+    background: #1e293b;
+    padding: .5rem .875rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .7rem;
+    color: rgba(255,255,255,.6);
+    font-family: monospace;
+  }
+  .screen-mock-bar .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .screen-mock-bar .dot.r { background: #ff5f57; }
+  .screen-mock-bar .dot.y { background: #febc2e; }
+  .screen-mock-bar .dot.g { background: #28c840; }
+  .screen-mock-content { padding: 1.25rem; }
+
+  /* ── Mini table ── */
+  .mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+    margin: .875rem 0;
+  }
+  .mini-table th {
+    background: var(--surface);
+    color: var(--muted);
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: .5rem .75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .mini-table td {
+    padding: .6rem .75rem;
+    color: var(--mid);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .mini-table tr:last-child td { border-bottom: none; }
+  .mini-table td strong { color: var(--dark); }
+
+  /* ── Badge pill ── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .pill-pending { background: var(--warning-soft); color: var(--warning); }
+  .pill-approved { background: var(--success-soft); color: var(--success); }
+  .pill-rejected { background: var(--danger-soft); color: var(--danger); }
+  .pill-blue { background: var(--primary-soft); color: var(--primary); }
+  .pill-purple { background: var(--purple-soft); color: var(--purple); }
+
+  /* ── Field preview ── */
+  .field-preview {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .875rem 1rem;
+    margin: .75rem 0;
+  }
+  .field-preview label {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    display: block;
+    margin-bottom: .25rem;
+  }
+  .field-preview .fv {
+    font-size: .9rem;
+    font-weight: 500;
+    color: var(--dark);
+  }
+  .field-preview .fv.placeholder { color: var(--muted); font-style: italic; }
+  .fake-input {
+    display: block;
+    width: 100%;
+    padding: .5rem .75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: .875rem;
+    color: var(--muted);
+    font-style: italic;
+    background: white;
+    margin-top: .25rem;
+  }
+  .fake-select {
+    display: block;
+    padding: .45rem .75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: .875rem;
+    color: var(--mid);
+    background: white;
+    margin-top: .25rem;
+  }
+
+  /* ── Button preview ── */
+  .btn-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem 1rem;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: default;
+    margin: .2rem;
+  }
+  .btn-blue { background: var(--primary); color: white; }
+  .btn-green { background: var(--success); color: white; }
+  .btn-red { background: var(--danger); color: white; }
+  .btn-grey { background: white; color: var(--mid); border: 1.5px solid var(--border); }
+  .btn-amber { background: var(--warning); color: white; }
+
+  /* ── Flow arrow ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin: .875rem 0;
+    font-size: .85rem;
+  }
+  .flow-step {
+    padding: .35rem .75rem;
+    border-radius: 6px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--muted); font-size: .9rem; }
+
+  /* ── Two col layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Rule line ── */
+  .rule { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+  /* ── Back to top ── */
+  .back-top {
+    display: block;
+    text-align: center;
+    color: var(--muted);
+    font-size: .8rem;
+    text-decoration: none;
+    margin-top: 1rem;
+  }
+  .back-top:hover { color: var(--primary); }
+
+  /* ── Quick-ref chip row ── */
+  .chip-row { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+  .chip {
+    padding: .2rem .65rem;
+    border-radius: 999px;
+    font-size: .775rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; }
+    .guide-body { max-width: 100%; }
+    .section-card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════ -->
+<header class="guide-header" id="top">
+  <p class="school-name">Fahmid Nursery &amp; Primary School</p>
+  <h1>Admin Portal<br>Complete User Guide</h1>
+  <p>Everything you need to know to manage the school portal — written in plain English, step by step.</p>
+  <span class="header-badge">📘 For School Administrators</span>
+</header>
+
+<div class="guide-body">
+
+<!-- ══════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════ -->
+<div class="toc" id="toc">
+  <h2>📋 What's in this guide</h2>
+  <div class="toc-grid">
+    <a href="#s1"><span class="toc-num">1</span> Dashboard Overview</a>
+    <a href="#s2"><span class="toc-num">2</span> Managing Teachers</a>
+    <a href="#s3"><span class="toc-num">3</span> Managing Pupils</a>
+    <a href="#s4"><span class="toc-num">4</span> Alumni Records</a>
+    <a href="#s5"><span class="toc-num">5</span> Classes</a>
+    <a href="#s6"><span class="toc-num">6</span> Subjects</a>
+    <a href="#s7"><span class="toc-num">7</span> Assign Teachers to Classes</a>
+    <a href="#s8"><span class="toc-num">8</span> Lesson Notes</a>
+    <a href="#s9"><span class="toc-num">9</span> Approving Results</a>
+    <a href="#s10"><span class="toc-num">10</span> Viewing Results</a>
+    <a href="#s11"><span class="toc-num">11</span> Promotion Requests</a>
+    <a href="#s12"><span class="toc-num">12</span> Fee Management</a>
+    <a href="#s13"><span class="toc-num">13</span> Recording Payments</a>
+    <a href="#s14"><span class="toc-num">14</span> Outstanding Fees</a>
+    <a href="#s15"><span class="toc-num">15</span> Financial Reports</a>
+    <a href="#s16"><span class="toc-num">16</span> Announcements</a>
+    <a href="#s17"><span class="toc-num">17</span> School Calendar</a>
+    <a href="#s18"><span class="toc-num">18</span> School Settings</a>
+    <a href="#s19"><span class="toc-num">19</span> Audit Log</a>
+    <a href="#s20"><span class="toc-num">20</span> End-of-Session Workflow</a>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 1 — DASHBOARD
+══════════════════════════════════════════ -->
+<div class="section-card" id="s1">
+  <div class="section-header">
+    <div class="section-icon" style="background:#1e3a5f; color:#93c5fd;">📊</div>
+    <div>
+      <h2>1. Dashboard Overview</h2>
+      <div class="section-subtitle">The first thing you see when you log in</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>What you see on the Dashboard</h3>
+      <p>The dashboard is your school's at-a-glance summary. It has a dark navy background and shows four large number cards at the top.</p>
+
+      <div class="screen-mock">
+        <div class="screen-mock-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span style="margin-left:.5rem;">Admin Dashboard</span>
+        </div>
+        <div class="screen-mock-content">
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:1rem;">
+            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Teachers</div>
+              <div style="font-size:1.75rem; font-weight:800;">12</div>
+            </div>
+            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Pupils</div>
+              <div style="font-size:1.75rem; font-weight:800;">247</div>
+            </div>
+            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Total Classes</div>
+              <div style="font-size:1.75rem; font-weight:800;">8</div>
+            </div>
+            <div style="background:rgba(255,255,255,.09); border-radius:8px; padding:.875rem; text-align:center; color:white;">
+              <div style="font-size:.65rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; margin-bottom:.25rem;">Announcements</div>
+              <div style="font-size:1.75rem; font-weight:800;">3</div>
+            </div>
+          </div>
+          <div style="border-top:1px solid rgba(255,255,255,.1); padding-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <span style="font-size:.65rem; opacity:.5; margin-right:.25rem; text-transform:uppercase; letter-spacing:.07em; align-self:center; color:white;">Quick Actions</span>
+            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">💳 Record Payment</span>
+            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">✅ Approve Results</span>
+            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">👤 Add Pupil</span>
+            <span style="background:rgba(255,255,255,.1); color:rgba(255,255,255,.85); border-radius:999px; padding:.3rem .75rem; font-size:.75rem; font-weight:600;">⚠️ Outstanding Fees</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="mini-table">
+        <thead><tr><th>Card</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Total Teachers</strong></td><td>All active staff accounts in the system</td></tr>
+          <tr><td><strong>Total Pupils</strong></td><td>All enrolled pupils (does not count alumni)</td></tr>
+          <tr><td><strong>Total Classes</strong></td><td>All classes that have been created</td></tr>
+          <tr><td><strong>Announcements</strong></td><td>How many announcements have been posted</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Quick Actions <span class="h3-tag">Shortcut buttons</span></h3>
+      <p>Below the number cards you will see a row of shortcut buttons. Clicking any of them takes you straight to that section — the same as clicking it in the left-hand menu.</p>
+      <div class="chip-row">
+        <span class="chip">💳 Record Payment → goes to Record Payment section</span>
+        <span class="chip">✅ Approve Results → goes to Result Approvals section</span>
+        <span class="chip">👤 Add Pupil → goes to Pupils section</span>
+        <span class="chip">⚠️ Outstanding Fees → goes to Outstanding Fees section</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>The left-hand sidebar menu</h3>
+      <p>On the left side of every page is the navigation menu. It is organised into groups. Click a group heading (like "User Management") to expand it and reveal the pages inside.</p>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-text"><strong>On a phone or tablet?</strong> The menu is hidden. Tap the ☰ menu button at the top-left of the screen to open it.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 2 — TEACHERS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s2">
+  <div class="section-header">
+    <div class="section-icon" style="background:#eff3ff; color:#1a56db;">👩‍🏫</div>
+    <div>
+      <h2>2. Managing Teachers</h2>
+      <div class="section-subtitle">Add, edit, view, export and control teacher accounts</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>In the left menu, expand <strong>User Management</strong> → click <strong>Teachers</strong>.</p>
+      <p>You will see a search box at the top, then a table listing every teacher with columns: <em>Name, Email, Role, Status, Direct Publish, Actions</em>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Adding a new teacher <span class="h3-tag">step by step</span></h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click the blue <strong>+ Add Teacher</strong> button at the top right of the Teachers page. A form slides open below the button.</span></li>
+        <li><span class="step-num">2</span><span><strong>Personal Information:</strong> Fill in Full Name (required), Gender (required), Date of Birth, Phone Number, and Home Address.</span></li>
+        <li><span class="step-num">3</span><span><strong>Employment Details:</strong> Fill in Employee ID (e.g. FNPS-2024-001), Date Joined (required), Role/Title (e.g. Class Teacher), and Employment Status (Active, On Leave, etc.).</span></li>
+        <li><span class="step-num">4</span><span><strong>Qualifications &amp; Subjects:</strong> Choose the highest qualification from the dropdown, type the subject specialisation (e.g. "Mathematics, English"), and add any extra notes.</span></li>
+        <li><span class="step-num">5</span><span><strong>Login Credentials:</strong> Type the teacher's email address — this is what they use to log in. Set a temporary password (minimum 6 characters). The system will automatically send them a password-reset email so they can choose their own.</span></li>
+        <li><span class="step-num">6</span><span>Click <strong>Save Teacher</strong>. The teacher appears in the table immediately and can now log in.</span></li>
+      </ol>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text"><strong>Important:</strong> Each teacher must have a unique email address. If you try to use an email already in the system, you will get an error message.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Editing a teacher</h3>
+      <p>Click the <span class="btn-preview btn-blue">Edit</span> button next to any teacher in the table. The same form opens but with their current details already filled in.</p>
+      <p>You can change all fields <strong>except the email address</strong> (login emails cannot be changed here). Click <strong>Update Teacher</strong> when done.</p>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-text">If a teacher needs a new password, ask them to use the "Forgot Password" link on the login page. You cannot set a new password for them from here.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Deleting a teacher</h3>
+      <p>Click the <span class="btn-preview btn-red">Delete</span> button in the Actions column. A confirmation message will appear. Click OK to confirm. <strong>This permanently removes the teacher's account.</strong></p>
+      <div class="callout callout-danger">
+        <span class="callout-icon">🚨</span>
+        <div class="callout-text"><strong>Cannot be undone.</strong> Only delete a teacher if they have completely left the school and you no longer need any record of them in the system. Their results and class assignments will be disconnected.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Direct Publish permission</h3>
+      <p>Every teacher in the table has a <strong>Direct Publish</strong> button showing either <span class="pill pill-approved">✓ Enabled</span> or <span class="pill pill-rejected">Disabled</span>.</p>
+      <p><strong>What it means:</strong></p>
+      <ul class="steps">
+        <li><span class="step-num">✓</span><span><strong>Enabled</strong> — This teacher's results go live to pupils immediately when the teacher submits them. No approval needed from you.</span></li>
+        <li><span class="step-num">✗</span><span><strong>Disabled</strong> — This teacher's results go into a pending queue. You must approve them before pupils can see them. (This is the default for all teachers.)</span></li>
+      </ul>
+      <p>Click the button to toggle between Enabled and Disabled. A confirmation message will appear first.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Searching and exporting</h3>
+      <p><strong>Search:</strong> Type a teacher's name in the search box. The table updates instantly — you do not need to press Enter.</p>
+      <p><strong>Export PDF:</strong> Click <span class="btn-preview btn-grey">📄 Export PDF</span> to download a full staff directory as a printable PDF file with all teacher details.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 3 — PUPILS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s3">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">👦</div>
+    <div>
+      <h2>3. Managing Pupils</h2>
+      <div class="section-subtitle">The complete pupil registry — add, edit, bulk-manage and export</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>User Management</strong> → <strong>Pupils</strong>. You will see a search box, export buttons, and a table of every enrolled pupil (alumni are not shown here).</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Adding a new pupil <span class="h3-tag">step by step</span></h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <strong>+ Add Pupil</strong>. A form appears.</span></li>
+        <li><span class="step-num">2</span><span><strong>Full Name</strong> — enter first name first (e.g. "Amina Hassan"). <strong>Admission No</strong> — enter the pupil's admission number (e.g. "FNPS/2024/001"). These two are required.</span></li>
+        <li><span class="step-num">3</span><span>Fill in <strong>Date of Birth</strong>, <strong>Gender</strong>, and select the pupil's <strong>Class</strong> from the dropdown.</span></li>
+        <li><span class="step-num">4</span><span>Fill in <strong>Parent/Guardian Name</strong>, <strong>Parent Email</strong>, <strong>Contact Number</strong>, and <strong>Address</strong> — these are optional but useful for communication and reports.</span></li>
+        <li><span class="step-num">5</span><span><strong>Login Credentials:</strong> Enter the pupil's email (used to log in and view results) and a temporary password. The system will send a password-reset email to that address.</span></li>
+        <li><span class="step-num">6</span><span><strong>Enrollment Period:</strong> Set which term the pupil joined (default: First Term) and which term they are enrolled until (default: Third Term). This controls which terms they are billed for.</span></li>
+        <li><span class="step-num">7</span><span><strong>Fee Adjustment</strong> (optional): If this pupil has a scholarship or surcharge, enter it here. See the fee section below for a full explanation.</span></li>
+        <li><span class="step-num">8</span><span>Click <strong>Save Pupil</strong>. The system automatically creates a payment record for this pupil for the current term.</span></li>
+      </ol>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-text"><strong>Fee Adjustment — quick reference:</strong><br>
+        Leave both fields blank = standard class fee applies.<br>
+        Percent field = -50 means a 50% discount (pupil pays half).<br>
+        Percent field = -100 means free (pupil pays nothing).<br>
+        Amount field = -5000 means ₦5,000 is deducted from the fee.<br>
+        Both can be combined: e.g. -25% and -₦2,000.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Editing a pupil</h3>
+      <p>Click <span class="btn-preview btn-blue">Edit</span> next to any pupil. All their details load into the form. You can update any field except their login email. Click <strong>Update Pupil</strong> to save.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Searching for a pupil</h3>
+      <p>Type any part of a pupil's name or admission number in the search box. Results appear instantly. The search count below the box tells you how many matches were found.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Bulk Actions — doing things to many pupils at once</h3>
+      <p>Above the table you will see checkboxes on the left of each row. Tick the pupils you want to act on, then use the bulk toolbar:</p>
+      <div class="screen-mock">
+        <div class="screen-mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="screen-mock-content" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; padding:.875rem 1rem; background:#f8fafc; border-radius:8px;">
+          <input type="checkbox" checked style="width:16px; height:16px;"> <span style="font-size:.85rem; font-weight:600;">Select All</span>
+          <span style="font-size:.8rem; color:#94a3b8; margin-left:.25rem;">3 selected</span>
+          <div style="margin-left:auto; display:flex; gap:.5rem;">
+            <select style="padding:.35rem .6rem; font-size:.8rem; border:1.5px solid #e2e8f0; border-radius:6px;"><option>-- Select Action --</option><option>Reassign to Class</option><option>Delete Selected</option></select>
+            <button style="padding:.35rem .75rem; background:#dc2626; color:white; border:none; border-radius:6px; font-size:.8rem; font-weight:600;">Apply</button>
+          </div>
+        </div>
+      </div>
+      <table class="mini-table" style="margin-top:.5rem;">
+        <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Reassign to Class</strong></td><td>Moves all selected pupils to a different class. A popup asks you to choose the new class. Their subjects and assigned teacher update automatically.</td></tr>
+          <tr><td><strong>Delete Selected</strong></td><td>Permanently deletes all selected pupils and their payment records. You must type DELETE to confirm. This cannot be undone.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Exporting pupils</h3>
+      <div class="chip-row">
+        <span class="chip">📊 Excel — downloads a spreadsheet of all pupils with all details</span>
+        <span class="chip">📄 PDF — downloads a printable formatted report with analysis (gender breakdown, age bands, teacher load)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 4 — ALUMNI
+══════════════════════════════════════════ -->
+<div class="section-card" id="s4">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">🎓</div>
+    <div>
+      <h2>4. Alumni Records</h2>
+      <div class="section-subtitle">Pupils who have graduated from the final class</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>What is Alumni?</h3>
+      <p>When a pupil in the highest class (the terminal/graduation class) is promoted at the end of a session, the system automatically moves them to <strong>Alumni</strong> status. They no longer appear in the active pupils list and are no longer billed fees.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What you see on the Alumni page</h3>
+      <p>Left menu → <strong>User Management</strong> → <strong>Alumni</strong>. A table shows: <em>Name, Final Class, Graduation Session, Graduation Date, Actions</em>.</p>
+      <p>Use the search box to search by name or graduation session (e.g. type "2024" to find all pupils who graduated in the 2024/2025 session).</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Restoring an alumni to active status</h3>
+      <p>If a pupil was moved to alumni by mistake, click <span class="btn-preview btn-red">Delete</span> next to their name. <em>Despite the button name, this does not delete the pupil</em> — it restores them to active pupil status.</p>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text"><strong>After restoring:</strong> The pupil will be active again but without a class assigned. You must go to the Pupils section, find them, click Edit, and assign them to a class before they appear properly in reports and fee calculations.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 5 — CLASSES
+══════════════════════════════════════════ -->
+<div class="section-card" id="s5">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff7ed; color:#c2410c;">🏫</div>
+    <div>
+      <h2>5. Classes</h2>
+      <div class="section-subtitle">Create classes and assign subjects to each one</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Academic Setup</strong> → <strong>Classes</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Creating a class</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <strong>+ Add Class</strong>.</span></li>
+        <li><span class="step-num">2</span><span>Type the class name (e.g. "Nursery 1", "Primary 3A", "KG 2"). Class names can be anything — the school decides the naming convention.</span></li>
+        <li><span class="step-num">3</span><span>Click <strong>Create Class</strong>. The class appears in the table with 0 pupils and no subjects yet.</span></li>
+      </ol>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">Class names must be unique. You cannot have two classes with exactly the same name (even if one is uppercase and one is lowercase).</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Assigning subjects to a class <span class="h3-tag">important step</span></h3>
+      <p>Every class needs subjects assigned to it. These are the subjects that pupils in that class are assessed on and that teachers enter results for.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>In the Classes table, find the class and click <strong>Assign Subjects</strong> in the Actions column.</span></li>
+        <li><span class="step-num">2</span><span>A popup appears showing all the subjects in the school. Each subject has a checkbox.</span></li>
+        <li><span class="step-num">3</span><span>Tick every subject that this class is taught. Untick any that do not apply.</span></li>
+        <li><span class="step-num">4</span><span>Click <strong>Save Subjects</strong>. All pupils already in this class will automatically have their subject list updated.</span></li>
+      </ol>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-text">If you add or remove subjects later, the change applies to all current pupils in that class immediately.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Deleting a class</h3>
+      <p>Click <span class="btn-preview btn-red">Delete</span> in the Actions column. You should only delete a class if there are no pupils in it. Deleting a class with pupils is allowed but those pupils will lose their class assignment.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 6 — SUBJECTS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s6">
+  <div class="section-header">
+    <div class="section-icon" style="background:#eff6ff; color:#1a56db;">📚</div>
+    <div>
+      <h2>6. Subjects</h2>
+      <div class="section-subtitle">Define the subjects offered across the school</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Academic Setup</strong> → <strong>Subjects</strong>.</p>
+      <p>This is the master list of all subjects. You create subjects here first, then assign them to individual classes (see Section 5).</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Adding a subject</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <strong>+ Add Subject</strong>.</span></li>
+        <li><span class="step-num">2</span><span>Type the subject name exactly as it should appear on result slips (e.g. "Mathematics", "English Language", "Basic Science &amp; Technology").</span></li>
+        <li><span class="step-num">3</span><span>Click <strong>Create Subject</strong>.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Deleting a subject</h3>
+      <p>Click <span class="btn-preview btn-red">Delete</span> next to a subject. Only delete subjects that are no longer offered in any class. If a class still has that subject assigned, removing it here will not automatically remove it from the class — you should also go to that class and unassign the subject.</p>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-text"><strong>Good practice:</strong> Create all subjects first, then go to Classes and assign each subject to the correct classes.</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 7 — ASSIGN TEACHERS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s7">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">🔗</div>
+    <div>
+      <h2>7. Assign Teachers to Classes</h2>
+      <div class="section-subtitle">Connect each class to its responsible teacher</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Academic Setup</strong> → <strong>Assign Teachers</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Making a new assignment</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>At the top of the page, use the <strong>Select Teacher</strong> dropdown to choose a teacher.</span></li>
+        <li><span class="step-num">2</span><span>Use the <strong>Select Class</strong> dropdown to choose a class.</span></li>
+        <li><span class="step-num">3</span><span>Click <strong>Assign Teacher</strong>. The table below updates immediately.</span></li>
+      </ol>
+      <p>The system also updates every pupil in that class so they all know who their assigned teacher is. This is important because teachers only see pupils in their own assigned classes.</p>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div class="callout-text">One teacher can be assigned to <strong>multiple classes</strong>. Just repeat the process. A class, however, can only have one assigned teacher at a time.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Removing an assignment</h3>
+      <p>In the Current Assignments table, find the class and click <span class="btn-preview btn-red">Remove Assignment</span>. This removes the teacher-class link and clears the teacher reference from all pupils in that class.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 8 — LESSON NOTES
+══════════════════════════════════════════ -->
+<div class="section-card" id="s8">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fefce8; color:#a16207;">📝</div>
+    <div>
+      <h2>8. Lesson Notes Management</h2>
+      <div class="section-subtitle">Review and approve weekly lesson plans submitted by teachers</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Academic Setup</strong> → <strong>Lesson Notes</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What teachers do (their side)</h3>
+      <p>Each teacher types up their weekly lesson plan (subject, topic, objectives, activities, etc.) in their own portal and submits it to you for review. It then appears in your Lesson Notes page with a <span class="pill pill-pending">Pending</span> status.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What you see on this page</h3>
+      <p>A filter bar at the top lets you narrow down notes by status, term, class, or teacher. Below that is a table showing all submitted notes with columns: <em>Teacher, Class, Subject, Topic, Term, Week, Status, Updated, Actions</em>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Reviewing a lesson note</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <span class="btn-preview btn-grey">🔍 View</span> next to any note. A full popup shows every detail the teacher filled in: Subject, Topic, Sub-topic, Objectives, Resources, Introduction, Development, Conclusion, Assessment, and Assignment.</span></li>
+        <li><span class="step-num">2</span><span>Read through it. If it is satisfactory, click <span class="btn-preview btn-green">✓ Approve</span>. A box appears asking for an optional message to the teacher — you can leave it blank and just click OK.</span></li>
+        <li><span class="step-num">3</span><span>If it needs changes, click <span class="btn-preview btn-red">✗ Reject</span>. You <strong>must</strong> type a reason (e.g. "Please include the learning outcome for Activity 2"). The teacher can then edit and resubmit.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Printing a lesson note</h3>
+      <p>Click <span class="btn-preview btn-grey">🖨️ Print</span> next to any note (or from inside the view popup) to open a print-ready version. You can print it as a physical document for filing or inspection.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Filtering notes</h3>
+      <p>Use the four dropdowns at the top:</p>
+      <div class="chip-row">
+        <span class="chip">Status → show only Pending, Approved, Rejected, or Draft notes</span>
+        <span class="chip">Term → show only notes from a specific term</span>
+        <span class="chip">Class → show only notes for a specific class</span>
+        <span class="chip">Teacher → show only notes from one teacher</span>
+      </div>
+      <p>Click <strong>✕ Clear Filters</strong> to reset and show everything again.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 9 — RESULT APPROVALS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s9">
+  <div class="section-header">
+    <div class="section-icon" style="background:#eff6ff; color:#1a56db;">✅</div>
+    <div>
+      <h2>9. Approving Results</h2>
+      <div class="section-subtitle">Review teacher-submitted scores before pupils can see them</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Results &amp; Assessments</strong> → <strong>Approve Results</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>The two tabs</h3>
+      <p>At the top of the page are two tabs:</p>
+      <div class="chip-row">
+        <span class="chip" style="background:var(--primary-soft); color:var(--primary);">⏳ Pending Approvals — results waiting for your review</span>
+        <span class="chip" style="background:var(--success-soft); color:var(--success);">✅ Approved Results — results already published to pupils</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>What teachers do (their side)</h3>
+      <p>Teachers enter scores (Continuous Assessment and Exam scores) for their class and subject, then click Submit for Approval. The submission appears in your Pending tab.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Approving a single submission <span class="h3-tag">step by step</span></h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>In the Pending tab you see a table with columns: Teacher, Class, Subject, Term, Pupils (number of scores entered), Submitted date, Status, Actions.</span></li>
+        <li><span class="step-num">2</span><span>Click <span class="btn-preview btn-grey">🔍 Preview</span> next to any submission. A detailed performance panel expands below that row showing: class average, highest score, lowest score, number who passed, number who failed, pass rate %, grade distribution, and a score sparkline chart.</span></li>
+        <li><span class="step-num">3</span><span>If the results look correct and reasonable, click <span class="btn-preview btn-green">✓ Approve</span>. A confirmation popup appears. Click Continue. The results are immediately published and all pupils in that class can now see their scores.</span></li>
+        <li><span class="step-num">4</span><span>If something looks wrong (e.g. most pupils scored 0, or the teacher submitted the wrong subject), click <span class="btn-preview btn-red">✗ Reject</span>. You must type a reason. The teacher can then correct their entries and resubmit.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Approving many submissions at once</h3>
+      <p>Above the table there is a bulk action bar. Tick the checkboxes for several submissions, then click <span class="btn-preview btn-green">✓ Approve Selected</span>. Or click <span class="btn-preview btn-blue">✓ Approve All Pending</span> to approve every submission in the queue at once.</p>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">Only use "Approve All" if you are confident all pending submissions are correct. It is safer to preview each one first.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Unlocking approved results (to allow corrections)</h3>
+      <p>Go to the <strong>Approved Results</strong> tab. Find the submission and click <span class="btn-preview btn-amber">🔓 Unlock</span>.</p>
+      <p>A popup asks for an optional reason. When you unlock:</p>
+      <ul class="steps">
+        <li><span class="step-num">1</span><span>The results are immediately <strong>hidden from pupils</strong>.</span></li>
+        <li><span class="step-num">2</span><span>The teacher is notified that the submission has been returned and they can now edit and resubmit.</span></li>
+        <li><span class="step-num">3</span><span>Once the teacher resubmits, it appears back in your Pending tab for approval.</span></li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 10 — VIEW RESULTS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s10">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fefce8; color:#a16207;">📊</div>
+    <div>
+      <h2>10. Viewing Results</h2>
+      <div class="section-subtitle">Look up any pupil's academic results across sessions</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Results &amp; Assessments</strong> → <strong>View Results</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Searching for a pupil's results <span class="h3-tag">step by step</span></h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span><strong>Step 1 — Session:</strong> Select the academic session from the first dropdown (e.g. "Current Session (2025/2026)" or a past session).</span></li>
+        <li><span class="step-num">2</span><span><strong>Step 2 — Class:</strong> The second dropdown becomes active. Select the class. Only classes that have results recorded for that session will appear.</span></li>
+        <li><span class="step-num">3</span><span><strong>Step 3 — Pupil:</strong> The third dropdown becomes active. Select the specific pupil. Alumni pupils who were in that class also appear here.</span></li>
+        <li><span class="step-num">4</span><span>Click <strong>View Results</strong>. The results appear below.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>What the results display shows</h3>
+      <p>Results are grouped by term. Each term shows a table with: Subject, CA score (out of 40), Exam score (out of 60), Total (out of 100), Grade (A1–F9), and Remark (Excellent / Very Good / etc.).</p>
+      <p>At the bottom of each term is a term summary showing total points and average. At the very end is a session summary card showing overall statistics.</p>
+
+      <div class="screen-mock">
+        <div class="screen-mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="screen-mock-content">
+          <table style="width:100%; font-size:.8rem; border-collapse:collapse;">
+            <thead style="background:#f8fafc;">
+              <tr>
+                <th style="padding:.4rem .75rem; text-align:left; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Subject</th>
+                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">CA (40)</th>
+                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Exam (60)</th>
+                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Total</th>
+                <th style="padding:.4rem .75rem; text-align:center; font-size:.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">Mathematics</td><td style="text-align:center; padding:.5rem .75rem;">35</td><td style="text-align:center; padding:.5rem .75rem;">52</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">87</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
+              <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:.5rem .75rem; font-weight:600;">English Language</td><td style="text-align:center; padding:.5rem .75rem;">30</td><td style="text-align:center; padding:.5rem .75rem;">45</td><td style="text-align:center; padding:.5rem .75rem; font-weight:700;">75</td><td style="text-align:center; padding:.5rem .75rem; color:#059669; font-weight:700;">A1</td></tr>
+              <tr style="background:#f1f5f9; font-weight:700;"><td style="padding:.5rem .75rem;" colspan="3">TERM AVERAGE</td><td style="text-align:center; padding:.5rem .75rem;" colspan="2">81.0% (A1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Grading scale reference</h3>
+      <table class="mini-table">
+        <thead><tr><th>Score range</th><th>Grade</th><th>Remark</th></tr></thead>
+        <tbody>
+          <tr><td>75 – 100</td><td><strong style="color:#059669;">A1</strong></td><td>Excellent</td></tr>
+          <tr><td>70 – 74</td><td><strong style="color:#10b981;">B2</strong></td><td>Very Good</td></tr>
+          <tr><td>65 – 69</td><td><strong style="color:#34d399;">B3</strong></td><td>Good</td></tr>
+          <tr><td>60 – 64</td><td><strong style="color:#3b82f6;">C4</strong></td><td>Credit</td></tr>
+          <tr><td>55 – 59</td><td><strong style="color:#60a5fa;">C5</strong></td><td>Credit</td></tr>
+          <tr><td>50 – 54</td><td><strong style="color:#93c5fd;">C6</strong></td><td>Credit</td></tr>
+          <tr><td>45 – 49</td><td><strong style="color:#f59e0b;">D7</strong></td><td>Pass</td></tr>
+          <tr><td>40 – 44</td><td><strong style="color:#fb923c;">D8</strong></td><td>Pass</td></tr>
+          <tr><td>0 – 39</td><td><strong style="color:#ef4444;">F9</strong></td><td>Fail</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Comparing across sessions</h3>
+      <p>At the bottom of the results display, click <strong>📈 Compare Across Sessions</strong>. This shows a side-by-side comparison of the pupil's average score in every session they have been in the system — you can see whether they are improving or declining over time.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Printing a full report card</h3>
+      <p>Click <strong>🖨️ Open Full Report / Print</strong>. This opens the pupil's formatted result slip in a new window which you can print directly.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Exporting results as CSV</h3>
+      <p>Click <strong>Export</strong> in the blue pupil info bar (top of results). This downloads a spreadsheet file with every result for that pupil in that session.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 11 — PROMOTION REQUESTS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s11">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">📈</div>
+    <div>
+      <h2>11. Promotion Requests</h2>
+      <div class="section-subtitle">Move pupils to the next class at the end of the session</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Results &amp; Assessments</strong> → <strong>Promotion Requests</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>How the promotion process works — overview</h3>
+      <div class="flow">
+        <span class="flow-step">1. You open Promotion Period</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">2. Teachers submit recommendations</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">3. You review &amp; approve</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">4. Pupils move to next class</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Step 1 — Opening the Promotion Period</h3>
+      <p>At the top of the page is the Promotion Period Status bar showing whether it is currently Open or Closed. By default it is Closed.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <span class="btn-preview btn-green">🔓 Open Promotion Period</span>.</span></li>
+        <li><span class="step-num">2</span><span>A confirmation popup appears. Click OK. The status bar changes to show it is now ACTIVE.</span></li>
+        <li><span class="step-num">3</span><span>Teachers can now go into their portal and submit their promotion recommendations for each pupil.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>What teachers submit</h3>
+      <p>Each teacher reviews their class and for every pupil marks them as either <strong>Promote</strong> (move to next class) or <strong>Hold Back</strong> (stay in the same class for another year). They then submit this as a Promotion Request.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Step 2 — Reviewing a promotion request</h3>
+      <p>Each submitted request appears in the table: Teacher, From Class, To Class, number to Promote, number to Hold, Status, Actions.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <span class="btn-preview btn-blue">View Details</span> to see the full request. A popup shows two lists: pupils recommended for promotion and pupils recommended to be held back. Each has a checkbox so you can override individual decisions.</span></li>
+        <li><span class="step-num">2</span><span><strong>To override one pupil:</strong> If you disagree with the teacher's recommendation for a specific pupil, simply tick or untick their checkbox. For example, if a pupil is in the "Hold Back" list but you want to promote them, tick their checkbox.</span></li>
+        <li><span class="step-num">3</span><span><strong>Manual override for a specific class:</strong> Use the Override section at the bottom of the popup to move any pupil to any specific class, overriding both the teacher's recommendation and the normal next-class.</span></li>
+        <li><span class="step-num">4</span><span>When satisfied, click <span class="btn-preview btn-green">✓ Approve &amp; Execute</span>. A final confirmation popup warns you this cannot be undone. Click Continue.</span></li>
+      </ol>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text"><strong>Terminal Class:</strong> If the request is for the highest class (the graduation class), promoted pupils do not go to another class — they become Alumni. Their records move to the Alumni section automatically.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Quick Approve and Quick Reject</h3>
+      <p>For each pending request in the table, you can also click <span class="btn-preview btn-green">✓ Approve</span> or <span class="btn-preview btn-red">✗ Reject</span> directly in the table row without opening the details popup. Quick Approve accepts the teacher's recommendations exactly as submitted.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Approving or rejecting all pending requests at once</h3>
+      <p>At the top of the table:</p>
+      <div class="chip-row">
+        <span class="chip">✓ Approve All Pending — executes every pending request with the teacher's exact recommendations</span>
+        <span class="chip">✗ Reject All Pending — rejects every pending request (teachers can resubmit)</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Step 3 — Closing the Promotion Period</h3>
+      <p>Once all promotions are done, click <span class="btn-preview btn-red">🔒 Close Promotion Period</span> at the top of the page. Teachers will no longer be able to submit new promotion requests.</p>
+    </div>
+
+    <div class="callout callout-success">
+      <span class="callout-icon">✅</span>
+      <div class="callout-text"><strong>What happens when a promotion is approved:</strong> Every promoted pupil's class is changed to the next class in the progression order. Their subject list updates to the new class's subjects. Their assigned teacher changes to the teacher of the new class. This all happens automatically and instantly.</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 12 — FEE MANAGEMENT
+══════════════════════════════════════════ -->
+<div class="section-card" id="s12">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">💰</div>
+    <div>
+      <h2>12. Fee Management</h2>
+      <div class="section-subtitle">Set the school fees for each class</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Finance</strong> → <strong>Fee Management</strong>.</p>
+      <p>At the top of the page you will see the current session and term displayed for reference.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Setting fees for a class</h3>
+      <p>Fee structures are <strong>permanent per class</strong> — they apply every term until you change them. You do not need to set fees again at the start of each new term.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>In the "Configure Fee Structure" card, select a class from the <strong>Select Class</strong> dropdown.</span></li>
+        <li><span class="step-num">2</span><span>Fill in the fee amounts (in Naira) for each category: Tuition, Exam, Uniform, Books, PTA, and Other fees. Leave any unused categories as 0.</span></li>
+        <li><span class="step-num">3</span><span>Click <strong>Save Fee Structure</strong>. If a fee structure already exists for that class, you will be asked to confirm you want to update it.</span></li>
+      </ol>
+
+      <div class="screen-mock">
+        <div class="screen-mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="screen-mock-content">
+          <div style="font-size:.8rem; font-weight:700; color:#0f172a; margin-bottom:.875rem;">Configure Fee Structure — Primary 3</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.625rem; margin-bottom:.75rem;">
+            <div><label style="font-size:.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:.25rem;">Tuition Fee (₦)</label><div class="fake-input">20,000</div></div>
+            <div><label style="font-size:.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:.25rem;">Exam Fee (₦)</label><div class="fake-input">3,000</div></div>
+            <div><label style="font-size:.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:.25rem;">Uniform Fee (₦)</label><div class="fake-input">0</div></div>
+            <div><label style="font-size:.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:.25rem;">PTA Fee (₦)</label><div class="fake-input">2,000</div></div>
+          </div>
+          <div style="padding:.625rem .875rem; background:#ecfdf5; border-top:2px solid #0f9764; border-radius:6px; display:flex; justify-content:space-between; font-size:.8rem; font-weight:700;">
+            <span>Total per term:</span><span style="color:#0f9764; font-size:1rem;">₦25,000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Editing an existing fee structure</h3>
+      <p>Scroll down to the <strong>Configured Fee Structures</strong> section. Each class is shown as a card with its breakdown. Click <span class="btn-preview btn-blue">✏️ Edit</span> on any card. The form at the top fills in with that class's current fees. Make your changes and click <strong>Update Fee Structure</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Generating missing payment records</h3>
+      <p>The <strong>Generate All Missing Payment Records</strong> button (at the bottom of the page) is a maintenance tool. It scans all pupils and creates payment records for any pupil who does not yet have one for the current term. It also calculates and adds any arrears they owe from previous terms.</p>
+      <div class="callout callout-success">
+        <span class="callout-icon">✅</span>
+        <div class="callout-text">This is completely safe to run at any time. It will never overwrite or delete existing payment data — it only fills in gaps.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 13 — RECORD PAYMENT
+══════════════════════════════════════════ -->
+<div class="section-card" id="s13">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ecfdf5; color:#0f9764;">💳</div>
+    <div>
+      <h2>13. Recording Payments</h2>
+      <div class="section-subtitle">Record when a parent pays fees and generate a receipt</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Finance</strong> → <strong>Record Payment</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Recording a payment <span class="h3-tag">step by step</span></h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span><strong>Select Class:</strong> Use the first dropdown to choose the pupil's class. This filters the pupil list.</span></li>
+        <li><span class="step-num">2</span><span><strong>Select Pupil:</strong> Choose the specific pupil from the second dropdown.</span></li>
+        <li><span class="step-num">3</span><span>The system automatically loads the pupil's payment status. You will see a detailed breakdown showing: Current Term Fee, any outstanding Arrears (from previous terms), Total Paid so far, and the Remaining Balance.</span></li>
+        <li><span class="step-num">4</span><span>In the green <strong>Record New Payment</strong> box, type the Amount Paid and select the Payment Method (Cash, Bank Transfer, POS/Card, Online Payment, Cheque).</span></li>
+        <li><span class="step-num">5</span><span>Optionally add a note (e.g. "Paid by cheque ref #12345").</span></li>
+        <li><span class="step-num">6</span><span>Click <span class="btn-preview btn-green">✓ Record Payment</span>.</span></li>
+        <li><span class="step-num">7</span><span>A success message appears with the receipt number. A popup asks if you want to print the receipt. Click Yes to open the receipt in a new window for printing, or No to skip.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Understanding the payment status display</h3>
+      <div class="screen-mock">
+        <div class="screen-mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+        <div class="screen-mock-content">
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; margin-bottom:.75rem;">
+            <div style="text-align:center; padding:.75rem; background:#fffbeb; border:1px solid #fde68a; border-radius:8px;">
+              <div style="font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#d97706; margin-bottom:.25rem;">Arrears</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#d97706;">₦5,000</div>
+              <div style="font-size:.65rem; color:#d97706;">From previous term</div>
+            </div>
+            <div style="text-align:center; padding:.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+              <div style="font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-bottom:.25rem;">Current Fee</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#0f172a;">₦25,000</div>
+            </div>
+            <div style="text-align:center; padding:.75rem; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:8px;">
+              <div style="font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#0f9764; margin-bottom:.25rem;">Total Paid</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#0f9764;">₦10,000</div>
+            </div>
+            <div style="text-align:center; padding:.75rem; background:#fef2f2; border:2px solid #dc2626; border-radius:8px;">
+              <div style="font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#dc2626; margin-bottom:.25rem;">Outstanding</div>
+              <div style="font-size:1.1rem; font-weight:800; color:#dc2626;">₦20,000</div>
+            </div>
+          </div>
+          <div style="font-size:.8rem; color:#64748b; padding:.5rem; background:#f8fafc; border-radius:6px;">Total Due = ₦5,000 arrears + ₦25,000 current term = ₦30,000 — Paid ₦10,000 = <strong>₦20,000 remaining</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>How arrears work</h3>
+      <p>If a pupil had an unpaid balance from a previous term, that amount carries forward and is added to the current term's balance. When you record a payment, money is applied to arrears first, then to the current term's fees.</p>
+      <p>For example: Pupil owes ₦5,000 arrears + ₦25,000 current term = ₦30,000 total. Parent pays ₦15,000. The system records: ₦5,000 applied to arrears (clearing them fully) + ₦10,000 applied to current term. Remaining balance = ₦15,000.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Payment history</h3>
+      <p>Below the payment form, a list shows every payment made for this pupil in the current session: amount, date, method, receipt number, and balance after each payment. Click <span class="btn-preview btn-grey">Print Receipt</span> next to any entry to reprint that receipt.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>The receipt</h3>
+      <p>Every payment generates an official receipt showing: Receipt Number, Date, Session, Term, Pupil Name, Class, Amount Paid, Payment Method, Outstanding Balance, and a space for signatures. The school logo appears as a watermark.</p>
+    </div>
+
+    <div class="callout callout-danger">
+      <span class="callout-icon">🚨</span>
+      <div class="callout-text"><strong>Overpayment prevention:</strong> The system will reject any payment that would result in the pupil paying more than they owe. You will see a clear error message showing the maximum amount that can be paid.</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 14 — OUTSTANDING FEES
+══════════════════════════════════════════ -->
+<div class="section-card" id="s14">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef2f2; color:#dc2626;">⚠️</div>
+    <div>
+      <h2>14. Outstanding Fees</h2>
+      <div class="section-subtitle">See all pupils who still owe money this term</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Finance</strong> → <strong>Outstanding Fees</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What you see</h3>
+      <p>Two summary tiles at the top show: total number of pupils owing, and the total amount outstanding across all of them.</p>
+      <p>Below is a table listing every pupil with an unpaid balance, showing:</p>
+      <table class="mini-table">
+        <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Pupil Name</strong></td><td>The pupil's full name</td></tr>
+          <tr><td><strong>Class</strong></td><td>Their current class</td></tr>
+          <tr><td><strong>Amount Due</strong></td><td>The fee for this term (if different from standard due to a scholarship, both amounts are shown — the original with a strikethrough and the discounted one)</td></tr>
+          <tr><td><strong>Paid</strong></td><td>How much has been paid so far</td></tr>
+          <tr><td><strong>Balance</strong></td><td>How much is still owed (shown in red)</td></tr>
+          <tr><td><strong>Status</strong></td><td><span class="pill pill-pending">Partial</span> = some paid, <span class="pill pill-rejected">Owing</span> = nothing paid, <span class="pill" style="background:#fef2f2; color:#dc2626;">With Arrears</span> = includes unpaid balance from a previous term</td></tr>
+          <tr><td><strong>Term</strong></td><td>The current term</td></tr>
+        </tbody>
+      </table>
+      <p>The table is sorted with the highest outstanding balances at the top.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Alumni with outstanding balances</h3>
+      <p>If any alumni (recently graduated pupils) still have unpaid balances, they appear at the bottom of the table in a yellow section with the label "Alumni with Outstanding Balances". These should be resolved before finalising graduation records.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 15 — FINANCIAL REPORTS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s15">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f5f3ff; color:#7c3aed;">📈</div>
+    <div>
+      <h2>15. Financial Reports</h2>
+      <div class="section-subtitle">A complete financial overview of the school's fee collection</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Finance</strong> → <strong>Financial Reports</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Summary statistics</h3>
+      <p>Five stat cards at the top give you a quick financial health snapshot:</p>
+      <table class="mini-table">
+        <thead><tr><th>Stat</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Total Expected</strong></td><td>Sum of all fees owed by all active pupils this term, including arrears</td></tr>
+          <tr><td><strong>Total Collected</strong></td><td>Sum of all payments received this term</td></tr>
+          <tr><td><strong>Outstanding</strong></td><td>The difference — how much is still uncollected</td></tr>
+          <tr><td><strong>Overall Collection Rate</strong></td><td>Percentage of all money owed (current fees + arrears) that has been collected</td></tr>
+          <tr><td><strong>Current Term Rate</strong></td><td>Percentage of this term's fees only (not counting old arrears) that has been collected</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="subsection">
+      <h3>Payment Status Breakdown</h3>
+      <p>Three boxes show how many pupils have <strong>Paid in Full</strong>, made <strong>Partial Payments</strong>, and <strong>Not Paid</strong> anything.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Exporting reports</h3>
+      <div class="chip-row">
+        <span class="chip">📥 Export CSV — a spreadsheet file you can open in Excel showing every pupil's fee status</span>
+        <span class="chip">📄 Generate PDF Report — a formatted PDF summary report</span>
+        <span class="chip">📊 Comprehensive PDF — a detailed multi-page PDF with full breakdown and analysis</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 16 — ANNOUNCEMENTS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s16">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef9c3; color:#a16207;">📢</div>
+    <div>
+      <h2>16. Announcements</h2>
+      <div class="section-subtitle">Post notices that all teachers and pupils can see on their dashboards</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>Announcements</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Posting a new announcement</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click <strong>+ New Announcement</strong>.</span></li>
+        <li><span class="step-num">2</span><span>Type a <strong>Title</strong> (e.g. "End of Term Examination Timetable").</span></li>
+        <li><span class="step-num">3</span><span>Type the <strong>Content</strong> — the full message you want to share.</span></li>
+        <li><span class="step-num">4</span><span>Click <span class="btn-preview btn-blue">📤 Publish</span>. The announcement immediately appears on the dashboards of all teachers and pupils when they next log in.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Removing an announcement</h3>
+      <p>All announcements are shown as cards below the form. Click <span class="btn-preview btn-red">Delete</span> on any card to permanently remove it. It will disappear from everyone's dashboard immediately.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 17 — SCHOOL CALENDAR
+══════════════════════════════════════════ -->
+<div class="section-card" id="s17">
+  <div class="section-header">
+    <div class="section-icon" style="background:#e0f2fe; color:#0369a1;">📅</div>
+    <div>
+      <h2>17. School Calendar</h2>
+      <div class="section-subtitle">Mark holidays and breaks so they are excluded from attendance calculations</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>System &amp; Security</strong> → <strong>School Calendar</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Why this matters</h3>
+      <p>The attendance system tracks how many days school was open (<em>timesOpened</em>) for each term. If you do not mark public holidays and mid-term breaks, those days will incorrectly be counted as school days, making attendance percentages wrong.</p>
+      <p>Any date you mark here is automatically excluded from attendance calculations for all classes.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Adding a non-school day</h3>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Click the <strong>Date</strong> field and pick the date.</span></li>
+        <li><span class="step-num">2</span><span>Choose a <strong>Type</strong> from the dropdown: Public Holiday, Mid-Term Break, or Special Break/Closure.</span></li>
+        <li><span class="step-num">3</span><span>Type a <strong>Description</strong> (e.g. "Nigerian Independence Day", "Mid-Term Break Week 6").</span></li>
+        <li><span class="step-num">4</span><span>The session and term are set automatically from your current school settings — you don't need to change these.</span></li>
+        <li><span class="step-num">5</span><span>Click <span class="btn-preview btn-blue">💾 Save Entry</span>.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Adding a date range (e.g. a whole week)</h3>
+      <p>Tick the checkbox <strong>Mark a date range</strong>. An End Date field appears. Set the Start and End dates. The system will mark every day between those two dates (inclusive) as a non-school day.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Filtering and removing entries</h3>
+      <p>Use the filter dropdown to view only specific types (e.g. show only Public Holidays). Click <span class="btn-preview btn-red">🗑️ Remove</span> on any row to delete that entry and restore the day as a regular school day.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Exporting the calendar</h3>
+      <p>Click <strong>📥 Export CSV</strong> to download a spreadsheet of all calendar entries for the current term.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 18 — SCHOOL SETTINGS
+══════════════════════════════════════════ -->
+<div class="section-card" id="s18">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f1f5f9; color:#334155;">⚙️</div>
+    <div>
+      <h2>18. School Settings</h2>
+      <div class="section-subtitle">Academic session, term, class progression order, and system tools</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>System &amp; Security</strong> → <strong>School Settings</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Current Academic Session card</h3>
+      <p>At the top is a dark blue card showing the current session and term at a glance. If the session is ending soon (within 30 days of the end date you set), it shows a warning banner.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Updating session settings</h3>
+      <p>Use this section to change the academic year, current term, session dates, or next resumption date.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Enter the <strong>Session Start Year</strong> and <strong>Session End Year</strong> (e.g. 2025 and 2026).</span></li>
+        <li><span class="step-num">2</span><span>Set the <strong>Session Start Date</strong> and <strong>Session End Date</strong> (the actual calendar dates the academic year covers).</span></li>
+        <li><span class="step-num">3</span><span>Change the <strong>Current Term</strong> dropdown (First Term, Second Term, or Third Term). <strong>Important:</strong> When you change the term, the system automatically creates payment records for all pupils in the new term, carrying forward any unpaid balances.</span></li>
+        <li><span class="step-num">4</span><span>Set the <strong>Next Resumption Date</strong> — this appears on teacher and pupil dashboards.</span></li>
+        <li><span class="step-num">5</span><span>Click <strong>Save Settings</strong>.</span></li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Class Progression Order <span class="h3-tag">critical setup</span></h3>
+      <p>This section defines the order of classes from lowest to highest. The system uses this order to know which class a pupil moves to when promoted. The last class in the list is the terminal/graduation class.</p>
+      <ol class="steps">
+        <li><span class="step-num">1</span><span>Scroll to "Class Progression Order" at the bottom of the settings page.</span></li>
+        <li><span class="step-num">2</span><span>You will see all your classes listed with drag handles (☰) on the left.</span></li>
+        <li><span class="step-num">3</span><span>Click and drag any class to reorder them from lowest level to highest level.</span></li>
+        <li><span class="step-num">4</span><span>The last class shows a purple <span class="pill pill-purple">🎓 Terminal/Graduation Class</span> badge.</span></li>
+        <li><span class="step-num">5</span><span>Click <strong>Save Progression Order</strong>.</span></li>
+      </ol>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">Set up the class progression order before the first promotion cycle. If the order is wrong, pupils will be promoted to the wrong class.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Starting a New Academic Session <span class="h3-tag">end of year</span></h3>
+      <p>At the end of the school year, use this button to roll over to the next academic year. See Section 20 for the complete end-of-session workflow.</p>
+      <div class="callout callout-danger">
+        <span class="callout-icon">🚨</span>
+        <div class="callout-text"><strong>Do not click this button casually.</strong> It archives the current session and creates a new one. It should only be clicked once, at the end of the school year, after all promotions have been completed.</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Arrears Management</h3>
+      <p>The <strong>Migrate Arrears from Previous Session</strong> button recalculates unpaid balances from the previous session and applies them as arrears in the new session. Run this once after starting a new session if arrears were not automatically carried forward.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Session History</h3>
+      <p>A table at the bottom shows all archived sessions with their start and end dates. Archived sessions are kept permanently and can be viewed in the View Results section.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Advanced Data Maintenance Tools (for technical issues only)</h3>
+      <p>These are tucked inside a collapsible section at the bottom. Only use them if directed to:</p>
+      <table class="mini-table">
+        <thead><tr><th>Tool</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Fix Payment Record Amounts</strong></td><td>If fee amounts appear incorrect or scholarships were not applied correctly to existing records</td></tr>
+          <tr><td><strong>Add Session Info to Old Results</strong></td><td>For results that existed before session tracking was added — run once to fix historical data. Never run more than once.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 19 — AUDIT LOG
+══════════════════════════════════════════ -->
+<div class="section-card" id="s19">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f1f5f9; color:#334155;">🛡️</div>
+    <div>
+      <h2>19. Audit Log</h2>
+      <div class="section-subtitle">A permanent record of every administrative action taken in the system</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>How to get here</h3>
+      <p>Left menu → <strong>System &amp; Security</strong> → <strong>Audit Log</strong>.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What the Audit Log is for</h3>
+      <p>Every significant action in the admin portal is automatically recorded here with a timestamp, what was done, and who did it. This creates an accountability trail — you can always see who deleted a pupil, approved a promotion, changed a fee structure, or unlocked results.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>What you see</h3>
+      <p>A searchable table showing the 100 most recent actions with columns: Timestamp, Action (colour-coded badge), Collection (which area of the database was affected), Performed By (admin's email address), and a Details button.</p>
+      <p>Colour coding of action badges:</p>
+      <div class="chip-row">
+        <span class="chip" style="background:#fef2f2; color:#dc2626; border-color:#fecaca;">🗑️ DELETE USER — red</span>
+        <span class="chip" style="background:#fff3cd; color:#d97706; border-color:#fde68a;">🗑️ DELETE ITEM — amber</span>
+        <span class="chip" style="background:#ecfdf5; color:#0f9764; border-color:#a7f3d0;">➕ CREATE USER — green</span>
+        <span class="chip" style="background:#eff6ff; color:#1a56db; border-color:#bfdbfe;">⚙️ UPDATE SETTINGS — blue</span>
+        <span class="chip" style="background:#ecfdf5; color:#0f9764; border-color:#a7f3d0;">✓ PROMOTION APPROVED — green</span>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Searching the log</h3>
+      <p>Type in the search box to filter by email address, action type, or collection name. For example, type "delete" to see all deletions, or type a teacher's email to see everything done by or to that account.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Viewing details of an entry</h3>
+      <p>Click <span class="btn-preview btn-grey">View Details</span> on any row. A popup shows the full technical details: what data was changed, the document ID, the exact timestamp, and the device/browser used.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Downloading the full log</h3>
+      <p>Click <strong>📥 Download Full Audit Log (CSV)</strong> at the bottom of the page. This downloads every single audit entry ever recorded as a spreadsheet file — useful for inspection or compliance records.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     SECTION 20 — END-OF-SESSION WORKFLOW
+══════════════════════════════════════════ -->
+<div class="section-card" id="s20">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef2f2; color:#dc2626;">🔄</div>
+    <div>
+      <h2>20. End-of-Session Workflow</h2>
+      <div class="section-subtitle">The complete checklist for closing a school year and starting a new one</div>
+    </div>
+  </div>
+  <div class="section-body">
+
+    <div class="subsection">
+      <h3>Overview</h3>
+      <p>At the end of every academic year, you need to run through a series of steps in the correct order. Doing things out of order can cause problems. Follow this checklist carefully.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Complete End-of-Session Checklist</h3>
+
+      <table class="mini-table">
+        <thead><tr><th>#</th><th>Step</th><th>Where</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">1</td>
+            <td><strong>All results approved</strong></td>
+            <td>Approve Results</td>
+            <td>Ensure every teacher has submitted and you have approved results for all three terms. Check the Pending tab is empty.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">2</td>
+            <td><strong>All fees collected (or noted)</strong></td>
+            <td>Outstanding Fees</td>
+            <td>Review the outstanding fees list. Decide which unpaid balances to carry forward as arrears into the new session.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">3</td>
+            <td><strong>Open Promotion Period</strong></td>
+            <td>Promotion Requests</td>
+            <td>Click "Open Promotion Period" so teachers can submit their recommendations.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">4</td>
+            <td><strong>Teachers submit promotions</strong></td>
+            <td>(Teacher side)</td>
+            <td>Inform all teachers to log in and submit their promotion recommendations before a set deadline.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">5</td>
+            <td><strong>Approve all promotions</strong></td>
+            <td>Promotion Requests</td>
+            <td>Review each request, make any necessary overrides, and approve. Confirm that terminal-class pupils have moved to Alumni.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">6</td>
+            <td><strong>Close Promotion Period</strong></td>
+            <td>Promotion Requests</td>
+            <td>Click "Close Promotion Period" once all promotions are done.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">7</td>
+            <td><strong>Start New Session</strong></td>
+            <td>School Settings</td>
+            <td>Click "Start New Academic Session". Confirm. The system archives the old session, creates the new one, sets term to First Term, and carries unpaid balances forward as arrears. You will need to type "START NEW SESSION" to confirm.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">8</td>
+            <td><strong>Verify fee structures</strong></td>
+            <td>Fee Management</td>
+            <td>Check that fee amounts for each class are still correct for the new year. Update any that have changed.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">9</td>
+            <td><strong>Assign teachers to new classes</strong></td>
+            <td>Assign Teachers</td>
+            <td>If teacher assignments have changed (e.g. a teacher moved from Primary 2 to Primary 3), update the assignments.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">10</td>
+            <td><strong>Update session dates</strong></td>
+            <td>School Settings</td>
+            <td>Set the start date, end date, and next resumption date for the new session.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">11</td>
+            <td><strong>Generate missing payment records</strong></td>
+            <td>Fee Management</td>
+            <td>Click "Generate All Missing Payment Records" to ensure every pupil has a First Term payment record in the new session.</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700; color:#0f172a;">12</td>
+            <td><strong>Post an announcement</strong></td>
+            <td>Announcements</td>
+            <td>Optional: post a welcome-back announcement with the resumption date and any important information.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-success">
+        <span class="callout-icon">✅</span>
+        <div class="callout-text"><strong>After Step 7 (Start New Session), the system automatically:</strong><br>
+        ✓ Carries forward all unpaid balances from the old session as arrears<br>
+        ✓ Creates First Term payment records for all active pupils<br>
+        ✓ Sets the current term to First Term<br>
+        ✓ Opens the promotion period (you can close it again if desired)<br>
+        ✓ Archives the old session so historical results remain viewable</div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Changing term mid-session (e.g. from First to Second Term)</h3>
+      <p>Go to <strong>School Settings</strong> → update the <strong>Current Term</strong> dropdown → save. The system automatically creates Second Term payment records for all pupils, carrying forward any unpaid First Term balances as arrears in the Second Term records. You do not need to do anything else.</p>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     QUICK REFERENCE CARD
+══════════════════════════════════════════ -->
+<div class="section-card">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fef9c3; color:#a16207;">⚡</div>
+    <div>
+      <h2>Quick Reference — Common Tasks</h2>
+      <div class="section-subtitle">Fast answers to the most frequent questions</div>
+    </div>
+  </div>
+  <div class="section-body">
+    <table class="mini-table">
+      <thead><tr><th>I want to…</th><th>Go to…</th></tr></thead>
+      <tbody>
+        <tr><td>Add a new teacher or pupil</td><td>User Management → Teachers / Pupils → click + Add</td></tr>
+        <tr><td>Reset a teacher or pupil's password</td><td>Ask them to use "Forgot Password" on the login page. You cannot do it from here.</td></tr>
+        <tr><td>Record a fee payment</td><td>Finance → Record Payment</td></tr>
+        <tr><td>Print a receipt again</td><td>Finance → Record Payment → select the pupil → find the payment in history → click Print Receipt</td></tr>
+        <tr><td>See who still owes money</td><td>Finance → Outstanding Fees</td></tr>
+        <tr><td>Approve teacher results</td><td>Results &amp; Assessments → Approve Results</td></tr>
+        <tr><td>See a pupil's report card</td><td>Results &amp; Assessments → View Results → select session, class, pupil → View Results → Open Full Report / Print</td></tr>
+        <tr><td>Move pupils to next class</td><td>Results &amp; Assessments → Promotion Requests → Open Promotion Period</td></tr>
+        <tr><td>Change to the next term</td><td>System &amp; Security → School Settings → change Current Term → Save</td></tr>
+        <tr><td>Add a public holiday</td><td>System &amp; Security → School Calendar → Add Non-School Day</td></tr>
+        <tr><td>See who did what in the system</td><td>System &amp; Security → Audit Log</td></tr>
+        <tr><td>Post a notice for all staff and pupils</td><td>Announcements → New Announcement</td></tr>
+        <tr><td>Change school fees</td><td>Finance → Fee Management → find the class card → Edit</td></tr>
+        <tr><td>Export all pupils to Excel</td><td>User Management → Pupils → Excel button</td></tr>
+        <tr><td>See financial collection summary</td><td>Finance → Financial Reports</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- Footer -->
+<div style="text-align:center; padding:2rem 0 1rem; color:var(--muted); font-size:.825rem;">
+  <p>Fahmid Nursery &amp; Primary School — Admin Portal User Guide</p>
+  <p style="margin-top:.25rem; opacity:.7;">Keep this guide available for reference at all times.</p>
+  <a href="#top" class="back-top" style="margin-top:.75rem;">↑ Back to top</a>
+</div>
+
+</div><!-- /guide-body -->
+
+</body>
+</html>
