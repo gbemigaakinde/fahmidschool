@@ -4580,34 +4580,27 @@ async function loadFeeManagementSection() {
   console.log('💰 Loading fee management section...');
 
   try {
-    // ✅ FIXED: Directly target and force-show the nested form card
-    const feeConfigFormCard = document.querySelector(
-      '#fee-management .admin-card'
-    );
+    // FIXED: Target the section directly, not a non-existent nested .admin-card
+    const feeSection = document.getElementById('fee-management');
 
-    if (feeConfigFormCard) {
-      feeConfigFormCard.style.display = 'block';
-      console.log('✓ Fee configuration form card forced visible');
+    if (feeSection) {
+      feeSection.style.display = 'block';
+      console.log('✓ Fee management section forced visible');
     } else {
-      console.error('❌ Fee configuration form card not found in DOM');
+      console.error('❌ fee-management section not found in DOM');
     }
 
-    // Populate class selector
     await populateFeeClassSelector();
-
-    // Load current session/term
     const settings = await window.getCurrentSettings();
 
     const sessionDisplay = document.getElementById('fee-session-display');
     const termDisplay = document.getElementById('fee-term-display');
-
     if (sessionDisplay) sessionDisplay.textContent = settings.session;
     if (termDisplay) termDisplay.textContent = settings.term;
 
-    // Load existing fee structures
     await loadFeeStructures();
-
     console.log('✓ Fee management section loaded successfully');
+
   } catch (error) {
     console.error('❌ Error loading fee management:', error);
     window.showToast?.('Failed to load fee management section', 'danger');
