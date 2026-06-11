@@ -76,27 +76,30 @@
       line-height: 1.75;
     }
 
-    /* ── Annual events ── */
-    .event-card {
-      background: var(--surface);
-      border: 1px solid var(--surface-border);
-      border-radius: var(--radius-xl);
-      padding: var(--s-7);
+    /* ── Annual Events: borderless icon-list grid ── */
+    .events-list-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--s-8);
+    }
+
+    @media (min-width: 640px) {
+      .events-list-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (min-width: 1024px) {
+      .events-list-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .event-list-item {
       display: flex;
       align-items: flex-start;
-      gap: var(--s-5);
-      transition: box-shadow var(--t-base) var(--ease-out),
-                  transform var(--t-base) var(--ease-out);
+      gap: var(--s-4);
     }
 
-    .event-card:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-3px);
-    }
-
-    .event-card-icon {
-      width: 52px;
-      height: 52px;
+    .event-list-icon {
+      width: 48px;
+      height: 48px;
       border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
@@ -104,53 +107,70 @@
       flex-shrink: 0;
     }
 
-    .event-card-icon svg { width: 22px; height: 22px; color: white; }
+    .event-list-icon svg { width: 20px; height: 20px; color: white; }
 
-    .event-card-title {
+    .event-list-body { flex: 1; }
+
+    .event-list-title {
       font-family: var(--font-display);
       font-size: var(--text-lg);
       color: var(--ink-900);
       margin-bottom: var(--s-2);
+      line-height: 1.3;
     }
 
-    .event-card-desc {
+    .event-list-desc {
       font-size: var(--text-sm);
       color: var(--ink-600);
       line-height: 1.7;
       margin: 0;
     }
 
-    /* ── Support cards ── */
-    .support-card {
-      background: var(--surface);
-      border: 1px solid var(--surface-border);
-      border-radius: var(--radius-xl);
-      padding: var(--s-7);
-      text-align: center;
-      transition: box-shadow var(--t-base) var(--ease-out),
-                  transform var(--t-base) var(--ease-out);
+    /* ── Pupil Support: two-column icon-row list ── */
+    .support-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--s-8);
     }
 
-    .support-card:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-3px);
+    @media (min-width: 768px) {
+      .support-list { grid-template-columns: repeat(2, 1fr); gap: var(--s-8) var(--s-12); }
     }
 
-    .support-card-icon {
-      width: 56px;
-      height: 56px;
+    .support-row {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-4);
+    }
+
+    .support-row-icon {
+      width: 48px;
+      height: 48px;
       border-radius: var(--radius-lg);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto var(--s-5);
+      flex-shrink: 0;
     }
 
-    .support-card-icon svg { width: 22px; height: 22px; color: white; }
+    .support-row-icon svg { width: 20px; height: 20px; color: white; }
 
-    .support-card h3 { margin-bottom: var(--s-3); }
+    .support-row-body { flex: 1; }
 
-    .support-card p { font-size: var(--text-sm); color: var(--ink-600); line-height: 1.7; margin: 0; }
+    .support-row-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: var(--ink-900);
+      margin-bottom: var(--s-2);
+      line-height: 1.3;
+    }
+
+    .support-row-desc {
+      font-size: var(--text-sm);
+      color: var(--ink-600);
+      line-height: 1.7;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -430,65 +450,65 @@
         <p class="section-lead">There are certain days in the school calendar that pupils talk about for weeks beforehand — and remember long after they have left.</p>
       </div>
 
-      <div class="grid-3" style="gap: var(--s-5);">
+      <div class="events-list-grid">
 
-        <div class="event-card reveal">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
+        <div class="event-list-item reveal">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Resumption Day</div>
-            <p class="event-card-desc">A fresh start to the term. New and returning pupils are welcomed, classes are assigned, and families get a chance to meet teachers and settle in before the work begins.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Resumption Day</div>
+            <p class="event-list-desc">A fresh start to the term. New and returning pupils are welcomed, classes are assigned, and families get a chance to meet teachers and settle in before the work begins.</p>
           </div>
         </div>
 
-        <div class="event-card reveal reveal-delay-1">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+        <div class="event-list-item reveal reveal-delay-1">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Independence Day</div>
-            <p class="event-card-desc">The school marks Nigeria's independence with performances, traditional dress, patriotic songs, and lessons on what the day means. It is a chance for pupils to feel proud of where they come from.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Independence Day</div>
+            <p class="event-list-desc">The school marks Nigeria's independence with performances, traditional dress, patriotic songs, and lessons on what the day means. It is a chance for pupils to feel proud of where they come from.</p>
           </div>
         </div>
 
-        <div class="event-card reveal reveal-delay-2">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+        <div class="event-list-item reveal reveal-delay-2">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Children's Day</div>
-            <p class="event-card-desc">This day belongs entirely to the pupils. There are games, entertainment, gifts, and activities — no pressure, no lessons, just a day set aside to celebrate the children and let them enjoy themselves.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Children's Day</div>
+            <p class="event-list-desc">This day belongs entirely to the pupils. There are games, entertainment, gifts, and activities — no pressure, no lessons, just a day set aside to celebrate the children and let them enjoy themselves.</p>
           </div>
         </div>
 
-        <div class="event-card reveal">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
+        <div class="event-list-item reveal">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Cultural Day</div>
-            <p class="event-card-desc">Pupils come dressed in traditional attire from across Nigeria's many ethnic groups. The day is filled with food, music, dance, and short presentations that remind everyone just how rich and varied Nigerian culture truly is.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Cultural Day</div>
+            <p class="event-list-desc">Pupils come dressed in traditional attire from across Nigeria's many ethnic groups. The day is filled with food, music, dance, and short presentations that remind everyone just how rich and varied Nigerian culture truly is.</p>
           </div>
         </div>
 
-        <div class="event-card reveal reveal-delay-1">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
+        <div class="event-list-item reveal reveal-delay-1">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Inter-House Sports Day</div>
-            <p class="event-card-desc">The biggest sporting event of the year. Houses go head to head in races, relays, and field events, all competing for trophies in front of a crowd that includes parents, staff, and the whole school. The atmosphere on this day is something else entirely.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Inter-House Sports Day</div>
+            <p class="event-list-desc">The biggest sporting event of the year. Houses go head to head in races, relays, and field events, all competing for trophies in front of a crowd that includes parents, staff, and the whole school. The atmosphere on this day is something else entirely.</p>
           </div>
         </div>
 
-        <div class="event-card reveal reveal-delay-2">
-          <div class="event-card-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
+        <div class="event-list-item reveal reveal-delay-2">
+          <div class="event-list-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
           </div>
-          <div>
-            <div class="event-card-title">Graduation Ceremony</div>
-            <p class="event-card-desc">A proud and emotional occasion as Primary 6 pupils complete their time at Fahmid. Families gather to watch their children receive their certificates and mark the end of one chapter and the start of the next.</p>
+          <div class="event-list-body">
+            <div class="event-list-title">Graduation Ceremony</div>
+            <p class="event-list-desc">A proud and emotional occasion as Primary 6 pupils complete their time at Fahmid. Families gather to watch their children receive their certificates and mark the end of one chapter and the start of the next.</p>
           </div>
         </div>
 
@@ -506,54 +526,66 @@
         <p class="section-lead">A child who feels safe, well-fed, and looked after is far more likely to learn. We take that seriously, and it shows in how we run the school every single day.</p>
       </div>
 
-      <div class="grid-3" style="gap: var(--s-5);">
+      <div class="support-list">
 
-        <div class="support-card reveal">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
+        <div class="support-row reveal">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #1B3A7A, #2D5FBF);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </div>
-          <h3>Pastoral Care</h3>
-          <p>Our staff do more than teach. They keep an eye on how pupils are doing emotionally, step in when there are friendship difficulties, and make sure that no child feels unseen or overlooked while in our care.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Pastoral Care</h3>
+            <p class="support-row-desc">Our staff do more than teach. They keep an eye on how pupils are doing emotionally, step in when there are friendship difficulties, and make sure that no child feels unseen or overlooked while in our care.</p>
+          </div>
         </div>
 
-        <div class="support-card reveal reveal-delay-1">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
+        <div class="support-row reveal reveal-delay-1">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #22C55E, #16A34A);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
-          <h3>Health Services</h3>
-          <p>First aid is available throughout the school day. Trained staff handle minor injuries and health concerns as they arise, and parents are contacted promptly whenever a situation calls for it.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Health Services</h3>
+            <p class="support-row-desc">First aid is available throughout the school day. Trained staff handle minor injuries and health concerns as they arise, and parents are contacted promptly whenever a situation calls for it.</p>
+          </div>
         </div>
 
-        <div class="support-card reveal reveal-delay-2">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
+        <div class="support-row reveal reveal-delay-2">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></svg>
           </div>
-          <h3>Nutrition</h3>
-          <p>Healthy snacks and meal options are available each day. We encourage good eating habits from an early age, and we make sure that no pupil goes through the school day without access to proper food.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Nutrition</h3>
+            <p class="support-row-desc">Healthy snacks and meal options are available each day. We encourage good eating habits from an early age, and we make sure that no pupil goes through the school day without access to proper food.</p>
+          </div>
         </div>
 
-        <div class="support-card reveal">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
+        <div class="support-row reveal">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #9333EA, #7E22CE);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
-          <h3>Anti-Bullying</h3>
-          <p>Bullying is not tolerated here — full stop. We have clear procedures for reporting and dealing with any incident, and children are taught from the start what respectful behaviour looks like and why it matters.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Anti-Bullying</h3>
+            <p class="support-row-desc">Bullying is not tolerated here — full stop. We have clear procedures for reporting and dealing with any incident, and children are taught from the start what respectful behaviour looks like and why it matters.</p>
+          </div>
         </div>
 
-        <div class="support-card reveal reveal-delay-1">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
+        <div class="support-row reveal reveal-delay-1">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #06B6D4, #0891B2);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
           </div>
-          <h3>Learning Support</h3>
-          <p>Pupils who need a little extra help get it. Through remedial sessions, targeted revision, and additional teacher time outside regular lessons, we make sure every child keeps pace and does not get left behind.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Learning Support</h3>
+            <p class="support-row-desc">Pupils who need a little extra help get it. Through remedial sessions, targeted revision, and additional teacher time outside regular lessons, we make sure every child keeps pace and does not get left behind.</p>
+          </div>
         </div>
 
-        <div class="support-card reveal reveal-delay-2">
-          <div class="support-card-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
+        <div class="support-row reveal reveal-delay-2">
+          <div class="support-row-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626);">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
-          <h3>Safety &amp; Security</h3>
-          <p>The school gate is controlled and staff are present throughout the day. Emergency procedures are in place and practised regularly, so that everyone on the premises — pupils and staff alike — knows exactly what to do if needed.</p>
+          <div class="support-row-body">
+            <h3 class="support-row-title">Safety &amp; Security</h3>
+            <p class="support-row-desc">The school gate is controlled and staff are present throughout the day. Emergency procedures are in place and practised regularly, so that everyone on the premises — pupils and staff alike — knows exactly what to do if needed.</p>
+          </div>
         </div>
 
       </div>
