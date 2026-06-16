@@ -2676,3 +2676,21 @@
 
 /* ── Remove old results-table min-width that broke mobile ─ */
 #results-table { min-width: unset; }
+
+/* ════════════════════════════════════════════════════════════
+   RESULT CARD — MOBILE HORIZONTAL SCROLL FIX
+   Keeps the 3-column layout exactly as-is but makes it
+   scrollable when it overflows on narrow screens.
+   ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 540px) {
+  .tp-result-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tp-result-card__ca-grid,
+  .tp-result-card__totals {
+    min-width: 420px;
+  }
+}
