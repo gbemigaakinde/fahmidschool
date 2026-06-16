@@ -2689,6 +2689,7 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .tp-result-card__name,
   .tp-result-card__ca-grid,
   .tp-result-card__totals {
     min-width: 420px;
