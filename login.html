@@ -853,7 +853,7 @@
 
   async function getEmailByAdmissionNumber(admissionNo) {
     try {
-      const snapshot = await db.collection('pupils')
+      const snapshot = await window.db.collection('pupils')
         .where('admissionNo', '==', admissionNo)
         .limit(1)
         .get();
@@ -865,13 +865,11 @@
   }
 
   // ── CHECK IF EMAIL EXISTS ACROSS ALL USER COLLECTIONS ──
-  // Admins are in 'users', teachers are in 'teachers', pupils are in 'pupils'.
-  // All three are checked in parallel so no role is left out.
   async function emailExistsInAnyCollection(email) {
     const [pupilsSnap, teachersSnap, usersSnap] = await Promise.all([
-      db.collection('pupils').where('email', '==', email).limit(1).get(),
-      db.collection('teachers').where('email', '==', email).limit(1).get(),
-      db.collection('users').where('email', '==', email).limit(1).get()
+      window.db.collection('pupils').where('email', '==', email).limit(1).get(),
+      window.db.collection('teachers').where('email', '==', email).limit(1).get(),
+      window.db.collection('users').where('email', '==', email).limit(1).get()
     ]);
     return !pupilsSnap.empty || !teachersSnap.empty || !usersSnap.empty;
   }
@@ -889,7 +887,7 @@
       email = found;
     }
 
-    await auth.signInWithEmailAndPassword(email, password);
+    await window.auth.signInWithEmailAndPassword(email, password);
 
     // Record login timestamp for the 8-hour session window
     localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
@@ -961,13 +959,14 @@
         }
 
         // Email confirmed in at least one collection — send the reset link
-        await auth.sendPasswordResetEmail(email);
+        await window.auth.sendPasswordResetEmail(email);
         document.getElementById('forgot-sent-to').textContent = email;
         document.getElementById('forgot-form-wrap').style.display = 'none';
         document.getElementById('forgot-success').style.display = 'block';
 
       } catch (err) {
         window.showToast('Something went wrong. Please try again or contact the school.', 'danger');
+        console.error('Forgot password error:', err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
