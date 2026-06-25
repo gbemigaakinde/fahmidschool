@@ -358,19 +358,12 @@
     function markActive(el) { el.classList.remove('done');   el.classList.add('active'); }
 
     /* ── AUTH STATE LOGIC ── */
-    // We rely entirely on onAuthStateChanged's first real callback to decide
-    // whether someone is logged in or not. No artificial timers forcing a
-    // "complete" state — that was racing against Firebase's own session
-    // restoration after a redirect and causing false "logged out" results
-    // on the very first load after login.
-    let hasHandledFirstCallback = false;
-    let redirectTimeout = null;
+    let redirectTimeout   = null;
+    let logoutGraceTimer  = null;
+    let resolvedWithUser  = false;
 
-    // Safety net ONLY for the case where Firebase never calls back at all
-    // (e.g. broken network). This does NOT mark anyone as "logged out" —
-    // it just stops the spinner from running forever.
-    const initTimeout = setTimeout(() => {
-      if (!hasHandledFirstCallback) {
+    const hardFallback = setTimeout(() => {
+      if (!resolvedWithUser) {
         console.warn('⚠️ Auth never responded — redirecting to login.');
         setStatus('Please log in to continue.');
         window.location.replace('login.html');
@@ -378,15 +371,19 @@
     }, 10000);
 
     auth.onAuthStateChanged(async (user) => {
-      hasHandledFirstCallback = true;
-      clearTimeout(initTimeout);
-
-      if (redirectTimeout) {
-        clearTimeout(redirectTimeout);
-        redirectTimeout = null;
-      }
 
       if (user) {
+        resolvedWithUser = true;
+        clearTimeout(hardFallback);
+        if (logoutGraceTimer) {
+          clearTimeout(logoutGraceTimer);
+          logoutGraceTimer = null;
+        }
+        if (redirectTimeout) {
+          clearTimeout(redirectTimeout);
+          redirectTimeout = null;
+        }
+
         try {
           markDone(stepAuth);
           markActive(stepRole);
@@ -443,14 +440,30 @@
         }
 
       } else {
-        // Genuinely logged out — this is now a TRUSTED result, since it
-        // comes straight from Firebase's first real callback, not a forced
-        // timer race.
-        setStatus('Please log in to continue.');
+        if (resolvedWithUser) {
+          setStatus('Session expired. Please log in again.');
+          if (window.showToast) {
+            window.showToast('Session expired. Please log in again.', 'warning');
+          }
+          redirectTimeout = setTimeout(() => {
+            window.location.replace('login.html');
+          }, 1200);
+          return;
+        }
 
-        redirectTimeout = setTimeout(() => {
-          window.location.replace('login.html');
-        }, 1200);
+        if (logoutGraceTimer) return; 
+
+        setStatus('Verifying your session…');
+
+        logoutGraceTimer = setTimeout(() => {
+          if (!resolvedWithUser) {
+            clearTimeout(hardFallback);
+            setStatus('Please log in to continue.');
+            redirectTimeout = setTimeout(() => {
+              window.location.replace('login.html');
+            }, 1200);
+          }
+        }, 1500);
       }
     });
   </script>
