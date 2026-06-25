@@ -439,7 +439,7 @@
     }
 
     .password-field-wrap input {
-      padding-right: 3rem; /* make room for the button */
+      padding-right: 3rem;
     }
 
     .password-toggle {
@@ -477,7 +477,7 @@
       pointer-events: none;
     }
 
-    /* ── FORGOT PASSWORD PANEL (NEW) ── */
+    /* ── FORGOT PASSWORD PANEL ── */
     #panel-forgot {
       display: none;
     }
@@ -684,27 +684,25 @@
             <input type="text" id="login-identifier" name="identifier" placeholder="email@example.com or admission number" required aria-required="true" autocomplete="username">
           </div>
           <div class="form-group">
-  <label for="login-password">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    Password <span class="required" aria-hidden="true">*</span>
-  </label>
-  <div class="password-field-wrap">
-    <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
-    <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
-      <!-- Eye icon (shown when password is hidden) -->
-      <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-      <!-- Eye-off icon (shown when password is visible) -->
-      <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-        <line x1="1" y1="1" x2="23" y2="23"/>
-      </svg>
-    </button>
-  </div>
-</div>
+            <label for="login-password">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Password <span class="required" aria-hidden="true">*</span>
+            </label>
+            <div class="password-field-wrap">
+              <input type="password" id="login-password" name="password" placeholder="Enter your password" required aria-required="true" autocomplete="current-password">
+              <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password" aria-pressed="false">
+                <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+          </div>
           <button type="submit" class="login-submit" id="login-btn">Sign In</button>
           <button type="button" class="login-forgot" id="forgot-btn">Forgot your password?</button>
         </form>
@@ -728,7 +726,7 @@
         </div>
       </div>
 
-      <!-- FORGOT PASSWORD PANEL (NEW) -->
+      <!-- FORGOT PASSWORD PANEL -->
       <div id="panel-forgot" role="region" aria-label="Password reset">
 
         <button type="button" class="forgot-back-btn" id="forgot-back-btn">
@@ -786,14 +784,33 @@
 <script>
   'use strict';
 
-  // If the user is already authenticated, skip login and go straight to the portal.
-  // Runs immediately before any other login logic so there's no flash of the login UI.
-  (function redirectIfAuthenticated() {
-    // firebase-init.js loads before this script, so window.auth is available.
+  // ── SESSION TIMEOUT CONSTANT ──
+  // Must match the timeout in firebase-init.js (8 hours)
+  var SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+  var SESSION_TIMESTAMP_KEY = 'fahmid_login_time';
+
+  // ── AUTO-REDIRECT: only if the user logged in within the last 8 hours ──
+  // If their Firebase session still exists but the timestamp is expired (or missing),
+  // we sign them out silently so they must log in again manually.
+  (function checkSessionAndRedirect() {
     if (!window.auth) return;
+
     window.auth.onAuthStateChanged(function(user) {
-      if (user) {
+      if (!user) return; // No Firebase session at all — stay on login page normally
+
+      var loginTime = parseInt(localStorage.getItem(SESSION_TIMESTAMP_KEY) || '0', 10);
+      var now = Date.now();
+      var elapsed = now - loginTime;
+
+      if (loginTime && elapsed < SESSION_MAX_AGE_MS) {
+        // Session is valid and within 8 hours — redirect automatically
         window.location.replace('portal.html');
+      } else {
+        // Session exists in Firebase but has expired (or no timestamp recorded).
+        // Sign out silently so the user sees the login form and must re-enter credentials.
+        localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+        window.auth.signOut().catch(function() {});
+        // Stay on the login page — do not redirect
       }
     });
   })();
@@ -803,18 +820,15 @@
   function switchMode(mode) {
     currentMode = mode;
 
-    // Update tabs
     document.getElementById('tab-login').classList.toggle('active', mode === 'login');
     document.getElementById('tab-register').classList.toggle('active', mode === 'register');
     document.getElementById('tab-login').setAttribute('aria-selected', mode === 'login');
     document.getElementById('tab-register').setAttribute('aria-selected', mode === 'register');
 
-    // Show/hide panels
     document.getElementById('panel-login').style.display = mode === 'login' ? 'block' : 'none';
     document.getElementById('panel-register').style.display = mode === 'register' ? 'block' : 'none';
     document.getElementById('panel-forgot').style.display = 'none';
 
-    // Update headings
     if (mode === 'login') {
       document.getElementById('auth-heading').textContent = 'Welcome Back';
       document.getElementById('auth-subheading').textContent = 'Sign in to access your portal';
@@ -831,7 +845,6 @@
     document.getElementById('auth-tabs').style.display = 'none';
     document.getElementById('auth-heading').textContent = 'Forgot Password';
     document.getElementById('auth-subheading').textContent = 'We\'ll send a reset link to your inbox';
-    // Reset to form state (in case they've been here before)
     document.getElementById('forgot-form-wrap').style.display = 'block';
     document.getElementById('forgot-success').style.display = 'none';
     document.getElementById('forgot-email').value = '';
@@ -872,6 +885,11 @@
     }
 
     await auth.signInWithEmailAndPassword(email, password);
+
+    // ── RECORD LOGIN TIMESTAMP ──
+    // This is what allows the 8-hour auto-redirect window to work.
+    localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
+
     window.showToast('Login successful! Redirecting…', 'success');
     setTimeout(() => {
       window.location.href = 'portal.html';
@@ -879,7 +897,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Lucide icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     const form = document.getElementById('login-form');
@@ -901,7 +918,7 @@
       passwordToggle.setAttribute('aria-pressed', String(isHidden));
     });
 
-    // Forgot password — show inline panel
+    // Forgot password
     document.getElementById('forgot-btn').addEventListener('click', showForgotPanel);
     document.getElementById('forgot-back-btn').addEventListener('click', hideForgotPanel);
     document.getElementById('forgot-success-back-btn').addEventListener('click', hideForgotPanel);
@@ -930,7 +947,6 @@
       submitBtn.classList.add('loading');
 
       try {
-        // Check email exists in Firestore before sending reset link
         const snapshot = await db.collection('pupils')
           .where('email', '==', email)
           .limit(1)
@@ -942,7 +958,6 @@
           return;
         }
 
-        // Email confirmed — send the reset link
         await auth.sendPasswordResetEmail(email);
         document.getElementById('forgot-sent-to').textContent = email;
         document.getElementById('forgot-form-wrap').style.display = 'none';
@@ -955,7 +970,7 @@
       }
     });
 
-    // Form submit
+    // Login form submit
     form.addEventListener('submit', async e => {
       e.preventDefault();
 
@@ -988,7 +1003,6 @@
       try {
         await handleLogin(identifier, password);
       } catch (err) {
-
         let msg = 'Login failed. Please check your details and try again.';
         if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
         if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please try again.';
