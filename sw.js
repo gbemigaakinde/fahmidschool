@@ -2,13 +2,13 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Service Worker - Production PWA
  * 
- * @version 2.0.3
+ * @version 2.0.4
  * @date 2026-02-15
  */
 
 'use strict';
 
-const CACHE_VERSION = 'fahmid-pwa-v2.0.3';
+const CACHE_VERSION = 'fahmid-pwa-v2.0.4';
 const CACHE_NAME = `${CACHE_VERSION}`;
 const MAX_CACHE_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
