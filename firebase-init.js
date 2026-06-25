@@ -362,6 +362,7 @@ window.login = async function(email, password) {
  */
 window.logout = async function() {
   try {
+    localStorage.removeItem('fahmid_login_time');
     await window.auth.signOut();
     window.showToast?.('Logged out successfully', 'success');
     setTimeout(() => window.location.href = 'login.html', 800);
