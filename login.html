@@ -874,7 +874,7 @@
     return !pupilsSnap.empty || !teachersSnap.empty || !usersSnap.empty;
   }
 
-  async function handleLogin(identifier, password) {
+    async function handleLogin(identifier, password) {
     let email = identifier.trim();
     const isAdmissionNo = !email.includes('@');
 
@@ -887,15 +887,29 @@
       email = found;
     }
 
-    await window.auth.signInWithEmailAndPassword(email, password);
+    const result = await window.auth.signInWithEmailAndPassword(email, password);
 
     // Record login timestamp for the 8-hour session window
     localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
+    await new Promise((resolve) => {
+      if (window.auth.currentUser && window.auth.currentUser.uid === result.user.uid) {
+        resolve();
+        return;
+      }
+      const unsubscribe = window.auth.onAuthStateChanged((user) => {
+        if (user && user.uid === result.user.uid) {
+          unsubscribe();
+          resolve();
+        }
+      });
+      // Safety net: don't wait forever
+      setTimeout(resolve, 2000);
+    });
 
     window.showToast('Login successful! Redirecting…', 'success');
     setTimeout(() => {
       window.location.href = 'portal.html';
-    }, 1000);
+    }, 400);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
