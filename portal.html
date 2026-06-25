@@ -357,11 +357,30 @@
     function markDone(el)   { el.classList.remove('active'); el.classList.add('done'); }
     function markActive(el) { el.classList.remove('done');   el.classList.add('active'); }
 
-    /* ── ORIGINAL LOGIC (unchanged) ── */
-    let authCheckComplete = false;
-    let redirectTimeout   = null;
+    /* ── AUTH STATE LOGIC ── */
+    // We rely entirely on onAuthStateChanged's first real callback to decide
+    // whether someone is logged in or not. No artificial timers forcing a
+    // "complete" state — that was racing against Firebase's own session
+    // restoration after a redirect and causing false "logged out" results
+    // on the very first load after login.
+    let hasHandledFirstCallback = false;
+    let redirectTimeout = null;
+
+    // Safety net ONLY for the case where Firebase never calls back at all
+    // (e.g. broken network). This does NOT mark anyone as "logged out" —
+    // it just stops the spinner from running forever.
+    const initTimeout = setTimeout(() => {
+      if (!hasHandledFirstCallback) {
+        console.warn('⚠️ Auth never responded — redirecting to login.');
+        setStatus('Please log in to continue.');
+        window.location.replace('login.html');
+      }
+    }, 10000);
 
     auth.onAuthStateChanged(async (user) => {
+      hasHandledFirstCallback = true;
+      clearTimeout(initTimeout);
+
       if (redirectTimeout) {
         clearTimeout(redirectTimeout);
         redirectTimeout = null;
@@ -396,8 +415,6 @@
             markActive(stepRedir);
             setStatus(`Welcome! Opening your ${role} portal…`);
 
-            authCheckComplete = true;
-
             redirectTimeout = setTimeout(() => {
               if (role === 'admin')        window.location.replace('admin.html');
               else if (role === 'teacher') window.location.replace('teacher.html');
@@ -413,7 +430,6 @@
           console.error('Portal redirect error:', error);
           card.classList.add('error');
           setStatus('Error loading your profile. Redirecting to login…');
-          authCheckComplete = true;
 
           if (window.showToast) {
             window.showToast('Unable to load your profile. Please log in again.', 'danger', 5000);
@@ -427,32 +443,16 @@
         }
 
       } else {
-        if (authCheckComplete) {
-          setStatus('Session expired. Please log in again.');
+        // Genuinely logged out — this is now a TRUSTED result, since it
+        // comes straight from Firebase's first real callback, not a forced
+        // timer race.
+        setStatus('Please log in to continue.');
 
-          if (window.showToast) {
-            window.showToast('Session expired. Please log in again.', 'warning');
-          }
-
-          redirectTimeout = setTimeout(() => {
-            window.location.replace('login.html');
-          }, 1500);
-
-        } else {
-          setStatus('Initialising…');
-          console.log('⏳ Waiting for Firebase auth to initialise…');
-
-          redirectTimeout = setTimeout(() => {
-            console.warn('⚠️ Auth initialisation timeout');
-            setStatus('Please log in to continue.');
-            window.location.replace('login.html');
-          }, 10000);
-        }
+        redirectTimeout = setTimeout(() => {
+          window.location.replace('login.html');
+        }, 1200);
       }
     });
-
-    // Mark auth check initialised after 2 s (original safety net)
-    setTimeout(() => { authCheckComplete = true; }, 2000);
   </script>
 
   <script>
