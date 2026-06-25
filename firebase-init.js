@@ -1,9 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Shared Authentication
- * CORRECTED - All duplicates removed
+ * CORRECTED - Auth persistence now explicitly enabled
  * 
- * @version 3.1.0 - FIXED
+ * @version 3.2.0 - FIXED AUTH PERSISTENCE
  * @date 2026-01-10
  */
 'use strict';
@@ -32,26 +32,38 @@ window.db = firebase.firestore();
 window.auth = firebase.auth();
 window.firebase = firebase;
 
-// ENABLE OFFLINE PERSISTENCE
+// ============================================
+// ENABLE AUTH PERSISTENCE (BEFORE listeners)
+// ============================================
+
+// Enable LOCAL persistence so auth state survives page reloads
+window.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .then(() => {
+    console.log('✓ Auth persistence enabled');
+  })
+  .catch((error) => {
+    console.error('❌ Error enabling auth persistence:', error);
+  });
+
+// ENABLE OFFLINE PERSISTENCE FOR FIRESTORE
 try {
-  // Use the new persistentCacheIndexManager() API
   window.db.enablePersistence({ 
     synchronizeTabs: true 
   })
     .then(() => {
-
+      console.log('✓ Firestore persistence enabled');
     })
     .catch((err) => {
       if (err.code === 'failed-precondition') {
-        console.warn('⚠️ Persistence failed: Multiple tabs open');
+        console.warn('⚠️ Firestore persistence failed: Multiple tabs open');
       } else if (err.code === 'unimplemented') {
-        console.warn('⚠️ Persistence not supported by browser');
+        console.warn('⚠️ Firestore persistence not supported by browser');
       } else {
-        console.error('❌ Persistence error:', err);
+        console.error('❌ Firestore persistence error:', err);
       }
     });
 } catch (error) {
-  console.error('❌ Failed to enable persistence:', error);
+  console.error('❌ Failed to enable Firestore persistence:', error);
 }
 
 // ============================================
