@@ -37,6 +37,13 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
 .start-info-cell__label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; margin-bottom: 4px; }
 .start-info-cell__value { font-size: 1.1rem; font-weight: 700; color: #1a56db; }
 .start-card__rules { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px; text-align: left; margin-bottom: 28px; }
+.start-card__rules-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.start-card__rules-icon {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fed7aa; color: #92400e;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
 .start-card__rules ul { margin: 8px 0 0 16px; padding: 0; }
 .start-card__rules li { font-size: 12.5px; color: #92400e; margin-bottom: 4px; }
 .start-card__rules strong { font-size: 12px; color: #78350f; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -127,7 +134,12 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
       </div>
     </div>
     <div class="start-card__rules">
-      <strong>⚠ Instructions — Read carefully</strong>
+      <div class="start-card__rules-head">
+        <span class="start-card__rules-icon">
+          <i data-lucide="info" style="width:13px;height:13px;" aria-hidden="true"></i>
+        </span>
+        <strong>Before you begin</strong>
+      </div>
       <ul>
         <li>Once you start, the timer begins immediately.</li>
         <li>Switching tabs or windows will be logged.</li>
@@ -154,7 +166,12 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
       <div class="cbt-topbar__title" id="ts-title">Test</div>
       <div class="cbt-topbar__meta" id="ts-meta">—</div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;">
+    <div class="cbt-topbar__actions">
+      <button class="cbt-nav-toggle" id="nav-toggle-btn" onclick="toggleNavDrawer()" aria-label="Open question navigator">
+        <i data-lucide="layout-grid" style="width:15px;height:15px;" aria-hidden="true"></i>
+        <span class="cbt-nav-toggle__label">Questions</span>
+        <span class="cbt-nav-toggle__count" id="nav-toggle-count">0/0</span>
+      </button>
       <div class="cbt-timer" id="cbt-timer-display">
         <i data-lucide="clock" style="width:16px;height:16px;" aria-hidden="true"></i>
         <span id="cbt-timer-text">00:00</span>
@@ -164,6 +181,11 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
         Submit
       </button>
     </div>
+  </div>
+
+  <!-- Progress track -->
+  <div class="cbt-progress-track" aria-hidden="true">
+    <div class="cbt-progress-fill" id="progress-bar-fill"></div>
   </div>
 
   <!-- Warning banner (hidden by default) -->
@@ -198,10 +220,14 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
       </div>
     </div>
 
-    <!-- Sidebar: palette + info -->
-    <div class="cbt-sidebar">
+    <!-- Sidebar: palette + info (desktop column / mobile bottom drawer) -->
+    <div class="cbt-sidebar" id="cbt-sidebar">
+      <div class="cbt-drawer-handle"></div>
+      <button class="cbt-drawer-close" id="nav-close-btn" onclick="toggleNavDrawer(false)" aria-label="Close question navigator">
+        <i data-lucide="x" style="width:16px;height:16px;" aria-hidden="true"></i>
+      </button>
       <div class="cbt-palette-card">
-        <div class="cbt-palette-title">Question Palette</div>
+        <div class="cbt-palette-title">Question Navigator</div>
         <div class="cbt-palette-grid" id="palette-grid"></div>
         <div class="cbt-legend">
           <div class="cbt-legend-item">
@@ -224,6 +250,9 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
       </div>
     </div>
   </div>
+
+  <!-- Backdrop for mobile navigator drawer -->
+  <div class="cbt-nav-backdrop" id="nav-backdrop" onclick="toggleNavDrawer(false)"></div>
 </div>
 
 <!-- Result Screen -->
@@ -234,7 +263,7 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
         <div class="cbt-score-value" id="score-pct">—</div>
         <div class="cbt-score-label">Score</div>
       </div>
-      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:6px;" id="result-title">Test Complete!</h2>
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:6px;" id="result-title">Test Complete</h2>
       <p style="font-size:13px;color:#64748b;" id="result-subtitle">—</p>
       <div class="result-stats">
         <div class="result-stat"><div class="result-stat__label">Correct</div><div class="result-stat__value" id="r-correct">—</div></div>
@@ -261,7 +290,9 @@ body { background: #f0f4f8; min-height: 100vh; font-family: 'DM Sans', sans-seri
 <!-- Confirm Submit Overlay -->
 <div id="confirm-overlay" class="cbt-overlay" style="display:none;">
   <div class="cbt-overlay-card">
-    <div class="cbt-overlay-icon">📝</div>
+    <div class="cbt-overlay-icon">
+      <i data-lucide="clipboard-check" style="width:34px;height:34px;color:#1a56db;" aria-hidden="true"></i>
+    </div>
     <div class="cbt-overlay-title">Submit Test?</div>
     <p class="cbt-overlay-desc" id="confirm-desc">Are you sure you want to submit? Once submitted you cannot change your answers.</p>
     <div style="display:flex;gap:12px;justify-content:center;">
