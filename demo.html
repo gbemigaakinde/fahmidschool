@@ -42,6 +42,24 @@ i[data-lucide]{width:1.4em;height:1.4em;stroke:currentColor;stroke-width:2;verti
 }
 
 /* ============================================================
+   DEMO LOGIN SCREEN
+============================================================ */
+#login-app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,var(--pp-blue) 0%,#1e3a8a 100%);}
+.login-card{background:#fff;border-radius:24px;padding:44px 36px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;}
+.login-card__logo{width:56px;height:56px;border-radius:14px;margin:0 auto 18px;background:var(--pp-blue);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--pp-font-head);font-weight:800;font-size:20px;}
+.login-card__school{font-size:12px;font-weight:700;color:var(--pp-gray-5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.login-card__title{font-family:var(--pp-font-head);font-size:1.4rem;font-weight:800;color:var(--pp-gray-9);margin-bottom:6px;}
+.login-card__subtitle{font-size:13.5px;color:var(--pp-gray-5);margin-bottom:26px;line-height:1.5;}
+.login-field{text-align:left;margin-bottom:16px;}
+.login-field label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pp-gray-5);margin-bottom:6px;}
+.login-field input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--pp-gray-2);font-family:var(--pp-font-body);font-size:14.5px;color:var(--pp-gray-9);background:var(--pp-gray-0);}
+.login-field input:focus{outline:none;border-color:var(--pp-blue);background:#fff;}
+.login-submit-btn{width:100%;padding:13px;border-radius:9999px;background:var(--pp-blue);color:#fff;font-family:var(--pp-font-head);font-size:15px;font-weight:700;border:none;cursor:pointer;margin-top:6px;}
+.login-submit-btn:hover{background:#1e40af;}
+.login-card__note{display:flex;align-items:flex-start;gap:8px;background:var(--pp-gold-light);border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-top:20px;text-align:left;font-size:12px;color:#92400e;line-height:1.5;}
+.login-card__note i{width:16px;height:16px;flex-shrink:0;margin-top:1px;}
+
+/* ============================================================
    TOPBAR
 ============================================================ */
 .pp-topbar{position:sticky;top:0;z-index:200;background:var(--pp-white);border-bottom:1px solid var(--pp-gray-2);box-shadow:0 1px 2px rgba(0,0,0,.05);}
@@ -290,9 +308,36 @@ i[data-lucide]{width:1.4em;height:1.4em;stroke:currentColor;stroke-width:2;verti
 </div>
 
 <!-- ═══════════════════════════════════════════════
+     DEMO LOGIN SCREEN — always shown first
+═══════════════════════════════════════════════ -->
+<div id="login-app">
+  <div class="login-card">
+    <div class="login-card__logo">F</div>
+    <div class="login-card__school">Fahmid Nursery &amp; Primary School</div>
+    <h1 class="login-card__title">Portal Login</h1>
+    <p class="login-card__subtitle">Sign in to access results, tests, and school notices.</p>
+    <form id="demo-login-form">
+      <div class="login-field">
+        <label for="demo-login-id">Email or Admission Number</label>
+        <input type="text" id="demo-login-id" placeholder="email@example.com or admission number" required>
+      </div>
+      <div class="login-field">
+        <label for="demo-login-pass">Password</label>
+        <input type="password" id="demo-login-pass" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="login-submit-btn">Sign In</button>
+    </form>
+    <div class="login-card__note">
+      <i data-lucide="info"></i>
+      <span>This is a demo walkthrough. Any email/admission number and password will work — no real account is checked.</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
      PUPIL PROFILE PAGE (mirrors pupil.html)
 ═══════════════════════════════════════════════ -->
-<div id="profile-app">
+<div id="profile-app" style="display:none;">
 
   <header class="pp-topbar">
     <div class="pp-topbar__inner">
@@ -303,7 +348,7 @@ i[data-lucide]{width:1.4em;height:1.4em;stroke:currentColor;stroke-width:2;verti
           <span class="pp-brand-tag"><i data-lucide="layout-dashboard"></i> Pupil Portal</span>
         </div>
       </div>
-      <button class="pp-btn-logout"><i data-lucide="log-out"></i><span>Logout</span></button>
+      <button class="pp-btn-logout" onclick="demoLogout()"><i data-lucide="log-out"></i><span>Logout</span></button>
     </div>
   </header>
 
@@ -686,6 +731,44 @@ function showToast(msg, type = 'info', duration = 3000) {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 300);
   }, duration);
+}
+
+/* ============================================================
+   DEMO LOGIN / LOGOUT
+   (Any credentials typed here are accepted — nothing is checked.
+    This just swaps which section of the page is visible.)
+============================================================ */
+function demoLogin(event) {
+  event.preventDefault();
+  document.getElementById('login-app').style.display = 'none';
+  document.getElementById('profile-app').style.display = 'block';
+  window.scrollTo(0, 0);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function demoLogout() {
+  // Reset any in-progress test state so re-entering the demo is fresh
+  clearInterval(timerInterval);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onWindowBlur);
+  answers = {};
+  flagged = new Set();
+  currentQ = 0;
+  tabSwitchCount = 0;
+  submitted = false;
+  attemptStarted = false;
+
+  document.getElementById('cbt-app').style.display = 'none';
+  document.getElementById('profile-app').style.display = 'none';
+  document.getElementById('login-app').style.display = 'flex';
+
+  const idField = document.getElementById('demo-login-id');
+  const passField = document.getElementById('demo-login-pass');
+  if (idField) idField.value = '';
+  if (passField) passField.value = '';
+
+  window.scrollTo(0, 0);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 /* ============================================================
@@ -1081,6 +1164,8 @@ function showReview() {
 ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof lucide !== 'undefined') lucide.createIcons();
+  const loginForm = document.getElementById('demo-login-form');
+  if (loginForm) loginForm.addEventListener('submit', demoLogin);
 });
 </script>
 
