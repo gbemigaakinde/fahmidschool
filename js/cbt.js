@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Engine — Pupil Test-Taking Logic
- * @version 1.0.0
+ * @version 1.1.0 — Question navigator (desktop sidebar / mobile drawer)
  */
 'use strict';
 
@@ -167,8 +167,36 @@ async function startTest() {
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('blur', onWindowBlur);
 
+    // Question navigator drawer: close on Escape (mobile)
+    document.addEventListener('keydown', onNavDrawerKeydown);
+
     lucide.createIcons();
 }
+
+// ── Question Navigator (desktop sidebar / mobile bottom drawer) ────────────
+function toggleNavDrawer(forceState) {
+    const sidebar  = document.getElementById('cbt-sidebar');
+    const backdrop = document.getElementById('nav-backdrop');
+    if (!sidebar || !backdrop) return;
+
+    const shouldOpen = typeof forceState === 'boolean'
+        ? forceState
+        : !sidebar.classList.contains('active');
+
+    sidebar.classList.toggle('active', shouldOpen);
+    backdrop.classList.toggle('active', shouldOpen);
+    document.body.style.overflow = shouldOpen ? 'hidden' : '';
+}
+
+function closeNavDrawer() {
+    toggleNavDrawer(false);
+}
+
+function onNavDrawerKeydown(e) {
+    if (e.key === 'Escape') closeNavDrawer();
+}
+
+window.toggleNavDrawer = toggleNavDrawer;
 
 // ── Timer ──────────────────────────────────────────────────────────────────
 function startTimer() {
@@ -251,6 +279,8 @@ function renderQuestion(index) {
 
     updatePalette();
     updateProgressStats();
+    updateNavToggleCount();
+    updateProgressBar();
     lucide.createIcons();
 }
 
@@ -276,7 +306,7 @@ function prevQuestion() {
     if (currentQ > 0) renderQuestion(currentQ - 1);
 }
 
-// ── Palette ────────────────────────────────────────────────────────────────
+// ── Palette (Navigator) ─────────────────────────────────────────────────────
 function buildPalette() {
     const grid = document.getElementById('palette-grid');
     grid.innerHTML = '';
@@ -285,7 +315,10 @@ function buildPalette() {
         btn.className    = 'cbt-palette-btn';
         btn.textContent  = i + 1;
         btn.setAttribute('aria-label', 'Go to question ' + (i + 1));
-        btn.addEventListener('click', () => renderQuestion(i));
+        btn.addEventListener('click', () => {
+            renderQuestion(i);
+            closeNavDrawer();
+        });
         grid.appendChild(btn);
     });
     updatePalette();
@@ -313,6 +346,21 @@ function updateProgressStats() {
     `;
 }
 
+// Live "answered/total" badge on the mobile navigator toggle button
+function updateNavToggleCount() {
+    const el = document.getElementById('nav-toggle-count');
+    if (!el) return;
+    el.textContent = Object.keys(answers).length + '/' + questions.length;
+}
+
+// Thin progress bar under the topbar
+function updateProgressBar() {
+    const fill = document.getElementById('progress-bar-fill');
+    if (!fill || !questions.length) return;
+    const pct = Math.round((Object.keys(answers).length / questions.length) * 100);
+    fill.style.width = pct + '%';
+}
+
 // ── Anti-cheat ─────────────────────────────────────────────────────────────
 function onVisibilityChange() {
     if (document.hidden && !submitted) recordTabSwitch('tab_hidden');
@@ -326,7 +374,7 @@ async function recordTabSwitch(type) {
     const banner  = document.getElementById('tab-warn-banner');
     const warnTxt = document.getElementById('tab-warn-text');
     banner.style.display = 'flex';
-    warnTxt.textContent  = '⚠ Warning: You left this page (' + tabSwitchCount + ' time' + (tabSwitchCount > 1 ? 's' : '') + '). This is recorded.';
+    warnTxt.textContent  = 'You left this page (' + tabSwitchCount + ' time' + (tabSwitchCount > 1 ? 's' : '') + '). This has been recorded.';
 
     // Log to Firestore
     try {
@@ -367,6 +415,8 @@ async function submitTest() {
     clearInterval(timerInterval);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('keydown', onNavDrawerKeydown);
+    closeNavDrawer();
 
     // Exit fullscreen
     try { document.exitFullscreen(); } catch(e) {}
@@ -468,7 +518,14 @@ function showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewDa
     document.getElementById('result-screen').style.display = 'block';
 
     document.getElementById('score-pct').textContent   = pct + '%';
-    document.getElementById('result-title').textContent = pct >= 50 ? '🎉 Well done!' : 'Test Complete';
+
+    const titleEl = document.getElementById('result-title');
+    if (pct >= 50) {
+        titleEl.innerHTML = '<i data-lucide="check-circle" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;color:#16a34a;"></i>Well done';
+    } else {
+        titleEl.textContent = 'Test Complete';
+    }
+
     document.getElementById('result-subtitle').textContent = `You scored ${correct} out of ${total} (${grade})`;
     document.getElementById('r-correct').textContent  = correct;
     document.getElementById('r-wrong').textContent    = wrong;
@@ -512,8 +569,8 @@ function showReview() {
                 <div class="cbt-option ${cls}" style="cursor:default;pointer-events:none;margin-bottom:8px;">
                     <span class="cbt-option-letter">${letter}</span>
                     <span>${item[key]}</span>
-                    ${isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#16a34a;">✓ Correct</span>' : ''}
-                    ${isPupil && !isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#dc2626;">✗ Your answer</span>' : ''}
+                    ${isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#16a34a;">Correct</span>' : ''}
+                    ${isPupil && !isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#dc2626;">Your answer</span>' : ''}
                 </div>`;
         });
 
@@ -522,7 +579,7 @@ function showReview() {
                 <span style="margin-left:8px;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:700;
                     background:${item.isCorrect ? '#dcfce7' : '#fee2e2'};
                     color:${item.isCorrect ? '#14532d' : '#7f1d1d'}">
-                    ${item.isCorrect ? '✓ Correct' : item.pupilAnswer ? '✗ Incorrect' : '— Skipped'}
+                    ${item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped'}
                 </span>
             </div>
             <div class="review-item__q">${item.questionText}</div>
@@ -553,13 +610,16 @@ function showError(msg) {
     document.body.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;">
             <div style="background:#ffffff;border-radius:20px;padding:40px;max-width:460px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.1);">
-                <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                <div style="width:56px;height:56px;border-radius:50%;background:#fef2f2;color:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i data-lucide="alert-triangle" style="width:26px;height:26px;"></i>
+                </div>
                 <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:10px;">Cannot Load Test</h2>
                 <p style="font-size:14px;color:#64748b;margin-bottom:24px;">${msg}</p>
                 <a href="pupil.html" style="display:inline-block;padding:12px 28px;background:#1a56db;color:white;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Back to Portal</a>
             </div>
         </div>
     `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Expose functions used by HTML onclick attributes
@@ -571,4 +631,4 @@ window.confirmSubmit  = confirmSubmit;
 window.submitTest     = submitTest;
 window.showReview     = showReview;
 
-console.log('✓ CBT engine v1.0.0 loaded');
+console.log('✓ CBT engine v1.1.0 loaded');
