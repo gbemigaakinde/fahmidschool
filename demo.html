@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CBT Demo — Fahmid Nursery & Primary School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+/* ============================================================
+   BASE / TOKENS
+============================================================ */
+:root{
+  --pp-blue:#1a56db; --pp-blue-mid:#2563eb; --pp-blue-light:#dbeafe; --pp-blue-xlight:#eff6ff;
+  --pp-indigo:#4f46e5; --pp-indigo-light:#e0e7ff;
+  --pp-gold:#f59e0b; --pp-gold-light:#fef3c7;
+  --pp-green:#059669; --pp-red:#dc2626;
+  --pp-white:#fff; --pp-gray-0:#fafafa; --pp-gray-1:#f4f4f5; --pp-gray-2:#e4e4e7;
+  --pp-gray-3:#d4d4d8; --pp-gray-4:#a1a1aa; --pp-gray-5:#71717a; --pp-gray-6:#52525b;
+  --pp-gray-7:#3f3f46; --pp-gray-8:#27272a; --pp-gray-9:#18181b;
+  --pp-font-head:'Plus Jakarta Sans',sans-serif; --pp-font-body:'DM Sans',sans-serif;
+  --pp-r-sm:8px; --pp-r-md:12px; --pp-r-lg:18px; --pp-r-xl:24px; --pp-r-full:9999px;
+  --pp-shadow-sm:0 2px 8px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04);
+  --pp-shadow-md:0 4px 16px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04);
+  --pp-shadow-blue:0 4px 24px rgba(26,86,219,.18);
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;font-family:var(--pp-font-body);background:var(--pp-gray-0);color:var(--pp-gray-9);-webkit-font-smoothing:antialiased;}
+img{max-width:100%;}
+button{font-family:inherit;}
+i[data-lucide]{width:1.4em;height:1.4em;stroke:currentColor;stroke-width:2;vertical-align:middle;flex-shrink:0;}
+
+/* ============================================================
+   DEMO BANNER
+============================================================ */
+.demo-banner{
+  background:linear-gradient(90deg,#f59e0b,#d97706);
+  color:#1c1917; text-align:center; font-weight:700; font-size:13px;
+  padding:8px 16px; letter-spacing:.02em;
+}
+
+/* ============================================================
+   TOPBAR
+============================================================ */
+.pp-topbar{position:sticky;top:0;z-index:200;background:var(--pp-white);border-bottom:1px solid var(--pp-gray-2);box-shadow:0 1px 2px rgba(0,0,0,.05);}
+.pp-topbar__inner{max-width:1200px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:24px;}
+.pp-brand-logo{width:36px;height:36px;border-radius:8px;background:var(--pp-blue);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--pp-font-head);font-weight:800;flex-shrink:0;}
+.pp-brand-text{display:flex;flex-direction:column;}
+.pp-brand-name{font-family:var(--pp-font-head);font-size:13px;font-weight:700;color:var(--pp-gray-9);line-height:1.2;}
+.pp-brand-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--pp-blue);text-transform:uppercase;letter-spacing:.02em;}
+.pp-brand-tag i{width:12px;height:12px;}
+.pp-btn-logout{margin-left:auto;display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:9999px;border:1.5px solid var(--pp-gray-2);background:transparent;font-size:13px;font-weight:600;color:var(--pp-gray-6);cursor:pointer;}
+.pp-btn-logout:hover{border-color:var(--pp-red);color:var(--pp-red);background:#fee2e2;}
+
+/* ============================================================
+   HERO
+============================================================ */
+.pp-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--pp-blue) 0%,#1e3a8a 100%);padding:40px 0 60px;}
+.pp-hero__inner{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;}
+.pp-avatar{width:64px;height:64px;border-radius:50%;background:rgba(245,158,11,.25);border:2px solid rgba(245,158,11,.5);display:flex;align-items:center;justify-content:center;font-family:var(--pp-font-head);font-size:22px;font-weight:800;color:#fff;flex-shrink:0;}
+.pp-hero__identity{display:flex;align-items:center;gap:16px;}
+.pp-hero__greeting{font-family:var(--pp-font-head);font-size:clamp(1.25rem,3vw,1.75rem);font-weight:800;color:#fff;margin:0 0 10px;letter-spacing:-.02em;}
+.pp-hero__tags{display:flex;gap:10px;flex-wrap:wrap;}
+.pp-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:600;}
+.pp-tag i{width:12px;height:12px;}
+.pp-tag--class{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2);}
+.pp-tag--session{background:rgba(245,158,11,.2);color:#fde68a;border:1px solid rgba(245,158,11,.3);}
+.pp-hero__actions{display:flex;gap:10px;flex-wrap:wrap;}
+.pp-action-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:9999px;font-size:13.5px;font-weight:600;cursor:pointer;border:none;text-decoration:none;}
+.pp-action-btn i{width:15px;height:15px;}
+.pp-action-btn--outline{background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.3);}
+.pp-action-btn--outline:hover{background:rgba(255,255,255,.2);}
+.pp-action-btn--solid{background:var(--pp-gold);color:#1c1917;box-shadow:0 4px 16px rgba(245,158,11,.35);}
+.pp-action-btn--solid:hover{background:#d97706;}
+
+/* ============================================================
+   MAIN / CARDS
+============================================================ */
+.pp-main{max-width:1200px;margin:-20px auto 0;padding:0 24px 48px;position:relative;z-index:10;display:flex;flex-direction:column;gap:24px;}
+.pp-card{background:#fff;border-radius:24px;box-shadow:var(--pp-shadow-md);overflow:hidden;}
+.pp-card__header{display:flex;align-items:center;gap:16px;padding:32px 32px 0;margin-bottom:24px;}
+.pp-card__title{font-family:var(--pp-font-head);font-size:1.2rem;font-weight:800;margin:0;letter-spacing:-.02em;}
+.pp-card__subtitle{font-size:13px;color:var(--pp-gray-5);margin:2px 0 0;}
+.pp-icon-chip{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pp-icon-chip i{width:22px;height:22px;color:#fff;}
+.pp-icon-chip--blue{background:linear-gradient(135deg,var(--pp-blue) 0%,#1e40af 100%);}
+.pp-icon-chip--indigo{background:linear-gradient(135deg,var(--pp-indigo) 0%,#3730a3 100%);}
+.pp-icon-chip--green{background:linear-gradient(135deg,var(--pp-green) 0%,#047857 100%);}
+
+.pp-profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:0 32px 32px;}
+@media (max-width:768px){.pp-profile-grid{grid-template-columns:1fr;}}
+.pp-profile-col{display:flex;flex-direction:column;gap:10px;}
+.pp-profile-col--academic{background:var(--pp-blue-xlight);border-radius:18px;padding:24px;border:1px solid var(--pp-blue-light);}
+.pp-field{display:flex;flex-direction:column;gap:4px;}
+.pp-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media (max-width:768px){.pp-field-row{grid-template-columns:1fr;}}
+.pp-field__label{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--pp-gray-4);}
+.pp-field__label i{width:12px;height:12px;}
+.pp-field__value{font-size:14.5px;font-weight:500;color:var(--pp-gray-8);padding:8px 12px;background:var(--pp-gray-0);border-radius:8px;border:1px solid var(--pp-gray-2);}
+.pp-field__value--name{font-family:var(--pp-font-head);font-size:16px;font-weight:700;color:var(--pp-gray-9);}
+.pp-field__value--highlight{font-weight:700;color:var(--pp-blue);background:var(--pp-blue-light);border-color:rgba(26,86,219,.2);}
+
+.pp-card__footer{display:flex;gap:10px;padding:24px 32px 32px;border-top:1px solid var(--pp-gray-1);flex-wrap:wrap;}
+.pp-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border-radius:9999px;font-size:13.5px;font-weight:600;text-decoration:none;border:none;cursor:pointer;}
+.pp-btn i{width:15px;height:15px;}
+.pp-btn--primary{background:linear-gradient(135deg,var(--pp-blue) 0%,#1e40af 100%);color:#fff;box-shadow:var(--pp-shadow-blue);}
+.pp-btn--ghost{background:var(--pp-gray-1);color:var(--pp-gray-7);border:1.5px solid var(--pp-gray-2);}
+
+/* Results table */
+.pp-results-body{padding:0 32px 24px;}
+.results-term-section{margin-bottom:32px;}
+.results-term-section h3{font-family:var(--pp-font-head);font-size:15px;font-weight:700;color:var(--pp-gray-8);margin-bottom:12px;padding:10px 16px;background:var(--pp-gray-1);border-radius:12px;border-left:4px solid var(--pp-blue);}
+.results-table{width:100%;border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06),0 0 0 1px #e0e7ff;}
+.results-table thead th{padding:10px 14px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;background:#f8faff;border-bottom:2px solid #e0e7ff;text-align:left;}
+.results-table thead th:not(:first-child){text-align:center;}
+.results-table tbody td{padding:11px 14px;font-size:13.5px;color:#374151;border-bottom:1px solid #f1f5f9;}
+.results-table tbody td:first-child{font-weight:600;color:#1e293b;}
+.results-table tbody td:not(:first-child){text-align:center;}
+.results-table tbody tr:nth-child(even){background:#fafbff;}
+.grade-A1{color:#065f46;background:#d1fae5;font-weight:800;border-radius:6px;}
+.grade-B2,.grade-B3{color:#1e3a8a;background:#dbeafe;font-weight:800;border-radius:6px;}
+.grade-C4,.grade-C5,.grade-C6{color:#78350f;background:#fef3c7;font-weight:800;border-radius:6px;}
+.grade-D7,.grade-D8{color:#7c2d12;background:#ffedd5;font-weight:800;border-radius:6px;}
+.grade-F9{color:#7f1d1d;background:#fee2e2;font-weight:800;border-radius:6px;}
+.summary-row td{background:#f0f5ff!important;font-weight:700;color:#1e40af;border-top:2px solid #e0e7ff!important;}
+
+/* Fee card mini */
+.pp-fee-mini{margin:0 32px 32px;padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,var(--pp-green) 0%,#047857 100%);color:#fff;display:flex;align-items:center;gap:16px;}
+.pp-fee-mini i{width:28px;height:28px;flex-shrink:0;}
+
+/* Test card */
+.pp-tests-wrap{padding:0 32px 32px;}
+.cbt-test-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;}
+.cbt-test-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--pp-blue);}
+.cbt-test-card__title{font-family:var(--pp-font-head);font-size:15px;font-weight:700;color:#0f172a;}
+.cbt-test-card__meta{font-size:12px;color:#64748b;display:flex;flex-wrap:wrap;gap:12px;}
+.cbt-test-card__meta span{display:flex;align-items:center;gap:4px;}
+.cbt-status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:700;}
+.cbt-status-pill--open{background:#dbeafe;color:#1e40af;}
+.cbt-status-dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;}
+
+/* ============================================================
+   CBT SCREENS (shown after "Start Test" clicked)
+============================================================ */
+#cbt-app{display:none;min-height:100vh;background:#f0f4f8;font-family:var(--pp-font-body);}
+#cbt-start-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.start-card{background:#fff;border-radius:24px;padding:48px 40px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.1);text-align:center;}
+.start-card__logo{width:60px;height:60px;border-radius:50%;margin:0 auto 20px;background:var(--pp-blue);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--pp-font-head);font-weight:800;font-size:20px;}
+.start-card__school{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.start-card__title{font-family:var(--pp-font-head);font-size:1.5rem;font-weight:800;color:#0f172a;margin-bottom:6px;}
+.start-card__subject{font-size:14px;color:#64748b;margin-bottom:28px;}
+.start-card__info{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;}
+.start-info-cell{background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:14px;}
+.start-info-cell__label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:4px;}
+.start-info-cell__value{font-size:1.1rem;font-weight:700;color:var(--pp-blue);}
+.start-card__rules{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px;text-align:left;margin-bottom:28px;}
+.start-card__rules-head{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.start-card__rules-icon{width:22px;height:22px;border-radius:50%;background:#fed7aa;color:#92400e;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.start-card__rules ul{margin:8px 0 0 16px;padding:0;}
+.start-card__rules li{font-size:12.5px;color:#92400e;margin-bottom:4px;}
+.start-card__rules strong{font-size:12px;color:#78350f;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.start-btn{width:100%;padding:14px;border-radius:9999px;background:var(--pp-blue);color:#fff;font-family:var(--pp-font-head);font-size:15px;font-weight:700;border:none;cursor:pointer;}
+.start-btn:hover{background:#1e40af;}
+
+#cbt-test-screen{display:none;}
+.cbt-topbar{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.cbt-topbar__info{min-width:0;}
+.cbt-topbar__title{font-family:var(--pp-font-head);font-size:15px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cbt-topbar__meta{font-size:12px;color:#64748b;margin-top:1px;}
+.cbt-topbar__actions{display:flex;align-items:center;gap:10px;}
+.cbt-timer{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;letter-spacing:.04em;padding:6px 16px;border-radius:9999px;background:#e0f2fe;color:#075985;border:1.5px solid #bae6fd;}
+.cbt-timer--warning{background:#fef9c3;color:#713f12;border-color:#fde68a;}
+.cbt-timer--danger{background:#fee2e2;color:#7f1d1d;border-color:#fca5a5;animation:cbt-pulse 1s ease-in-out infinite;}
+@keyframes cbt-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+.cbt-nav-toggle{display:none;align-items:center;gap:6px;padding:8px 14px;border-radius:9999px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-size:13px;font-weight:600;cursor:pointer;}
+.cbt-nav-toggle__count{background:#eef2ff;color:var(--pp-blue);border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:700;}
+
+.cbt-progress-track{height:3px;width:100%;background:#e2e8f0;}
+.cbt-progress-fill{height:100%;width:0%;background:var(--pp-blue);transition:width .25s ease;}
+
+.cbt-warn-banner{background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:10px;margin:12px auto 0;max-width:900px;font-size:13px;color:#92400e;font-weight:600;}
+
+.cbt-shell{display:grid;grid-template-columns:1fr 260px;gap:20px;max-width:1100px;margin:0 auto;padding:24px 20px;}
+@media (max-width:900px){.cbt-shell{grid-template-columns:1fr;}}
+
+.cbt-question-card{background:#fff;border-radius:16px;border:1px solid #e2e8f0;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.cbt-question-number{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:10px;}
+.cbt-question-text{font-family:var(--pp-font-head);font-size:1.1rem;font-weight:600;color:#0f172a;line-height:1.6;margin-bottom:28px;}
+.cbt-flag-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:5px 12px;border-radius:9999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;margin-bottom:20px;}
+.cbt-flag-btn--flagged{background:#fef3c7;border-color:#f59e0b;color:#92400e;}
+
+.cbt-options{display:flex;flex-direction:column;gap:12px;}
+.cbt-option{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;cursor:pointer;font-size:.95rem;color:#1e293b;text-align:left;width:100%;}
+.cbt-option:hover{border-color:#a5b4fc;background:#f5f3ff;}
+.cbt-option--selected{border-color:var(--pp-blue);background:#eff6ff;color:#1e40af;font-weight:600;}
+.cbt-option--correct{border-color:#16a34a;background:#f0fdf4;color:#14532d;font-weight:600;}
+.cbt-option--incorrect{border-color:#dc2626;background:#fef2f2;color:#7f1d1d;font-weight:600;}
+.cbt-option-letter{width:28px;height:28px;min-width:28px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#64748b;}
+.cbt-option--selected .cbt-option-letter{background:var(--pp-blue);color:#fff;}
+.cbt-option--correct .cbt-option-letter{background:#16a34a;color:#fff;}
+.cbt-option--incorrect .cbt-option-letter{background:#dc2626;color:#fff;}
+
+.cbt-nav{display:flex;justify-content:space-between;align-items:center;margin-top:28px;gap:12px;flex-wrap:wrap;}
+.cbt-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:9999px;font-size:14px;font-weight:600;cursor:pointer;border:none;}
+.cbt-nav-btn--prev{background:#f1f5f9;color:#475569;}
+.cbt-nav-btn--prev:hover{background:#e2e8f0;}
+.cbt-nav-btn--next{background:var(--pp-blue);color:#fff;}
+.cbt-nav-btn--next:hover{background:#1e40af;}
+.cbt-nav-btn--submit{background:#16a34a;color:#fff;}
+.cbt-nav-btn--submit:hover{background:#15803d;}
+
+.cbt-sidebar{display:flex;flex-direction:column;gap:16px;}
+@media (min-width:901px){.cbt-sidebar{position:sticky;top:88px;}.cbt-drawer-handle,.cbt-drawer-close{display:none;}}
+@media (max-width:900px){
+  .cbt-sidebar{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:#f8fafc;border-radius:22px 22px 0 0;padding:14px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:80vh;overflow-y:auto;box-shadow:0 -10px 32px rgba(15,23,42,.18);transform:translateY(110%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+  .cbt-sidebar.active{transform:translateY(0);}
+  .cbt-sidebar .cbt-palette-card{background:transparent;border:none;box-shadow:none;padding:0;}
+  .cbt-sidebar .cbt-palette-card + .cbt-palette-card{margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0;}
+  .cbt-nav-toggle{display:inline-flex;}
+}
+.cbt-drawer-handle{width:38px;height:4px;border-radius:2px;background:#cbd5e1;margin:0 auto 14px;}
+.cbt-drawer-close{position:absolute;top:12px;right:16px;width:30px;height:30px;border-radius:50%;border:none;background:#eef2f7;color:#475569;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.cbt-nav-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:999;opacity:0;pointer-events:none;transition:opacity .25s ease;}
+.cbt-nav-backdrop.active{opacity:1;pointer-events:auto;}
+@media (min-width:901px){.cbt-nav-backdrop{display:none;}}
+
+.cbt-palette-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.cbt-palette-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:12px;}
+.cbt-palette-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+@media (max-width:900px){.cbt-palette-grid{grid-template-columns:repeat(auto-fill,minmax(42px,1fr));}}
+.cbt-palette-btn{aspect-ratio:1;min-height:36px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f8fafc;font-size:11px;font-weight:700;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cbt-palette-btn:hover{border-color:#94a3b8;background:#f1f5f9;}
+.cbt-palette-btn--answered{background:#dbeafe;border-color:var(--pp-blue);color:#1e40af;}
+.cbt-palette-btn--flagged{background:#fef3c7;border-color:#f59e0b;color:#92400e;}
+.cbt-palette-btn--current{background:var(--pp-blue);border-color:var(--pp-blue);color:#fff;}
+.cbt-legend{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.cbt-legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:#64748b;}
+.cbt-legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+
+/* Result screen */
+#cbt-result-screen{display:none;}
+.result-card{max-width:640px;margin:40px auto;padding:20px;}
+.result-main{background:#fff;border-radius:20px;padding:36px;text-align:center;border:1px solid #e2e8f0;box-shadow:0 4px 16px rgba(0,0,0,.06);margin-bottom:16px;}
+.cbt-score-ring{width:120px;height:120px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:6px solid #dbeafe;margin:0 auto 20px;}
+.cbt-score-ring--pass{border-color:#bbf7d0;}
+.cbt-score-ring--fail{border-color:#fecaca;}
+.cbt-score-value{font-family:var(--pp-font-head);font-size:2rem;font-weight:800;color:var(--pp-blue);line-height:1;}
+.cbt-score-ring--pass .cbt-score-value{color:#16a34a;}
+.cbt-score-ring--fail .cbt-score-value{color:#dc2626;}
+.cbt-score-label{font-size:11px;font-weight:600;color:#64748b;margin-top:2px;}
+.result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0;}
+.result-stat{background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:16px;}
+.result-stat__label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin-bottom:4px;}
+.result-stat__value{font-family:var(--pp-font-head);font-size:1.4rem;font-weight:800;color:#0f172a;}
+.review-section{background:#fff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;}
+.review-item{padding:20px 24px;border-bottom:1px solid #f1f5f9;}
+.review-item:last-child{border-bottom:none;}
+.review-item__q{font-size:14px;font-weight:600;color:#1e293b;margin-bottom:12px;}
+.review-item__q-num{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+
+/* Overlay */
+.cbt-overlay{position:fixed;inset:0;background:rgba(15,23,42,.85);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.cbt-overlay-card{background:#fff;border-radius:20px;padding:40px;max-width:460px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.cbt-overlay-icon{display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+.cbt-overlay-title{font-family:var(--pp-font-head);font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:8px;}
+.cbt-overlay-desc{font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px;}
+
+/* Toast */
+#toast-container{position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:12px;pointer-events:none;max-width:360px;}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:13.5px;font-weight:600;background:#fff;border-left:4px solid var(--pp-blue);color:#1e3a8a;transform:translateX(400px);opacity:0;transition:transform .3s ease,opacity .3s ease;}
+.toast.show{transform:translateX(0);opacity:1;}
+.toast-success{border-left-color:#16a34a;color:#14532d;background:#f0fdf4;}
+.toast-warning{border-left-color:#f59e0b;color:#92400e;background:#fffbeb;}
+
+@media (max-width:640px){
+  .cbt-question-card{padding:20px 16px;}
+  .cbt-question-text{font-size:1rem;}
+  .cbt-topbar{padding:10px 14px;}
+  .cbt-topbar__title{font-size:13px;}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-banner">
+  <i data-lucide="info" style="width:14px;height:14px;"></i>
+  DEMO MODE — This is a sample walkthrough to show pupils how the online test works. No real data is saved.
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PUPIL PROFILE PAGE (mirrors pupil.html)
+═══════════════════════════════════════════════ -->
+<div id="profile-app">
+
+  <header class="pp-topbar">
+    <div class="pp-topbar__inner">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="pp-brand-logo">F</div>
+        <div class="pp-brand-text">
+          <span class="pp-brand-name">Fahmid Nursery &amp; Primary School</span>
+          <span class="pp-brand-tag"><i data-lucide="layout-dashboard"></i> Pupil Portal</span>
+        </div>
+      </div>
+      <button class="pp-btn-logout"><i data-lucide="log-out"></i><span>Logout</span></button>
+    </div>
+  </header>
+
+  <section class="pp-hero">
+    <div class="pp-hero__inner">
+      <div class="pp-hero__identity">
+        <div class="pp-avatar">AC</div>
+        <div>
+          <h1 class="pp-hero__greeting">Hello, <strong>Adaeze Chukwu</strong>!</h1>
+          <div class="pp-hero__tags">
+            <span class="pp-tag pp-tag--class"><i data-lucide="book-open"></i> Primary 4</span>
+            <span class="pp-tag pp-tag--session"><i data-lucide="calendar"></i> 2025/2026</span>
+          </div>
+        </div>
+      </div>
+      <div class="pp-hero__actions">
+        <button class="pp-action-btn pp-action-btn--outline" onclick="showToast('Printing is disabled in this demo','info')">
+          <i data-lucide="printer"></i> Print Report
+        </button>
+        <button class="pp-action-btn pp-action-btn--solid" onclick="document.getElementById('pp-fees').scrollIntoView({behavior:'smooth'})">
+          <i data-lucide="credit-card"></i> Fee Balance
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <main class="pp-main">
+
+    <!-- PROFILE CARD -->
+    <section class="pp-card">
+      <div class="pp-card__header">
+        <div class="pp-icon-chip pp-icon-chip--blue"><i data-lucide="user-circle-2"></i></div>
+        <div>
+          <h2 class="pp-card__title">Pupil Profile</h2>
+          <p class="pp-card__subtitle">Registered details and academic information</p>
+        </div>
+      </div>
+      <div class="pp-profile-grid">
+        <div class="pp-profile-col">
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="user"></i> Full Name</span>
+            <span class="pp-field__value pp-field__value--name">Adaeze Chukwu</span>
+          </div>
+          <div class="pp-field-row">
+            <div class="pp-field">
+              <span class="pp-field__label"><i data-lucide="hash"></i> Admission No.</span>
+              <span class="pp-field__value">FNS/2024/018</span>
+            </div>
+            <div class="pp-field">
+              <span class="pp-field__label"><i data-lucide="users"></i> Gender</span>
+              <span class="pp-field__value">Female</span>
+            </div>
+          </div>
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="calendar"></i> Date of Birth</span>
+            <span class="pp-field__value">12 May 2016</span>
+          </div>
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="phone"></i> Contact Number</span>
+            <span class="pp-field__value">080-XXX-XXXX</span>
+          </div>
+        </div>
+        <div class="pp-profile-col pp-profile-col--academic">
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="book-open"></i> Class</span>
+            <span class="pp-field__value pp-field__value--highlight">Primary 4</span>
+          </div>
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="user-check"></i> Assigned Teacher</span>
+            <span class="pp-field__value">Mrs. Grace Okafor</span>
+          </div>
+          <div class="pp-field">
+            <span class="pp-field__label"><i data-lucide="library"></i> Subjects</span>
+            <span class="pp-field__value">Mathematics, English Language, Basic Science, Social Studies, Civic Education</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTS CARD -->
+    <section class="pp-card" id="pp-tests">
+      <div class="pp-card__header">
+        <div class="pp-icon-chip pp-icon-chip--indigo"><i data-lucide="monitor"></i></div>
+        <div>
+          <h2 class="pp-card__title">Online Tests and Examinations</h2>
+          <p class="pp-card__subtitle">Tests or examinations assigned to your class</p>
+        </div>
+      </div>
+      <div class="pp-tests-wrap">
+        <div class="cbt-test-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <div class="cbt-test-card__title">Second Term Mathematics Test</div>
+                <span class="cbt-status-pill cbt-status-pill--open"><span class="cbt-status-dot"></span> Open</span>
+              </div>
+              <div class="cbt-test-card__meta">
+                <span><i data-lucide="book-open" style="width:12px;height:12px;"></i>Mathematics</span>
+                <span><i data-lucide="tag" style="width:12px;height:12px;"></i>Test</span>
+                <span><i data-lucide="clock" style="width:12px;height:12px;"></i>10 min</span>
+                <span><i data-lucide="calendar" style="width:12px;height:12px;"></i>Second Term</span>
+              </div>
+            </div>
+            <div style="flex-shrink:0;align-self:center;">
+              <button class="pp-action-btn pp-action-btn--solid" onclick="launchCbt()" style="border:none;">
+                <i data-lucide="play"></i> Start Test
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS CARD -->
+    <section class="pp-card" id="pp-results">
+      <div class="pp-card__header">
+        <div class="pp-icon-chip pp-icon-chip--indigo"><i data-lucide="bar-chart-2"></i></div>
+        <div>
+          <h2 class="pp-card__title">Academic Results</h2>
+          <p class="pp-card__subtitle">Your performance record — First Term, 2025/2026</p>
+        </div>
+      </div>
+      <div class="pp-results-body">
+        <div class="results-term-section">
+          <h3>First Term</h3>
+          <table class="results-table">
+            <thead>
+              <tr><th>Subject</th><th>CA (40)</th><th>Exam (60)</th><th>Total (100)</th><th>Grade</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Mathematics</td><td>32</td><td>50</td><td>82</td><td class="grade-A1">A1</td></tr>
+              <tr><td>English Language</td><td>28</td><td>44</td><td>72</td><td class="grade-B2">B2</td></tr>
+              <tr><td>Basic Science</td><td>30</td><td>48</td><td>78</td><td class="grade-A1">A1</td></tr>
+              <tr class="summary-row"><td colspan="3">TOTAL SCORE</td><td colspan="2">232 / 300</td></tr>
+              <tr class="summary-row"><td colspan="3">AVERAGE</td><td colspan="2">77.3% (A1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pp-card__footer">
+        <button class="pp-btn pp-btn--primary" onclick="showToast('Printing is disabled in this demo','info')">
+          <i data-lucide="printer"></i> View &amp; Print Report Card
+        </button>
+      </div>
+    </section>
+
+    <!-- FEES CARD -->
+    <section class="pp-card" id="pp-fees">
+      <div class="pp-card__header">
+        <div class="pp-icon-chip pp-icon-chip--green"><i data-lucide="credit-card"></i></div>
+        <div>
+          <h2 class="pp-card__title">Fee Status — Second Term</h2>
+          <p class="pp-card__subtitle">2025/2026 · Fully Paid</p>
+        </div>
+      </div>
+      <div class="pp-fee-mini">
+        <i data-lucide="check-circle"></i>
+        <div>
+          <div style="font-weight:800;font-size:1.1rem;">₦0.00 Outstanding</div>
+          <div style="font-size:12.5px;opacity:.9;">All fees for Second Term have been paid in full. Thank you!</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer style="text-align:center;padding:32px 16px;color:var(--pp-gray-4);font-size:12.5px;border-top:1px solid var(--pp-gray-2);background:#fff;">
+    &copy; 2026 Fahmid Nursery and Primary School — Demo Walkthrough
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     CBT APP (mirrors cbt.html) — hidden until "Start Test"
+═══════════════════════════════════════════════ -->
+<div id="cbt-app">
+
+  <!-- Start Screen -->
+  <div id="cbt-start-screen">
+    <div class="start-card">
+      <div class="start-card__logo">F</div>
+      <div class="start-card__school">Fahmid Nursery &amp; Primary School</div>
+      <h1 class="start-card__title" id="sc-title">Second Term Mathematics Test</h1>
+      <p class="start-card__subject" id="sc-subject">Mathematics — Test</p>
+      <div class="start-card__info">
+        <div class="start-info-cell"><div class="start-info-cell__label">Questions</div><div class="start-info-cell__value" id="sc-qcount">5</div></div>
+        <div class="start-info-cell"><div class="start-info-cell__label">Time Limit</div><div class="start-info-cell__value" id="sc-time">10 min</div></div>
+        <div class="start-info-cell"><div class="start-info-cell__label">Class</div><div class="start-info-cell__value">Primary 4</div></div>
+        <div class="start-info-cell"><div class="start-info-cell__label">Term</div><div class="start-info-cell__value">Second Term</div></div>
+      </div>
+      <div class="start-card__rules">
+        <div class="start-card__rules-head">
+          <span class="start-card__rules-icon"><i data-lucide="info" style="width:13px;height:13px;"></i></span>
+          <strong>Before you begin</strong>
+        </div>
+        <ul>
+          <li>Once you start, the timer begins immediately.</li>
+          <li>Switching tabs or windows will be logged.</li>
+          <li>The test auto-submits when time runs out.</li>
+          <li>Select one answer per question.</li>
+          <li>You can flag questions and come back to them.</li>
+          <li>Click Submit when you are done.</li>
+        </ul>
+      </div>
+      <button class="start-btn" onclick="startTest()">Begin Test →</button>
+      <p style="margin-top:14px;">
+        <button onclick="backToProfile()" style="background:none;border:none;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;">← Back to Portal</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- Test Screen -->
+  <div id="cbt-test-screen">
+    <div class="cbt-topbar">
+      <div class="cbt-topbar__info">
+        <div class="cbt-topbar__title" id="ts-title">Second Term Mathematics Test</div>
+        <div class="cbt-topbar__meta" id="ts-meta">Mathematics · 5 questions</div>
+      </div>
+      <div class="cbt-topbar__actions">
+        <button class="cbt-nav-toggle" onclick="toggleNavDrawer()">
+          <i data-lucide="layout-grid" style="width:15px;height:15px;"></i>
+          <span>Questions</span>
+          <span class="cbt-nav-toggle__count" id="nav-toggle-count">0/5</span>
+        </button>
+        <div class="cbt-timer" id="cbt-timer-display">
+          <i data-lucide="clock" style="width:16px;height:16px;"></i>
+          <span id="cbt-timer-text">00:00</span>
+        </div>
+        <button class="cbt-nav-btn cbt-nav-btn--submit" onclick="confirmSubmit()" style="padding:8px 18px;font-size:13px;">
+          <i data-lucide="send" style="width:14px;height:14px;"></i> Submit
+        </button>
+      </div>
+    </div>
+
+    <div class="cbt-progress-track"><div class="cbt-progress-fill" id="progress-bar-fill"></div></div>
+
+    <div id="tab-warn-banner" class="cbt-warn-banner" style="display:none;">
+      <i data-lucide="alert-triangle" style="width:18px;height:18px;flex-shrink:0;"></i>
+      <span id="tab-warn-text">Warning: You left this page. This has been recorded.</span>
+    </div>
+
+    <div class="cbt-shell">
+      <div>
+        <div class="cbt-question-card">
+          <div class="cbt-question-number" id="q-number">Question 1 of 5</div>
+          <button class="cbt-flag-btn" id="flag-btn" onclick="toggleFlag()">
+            <i data-lucide="flag" style="width:13px;height:13px;"></i> Flag for review
+          </button>
+          <p class="cbt-question-text" id="q-text">Loading…</p>
+          <div class="cbt-options" id="q-options"></div>
+          <div class="cbt-nav">
+            <button class="cbt-nav-btn cbt-nav-btn--prev" onclick="prevQuestion()">
+              <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Previous
+            </button>
+            <span id="q-progress" style="font-size:12px;color:#64748b;font-weight:600;"></span>
+            <button class="cbt-nav-btn cbt-nav-btn--next" id="next-btn" onclick="nextQuestion()">
+              Next <i data-lucide="arrow-right" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cbt-sidebar" id="cbt-sidebar">
+        <div class="cbt-drawer-handle"></div>
+        <button class="cbt-drawer-close" onclick="toggleNavDrawer(false)"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+        <div class="cbt-palette-card">
+          <div class="cbt-palette-title">Question Navigator</div>
+          <div class="cbt-palette-grid" id="palette-grid"></div>
+          <div class="cbt-legend">
+            <div class="cbt-legend-item"><div class="cbt-legend-dot" style="background:#1a56db;"></div> Current</div>
+            <div class="cbt-legend-item"><div class="cbt-legend-dot" style="background:#dbeafe;border:1.5px solid #1a56db;"></div> Answered</div>
+            <div class="cbt-legend-item"><div class="cbt-legend-dot" style="background:#fef3c7;border:1.5px solid #f59e0b;"></div> Flagged</div>
+            <div class="cbt-legend-item"><div class="cbt-legend-dot" style="background:#f8fafc;border:1.5px solid #e2e8f0;"></div> Not answered</div>
+          </div>
+        </div>
+        <div class="cbt-palette-card">
+          <div class="cbt-palette-title">Progress</div>
+          <div id="progress-stats" style="font-size:13px;color:#374151;line-height:1.8;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cbt-nav-backdrop" id="nav-backdrop" onclick="toggleNavDrawer(false)"></div>
+  </div>
+
+  <!-- Result Screen -->
+  <div id="cbt-result-screen">
+    <div class="result-card">
+      <div class="result-main">
+        <div class="cbt-score-ring" id="score-ring">
+          <div class="cbt-score-value" id="score-pct">—</div>
+          <div class="cbt-score-label">Score</div>
+        </div>
+        <h2 style="font-family:var(--pp-font-head);font-size:1.3rem;font-weight:800;color:#0f172a;margin-bottom:6px;" id="result-title">Test Complete</h2>
+        <p style="font-size:13px;color:#64748b;" id="result-subtitle">—</p>
+        <div class="result-stats">
+          <div class="result-stat"><div class="result-stat__label">Correct</div><div class="result-stat__value" id="r-correct">—</div></div>
+          <div class="result-stat"><div class="result-stat__label">Wrong</div><div class="result-stat__value" id="r-wrong">—</div></div>
+          <div class="result-stat"><div class="result-stat__label">Skipped</div><div class="result-stat__value" id="r-skipped">—</div></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button onclick="showReview()" class="cbt-nav-btn cbt-nav-btn--next" style="border:none;">
+            <i data-lucide="eye" style="width:14px;height:14px;"></i> Review Answers
+          </button>
+          <button onclick="restartDemo()" class="cbt-nav-btn cbt-nav-btn--prev" style="border:none;">
+            <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Restart Demo
+          </button>
+          <button onclick="backToProfile()" class="cbt-nav-btn cbt-nav-btn--prev" style="border:none;">Back to Portal</button>
+        </div>
+      </div>
+      <div id="review-container" style="display:none;">
+        <h3 style="font-family:var(--pp-font-head);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:20px 0 12px;">Answer Review</h3>
+        <div class="review-section" id="review-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Submit Overlay -->
+  <div id="confirm-overlay" class="cbt-overlay" style="display:none;">
+    <div class="cbt-overlay-card">
+      <div class="cbt-overlay-icon"><i data-lucide="clipboard-check" style="width:34px;height:34px;color:#1a56db;"></i></div>
+      <div class="cbt-overlay-title">Submit Test?</div>
+      <p class="cbt-overlay-desc" id="confirm-desc">Are you sure you want to submit? Once submitted you cannot change your answers.</p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button onclick="document.getElementById('confirm-overlay').style.display='none'" class="cbt-nav-btn cbt-nav-btn--prev" style="border:none;">Cancel</button>
+        <button onclick="submitTest()" class="cbt-nav-btn cbt-nav-btn--submit" style="border:none;">Yes, Submit</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   SAMPLE DATA (stands in for Firestore data in the real system)
+============================================================ */
+const testData = {
+  title: 'Second Term Mathematics Test',
+  subject: 'Mathematics',
+  type: 'Test',
+  term: 'Second Term',
+  className: 'Primary 4',
+  timerMinutes: 10
+};
+
+const questions = [
+  { questionText: 'What is 7 + 8?', optionA: '13', optionB: '15', optionC: '16', optionD: '14', correctAnswer: 'B' },
+  { questionText: 'Which of these numbers is an even number?', optionA: '7', optionB: '11', optionC: '14', optionD: '9', correctAnswer: 'C' },
+  { questionText: 'In the number 4,521 — what is the place value of the digit 5?', optionA: 'Hundreds', optionB: 'Tens', optionC: 'Thousands', optionD: 'Units', correctAnswer: 'A' },
+  { questionText: 'Simplify: 24 ÷ 6', optionA: '3', optionB: '4', optionC: '6', optionD: '8', correctAnswer: 'B' },
+  { questionText: 'Which shape has exactly 3 sides?', optionA: 'Square', optionB: 'Circle', optionC: 'Triangle', optionD: 'Rectangle', correctAnswer: 'C' }
+];
+
+/* ============================================================
+   STATE
+============================================================ */
+let answers = {};
+let flagged = new Set();
+let currentQ = 0;
+let timerInterval = null;
+let secondsLeft = 0;
+let tabSwitchCount = 0;
+let submitted = false;
+let attemptStarted = false;
+
+/* ============================================================
+   TOAST
+============================================================ */
+function showToast(msg, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'success' ? ' toast-success' : type === 'warning' ? ' toast-warning' : '');
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, duration);
+}
+
+/* ============================================================
+   NAVIGATION BETWEEN PROFILE PAGE AND CBT APP
+   (In the real system, this is a jump from pupil.html to cbt.html.
+    Here we swap the visible section within the same file.)
+============================================================ */
+function launchCbt() {
+  document.getElementById('profile-app').style.display = 'none';
+  document.getElementById('cbt-app').style.display = 'block';
+  document.getElementById('cbt-start-screen').style.display = 'flex';
+  document.getElementById('cbt-test-screen').style.display = 'none';
+  document.getElementById('cbt-result-screen').style.display = 'none';
+  window.scrollTo(0, 0);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function backToProfile() {
+  // Clean up any running state so re-entering the demo is fresh
+  clearInterval(timerInterval);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onWindowBlur);
+  document.getElementById('cbt-app').style.display = 'none';
+  document.getElementById('profile-app').style.display = 'block';
+  window.scrollTo(0, 0);
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function restartDemo() {
+  answers = {};
+  flagged = new Set();
+  currentQ = 0;
+  tabSwitchCount = 0;
+  submitted = false;
+  attemptStarted = false;
+  document.getElementById('tab-warn-banner').style.display = 'none';
+  document.getElementById('review-container').style.display = 'none';
+  launchCbt();
+}
+
+/* ============================================================
+   START TEST
+============================================================ */
+async function startTest() {
+  if (submitted || attemptStarted) return;
+  attemptStarted = true;
+
+  // Mirrors the real system's fullscreen request — optional, non-blocking
+  try { await document.documentElement.requestFullscreen(); } catch (e) { /* not required */ }
+
+  document.getElementById('cbt-start-screen').style.display = 'none';
+  document.getElementById('cbt-test-screen').style.display = 'block';
+
+  document.getElementById('ts-title').textContent = testData.title;
+  document.getElementById('ts-meta').textContent = testData.subject + ' · ' + questions.length + ' questions';
+
+  renderQuestion(0);
+  buildPalette();
+
+  if (testData.timerMinutes && testData.timerMinutes > 0) {
+    secondsLeft = testData.timerMinutes * 60;
+    startTimer();
+  } else {
+    document.getElementById('cbt-timer-display').style.display = 'none';
+  }
+
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onWindowBlur);
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+/* ============================================================
+   NAV DRAWER (mobile question navigator)
+============================================================ */
+function toggleNavDrawer(forceState) {
+  const sidebar = document.getElementById('cbt-sidebar');
+  const backdrop = document.getElementById('nav-backdrop');
+  if (!sidebar || !backdrop) return;
+  const shouldOpen = typeof forceState === 'boolean' ? forceState : !sidebar.classList.contains('active');
+  sidebar.classList.toggle('active', shouldOpen);
+  backdrop.classList.toggle('active', shouldOpen);
+  document.body.style.overflow = shouldOpen ? 'hidden' : '';
+}
+
+/* ============================================================
+   TIMER
+============================================================ */
+function startTimer() {
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    secondsLeft--;
+    updateTimerDisplay();
+    if (secondsLeft <= 0) {
+      clearInterval(timerInterval);
+      autoSubmit();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const mins = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+  const secs = (secondsLeft % 60).toString().padStart(2, '0');
+  document.getElementById('cbt-timer-text').textContent = mins + ':' + secs;
+  const timerEl = document.getElementById('cbt-timer-display');
+  timerEl.classList.remove('cbt-timer--warning', 'cbt-timer--danger');
+  if (secondsLeft <= 60) timerEl.classList.add('cbt-timer--danger');
+  else if (secondsLeft <= 5 * 60) timerEl.classList.add('cbt-timer--warning');
+}
+
+/* ============================================================
+   RENDER QUESTION
+============================================================ */
+function renderQuestion(index) {
+  currentQ = index;
+  const q = questions[index];
+
+  document.getElementById('q-number').textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
+  document.getElementById('q-text').textContent = q.questionText;
+
+  const flagBtn = document.getElementById('flag-btn');
+  if (flagged.has(index)) {
+    flagBtn.classList.add('cbt-flag-btn--flagged');
+    flagBtn.innerHTML = '<i data-lucide="flag" style="width:13px;height:13px;"></i> Flagged';
+  } else {
+    flagBtn.classList.remove('cbt-flag-btn--flagged');
+    flagBtn.innerHTML = '<i data-lucide="flag" style="width:13px;height:13px;"></i> Flag for review';
+  }
+
+  const optionsEl = document.getElementById('q-options');
+  optionsEl.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  const keys = ['optionA', 'optionB', 'optionC', 'optionD'];
+
+  keys.forEach((key, i) => {
+    if (!q[key]) return;
+    const letter = letters[i];
+    const btn = document.createElement('button');
+    btn.className = 'cbt-option' + (answers[index] === letter ? ' cbt-option--selected' : '');
+    btn.innerHTML = `<span class="cbt-option-letter">${letter}</span><span>${q[key]}</span>`;
+    btn.addEventListener('click', () => selectAnswer(index, letter));
+    optionsEl.appendChild(btn);
+  });
+
+  document.querySelector('.cbt-nav-btn--prev').disabled = (index === 0);
+
+  const nextBtn = document.getElementById('next-btn');
+  if (index === questions.length - 1) {
+    nextBtn.innerHTML = 'Submit <i data-lucide="send" style="width:14px;height:14px;"></i>';
+    nextBtn.className = 'cbt-nav-btn cbt-nav-btn--submit';
+    nextBtn.onclick = confirmSubmit;
+  } else {
+    nextBtn.innerHTML = 'Next <i data-lucide="arrow-right" style="width:14px;height:14px;"></i>';
+    nextBtn.className = 'cbt-nav-btn cbt-nav-btn--next';
+    nextBtn.onclick = nextQuestion;
+  }
+
+  const answered = Object.keys(answers).length;
+  document.getElementById('q-progress').textContent = answered + ' of ' + questions.length + ' answered';
+
+  updatePalette();
+  updateProgressStats();
+  updateNavToggleCount();
+  updateProgressBar();
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function selectAnswer(qIndex, letter) {
+  answers[qIndex] = letter;
+  renderQuestion(qIndex);
+}
+
+function toggleFlag() {
+  if (flagged.has(currentQ)) flagged.delete(currentQ);
+  else flagged.add(currentQ);
+  renderQuestion(currentQ);
+}
+
+function nextQuestion() { if (currentQ < questions.length - 1) renderQuestion(currentQ + 1); }
+function prevQuestion() { if (currentQ > 0) renderQuestion(currentQ - 1); }
+
+/* ============================================================
+   PALETTE / PROGRESS
+============================================================ */
+function buildPalette() {
+  const grid = document.getElementById('palette-grid');
+  grid.innerHTML = '';
+  questions.forEach((_, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'cbt-palette-btn';
+    btn.textContent = i + 1;
+    btn.addEventListener('click', () => { renderQuestion(i); toggleNavDrawer(false); });
+    grid.appendChild(btn);
+  });
+  updatePalette();
+}
+
+function updatePalette() {
+  const btns = document.querySelectorAll('.cbt-palette-btn');
+  btns.forEach((btn, i) => {
+    btn.classList.remove('cbt-palette-btn--answered', 'cbt-palette-btn--flagged', 'cbt-palette-btn--current');
+    if (i === currentQ) btn.classList.add('cbt-palette-btn--current');
+    else if (flagged.has(i)) btn.classList.add('cbt-palette-btn--flagged');
+    else if (answers[i]) btn.classList.add('cbt-palette-btn--answered');
+  });
+}
+
+function updateProgressStats() {
+  const total = questions.length;
+  const answeredCount = Object.keys(answers).length;
+  const fl = flagged.size;
+  const unanswered = total - answeredCount;
+  document.getElementById('progress-stats').innerHTML = `
+    <span style="color:#1a56db;font-weight:700;">${answeredCount}</span> answered<br>
+    <span style="color:#f59e0b;font-weight:700;">${fl}</span> flagged<br>
+    <span style="color:#94a3b8;font-weight:700;">${unanswered}</span> not answered
+  `;
+}
+
+function updateNavToggleCount() {
+  const el = document.getElementById('nav-toggle-count');
+  if (!el) return;
+  el.textContent = Object.keys(answers).length + '/' + questions.length;
+}
+
+function updateProgressBar() {
+  const fill = document.getElementById('progress-bar-fill');
+  if (!fill || !questions.length) return;
+  const pct = Math.round((Object.keys(answers).length / questions.length) * 100);
+  fill.style.width = pct + '%';
+}
+
+/* ============================================================
+   ANTI-CHEAT (tab switch detection)
+============================================================ */
+function onVisibilityChange() { if (document.hidden && !submitted) recordTabSwitch(); }
+function onWindowBlur() { if (!submitted) recordTabSwitch(); }
+
+function recordTabSwitch() {
+  tabSwitchCount++;
+  const banner = document.getElementById('tab-warn-banner');
+  const warnTxt = document.getElementById('tab-warn-text');
+  banner.style.display = 'flex';
+  warnTxt.textContent = 'You left this page (' + tabSwitchCount + ' time' + (tabSwitchCount > 1 ? 's' : '') + '). This has been recorded.';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+/* ============================================================
+   SUBMIT
+============================================================ */
+function confirmSubmit() {
+  const unanswered = questions.length - Object.keys(answers).length;
+  let desc = 'Are you sure you want to submit your answers?';
+  if (unanswered > 0) desc = `You have ${unanswered} unanswered question${unanswered > 1 ? 's' : ''}. Are you sure you want to submit?`;
+  document.getElementById('confirm-desc').textContent = desc;
+  document.getElementById('confirm-overlay').style.display = 'flex';
+}
+
+function autoSubmit() {
+  showToast('Time is up! Submitting automatically.', 'warning', 4000);
+  submitTest();
+}
+
+function submitTest() {
+  if (submitted) return;
+  submitted = true;
+
+  document.getElementById('confirm-overlay').style.display = 'none';
+  clearInterval(timerInterval);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onWindowBlur);
+  toggleNavDrawer(false);
+
+  try { document.exitFullscreen(); } catch (e) {}
+
+  let correct = 0;
+  const reviewData = [];
+
+  questions.forEach((q, i) => {
+    const pupilAnswer = answers[i] || null;
+    const isCorrect = pupilAnswer === q.correctAnswer;
+    if (isCorrect) correct++;
+    reviewData.push({
+      questionText: q.questionText,
+      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+      correctAnswer: q.correctAnswer, pupilAnswer, isCorrect
+    });
+  });
+
+  const total = questions.length;
+  const wrong = Object.keys(answers).filter(i => answers[i] !== questions[i].correctAnswer).length;
+  const skipped = total - Object.keys(answers).length;
+  const pct = Math.round((correct / total) * 100);
+  const grade = getGradeFromPct(pct);
+
+  showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData });
+}
+
+function getGradeFromPct(pct) {
+  if (pct >= 75) return 'A1';
+  if (pct >= 70) return 'B2';
+  if (pct >= 65) return 'B3';
+  if (pct >= 60) return 'C4';
+  if (pct >= 55) return 'C5';
+  if (pct >= 50) return 'C6';
+  if (pct >= 45) return 'D7';
+  if (pct >= 40) return 'D8';
+  return 'F9';
+}
+
+/* ============================================================
+   RESULT SCREEN
+============================================================ */
+function showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData }) {
+  document.getElementById('cbt-test-screen').style.display = 'none';
+  document.getElementById('cbt-result-screen').style.display = 'block';
+
+  document.getElementById('score-pct').textContent = pct + '%';
+
+  const titleEl = document.getElementById('result-title');
+  if (pct >= 50) {
+    titleEl.innerHTML = '<i data-lucide="check-circle" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;color:#16a34a;"></i>Well done';
+  } else {
+    titleEl.textContent = 'Test Complete';
+  }
+
+  document.getElementById('result-subtitle').textContent = `You scored ${correct} out of ${total} (${grade})`;
+  document.getElementById('r-correct').textContent = correct;
+  document.getElementById('r-wrong').textContent = wrong;
+  document.getElementById('r-skipped').textContent = skipped;
+
+  const ring = document.getElementById('score-ring');
+  ring.classList.remove('cbt-score-ring--pass', 'cbt-score-ring--fail');
+  ring.classList.add(pct >= 50 ? 'cbt-score-ring--pass' : 'cbt-score-ring--fail');
+
+  window._cbtReviewData = reviewData;
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  window.scrollTo(0, 0);
+}
+
+function showReview() {
+  const container = document.getElementById('review-container');
+  const list = document.getElementById('review-list');
+  const data = window._cbtReviewData || [];
+
+  list.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  const keys = ['optionA', 'optionB', 'optionC', 'optionD'];
+
+  data.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'review-item';
+
+    let optionsHTML = '';
+    keys.forEach((key, ki) => {
+      if (!item[key]) return;
+      const letter = letters[ki];
+      const isPupil = item.pupilAnswer === letter;
+      const isCorrect = item.correctAnswer === letter;
+      let cls = '';
+      if (isCorrect) cls = 'cbt-option--correct';
+      else if (isPupil && !isCorrect) cls = 'cbt-option--incorrect';
+      optionsHTML += `
+        <div class="cbt-option ${cls}" style="cursor:default;margin-bottom:8px;">
+          <span class="cbt-option-letter">${letter}</span>
+          <span>${item[key]}</span>
+          ${isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#16a34a;">Correct</span>' : ''}
+          ${isPupil && !isCorrect ? '<span style="margin-left:auto;font-size:11px;font-weight:700;color:#dc2626;">Your answer</span>' : ''}
+        </div>`;
+    });
+
+    div.innerHTML = `
+      <div class="review-item__q-num">Question ${i + 1}
+        <span style="margin-left:8px;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:700;
+          background:${item.isCorrect ? '#dcfce7' : '#fee2e2'};
+          color:${item.isCorrect ? '#14532d' : '#7f1d1d'}">
+          ${item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped'}
+        </span>
+      </div>
+      <div class="review-item__q">${item.questionText}</div>
+      <div class="cbt-options">${optionsHTML}</div>
+    `;
+    list.appendChild(div);
+  });
+
+  container.style.display = 'block';
+  container.scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+</script>
+
+</body>
+</html>
