@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.0.0
+ * @version 1.1.0
  *
  * HOW TO USE:
  * Place this file alongside teacher.js.
@@ -105,10 +105,10 @@ async function loadCbtTests(container) {
             const attemptCount = aSnap.size;
 
             const statusColors = {
-                open:     { bg: '#dbeafe', color: '#1e40af', dot: '●' },
-                draft:    { bg: '#f1f5f9', color: '#475569', dot: '○' },
-                upcoming: { bg: '#fef3c7', color: '#92400e', dot: '⏳' },
-                expired:  { bg: '#fee2e2', color: '#991b1b', dot: '✕' }
+                open:     { bg: '#dbeafe', color: '#1e40af' },
+                draft:    { bg: '#f1f5f9', color: '#475569' },
+                upcoming: { bg: '#fef3c7', color: '#92400e' },
+                expired:  { bg: '#fee2e2', color: '#991b1b' }
             };
             const sc = statusColors[status] || statusColors.open;
 
@@ -117,10 +117,10 @@ async function loadCbtTests(container) {
                 : 'background:#dcfce7;border:1px solid #16a34a;color:#14532d;';
 
             const scheduleHTML = t.scheduledDate
-                ? `<div class="cbt-card-date"> Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date">Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
             const expiryHTML = t.expiryDate
-                ? `<div class="cbt-card-date"> Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
+                ? `<div class="cbt-card-date">Closes: ${t.expiryDate.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>`
                 : '';
 
             const card = document.createElement('div');
@@ -133,25 +133,35 @@ async function loadCbtTests(container) {
                     <div class="cbt-mgr-card__title-row">
                         <span class="cbt-mgr-card__title" data-title-slot></span>
                         <span class="cbt-mgr-status-pill" style="background:${sc.bg};color:${sc.color};">
-                            ${sc.dot} ${statusLabel}
+                            <span class="cbt-status-dot" aria-hidden="true"></span>${statusLabel}
                         </span>
                     </div>
                     <div class="cbt-mgr-card__meta">
-                        <span> <span data-subject-slot></span></span>
-                        <span> <span data-class-slot></span></span>
-                        <span> ${qCount} question${qCount !== 1 ? 's' : ''}</span>
-                        <span> ${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
-                        <span> ${attemptCount} submitted</span>
+                        <span><span data-subject-slot></span></span>
+                        <span><span data-class-slot></span></span>
+                        <span>${qCount} question${qCount !== 1 ? 's' : ''}</span>
+                        <span>${t.timerMinutes ? t.timerMinutes + ' min' : 'No timer'}</span>
+                        <span>${attemptCount} submitted</span>
                     </div>
                     ${scheduleHTML}${expiryHTML}
                 </div>
                 <div class="cbt-mgr-card__actions">
-                    <button class="cbt-mgr-btn cbt-mgr-btn--edit"    data-tid="${tid}" data-action="edit"> Edit</button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-tid="${tid}" data-action="results"> Results</button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-tid="${tid}" data-action="publish" style="${publishBtnStyle}">
-                        ${t.published ? ' Unpublish' : ' Publish'}
+                    <button class="cbt-mgr-btn cbt-mgr-btn--edit" data-tid="${tid}" data-action="edit">
+                        <i data-lucide="pencil" style="width:13px;height:13px;" aria-hidden="true"></i>
+                        Edit
                     </button>
-                    <button class="cbt-mgr-btn cbt-mgr-btn--delete"  data-tid="${tid}" data-action="delete"> Delete</button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--results" data-tid="${tid}" data-action="results">
+                        <i data-lucide="bar-chart-2" style="width:13px;height:13px;" aria-hidden="true"></i>
+                        Results
+                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--publish" data-tid="${tid}" data-action="publish" style="${publishBtnStyle}">
+                        <i data-lucide="${t.published ? 'eye-off' : 'send'}" style="width:13px;height:13px;" aria-hidden="true"></i>
+                        ${t.published ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button class="cbt-mgr-btn cbt-mgr-btn--delete" data-tid="${tid}" data-action="delete">
+                        <i data-lucide="trash-2" style="width:13px;height:13px;" aria-hidden="true"></i>
+                        Delete
+                    </button>
                 </div>
             `;
 
@@ -508,7 +518,7 @@ async function saveCbtTest(publish = false) {
 
         await batch.commit();
 
-        window.showToast?.(`✓ Test ${publish ? 'published' : 'saved as draft'} successfully!`, 'success', 5000);
+        window.showToast?.(`Test ${publish ? 'published' : 'saved as draft'} successfully.`, 'success', 5000);
         await loadCbtSection();
 
     } catch (err) {
@@ -552,7 +562,10 @@ async function deleteCbtTest(testId, title) {
     `;
 
     box.innerHTML = `
-        <div style="font-size: 40px; margin-bottom: 12px;">🗑️</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:#fef2f2;color:#dc2626;
+                    display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+            <i data-lucide="trash-2" style="width:26px;height:26px;"></i>
+        </div>
         <h3 style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1.1rem; font-weight:800;
                    color:#0f172a; margin:0 0 8px;">Delete Test?</h3>
         <p style="font-size:13.5px; color:#64748b; margin:0 0 6px; line-height:1.5;">
@@ -586,6 +599,7 @@ async function deleteCbtTest(testId, title) {
 
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Return a promise that resolves when the user makes a choice
     const confirmed = await new Promise(resolve => {
@@ -636,7 +650,7 @@ async function deleteCbtTest(testId, title) {
         // Remove from local map
         _cbtTestMap.delete(testId);
 
-        window.showToast?.('✓ Test deleted successfully.', 'success', 4000);
+        window.showToast?.('Test deleted successfully.', 'success', 4000);
         await loadCbtSection();
 
     } catch (err) {
@@ -776,4 +790,4 @@ window.deleteCbtTest       = deleteCbtTest;
 window.togglePublish       = togglePublish;
 window.viewCbtResults      = viewCbtResults;
 
-console.log('✓ CBT Teacher module v1.0.0 loaded');
+console.log('✓ CBT Teacher module v1.1.0 loaded');
