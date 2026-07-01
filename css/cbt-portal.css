@@ -36,6 +36,51 @@
   50% { transform: scale(1.04); }
 }
 
+/* ── Topbar action group ─────────────────────────────────── */
+.cbt-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Mobile navigator toggle ─────────────────────────────── */
+.cbt-nav-toggle {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cbt-nav-toggle:hover { background: #f8fafc; border-color: #cbd5e1; }
+.cbt-nav-toggle__count {
+  background: #eef2ff;
+  color: #1a56db;
+  border-radius: 9999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Thin progress track under topbar ────────────────────── */
+.cbt-progress-track {
+  height: 3px;
+  width: 100%;
+  background: #e2e8f0;
+}
+.cbt-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #1a56db;
+  transition: width 0.25s ease;
+}
+
 /* ── Test Taking Shell ───────────────────────────────────── */
 .cbt-shell {
   display: grid;
@@ -199,12 +244,101 @@
 }
 .cbt-nav-btn--submit:hover { background: #15803d; }
 
-/* ── Palette Sidebar ─────────────────────────────────────── */
+@media (max-width: 480px) {
+  .cbt-nav { flex-wrap: wrap; }
+  .cbt-nav #q-progress { order: 3; width: 100%; text-align: center; margin-top: 4px; }
+  .cbt-nav .cbt-nav-btn { flex: 1; justify-content: center; }
+}
+
+/* ── Palette / Navigator Sidebar ─────────────────────────── */
 .cbt-sidebar {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
+@media (min-width: 901px) {
+  .cbt-sidebar {
+    position: sticky;
+    top: 88px;
+  }
+  .cbt-drawer-handle,
+  .cbt-drawer-close {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .cbt-sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: #f8fafc;
+    border-radius: 22px 22px 0 0;
+    padding: 14px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 -10px 32px rgba(15,23,42,0.18);
+    transform: translateY(110%);
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  .cbt-sidebar.active { transform: translateY(0); }
+  .cbt-sidebar .cbt-palette-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .cbt-sidebar .cbt-palette-card + .cbt-palette-card {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid #e2e8f0;
+  }
+  .cbt-nav-toggle { display: inline-flex; }
+}
+@media (max-width: 420px) {
+  .cbt-nav-toggle__label { display: none; }
+}
+
+.cbt-drawer-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: #cbd5e1;
+  margin: 0 auto 14px;
+}
+.cbt-drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: #eef2f7;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cbt-drawer-close:hover { background: #e2e8f0; }
+
+/* ── Backdrop for mobile navigator drawer ────────────────── */
+.cbt-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.55);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.cbt-nav-backdrop.active { opacity: 1; pointer-events: auto; }
+@media (min-width: 901px) {
+  .cbt-nav-backdrop { display: none; }
+}
+
 .cbt-palette-card {
   background: #ffffff;
   border-radius: 14px;
@@ -225,8 +359,14 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
+@media (max-width: 900px) {
+  .cbt-palette-grid {
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  }
+}
 .cbt-palette-btn {
   aspect-ratio: 1;
+  min-height: 36px;
   border-radius: 8px;
   border: 1.5px solid #e2e8f0;
   background: #f8fafc;
@@ -434,6 +574,15 @@
 .cbt-status-pill--upcoming{ background: #fef3c7; color: #92400e; }
 .cbt-status-pill--expired { background: #f1f5f9; color: #64748b; }
 
+/* Small status dot used inside status pills (replaces text glyphs) */
+.cbt-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  background: currentColor;
+}
+
 /* ── Loading / Empty States ──────────────────────────────── */
 .cbt-empty {
   text-align: center;
@@ -480,7 +629,9 @@
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 .cbt-overlay-icon {
-  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
 }
 .cbt-overlay-title {
