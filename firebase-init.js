@@ -1,10 +1,10 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Firebase Initialization & Shared Authentication
- * CORRECTED - Auth persistence now explicitly enabled
+ * FIXED - Auth-state race condition + centralized login-timeframe logic
  * 
- * @version 3.2.0 - FIXED AUTH PERSISTENCE
- * @date 2026-01-10
+ * @version 3.3.0 - FIXED AUTH READY RACE + TIMEFRAME SESSION LOGIC
+ * @date 2026-07-02
  */
 'use strict';
 
@@ -31,6 +31,37 @@ if (!firebase.apps.length) {
 window.db = firebase.firestore();
 window.auth = firebase.auth();
 window.firebase = firebase;
+
+// ============================================
+// AUTH READY PROMISE (fixes the "please log in
+// to continue" first-load race condition)
+// ============================================
+//
+// A fresh page load has to rehydrate the Firebase session from storage
+// before auth.currentUser is populated. Polling auth.currentUser directly
+// races against that rehydration. onAuthStateChanged's FIRST callback is
+// the SDK's own guarantee that rehydration is complete — so every page
+// should await this promise instead of polling currentUser.
+
+window.authReadyPromise = new Promise((resolve) => {
+  let settled = false;
+
+  const unsubscribe = window.auth.onAuthStateChanged((user) => {
+    if (settled) return;
+    settled = true;
+    unsubscribe();
+    resolve(user);
+  });
+
+  // Safety net only — should not normally be hit, but prevents an
+  // infinite wait if something upstream (network, IndexedDB) hangs.
+  setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    try { unsubscribe(); } catch (e) {}
+    resolve(window.auth.currentUser);
+  }, 10000);
+});
 
 // ============================================
 // ENABLE AUTH PERSISTENCE (BEFORE listeners)
@@ -67,77 +98,94 @@ try {
 }
 
 // ============================================
-// SESSION TIMEOUT CONFIGURATION
+// LOGIN-TIMEFRAME SESSION LOGIC
 // ============================================
+//
+// Requirement: if a user logged in on this device within the last
+// SESSION_TIMEFRAME_MS, they should be auto-logged-in silently.
+// Once that window has passed, they must enter credentials again —
+// regardless of whether they were "active." This replaces the old
+// inactivity-reset timer, which reset on every click/scroll and so
+// never actually expired a genuinely idle-but-open tab.
+
+const SESSION_TIMEFRAME_MS = 8 * 60 * 60 * 1000; // 8 hours
+const SESSION_TIMESTAMP_KEY = 'fahmid_login_time';
+
+window.SESSION_TIMEFRAME_MS = SESSION_TIMEFRAME_MS;
+window.SESSION_TIMESTAMP_KEY = SESSION_TIMESTAMP_KEY;
 
 /**
- * Configure automatic session timeout for security
- * Default: 8 hours of inactivity
+ * Call this immediately after a successful sign-in to start the clock.
  */
-const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
-let sessionTimeoutId = null;
-let lastActivityTime = Date.now();
+window.recordLoginTimestamp = function() {
+  localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
+};
 
 /**
- * Reset session timeout on user activity
+ * Call this on sign-out (manual or forced) to clear the clock.
  */
-function resetSessionTimeout() {
-  lastActivityTime = Date.now();
-  
-  if (sessionTimeoutId) {
-    clearTimeout(sessionTimeoutId);
+window.clearLoginTimestamp = function() {
+  localStorage.removeItem(SESSION_TIMESTAMP_KEY);
+};
+
+/**
+ * True if this device has a recorded login within the allowed timeframe.
+ */
+window.isSessionWithinTimeframe = function() {
+  const stored = localStorage.getItem(SESSION_TIMESTAMP_KEY);
+  if (!stored) return false;
+  const elapsed = Date.now() - parseInt(stored, 10);
+  return elapsed >= 0 && elapsed < SESSION_TIMEFRAME_MS;
+};
+
+let sessionCheckIntervalId = null;
+
+function enforceSessionTimeframe() {
+  const user = window.auth.currentUser;
+  if (!user) return;
+
+  const stored = localStorage.getItem(SESSION_TIMESTAMP_KEY);
+
+  if (!stored) {
+    // No timestamp yet — this happens for the brief moment right after
+    // sign-in before recordLoginTimestamp() runs, or for a session that
+    // was restored before this tracking existed. Start the clock now
+    // rather than forcing an incorrect sign-out.
+    window.recordLoginTimestamp();
+    return;
   }
-  
-  sessionTimeoutId = setTimeout(() => {
-    const currentUser = window.auth.currentUser;
-    
-    if (currentUser) {
-      console.log('Session timeout reached, logging out...');
-      
-      window.auth.signOut()
-        .then(() => {
-          window.showToast?.(
-            'Your session has expired due to inactivity. Please log in again.',
-            'info',
-            5000
-          );
-          
-          setTimeout(() => {
-            window.location.href = 'login.html';
-          }, 2000);
-        })
-        .catch(error => {
-          console.error('Error during session timeout logout:', error);
-        });
-    }
-  }, SESSION_TIMEOUT_MS);
+
+  const elapsed = Date.now() - parseInt(stored, 10);
+  if (elapsed >= SESSION_TIMEFRAME_MS) {
+    console.log('Session timeframe expired, signing out...');
+    window.clearLoginTimestamp();
+    window.auth.signOut()
+      .then(() => {
+        window.showToast?.(
+          'Your session has expired. Please log in again.',
+          'info',
+          5000
+        );
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1500);
+      })
+      .catch(error => {
+        console.error('Error signing out on session expiry:', error);
+      });
+  }
 }
 
-/**
- * Track user activity to reset timeout
- */
-const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
-
-activityEvents.forEach(event => {
-  document.addEventListener(event, () => {
-    // Only reset if logged in
-    if (window.auth.currentUser) {
-      resetSessionTimeout();
-    }
-  }, { passive: true });
-});
-
-/**
- * Start timeout tracking when user logs in
- */
 window.auth.onAuthStateChanged(user => {
   if (user) {
-    resetSessionTimeout();
-    console.log('✓ Session timeout tracking started');
+    if (sessionCheckIntervalId) clearInterval(sessionCheckIntervalId);
+    enforceSessionTimeframe();
+    sessionCheckIntervalId = setInterval(enforceSessionTimeframe, 60 * 1000);
+    console.log('✓ Session timeframe tracking started');
   } else {
-    if (sessionTimeoutId) {
-      clearTimeout(sessionTimeoutId);
-      sessionTimeoutId = null;
+    if (sessionCheckIntervalId) {
+      clearInterval(sessionCheckIntervalId);
+      sessionCheckIntervalId = null;
     }
   }
 });
@@ -361,6 +409,7 @@ window.checkRole = function(requiredRole) {
 window.login = async function(email, password) {
   try {
     await window.auth.signInWithEmailAndPassword(email, password);
+    window.recordLoginTimestamp();
     window.showToast?.('Login successful!', 'success');
     setTimeout(() => window.location.href = 'portal.html', 800);
   } catch (error) {
@@ -374,7 +423,7 @@ window.login = async function(email, password) {
  */
 window.logout = async function() {
   try {
-    localStorage.removeItem('fahmid_login_time');
+    window.clearLoginTimestamp();
     await window.auth.signOut();
     window.showToast?.('Logged out successfully', 'success');
     setTimeout(() => window.location.href = 'login.html', 800);
