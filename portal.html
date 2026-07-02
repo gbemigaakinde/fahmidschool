@@ -357,40 +357,31 @@
     function markDone(el)   { el.classList.remove('active'); el.classList.add('done'); }
     function markActive(el) { el.classList.remove('done');   el.classList.add('active'); }
 
-    /* ── WAIT FOR FIREBASE AUTH TO ACTUALLY SETTLE ── */
-    function waitForAuthUser(maxWaitMs = 8000, intervalMs = 150) {
-      return new Promise((resolve) => {
-        const start = Date.now();
-
-        // Fast path: already available
-        if (auth.currentUser) {
-          resolve(auth.currentUser);
-          return;
-        }
-
-        const poll = setInterval(() => {
-          if (auth.currentUser) {
-            clearInterval(poll);
-            resolve(auth.currentUser);
-            return;
-          }
-          if (Date.now() - start >= maxWaitMs) {
-            clearInterval(poll);
-            resolve(null); // genuinely no session after max wait
-          }
-        }, intervalMs);
-      });
-    }
-
     /* ── MAIN PORTAL LOGIC ── */
     (async function initPortal() {
       setStatus('Verifying your session…');
 
-      const user = await waitForAuthUser();
+      // Wait for Firebase's own confirmation that auth state has been
+      // restored (or confirmed absent) — this is what fixes the
+      // "please log in to continue" bug on a fresh/first-time load,
+      // since polling auth.currentUser directly can race the restore.
+      const user = await window.authReadyPromise;
 
       if (!user) {
-        console.warn('⚠️ No auth session found after waiting — redirecting to login.');
+        console.warn('⚠️ No auth session found — redirecting to login.');
         setStatus('Please log in to continue.');
+        setTimeout(() => window.location.replace('login.html'), 1200);
+        return;
+      }
+
+      // Double-check the login-timeframe window. firebase-init.js also
+      // enforces this in the background, but checking here means we
+      // never briefly flash the portal for an expired session.
+      if (!window.isSessionWithinTimeframe()) {
+        console.warn('⚠️ Session timeframe expired — redirecting to login.');
+        setStatus('Your session has expired. Please log in again.');
+        window.clearLoginTimestamp();
+        await window.auth.signOut().catch(() => {});
         setTimeout(() => window.location.replace('login.html'), 1200);
         return;
       }
