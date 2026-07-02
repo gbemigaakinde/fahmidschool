@@ -1,12 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.1.0
- *
- * HOW TO USE:
- * Place this file alongside teacher.js.
- * Add <script src="cbt-teacher.js"></script> in teacher.html AFTER teacher.js.
- * The module auto-attaches to window so teacher.js can call it.
+ * @version 1.2.0
  */
 'use strict';
 
@@ -198,6 +193,227 @@ async function loadCbtTests(container) {
     }
 }
 
+// ── Autosave (localStorage) ─────────────────────────────────────────────
+// Persists the in-progress Create/Edit Test form to localStorage so a
+// refresh, closed tab, or crash never wipes out a teacher's typing.
+const CBT_AUTOSAVE_PREFIX = 'fahmid_cbt_draft_';
+let _cbtAutosaveTimer = null;
+
+function cbtAutosaveKey() {
+    const uid = window.currentUser?.uid || 'anon';
+    return `${CBT_AUTOSAVE_PREFIX}${uid}_${cbtEditingTestId || 'new'}`;
+}
+
+// Reads every field currently in the form (details + all question blocks)
+function cbtCollectFormState() {
+    const classEl   = document.getElementById('cbt-class');
+    const className = classEl?.options[classEl.selectedIndex]?.dataset.name || '';
+
+    const questions = [];
+    document.querySelectorAll('.cbt-question-builder').forEach(block => {
+        const n = block.id.replace('cbt-q-', '');
+        questions.push({
+            existingId:    block.dataset.qid || null,
+            questionText:  document.getElementById(`cbt-q${n}-text`)?.value || '',
+            optionA:       document.getElementById(`cbt-q${n}-optA`)?.value || '',
+            optionB:       document.getElementById(`cbt-q${n}-optB`)?.value || '',
+            optionC:       document.getElementById(`cbt-q${n}-optC`)?.value || '',
+            optionD:       document.getElementById(`cbt-q${n}-optD`)?.value || '',
+            correctAnswer: document.querySelector(`input[name="cbt-q${n}-correct"]:checked`)?.value || ''
+        });
+    });
+
+    return {
+        savedAt:       Date.now(),
+        title:         document.getElementById('cbt-title')?.value || '',
+        subject:       document.getElementById('cbt-subject')?.value || '',
+        classId:       classEl?.value || '',
+        className,
+        term:          document.getElementById('cbt-term')?.value || '',
+        type:          document.getElementById('cbt-type')?.value || '',
+        timerMinutes:  document.getElementById('cbt-timer')?.value || '',
+        scheduledDate: document.getElementById('cbt-schedule')?.value || '',
+        expiryDate:    document.getElementById('cbt-expiry')?.value || '',
+        instructions:  document.getElementById('cbt-instructions')?.value || '',
+        questions
+    };
+}
+
+function cbtStateHasContent(state) {
+    if (!state) return false;
+    return !!(
+        state.title || state.subject || state.instructions ||
+        (state.questions && state.questions.some(q =>
+            q.questionText || q.optionA || q.optionB || q.optionC || q.optionD))
+    );
+}
+
+function cbtSaveDraftToLocalStorage() {
+    try {
+        // Only save while the Create/Edit form is actually on screen
+        if (!document.getElementById('cbt-title')) return;
+
+        const state = cbtCollectFormState();
+
+        if (!cbtStateHasContent(state)) {
+            localStorage.removeItem(cbtAutosaveKey());
+            return;
+        }
+
+        localStorage.setItem(cbtAutosaveKey(), JSON.stringify(state));
+    } catch (e) {
+        console.warn('CBT autosave failed (localStorage unavailable or full):', e);
+    }
+}
+
+function cbtScheduleAutosave() {
+    clearTimeout(_cbtAutosaveTimer);
+    _cbtAutosaveTimer = setTimeout(cbtSaveDraftToLocalStorage, 600);
+}
+
+function cbtClearAutosave() {
+    try { localStorage.removeItem(cbtAutosaveKey()); } catch (e) { /* ignore */ }
+    clearTimeout(_cbtAutosaveTimer);
+}
+
+// Delegated listeners on the container catch typing/selecting in every
+// question block, including ones added later — no need to re-bind per field.
+function cbtAttachAutosaveListeners() {
+    const container = document.getElementById('cbt-section-content');
+    if (!container) return;
+    // addEventListener silently ignores duplicate (same fn ref) registrations,
+    // so calling this again on re-render is safe and won't double-fire.
+    container.addEventListener('input', cbtScheduleAutosave);
+    container.addEventListener('change', cbtScheduleAutosave);
+}
+
+// Small reusable confirm dialog (same visual language as the delete dialog)
+function cbtShowConfirmDialog({ icon = 'help-circle', title, message, confirmLabel = 'Yes', cancelLabel = 'Cancel', confirmColor = '#1a56db' }) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(15,23,42,0.7);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; backdrop-filter: blur(3px);
+        `;
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #ffffff; border-radius: 18px;
+            padding: 32px 28px; max-width: 420px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            text-align: center; font-family: 'DM Sans', sans-serif;
+        `;
+
+        box.innerHTML = `
+            <div style="width:56px;height:56px;border-radius:50%;background:#eff6ff;color:${confirmColor};
+                        display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                <i data-lucide="${icon}" style="width:26px;height:26px;"></i>
+            </div>
+            <h3 style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1.1rem; font-weight:800;
+                       color:#0f172a; margin:0 0 8px;">${escHtml(title)}</h3>
+            <p style="font-size:13.5px; color:#64748b; margin:0 0 24px; line-height:1.5;">
+                ${escHtml(message)}
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button id="cbt-confirm-cancel" style="
+                    flex:1; max-width:170px; padding:11px;
+                    border-radius:9999px; border:1.5px solid #e2e8f0;
+                    background:#ffffff; color:#475569;
+                    font-size:14px; font-weight:600; cursor:pointer;">
+                    ${escHtml(cancelLabel)}
+                </button>
+                <button id="cbt-confirm-ok" style="
+                    flex:1; max-width:170px; padding:11px;
+                    border-radius:9999px; border:none;
+                    background:${confirmColor}; color:#ffffff;
+                    font-size:14px; font-weight:700; cursor:pointer;">
+                    ${escHtml(confirmLabel)}
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        function cleanup(result) {
+            document.body.removeChild(overlay);
+            resolve(result);
+        }
+
+        document.getElementById('cbt-confirm-cancel').addEventListener('click', () => cleanup(false));
+        document.getElementById('cbt-confirm-ok').addEventListener('click', () => cleanup(true));
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cleanup(false);
+        });
+    });
+}
+
+// Checks localStorage for a leftover draft for this exact test (or "new"),
+// and if found, asks the teacher whether to restore it. Returns the
+// (possibly replaced) { existingData, existingQs } to render the form with.
+async function cbtCheckForAutosave(existingData, existingQs) {
+    let saved = null;
+    try {
+        const raw = localStorage.getItem(cbtAutosaveKey());
+        if (raw) saved = JSON.parse(raw);
+    } catch (e) {
+        saved = null;
+    }
+
+    if (!saved || !cbtStateHasContent(saved)) {
+        cbtClearAutosave();
+        return { existingData, existingQs };
+    }
+
+    const savedTime = saved.savedAt
+        ? new Date(saved.savedAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : 'earlier';
+
+    const wantsRestore = await cbtShowConfirmDialog({
+        icon: 'history',
+        title: 'Restore Unsaved Test?',
+        message: `We found changes from ${savedTime} that were never saved (probably from a refresh or closed tab). Would you like to restore them and continue where you left off?`,
+        confirmLabel: 'Restore',
+        cancelLabel: 'Discard',
+        confirmColor: '#1a56db'
+    });
+
+    if (!wantsRestore) {
+        cbtClearAutosave();
+        return { existingData, existingQs };
+    }
+
+    const restoredData = {
+        title:         saved.title || '',
+        subject:       saved.subject || '',
+        classId:       saved.classId || '',
+        className:     saved.className || '',
+        term:          saved.term || '',
+        type:          saved.type || 'Test',
+        timerMinutes:  saved.timerMinutes ? parseInt(saved.timerMinutes) : 0,
+        instructions:  saved.instructions || '',
+        scheduledDate: saved.scheduledDate || '',
+        expiryDate:    saved.expiryDate || ''
+    };
+
+    const restoredQs = (saved.questions || []).map(q => ({
+        id:            q.existingId || '',
+        questionText:  q.questionText || '',
+        optionA:       q.optionA || '',
+        optionB:       q.optionB || '',
+        optionC:       q.optionC || '',
+        optionD:       q.optionD || '',
+        correctAnswer: q.correctAnswer || ''
+    }));
+
+    window.showToast?.('Restored your unsaved changes.', 'success', 4000);
+
+    return { existingData: restoredData, existingQs: restoredQs };
+}
+
 // ── Show Create/Edit Form ──────────────────────────────────────────────────
 async function showCbtCreateForm(testId = null) {
     cbtEditingTestId = testId;
@@ -211,7 +427,17 @@ async function showCbtCreateForm(testId = null) {
 
     if (testId) {
         const testDoc = await db.collection('cbt_tests').doc(testId).get();
-        if (testDoc.exists) existingData = testDoc.data();
+        if (testDoc.exists) {
+            const raw = testDoc.data();
+            // Normalise Firestore Timestamps to plain datetime-local strings
+            // up front so the rest of this function only ever deals with
+            // strings — the same shape a restored localStorage draft has.
+            existingData = {
+                ...raw,
+                scheduledDate: raw.scheduledDate ? toDatetimeLocalString(raw.scheduledDate.toDate()) : '',
+                expiryDate:    raw.expiryDate    ? toDatetimeLocalString(raw.expiryDate.toDate())    : ''
+            };
+        }
 
         const qSnap = await db.collection('cbt_questions')
             .where('testId', '==', testId)
@@ -220,8 +446,17 @@ async function showCbtCreateForm(testId = null) {
         existingQs = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
+    // Check for an unsaved draft left over from a previous session and
+    // offer to restore it (this may replace existingData/existingQs).
+    const restored = await cbtCheckForAutosave(existingData, existingQs);
+    existingData = restored.existingData;
+    existingQs   = restored.existingQs;
+
     const classes  = window.assignedClasses || [];
     const settings = await window.getCurrentSettings();
+
+    const scheduleValue = existingData?.scheduledDate || '';
+    const expiryValue   = existingData?.expiryDate || '';
 
     container.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
@@ -279,11 +514,11 @@ async function showCbtCreateForm(testId = null) {
                 </div>
                 <div class="form-group">
                     <label for="cbt-schedule">Scheduled Open Date &amp; Time (optional)</label>
-                    <input type="datetime-local" id="cbt-schedule" value="${existingData?.scheduledDate ? toDatetimeLocalString(existingData.scheduledDate.toDate()) : ''}">
+                    <input type="datetime-local" id="cbt-schedule" value="${scheduleValue}">
                 </div>
                 <div class="form-group">
                     <label for="cbt-expiry">Expiry Date &amp; Time (optional)</label>
-                    <input type="datetime-local" id="cbt-expiry" value="${existingData?.expiryDate ? toDatetimeLocalString(existingData.expiryDate.toDate()) : ''}">
+                    <input type="datetime-local" id="cbt-expiry" value="${expiryValue}">
                 </div>
             </div>
             <div class="form-group">
@@ -323,10 +558,13 @@ async function showCbtCreateForm(testId = null) {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // Pre-load existing questions
+    // Pre-load existing questions (from Firestore or a restored draft)
     if (existingQs.length > 0) {
         existingQs.forEach(q => addCbtQuestion(q));
     }
+
+    // Start watching the form for changes so we can autosave to localStorage
+    cbtAttachAutosaveListeners();
 }
 
 // ── Add question block ─────────────────────────────────────────────────────
@@ -380,6 +618,10 @@ function addCbtQuestion(existing = null) {
 
     container.appendChild(div);
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // A question was added — persist immediately (typing inside it will
+    // continue to autosave via the delegated input/change listeners).
+    cbtScheduleAutosave();
 }
 
 // ── Remove question ────────────────────────────────────────────────────────
@@ -390,6 +632,10 @@ function removeCbtQuestion(n) {
     const container = document.getElementById('cbt-questions-container');
     const noMsg     = document.getElementById('cbt-no-q-msg');
     if (container && !container.children.length && noMsg) noMsg.style.display = 'block';
+
+    // Removing a question doesn't fire an input/change event on the
+    // container, so persist the new state explicitly.
+    cbtScheduleAutosave();
 }
 
 // ── Save Test ──────────────────────────────────────────────────────────────
@@ -517,6 +763,9 @@ async function saveCbtTest(publish = false) {
         });
 
         await batch.commit();
+
+        // Test successfully saved — the autosaved draft is no longer needed
+        cbtClearAutosave();
 
         window.showToast?.(`Test ${publish ? 'published' : 'saved as draft'} successfully.`, 'success', 5000);
         await loadCbtSection();
@@ -790,4 +1039,4 @@ window.deleteCbtTest       = deleteCbtTest;
 window.togglePublish       = togglePublish;
 window.viewCbtResults      = viewCbtResults;
 
-console.log('✓ CBT Teacher module v1.1.0 loaded');
+console.log('✓ CBT Teacher module v1.2.0 loaded (autosave enabled)');
