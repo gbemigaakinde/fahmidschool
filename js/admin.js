@@ -8818,6 +8818,245 @@ function filterTeachers() {
 window.filterTeachers = filterTeachers;
 window.renderTeachersTable = renderTeachersTable;
 
+/**
+ * Generate a printable PDF of pupil login credentials (admission number + password)
+ * grouped by class, laid out as cards for cutting and distributing to parents.
+ * Password format: surname + year of birth (e.g. ogunwale2015)
+ */
+async function generatePupilCredentialsPDF() {
+  const btn = document.getElementById('generate-credentials-pdf-btn');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Generating PDF...</span>';
+  }
+
+  try {
+    if (typeof window.jspdf === 'undefined') {
+      window.showToast?.('PDF library not loaded. Please refresh the page.', 'danger');
+      return;
+    }
+
+    window.showToast?.('Preparing pupil credentials PDF...', 'info', 2000);
+
+    const pupilsSnap = await db.collection('pupils').orderBy('name').get();
+
+    if (pupilsSnap.empty) {
+      window.showToast?.('No pupils found', 'warning');
+      return;
+    }
+
+    const pupilsByClass = {};
+    let skippedCount = 0;
+
+    pupilsSnap.forEach(doc => {
+      const data = doc.data();
+
+      if (data.status === 'alumni' || data.isActive === false) return;
+
+      let className = 'Unassigned';
+      if (data.class) {
+        if (typeof data.class === 'object' && data.class.name) {
+          className = data.class.name;
+        } else if (typeof data.class === 'string') {
+          className = data.class;
+        }
+      }
+
+      if (!data.admissionNo) {
+        console.warn(`Skipping ${data.name || doc.id}: no admission number on file`);
+        skippedCount++;
+        return;
+      }
+
+      const nameParts = (data.name || '').trim().split(/\s+/).filter(Boolean);
+      const surname = nameParts.length > 0 ? nameParts[nameParts.length - 1] : '';
+
+      let birthYear = '';
+      if (data.dob) {
+        const match = String(data.dob).match(/(\d{4})/);
+        if (match) birthYear = match[1];
+      }
+
+      if (!surname || !birthYear) {
+        console.warn(`Skipping ${data.name || doc.id}: missing name or date of birth needed to build password`);
+        skippedCount++;
+        return;
+      }
+
+      const password = `${surname.toLowerCase().replace(/[^a-z]/g, '')}${birthYear}`;
+
+      if (!pupilsByClass[className]) {
+        pupilsByClass[className] = [];
+      }
+
+      pupilsByClass[className].push({
+        name: data.name || 'Unknown',
+        admissionNo: data.admissionNo,
+        password
+      });
+    });
+
+    const classNames = Object.keys(pupilsByClass);
+
+    if (classNames.length === 0) {
+      window.showToast?.(
+        'No pupils with complete data (admission number, name, date of birth) were found.',
+        'warning',
+        6000
+      );
+      return;
+    }
+
+    let orderedClassNames = classNames.slice().sort((a, b) => a.localeCompare(b));
+
+    try {
+      if (window.classHierarchy && typeof window.classHierarchy.getHierarchy === 'function') {
+        const hierarchy = await window.classHierarchy.getHierarchy();
+        if (hierarchy && hierarchy.length > 0) {
+          const hierarchyOrder = hierarchy.map(c => c.name);
+          orderedClassNames = classNames.slice().sort((a, b) => {
+            const ia = hierarchyOrder.indexOf(a);
+            const ib = hierarchyOrder.indexOf(b);
+            if (ia === -1 && ib === -1) return a.localeCompare(b);
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load class hierarchy for sorting, using alphabetical order:', e.message);
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 10;
+
+    const cardWidth = 88;
+    const cardHeight = 34;
+    const gapX = 4;
+    const gapY = 4;
+    const headerHeight = 14;
+
+    const usableWidth = pageWidth - margin * 2;
+    const cols = Math.max(1, Math.floor((usableWidth + gapX) / (cardWidth + gapX)));
+
+    const usableHeightForCards = pageHeight - margin * 2 - headerHeight;
+    const rows = Math.max(1, Math.floor((usableHeightForCards + gapY) / (cardHeight + gapY)));
+
+    function drawClassHeader(className, pupilCount) {
+      doc.setFillColor(26, 86, 219);
+      doc.rect(margin, margin, usableWidth, headerHeight - 4, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(className, margin + 4, margin + 8);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${pupilCount} pupil${pupilCount !== 1 ? 's' : ''}`, pageWidth - margin - 4, margin + 8, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+    }
+
+    function drawCard(x, y, pupil) {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S');
+
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(26, 86, 219);
+      doc.text('FAHMID NURSERY & PRIMARY SCHOOL', x + cardWidth / 2, y + 5, { align: 'center' });
+
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.line(x + 4, y + 7, x + cardWidth - 4, y + 7);
+
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      const nameLines = doc.splitTextToSize(pupil.name, cardWidth - 8);
+      doc.text(nameLines, x + cardWidth / 2, y + 13, { align: 'center' });
+
+      const nameBlockHeight = nameLines.length * 4.5;
+      let cursorY = y + 13 + nameBlockHeight + 2;
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Admission No:', x + 5, cursorY);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(pupil.admissionNo, x + cardWidth - 5, cursorY, { align: 'right' });
+
+      cursorY += 6;
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Password:', x + 5, cursorY);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 118, 110);
+      doc.text(pupil.password, x + cardWidth - 5, cursorY, { align: 'right' });
+
+      doc.setTextColor(0, 0, 0);
+    }
+
+    let totalPupilsPrinted = 0;
+    let isFirstPageOverall = true;
+
+    orderedClassNames.forEach(className => {
+      const pupils = pupilsByClass[className];
+      let indexInClass = 0;
+
+      while (indexInClass < pupils.length) {
+        if (!isFirstPageOverall) {
+          doc.addPage();
+        }
+        isFirstPageOverall = false;
+
+        drawClassHeader(className, pupils.length);
+
+        const pageStartY = margin + headerHeight;
+
+        for (let r = 0; r < rows && indexInClass < pupils.length; r++) {
+          for (let c = 0; c < cols && indexInClass < pupils.length; c++) {
+            const x = margin + c * (cardWidth + gapX);
+            const y = pageStartY + r * (cardHeight + gapY);
+            drawCard(x, y, pupils[indexInClass]);
+            indexInClass++;
+            totalPupilsPrinted++;
+          }
+        }
+      }
+    });
+
+    doc.save(`Pupil_Login_Credentials_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    let message = `Credentials PDF generated for ${totalPupilsPrinted} pupil(s) across ${orderedClassNames.length} class(es).`;
+    if (skippedCount > 0) {
+      message += ` ${skippedCount} pupil(s) skipped due to missing admission number, name, or date of birth (see console for details).`;
+    }
+
+    window.showToast?.(message, skippedCount > 0 ? 'warning' : 'success', 8000);
+
+  } catch (error) {
+    console.error('Error generating pupil credentials PDF:', error);
+    window.showToast?.('Failed to generate credentials PDF: ' + error.message, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="key" style="width:15px;height:15px;"></i> Print Login Credentials';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  }
+}
+
+window.generatePupilCredentialsPDF = generatePupilCredentialsPDF;
+
 /* ======================================== 
    PUPILS MANAGEMENT - FIXED
 ======================================== */
