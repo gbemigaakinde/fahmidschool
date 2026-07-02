@@ -1,8 +1,9 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.2.0
+ * @version 1.2.1
  */
+
 'use strict';
 
 // ── Module state ──────────────────────────────────────────────────────────
@@ -619,6 +620,12 @@ function addCbtQuestion(existing = null) {
     container.appendChild(div);
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
+    // Relabel every question block ("Question 1", "Question 2"...) based on
+    // its actual position on screen. The internal id `n` above is just an
+    // ever-increasing unique key for element IDs/radio groups — it is NOT
+    // the same thing as the number the teacher sees.
+    cbtRenumberQuestions();
+
     // A question was added — persist immediately (typing inside it will
     // continue to autosave via the delegated input/change listeners).
     cbtScheduleAutosave();
@@ -633,9 +640,24 @@ function removeCbtQuestion(n) {
     const noMsg     = document.getElementById('cbt-no-q-msg');
     if (container && !container.children.length && noMsg) noMsg.style.display = 'block';
 
+    // Close the gap left behind: renumber the remaining questions so they
+    // always read 1, 2, 3… with no skipped numbers, regardless of which
+    // question was deleted or how many were added/removed before it.
+    cbtRenumberQuestions();
+
     // Removing a question doesn't fire an input/change event on the
     // container, so persist the new state explicitly.
     cbtScheduleAutosave();
+}
+
+// Recalculates the visible "Question N" label for every question block
+// based on its current position in the DOM. Internal element IDs (used for
+// input/radio uniqueness) are left untouched — only the label text changes.
+function cbtRenumberQuestions() {
+    document.querySelectorAll('#cbt-questions-container .cbt-question-builder').forEach((block, idx) => {
+        const label = block.querySelector('.cbt-question-builder__num');
+        if (label) label.textContent = `Question ${idx + 1}`;
+    });
 }
 
 // ── Save Test ──────────────────────────────────────────────────────────────
@@ -1039,4 +1061,4 @@ window.deleteCbtTest       = deleteCbtTest;
 window.togglePublish       = togglePublish;
 window.viewCbtResults      = viewCbtResults;
 
-console.log('✓ CBT Teacher module v1.2.0 loaded (autosave enabled)');
+console.log('✓ CBT Teacher module v1.2.1 loaded (autosave + question renumbering fixed)');
