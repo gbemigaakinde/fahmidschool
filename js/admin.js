@@ -8937,7 +8937,7 @@ async function generatePupilCredentialsPDF() {
     const margin = 10;
 
     const cardWidth = 88;
-    const cardHeight = 34;
+    const cardHeight = 42; // increased to fit website footer cleanly below credentials
     const gapX = 4;
     const gapY = 4;
     const headerHeight = 14;
@@ -8966,6 +8966,7 @@ async function generatePupilCredentialsPDF() {
       doc.setLineWidth(0.3);
       doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'S');
 
+      // School name header
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(26, 86, 219);
@@ -8975,6 +8976,7 @@ async function generatePupilCredentialsPDF() {
       doc.setLineWidth(0.2);
       doc.line(x + 4, y + 7, x + cardWidth - 4, y + 7);
 
+      // Pupil name (wraps up to 2 lines if long)
       doc.setFontSize(10.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
@@ -8984,6 +8986,7 @@ async function generatePupilCredentialsPDF() {
       const nameBlockHeight = nameLines.length * 4.5;
       let cursorY = y + 13 + nameBlockHeight + 2;
 
+      // Admission number
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
@@ -8994,6 +8997,7 @@ async function generatePupilCredentialsPDF() {
 
       cursorY += 6;
 
+      // Password
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
@@ -9001,6 +9005,21 @@ async function generatePupilCredentialsPDF() {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 118, 110);
       doc.text(pupil.password, x + cardWidth - 5, cursorY, { align: 'right' });
+
+      // Footer separator — fixed position near bottom of card, independent of
+      // how many lines the name wrapped to, so every card looks consistent
+      const footerLineY = y + cardHeight - 9;
+      const footerTextY = y + cardHeight - 4;
+
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.2);
+      doc.line(x + 4, footerLineY, x + cardWidth - 4, footerLineY);
+
+      // Website — the call to action for parents
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(26, 86, 219);
+      doc.text('Visit www.fahmidschool.com.ng for portal access', x + cardWidth / 2, footerTextY, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
     }
