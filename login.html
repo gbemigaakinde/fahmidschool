@@ -784,28 +784,22 @@
 <script>
   'use strict';
 
-  // ── SESSION TIMEOUT CONSTANT ──
-  var SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
-  var SESSION_TIMESTAMP_KEY = 'fahmid_login_time';
+  // ── AUTO-REDIRECT: only if a valid session was recorded within the
+  // login timeframe. Uses window.authReadyPromise so we're checking
+  // against the SDK's confirmed auth state, not a race-prone read of
+  // auth.currentUser. ──
+  (async function checkSessionAndRedirect() {
+    if (!window.auth || !window.authReadyPromise) return;
 
-  // ── AUTO-REDIRECT: only if logged in within the last 8 hours ──
-  (function checkSessionAndRedirect() {
-    if (!window.auth) return;
+    const user = await window.authReadyPromise;
+    if (!user) return;
 
-    window.auth.onAuthStateChanged(function(user) {
-      if (!user) return;
-
-      var loginTime = parseInt(localStorage.getItem(SESSION_TIMESTAMP_KEY) || '0', 10);
-      var now = Date.now();
-      var elapsed = now - loginTime;
-
-      if (loginTime && elapsed < SESSION_MAX_AGE_MS) {
-        window.location.replace('portal.html');
-      } else {
-        localStorage.removeItem(SESSION_TIMESTAMP_KEY);
-        window.auth.signOut().catch(function() {});
-      }
-    });
+    if (window.isSessionWithinTimeframe()) {
+      window.location.replace('portal.html');
+    } else {
+      window.clearLoginTimestamp();
+      window.auth.signOut().catch(function() {});
+    }
   })();
 
   let currentMode = 'login';
@@ -889,8 +883,12 @@
 
     const result = await window.auth.signInWithEmailAndPassword(email, password);
 
-    // Record login timestamp for the 8-hour session window
-    localStorage.setItem(SESSION_TIMESTAMP_KEY, String(Date.now()));
+    // Record login timestamp for the login-timeframe auto-login window.
+    // Set this as soon as sign-in resolves, so any session-timeframe
+    // check that runs on this page (firebase-init.js) never sees a
+    // signed-in user with no timestamp.
+    window.recordLoginTimestamp();
+
     await new Promise((resolve) => {
       if (window.auth.currentUser && window.auth.currentUser.uid === result.user.uid) {
         resolve();
