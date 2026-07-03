@@ -1,11 +1,4 @@
 {
-  "redirects": [
-    {
-      "source": "/login.html",
-      "destination": "/login",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/login",
