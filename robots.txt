@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
-Allow: /login.html
 Disallow: /portal.html
 Disallow: /admin.html
 Disallow: /teacher.html
