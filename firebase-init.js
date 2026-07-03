@@ -167,7 +167,7 @@ function enforceSessionTimeframe() {
           5000
         );
         setTimeout(() => {
-          window.location.href = 'login.html';
+          window.location.href = 'login';
         }, 1500);
       })
       .catch(error => {
@@ -246,7 +246,7 @@ window.handleError = function(error, fallbackMessage = 'An error occurred') {
       alert(userMessage);
     }
     setTimeout(() => {
-      window.location.href = 'login.html';
+      window.location.href = 'login';
     }, 2000);
     return userMessage;
   }
@@ -363,7 +363,7 @@ window.checkRole = function(requiredRole) {
     window.auth.onAuthStateChanged(async (user) => {
       if (!user) {
         window.showToast?.('Please log in to continue', 'warning');
-        setTimeout(() => window.location.href = 'login.html', 1500);
+        setTimeout(() => window.location.href = 'login', 1500);
         reject(new Error('Not authenticated'));
         return;
       }
@@ -374,7 +374,7 @@ window.checkRole = function(requiredRole) {
         if (!userDoc.exists) {
           window.showToast?.('User profile not found', 'danger');
           await window.auth.signOut();
-          setTimeout(() => window.location.href = 'login.html', 1500);
+          setTimeout(() => window.location.href = 'login', 1500);
           reject(new Error('User profile not found'));
           return;
         }
@@ -384,7 +384,7 @@ window.checkRole = function(requiredRole) {
         if (userData.role !== requiredRole) {
           window.showToast?.('Access denied. Insufficient permissions.', 'danger');
           await window.auth.signOut();
-          setTimeout(() => window.location.href = 'login.html', 2000);
+          setTimeout(() => window.location.href = 'login', 2000);
           reject(new Error('Insufficient permissions'));
           return;
         }
@@ -426,7 +426,7 @@ window.logout = async function() {
     window.clearLoginTimestamp();
     await window.auth.signOut();
     window.showToast?.('Logged out successfully', 'success');
-    setTimeout(() => window.location.href = 'login.html', 800);
+    setTimeout(() => window.location.href = 'login', 800);
   } catch (error) {
     window.handleError(error, 'Logout failed');
   }
