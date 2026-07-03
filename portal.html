@@ -370,7 +370,7 @@
       if (!user) {
         console.warn('⚠️ No auth session found — redirecting to login.');
         setStatus('Please log in to continue.');
-        setTimeout(() => window.location.replace('login.html'), 1200);
+        setTimeout(() => window.location.replace('login'), 1200);
         return;
       }
 
@@ -382,7 +382,7 @@
         setStatus('Your session has expired. Please log in again.');
         window.clearLoginTimestamp();
         await window.auth.signOut().catch(() => {});
-        setTimeout(() => window.location.replace('login.html'), 1200);
+        setTimeout(() => window.location.replace('login'), 1200);
         return;
       }
 
@@ -437,7 +437,7 @@
         await auth.signOut();
 
         setTimeout(() => {
-          window.location.replace('login.html');
+          window.location.replace('login');
         }, 3000);
       }
     })();
@@ -453,7 +453,7 @@
         if (window.showToast) {
           window.showToast('Session expired. Please log in again.', 'warning');
         }
-        setTimeout(() => window.location.replace('login.html'), 1200);
+        setTimeout(() => window.location.replace('login'), 1200);
       }
     });
   </script>
