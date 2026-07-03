@@ -9019,7 +9019,7 @@ async function generatePupilCredentialsPDF() {
       doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(26, 86, 219);
-      doc.text('Visit www.fahmidschool.com.ng for portal access', x + cardWidth / 2, footerTextY, { align: 'center' });
+      doc.text('Visit www.fahmidschool.com.ng/login for portal access', x + cardWidth / 2, footerTextY, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
     }
