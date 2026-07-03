@@ -2,7 +2,7 @@
   "name": "Fahmid Nursery & Primary School",
   "short_name": "Fahmid School",
   "description": "Quality nursery and primary education in a safe, caring environment",
-  "start_url": "/login.html",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -54,7 +54,7 @@
       "name": "Login",
       "short_name": "Login",
       "description": "Login to portal",
-      "url": "/login.html",
+      "url": "/login",
       "icons": [
         {
           "src": "/IMG_4628.jpeg",
