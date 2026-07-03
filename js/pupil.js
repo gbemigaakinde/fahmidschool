@@ -19,7 +19,7 @@ let classListener = null;
 // Enforce pupil access and load profile
 checkRole('pupil')
     .then(async user => await loadPupilProfile(user))
-    .catch(() => window.location.href = 'login.html');
+    .catch(() => window.location.href = 'login');
 
 // Clean up listeners when page unloads
 window.addEventListener('beforeunload', () => {
@@ -99,7 +99,7 @@ async function loadPupilProfile(user) {
         if (!pupilDoc.exists) {
             console.error('No pupil profile found for UID:', user.uid);
             window.showToast?.('No pupil profile found. Contact admin.', 'danger');
-            setTimeout(() => window.location.href = 'login.html', 3000);
+            setTimeout(() => window.location.href = 'login', 3000);
             window.isLoadingProfile = false;
             return;
         }
