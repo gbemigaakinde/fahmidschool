@@ -1,23 +1,25 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Engine — Pupil Test-Taking Logic
- * @version 1.1.0 — Question navigator (desktop sidebar / mobile drawer)
+ * @version 1.3.0 — Mid-test progress is now saved and restored on refresh
  */
 'use strict';
 
 // ── State ──────────────────────────────────────────────────────────────────
-let testData       = null;   
-let questions      = [];    
-let answers        = {};   
-let flagged        = new Set();
-let currentQ       = 0;
-let timerInterval  = null;
-let secondsLeft    = 0;
-let tabSwitchCount = 0;
-let testId         = null;
-let currentUser    = null;
-let attemptStarted = false;
-let submitted      = false;
+let testData          = null;   
+let questions         = [];    
+let answers           = {};   
+let flagged           = new Set();
+let currentQ          = 0;
+let timerInterval     = null;
+let secondsLeft       = 0;
+let tabSwitchCount    = 0;
+let testId            = null;
+let currentUser       = null;
+let attemptStarted    = false;
+let submitted         = false;
+let currentAttemptRef = null;   // Firestore doc ref for this pupil's in-progress attempt
+let progressSaveTimer = null;   // debounce handle for saving progress
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -43,6 +45,64 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadTestData();
     });
 });
+
+// ── Seeded shuffling (so each pupil gets a fixed, unique order) ────────────
+// A simple deterministic PRNG seeded from a string. Same seed always
+// produces the same sequence, so a pupil who refreshes mid-test still sees
+// the same shuffled order they started with — but a different pupil (or
+// the same pupil on a different test) gets a different order entirely.
+function seededRandomGenerator(seedStr) {
+    let h = 1779033703 ^ seedStr.length;
+    for (let i = 0; i < seedStr.length; i++) {
+        h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+    }
+    return function() {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        h ^= h >>> 16;
+        return (h >>> 0) / 4294967296;
+    };
+}
+
+function seededShuffle(array, seedStr) {
+    const rand = seededRandomGenerator(seedStr);
+    const arr  = array.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// Shuffles the A/B/C/D options of a single question and returns a NEW
+// question object with the options rearranged and correctAnswer remapped
+// to whichever letter the correct option now sits under. The original
+// Firestore document is never touched — this only affects what's shown
+// to this pupil, in memory, for this attempt.
+function shuffleQuestionOptions(q, seedStr) {
+    const letters = ['A', 'B', 'C', 'D'];
+    const keys    = ['optionA', 'optionB', 'optionC', 'optionD'];
+
+    const pairs = keys
+        .map((key, i) => ({ letter: letters[i], text: q[key] }))
+        .filter(p => p.text !== null && p.text !== undefined && p.text !== '');
+
+    const shuffledPairs = seededShuffle(pairs, seedStr);
+
+    const newQ = { ...q };
+    letters.forEach((letter, i) => {
+        newQ['option' + letter] = shuffledPairs[i] ? shuffledPairs[i].text : null;
+    });
+
+    const originalCorrectPair = pairs.find(p => p.letter === q.correctAnswer);
+    if (originalCorrectPair) {
+        const newIndex = shuffledPairs.findIndex(p => p.text === originalCorrectPair.text);
+        if (newIndex !== -1) newQ.correctAnswer = letters[newIndex];
+    }
+
+    return newQ;
+}
 
 // ── Load test data ─────────────────────────────────────────────────────────
 async function loadTestData() {
@@ -79,22 +139,55 @@ async function loadTestData() {
 
         if (questions.length === 0) { showError('This test has no questions yet.'); return; }
 
-        // Check previous attempt
-        const attemptSnap = await db.collection('cbt_attempts')
+        // ── Shuffle for this pupil ──────────────────────────────────────
+        // 1. Question order — seeded on pupil + test, so it's unique per
+        //    pupil but stays the same if they refresh mid-attempt.
+        questions = seededShuffle(questions, currentUser.uid + '_' + testId + '_qorder');
+
+        // 2. Option order within each question — seeded on pupil + test +
+        //    question id, so "the correct one is always option B" style
+        //    copying across desks no longer works either.
+        questions = questions.map(q =>
+            shuffleQuestionOptions(q, currentUser.uid + '_' + testId + '_' + q.id)
+        );
+
+        // ── Check for a completed attempt ────────────────────────────────
+        const completedSnap = await db.collection('cbt_attempts')
             .where('testId', '==', testId)
             .where('pupilId', '==', currentUser.uid)
             .where('status', '==', 'completed')
             .limit(1)
             .get();
 
-        const alreadyDone = !attemptSnap.empty;
+        if (!completedSnap.empty) {
+            populateStartScreen(true);
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'flex';
+            lucide.createIcons();
+            return;
+        }
 
-        // Populate start screen
-        populateStartScreen(alreadyDone);
+        // ── Check for an attempt already in progress ─────────────────────
+        // This covers a pupil who refreshed the page, closed the tab, or
+        // lost connection mid-test — we resume rather than start over and
+        // wipe out everything they'd already answered.
+        const inProgressSnap = await db.collection('cbt_attempts')
+            .where('testId', '==', testId)
+            .where('pupilId', '==', currentUser.uid)
+            .where('status', '==', 'in_progress')
+            .limit(1)
+            .get();
 
+        if (!inProgressSnap.empty) {
+            const attemptDoc = inProgressSnap.docs[0];
+            await resumeTest(attemptDoc.id, attemptDoc.data());
+            return;
+        }
+
+        // ── No previous attempt at all — normal fresh start ──────────────
+        populateStartScreen(false);
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('start-screen').style.display = 'flex';
-
         lucide.createIcons();
 
     } catch (err) {
@@ -120,7 +213,7 @@ function populateStartScreen(alreadyDone) {
     }
 }
 
-// ── Start Test ─────────────────────────────────────────────────────────────
+// ── Start Test (fresh attempt) ──────────────────────────────────────────────
 async function startTest() {
     if (submitted || attemptStarted) return;
     attemptStarted = true;
@@ -130,15 +223,20 @@ async function startTest() {
         await document.documentElement.requestFullscreen();
     } catch(e) { /* fullscreen not required, just preferred */ }
 
-    // Create attempt record in Firestore
+    // Create attempt record in Firestore and keep a reference to it so
+    // we can save progress to it as the pupil works through the test.
     try {
-        await db.collection('cbt_attempts').add({
+        const ref = await db.collection('cbt_attempts').add({
             testId,
             pupilId: currentUser.uid,
             status: 'in_progress',
             startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            tabSwitchCount: 0
+            tabSwitchCount: 0,
+            answers: {},
+            flaggedIndexes: [],
+            currentQ: 0
         });
+        currentAttemptRef = ref;
     } catch(err) {
         console.error('Could not create attempt record:', err);
     }
@@ -171,6 +269,88 @@ async function startTest() {
     document.addEventListener('keydown', onNavDrawerKeydown);
 
     lucide.createIcons();
+}
+
+// ── Resume Test (an in_progress attempt already exists) ─────────────────────
+async function resumeTest(attemptId, attemptData) {
+    attemptStarted = true;
+    currentAttemptRef = db.collection('cbt_attempts').doc(attemptId);
+
+    // Restore saved progress
+    answers        = attemptData.answers || {};
+    flagged        = new Set((attemptData.flaggedIndexes || []).map(Number));
+    tabSwitchCount = attemptData.tabSwitchCount || 0;
+    const savedQ   = typeof attemptData.currentQ === 'number' ? attemptData.currentQ : 0;
+    currentQ       = Math.min(Math.max(savedQ, 0), questions.length - 1);
+
+    document.getElementById('loading-screen').style.display = 'none';
+
+    // Work out how much time is genuinely left, based on real elapsed time
+    // since the attempt actually started — not however long the browser
+    // happened to be open — so refreshing can never buy extra time.
+    let expiredWhileAway = false;
+    if (testData.timerMinutes && testData.timerMinutes > 0) {
+        const startedAt = attemptData.startedAt?.toDate ? attemptData.startedAt.toDate() : new Date();
+        const elapsedSeconds = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+        secondsLeft = (testData.timerMinutes * 60) - elapsedSeconds;
+        if (secondsLeft <= 0) {
+            secondsLeft = 0;
+            expiredWhileAway = true;
+        }
+    }
+
+    if (expiredWhileAway) {
+        // Time ran out while the pupil was away — submit whatever they
+        // had answered instead of letting them carry on.
+        window.showToast?.('Time ran out while you were away. Submitting your answers.', 'warning', 5000);
+        await submitTest();
+        return;
+    }
+
+    // Try to return to fullscreen (best-effort, same as a fresh start)
+    try { await document.documentElement.requestFullscreen(); } catch(e) { /* not required */ }
+
+    document.getElementById('test-screen').style.display = 'block';
+    document.getElementById('ts-title').textContent = testData.title;
+    document.getElementById('ts-meta').textContent  = testData.subject + ' · ' + questions.length + ' questions';
+
+    renderQuestion(currentQ);
+    buildPalette();
+
+    if (testData.timerMinutes && testData.timerMinutes > 0) {
+        startTimer();
+    } else {
+        document.getElementById('cbt-timer-display').style.display = 'none';
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowBlur);
+    document.addEventListener('keydown', onNavDrawerKeydown);
+
+    window.showToast?.('Welcome back. Your progress has been restored.', 'info', 4000);
+
+    lucide.createIcons();
+}
+
+// ── Progress autosave (to Firestore, so a refresh never loses answers) ─────
+function scheduleProgressSave() {
+    clearTimeout(progressSaveTimer);
+    progressSaveTimer = setTimeout(saveProgressNow, 800);
+}
+
+async function saveProgressNow() {
+    if (!currentAttemptRef || submitted) return;
+    try {
+        await currentAttemptRef.update({
+            answers,
+            flaggedIndexes: Array.from(flagged),
+            currentQ,
+            tabSwitchCount,
+            lastSavedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (e) {
+        console.warn('Progress save failed (will retry on next change):', e);
+    }
 }
 
 // ── Question Navigator (desktop sidebar / mobile bottom drawer) ────────────
@@ -282,6 +462,10 @@ function renderQuestion(index) {
     updateNavToggleCount();
     updateProgressBar();
     lucide.createIcons();
+
+    // Every render reflects the latest answers/flags/position, so this is
+    // a safe single place to trigger a debounced save to Firestore.
+    scheduleProgressSave();
 }
 
 // ── Answer Selection ───────────────────────────────────────────────────────
@@ -387,6 +571,10 @@ async function recordTabSwitch(type) {
         });
     } catch(e) { /* non-critical */ }
 
+    // Also persist the updated count against the attempt itself so a
+    // resume after this point still shows the correct switch count.
+    scheduleProgressSave();
+
     lucide.createIcons();
 }
 
@@ -411,6 +599,7 @@ async function submitTest() {
     if (submitted) return;
     submitted = true;
 
+    clearTimeout(progressSaveTimer);
     document.getElementById('confirm-overlay').style.display = 'none';
     clearInterval(timerInterval);
     document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -482,16 +671,22 @@ async function submitTest() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Update attempt status
-        const attemptSnap = await db.collection('cbt_attempts')
-            .where('testId', '==', testId)
-            .where('pupilId', '==', currentUser.uid)
-            .where('status', '==', 'in_progress')
-            .limit(1)
-            .get();
+        // Update attempt status — prefer the reference we already hold
+        // (set when the attempt was created or resumed) and only fall
+        // back to a lookup if that reference is somehow missing.
+        let attemptRefToUpdate = currentAttemptRef;
+        if (!attemptRefToUpdate) {
+            const attemptSnap = await db.collection('cbt_attempts')
+                .where('testId', '==', testId)
+                .where('pupilId', '==', currentUser.uid)
+                .where('status', '==', 'in_progress')
+                .limit(1)
+                .get();
+            if (!attemptSnap.empty) attemptRefToUpdate = attemptSnap.docs[0].ref;
+        }
 
-        if (!attemptSnap.empty) {
-            batch.update(attemptSnap.docs[0].ref, {
+        if (attemptRefToUpdate) {
+            batch.update(attemptRefToUpdate, {
                 status: 'completed',
                 score:  correct,
                 total,
@@ -631,4 +826,4 @@ window.confirmSubmit  = confirmSubmit;
 window.submitTest     = submitTest;
 window.showReview     = showReview;
 
-console.log('✓ CBT engine v1.1.0 loaded');
+console.log('✓ CBT engine v1.3.0 loaded (shuffling + mid-test progress resume)');
