@@ -343,8 +343,8 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  flex-shrink: 1;      /* FIX: was 0 — logo is now allowed to shrink if space is tight */
-  min-width: 0;        /* FIX: required for text-overflow ellipsis to work inside a flex item */
+  flex-shrink: 1;    
+  min-width: 0;       
   text-decoration: none;
 }
 
@@ -353,7 +353,7 @@ p:not(:last-child) { margin-bottom: 1em; }
   height: 36px;
   border-radius: var(--pp-r-sm);
   overflow: hidden;
-  flex-shrink: 0;       /* icon itself never shrinks, only the text next to it does */
+  flex-shrink: 0;   
 }
 
 .nav-logo-icon img {
@@ -366,33 +366,35 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   flex-direction: column;
   line-height: 1.1;
-  min-width: 0;         /* FIX: allows the name below to truncate instead of overflowing */
+  min-width: 0;     
 }
 
 .nav-logo-name {
   font-family: var(--font-display);
-  font-size: var(--text-base);
+  font-size: 0.9375rem;     
   color: var(--ink-900);
   white-space: nowrap;
-  overflow: hidden;          /* FIX: truncate long text instead of forcing extra width */
-  text-overflow: ellipsis;   /* FIX: shows "Fahmid Sch…" instead of pushing layout wider */
+  overflow: hidden;          
+  text-overflow: ellipsis;   
 }
 
 .nav-logo-tagline {
-  font-size: var(--text-xs);
+  font-size: 0.625rem;       
   color: var(--ink-500);
   font-weight: var(--w-medium);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
-  display: none;
+  overflow: hidden;           
+  text-overflow: ellipsis;
+  display: block;            
 }
 
 @media (min-width: 640px) {
   .nav-logo-name {
-    font-size: var(--text-lg);
+    font-size: var(--text-lg);  
   }
   .nav-logo-tagline {
-    display: block;
+    font-size: var(--text-xs);   
   }
 }
 
