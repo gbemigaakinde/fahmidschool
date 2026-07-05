@@ -17,6 +17,7 @@ const db = window.db;
 const auth = window.auth;
 
 let currentUser = null;
+let teacherName = null;
 let assignedClasses = [];
 let allPupils = [];
 let allSubjects = [];
@@ -42,9 +43,10 @@ window.checkRole('teacher')
     if (info) {
       try {
         const teacherDoc = await db.collection('teachers').doc(user.uid).get();
-        const teacherName = teacherDoc.exists ? (teacherDoc.data().name || user.email) : user.email;
+        teacherName = teacherDoc.exists ? (teacherDoc.data().name || user.email) : user.email;
         info.innerHTML = `Logged in as:<br><strong>${teacherName}</strong>`;
       } catch (e) {
+        teacherName = user.email;
         info.innerHTML = `Logged in as:<br><strong>${user.email}</strong>`;
       }
     }
@@ -664,7 +666,28 @@ function setupAllEventListeners() {
    DASHBOARD WITH VALIDATION
 ======================================== */
 
+function getTimeBasedGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function renderDashboardGreeting() {
+  const greetingEl = document.getElementById('dashboard-greeting');
+  if (!greetingEl) return;
+
+  const greeting = getTimeBasedGreeting();
+  const displayName = teacherName || 'Teacher';
+
+  greetingEl.textContent = `${greeting}, ${displayName}`;
+}
+
+window.renderDashboardGreeting = renderDashboardGreeting;
+
 async function loadTeacherDashboard() {
+  renderDashboardGreeting();
+
   const classCountEl = document.getElementById('my-class-count');
   const pupilCountEl = document.getElementById('my-pupil-count');
   const headerClassCount = document.getElementById('header-class-count');
