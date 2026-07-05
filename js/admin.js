@@ -3288,7 +3288,7 @@ async function rejectResultSubmission(submissionId) {
     }
     
     try {
-        // ✅ STEP 1: Update submission status to rejected
+        // STEP 1: Update submission status to rejected
         await db.collection('result_submissions').doc(submissionId).update({
             status: 'rejected',
             rejectedBy: auth.currentUser.uid,
@@ -3296,7 +3296,7 @@ async function rejectResultSubmission(submissionId) {
             rejectionReason: reason.trim()
         });
         
-        // ✅ STEP 2: Results stay in results_draft collection
+        // STEP 2: Results stay in results_draft collection
         // Teacher can now edit them and resubmit
         
         console.log('✓ Submission rejected, results remain in draft');
@@ -3328,7 +3328,7 @@ window.approveResultSubmission = approveResultSubmission;
 window.rejectResultSubmission = rejectResultSubmission;
 
 /* ========================================
-   ADMIN: VIEW PUPIL RESULTS BY SESSION
+   VIEW PUPIL RESULTS BY SESSION
 ======================================== */
 
 let currentResultsPupilId = null;
@@ -3352,8 +3352,7 @@ async function loadViewResultsSection() {
     if (pupilSelect) pupilSelect.disabled = true;
     if (viewBtn) viewBtn.disabled = true;
     
-    // CRITICAL FIX: Attach all event listeners properly
-    
+    // Attach all event listeners properly
     // 1. Session select listener
     if (sessionSelect) {
       const newSessionSelect = sessionSelect.cloneNode(true);
@@ -3419,7 +3418,7 @@ async function populateSessionFilter() {
 }
 
 /**
- * FIXED: Load classes for result viewing - includes alumni option
+ * Load classes for result viewing - includes alumni option
  */
 async function loadFilteredClasses() {
   const sessionSelect = document.getElementById('filter-session');
@@ -3494,8 +3493,7 @@ async function loadFilteredClasses() {
       }
     }
     
-    // ✅ FIXED: Also check if any alumni have results for this session
-    // Alumni have class.id = null, so we check the results collection directly
+    // Also check if any alumni have results for this session
     const alumniResultsSnap = await db.collection('results')
       .where('session', '==', actualSession)
       .limit(1)
@@ -3576,7 +3574,7 @@ async function loadFilteredClasses() {
 }
 
 /**
- * FIXED: Load pupils for result viewing - includes alumni
+ * Load pupils for result viewing - includes alumni
  */
 async function loadFilteredPupils() {
   let classSelect = document.getElementById('filter-class');
@@ -3598,7 +3596,7 @@ async function loadFilteredPupils() {
     let pupilsWithResults = [];
     
     if (selectedClass === '__alumni__') {
-      // ✅ FIXED: Load alumni who have results in this session
+      // Load alumni who have results in this session
       const alumniSnap = await db.collection('pupils')
         .where('status', '==', 'alumni')
         .get();
@@ -3628,8 +3626,7 @@ async function loadFilteredPupils() {
         .get();
       
       if (pupilsSnap.empty) {
-        // ✅ FIXED: Also check alumni who were in this class
-        // Alumni have class.id = null, but their finalClass may match
+        // Also check alumni who were in this class
         const classDoc = await db.collection('classes').doc(selectedClass).get();
         const className = classDoc.exists ? classDoc.data().name : null;
         
@@ -3678,7 +3675,7 @@ async function loadFilteredPupils() {
           }
         }
         
-        // ✅ FIXED: Also include alumni who were in this class and have results
+        // Also include alumni who were in this class and have results
         const classDoc = await db.collection('classes').doc(selectedClass).get();
         const className = classDoc.exists ? classDoc.data().name : null;
         
@@ -4097,7 +4094,6 @@ async function renderResultsDisplay(results, container) {
     }
 
     // Print / Full Report button (admin view)
-    // Resolve admission number for the URL so the internal UID is never exposed
     const printBtn = document.createElement('a');
 
     let admissionNo = null;
@@ -4505,7 +4501,7 @@ async function loadFeeManagementSection() {
   console.log('💰 Loading fee management section...');
 
   try {
-    // FIXED: Target the section directly, not a non-existent nested .admin-card
+    // Target the section directly, not a non-existent nested .admin-card
     const feeSection = document.getElementById('fee-management');
 
     if (feeSection) {
@@ -4559,8 +4555,7 @@ async function populateFeeClassSelector() {
 }
 
 /**
- * FIXED: Load Fee Structures (Class-Based Display)
- * Replace loadFeeStructures() function
+ *  Load Fee Structures (Class-Based Display)
  */
 async function loadFeeStructures() {
   const container = document.getElementById('fee-structures-list');
@@ -4569,7 +4564,7 @@ async function loadFeeStructures() {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-lg);"><div class="spinner"></div><p>Loading fee structures...</p></div>';
   
   try {
-    // ✅ FIX: Query ALL fee structures (no session filter)
+    // Query ALL fee structures (no session filter)
     const snapshot = await db.collection('fee_structures').get();
     
     console.log(`Found ${snapshot.size} fee structures`);
@@ -4584,7 +4579,7 @@ async function loadFeeStructures() {
       return;
     }
     
-    // ✅ CRITICAL FIX: Check for duplicates by classId
+    // Check for duplicates by classId
     const feesByClass = new Map();
     
     snapshot.forEach(doc => {
@@ -4643,7 +4638,7 @@ async function loadFeeStructures() {
         ${fees.length > 1 ? 'border-left: 4px solid #ff9800;' : ''}
       `;
       
-      // ✅ FIX: Show as permanent (not session-specific)
+      // Show as permanent (not session-specific)
       card.innerHTML = `
         ${fees.length > 1 ? `
           <div style="background: #fff3cd; border: 1px solid #ff9800; border-radius: var(--radius-sm); padding: var(--space-sm); margin-bottom: var(--space-md); font-size: var(--text-sm);">
@@ -4826,7 +4821,7 @@ async function populatePaymentClassFilter() {
 }
 
 /**
- * Load pupils for payment recording (MISSING FUNCTION)
+ * Load pupils for payment recording
  */
 async function loadPupilsForPayment() {
   const classId = document.getElementById('payment-class-filter')?.value;
@@ -4870,7 +4865,7 @@ async function loadPupilsForPayment() {
 }
 
 /**
- * ✅ FIXED: Load Pupil Payment Status with safer auto-creation
+ * Load Pupil Payment Status with safer auto-creation
  */
 async function loadPupilPaymentStatus() {
   const pupilSelect = document.getElementById('payment-pupil-select');
@@ -4980,7 +4975,7 @@ async function loadPupilPaymentStatus() {
     let balance = amountDue + arrears;
     let status = arrears > 0 ? 'owing_with_arrears' : 'owing';
 
-    // ✅ FIXED: Auto-create with transaction guard to prevent race condition
+    // Auto-create with transaction guard to prevent race condition
     if (!paymentDoc.exists) {
       console.log('⚠️ Payment record missing, creating with transaction guard...');
 
@@ -5094,7 +5089,6 @@ async function loadPupilPaymentStatus() {
     }
 
     // Arrears warning — only show if arrears haven't been fully paid off yet
-// totalPaid >= arrears means the arrears portion has been cleared
 const arrearsCleared = totalPaid >= arrears;
 const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
   <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
@@ -5212,7 +5206,7 @@ window.loadPupilPaymentStatus = loadPupilPaymentStatus;
 console.log('✅ Admin payment status fix loaded - now matches pupil portal logic');
 
 /**
- * ✅ FIXED: Load complete payment history with proper query
+ * Load complete payment history with proper query
  */
 async function loadPaymentHistory(pupilId, session, term) {
   const container = document.getElementById('payment-history-list');
@@ -5224,7 +5218,7 @@ async function loadPaymentHistory(pupilId, session, term) {
   container.innerHTML = '<div style="text-align:center; padding:var(--space-md);"><div class="spinner"></div></div>';
 
   try {
-    // ✅ FIXED: Query by pupilId and session only (term is already in document ID)
+    // Query by pupilId and session only (term is already in document ID)
     const snapshot = await db.collection('payment_transactions')
       .where('pupilId', '==', pupilId)
       .where('session', '==', session)
@@ -5293,7 +5287,7 @@ async function loadPaymentHistory(pupilId, session, term) {
 window.loadPaymentHistory = loadPaymentHistory;
 
 /**
- * ✅ FIXED: Load Outstanding Fees Report using canonical calculation
+ *  Load Outstanding Fees Report using canonical calculation
  */
 async function loadOutstandingFeesReport() {
   const container = document.getElementById('outstanding-fees-table');
@@ -5318,7 +5312,7 @@ async function loadOutstandingFeesReport() {
     }
 
     const outstandingPupils = [];
-    const alumniWithBalance = [];   // FIX 5: track alumni separately
+    const alumniWithBalance = []; 
     let totalOutstanding    = 0;
     let errorCount          = 0;
 
@@ -5329,7 +5323,7 @@ async function loadOutstandingFeesReport() {
       const isAlumni = pupilData.status === 'alumni' || pupilData.isActive === false;
 
       if (isAlumni) {
-        // FIX 5: Still check alumni for outstanding balances instead of silently skipping.
+        // Still check alumni for outstanding balances instead of silently skipping.
         try {
           const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
           if (!result.reason && result.balance > 0) {
@@ -5351,7 +5345,7 @@ async function loadOutstandingFeesReport() {
           outstandingPupils.push(result);
           totalOutstanding += result.balance;
         }
-        // FIX 3 integration: surface overpaid pupils in console for admin awareness
+        // surface overpaid pupils in console for admin awareness
         if (result.status === 'overpaid') {
           console.log(`ℹ️ ${result.pupilName} has credit of ₦${result.credit.toLocaleString()}`);
         }
@@ -5536,8 +5530,7 @@ function showFeeBreakdown(pupilName, termBreakdown) {
 window.showFeeBreakdown = showFeeBreakdown;
 
 /**
- * ✅ FIXED: Financial Reports using canonical calculation
- * Now properly uses calculateCurrentOutstanding for accuracy
+ * Financial Reports using canonical calculation
  */
 async function loadFinancialReports() {
   try {
@@ -5556,7 +5549,7 @@ async function loadFinancialReports() {
 
     console.log(`✓ Found ${pupilsSnap.size} pupils for financial report`);
 
-    // FIX 6: Track current-term fees and arrears separately
+    // Track current-term fees and arrears separately
     let totalCurrentFees  = 0;
     let totalArrears      = 0;
     let totalCollected    = 0;
@@ -5586,7 +5579,7 @@ async function loadFinancialReports() {
           continue;
         }
 
-        // FIX 6: Accumulate current fees and arrears separately
+        // Accumulate current fees and arrears separately
         totalCurrentFees += result.amountDue;
         totalArrears     += result.arrears;
         totalCollected   += result.totalPaid;
@@ -5619,7 +5612,7 @@ async function loadFinancialReports() {
 
     const totalExpected = totalCurrentFees + totalArrears;
 
-    // FIX 6: Two separate collection rates:
+    // Two separate collection rates:
     // (a) Current-term rate: how much of THIS term's fees have been collected
     //     (capped at current fees — overpayment of arrears doesn't inflate this)
     const currentTermCollected = Math.min(totalCollected, totalCurrentFees);
@@ -5639,7 +5632,7 @@ async function loadFinancialReports() {
       totalExpected,
       totalCollected,
       totalOutstanding,
-      overallCollectionRate,  // primary rate shown in existing UI element
+      overallCollectionRate,
       paidInFull,
       partialPayments,
       noPayment,
@@ -5647,8 +5640,7 @@ async function loadFinancialReports() {
       currentTerm
     );
 
-    // FIX 6: Surface the current-term rate in the UI if the element exists.
-    // If the HTML doesn't have this element yet, this is a no-op.
+    // Surface the current-term rate in the UI if the element exists.
     const currentTermRateEl = document.getElementById('report-current-term-collection-rate');
     if (currentTermRateEl) {
       currentTermRateEl.textContent = `${currentTermCollectionRate}%`;
@@ -5717,7 +5709,7 @@ function updateSummaryDisplay(count, total) {
     if (totalEl) totalEl.textContent = `₦${total.toLocaleString()}`;
 }
 
-// ✅ Make all functions globally available
+// Make all functions globally available
 window.exportFinancialReport = exportFinancialReport;
 window.exportFinancialCSV = exportFinancialCSV;
 window.exportFinancialPDF = exportFinancialPDF;
@@ -5750,9 +5742,7 @@ async function saveFeeStructure() {
     return;
   }
 
-  // ✅ FIXED: Round all fee components to whole naira on input
-  // Guards against: user typing decimals, copy-paste with fractions,
-  // and legacy Firestore documents with unrounded float values
+  // Round all fee components to whole naira on input
   const tuition  = Math.round(parseFloat(document.getElementById('fee-tuition')?.value)  || 0);
   const examFee  = Math.round(parseFloat(document.getElementById('fee-exam')?.value)      || 0);
   const uniform  = Math.round(parseFloat(document.getElementById('fee-uniform')?.value)   || 0);
@@ -5874,7 +5864,7 @@ async function saveFeeStructure() {
 window.saveFeeStructure = saveFeeStructure;
 
 /**
- * ✅ FIXED: Edit fee structure - Works with permanent (class-based) fee structures
+ * Edit fee structure - Works with permanent (class-based) fee structures
  */
 async function editFeeStructure(feeDocId) {
   try {
@@ -5938,8 +5928,7 @@ async function editFeeStructure(feeDocId) {
 }
 
 /**
- * ✅ FIXED: Delete fee structure - Works with permanent (class-based) fee structures
- * No longer depends on session field since fees are now permanent
+ * Delete fee structure - Works with permanent (class-based) fee structures
  */
 async function deleteFeeStructure(docId, className) {
   try {
@@ -5954,7 +5943,7 @@ async function deleteFeeStructure(docId, className) {
     const classId = feeData.classId;
     const total = Math.round(Number(feeData.total) || 0);
 
-    // ✅ Check payments AND transactions — both constitute financial history
+    // Check payments AND transactions — both constitute financial history
     const [paymentsSnap, transactionsSnap] = await Promise.all([
       db.collection('payments').where('classId', '==', classId).limit(1).get(),
       db.collection('payment_transactions').where('classId', '==', classId).limit(1).get()
@@ -5981,7 +5970,7 @@ async function deleteFeeStructure(docId, className) {
 
     if (!confirmation) return;
 
-    // ✅ Archive and delete atomically in a single batch
+    // Archive and delete atomically in a single batch
     const batch = db.batch();
 
     batch.set(db.collection('fee_structure_history').doc(), {
@@ -6011,8 +6000,7 @@ async function deleteFeeStructure(docId, className) {
 }
 
 /**
- * FIXED: Generate Payment Records (Class-Based Fee Lookup)
- * Replace generatePaymentRecordsForClass() function
+ * Generate Payment Records (Class-Based Fee Lookup)
  */
 async function generatePaymentRecordsForClass(classId, className, session, term, totalFee) {
   try {
@@ -6027,7 +6015,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
       return { success: true, count: 0, skipped: 0, total: 0 };
     }
     
-    // ✅ FIX: Get persistent fee structure (class-based)
+    // Get persistent fee structure (class-based)
     const feeDocId = `fee_${classId}`;
     const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
     
@@ -6131,7 +6119,7 @@ async function generatePaymentRecordsForClass(classId, className, session, term,
 window.generatePaymentRecordsForClass = generatePaymentRecordsForClass;
 
 /**
- * ✅ FIXED: Ensure all pupils have payment records using permanent fee structures
+ * Ensure all pupils have payment records using permanent fee structures
  */
 async function ensureAllPupilsHavePaymentRecords() {
   const btn = document.getElementById('bulk-generate-btn');
@@ -6212,8 +6200,6 @@ async function ensureAllPupilsHavePaymentRecords() {
         const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
         const paymentRef   = db.collection('payments').doc(paymentDocId);
 
-        // FIX 7: Use a transaction so concurrent runs cannot both read
-        // "not exists" and both write, potentially overwriting totalPaid.
         let shouldCreate = false;
         let arrears      = 0;
 
@@ -6226,7 +6212,6 @@ async function ensureAllPupilsHavePaymentRecords() {
           }
 
           // Not yet created — calculate arrears and mark for creation.
-          // (We set a flag so we can increment counters outside the transaction.)
           shouldCreate = true;
         });
 
@@ -6235,8 +6220,7 @@ async function ensureAllPupilsHavePaymentRecords() {
           continue;
         }
 
-        // Calculate arrears outside the transaction (Firestore transactions
-        // cannot make additional reads after a conditional write path).
+        // Calculate arrears outside the transaction
         try {
           arrears = await window.calculateCompleteArrears(pupilId, session, term);
           if (arrears > 0) totalArrears += arrears;
@@ -6323,15 +6307,15 @@ console.log('✅ ensureAllPupilsHavePaymentRecords() FIX 7 loaded');
  * Helper: Calculate total unpaid balance for entire session
  */
 async function calculateSessionBalance(pupilId, session) {
-  // Just delegate to the safe version (which is now fixed)
+  // Just delegate to the safe version
   return await calculateSessionBalanceSafe(pupilId, session);
 }
 
 /**
- * ✅ FIXED: Record payment with atomic transaction protection
+ * Record payment with atomic transaction protection
  */
 async function recordPayment() {
-  // ✅ Guard: finance module must be loaded before any payment work begins
+  // Guard: finance module must be loaded before any payment work begins
   if (!window.finance || typeof window.finance.recordPayment !== 'function') {
     window.showToast?.(
       '⚠️ Payment module not loaded.\n\nPlease refresh the page and try again.\nIf this persists, contact your system administrator.',
@@ -6486,7 +6470,7 @@ async function migrateArrearsToNewSession() {
     let totalArrearsAmount = 0;
     let errorCount = 0;
 
-    // ✅ Use let — batch must be renewable after 400 operations
+    // Use let — batch must be renewable after 400 operations
     let batch = db.batch();
     let batchCount = 0;
 
@@ -6521,7 +6505,6 @@ async function migrateArrearsToNewSession() {
 
           if (batchCount >= 400) {
             await batch.commit();
-            // ✅ Renew batch
             batch = db.batch();
             batchCount = 0;
             console.log(`Progress: ${processedCount} pupils processed...`);
@@ -6594,7 +6577,7 @@ async function exportFinancialReport(format) {
 }
 
 /**
- * ✅ FIXED: Export CSV using canonical calculation
+ * Export CSV using canonical calculation
  */
 async function exportFinancialCSV(session, term) {
     try {
@@ -6614,7 +6597,7 @@ async function exportFinancialCSV(session, term) {
 
         console.log(`📊 Exporting financial data for ${pupilsSnap.size} pupils...`);
 
-        // ✅ CRITICAL FIX: Use canonical calculation
+        // Use canonical calculation
         for (const pupilDoc of pupilsSnap.docs) {
             const pupilId = pupilDoc.id;
             const pupilData = pupilDoc.data();
@@ -6719,7 +6702,7 @@ async function exportFinancialCSV(session, term) {
 }
 
 /**
- * ✅ FIXED: Export PDF using canonical calculation
+ * Export PDF using canonical calculation
  */
 async function exportFinancialPDF(session, term) {
     try {
@@ -6744,7 +6727,7 @@ async function exportFinancialPDF(session, term) {
 
         console.log(`📊 Preparing PDF for ${pupilsSnap.size} pupils...`);
 
-        // ✅ CRITICAL FIX: Use canonical calculation
+        // Use canonical calculation
         for (const pupilDoc of pupilsSnap.docs) {
             const pupilId = pupilDoc.id;
             const pupilData = pupilDoc.data();
@@ -7169,7 +7152,7 @@ console.log('✓ Class hierarchy module initialized (admin only)');
 ======================================== */
 
 /**
- * FIXED: Moved to top to avoid hoisting issues
+ * Moved to top to avoid hoisting issues
  */
 function getClassIdFromPupilData(classData) {
   if (!classData) return null;
@@ -7223,13 +7206,7 @@ function combinePupilName(firstName, middleName, lastName) {
 window.combinePupilName = combinePupilName;
 
 /**
- * ✅ RELIGION-BASED SUBJECT FILTERING
- * Removes the Religious Studies subject that does NOT match the pupil's religion,
- * so Muslim pupils never get Christian Religious Studies and vice versa.
- *
- * Recognizes common naming variants (CRS/CRK, IRS/IRK, full names).
- * If religion is unset/unknown ("", "Other"), nothing is filtered — admin/teacher
- * can still manually assign the correct subject later.
+ * RELIGION-BASED SUBJECT FILTERING
  */
 function filterSubjectsByReligion(subjects, religion) {
   if (!Array.isArray(subjects) || subjects.length === 0) return subjects || [];
@@ -7272,7 +7249,7 @@ function filterSubjectsByReligion(subjects, religion) {
 window.filterSubjectsByReligion = filterSubjectsByReligion;
 
 /**
- * FIXED: Populate class dropdown with defensive checks
+ * Populate class dropdown with defensive checks
  */
 async function populateClassDropdown(selectedClass = '') {
   const classSelect = document.getElementById('pupil-class');
@@ -7312,7 +7289,7 @@ async function populateClassDropdown(selectedClass = '') {
 }
 
 /**
- * FIXED: Get class details with proper error handling
+ * Get class details with proper error handling
  */
 async function getClassDetails(classId) {
   try {
@@ -7357,8 +7334,7 @@ async function getClassDetails(classId) {
 }
 
 /**
- * FIXED PAGINATION WITH MEMORY LEAK PREVENTION
- * Replace the paginateTable function in admin.js
+ * PAGINATION WITH MEMORY LEAK PREVENTION
  */
 
 function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
@@ -7375,8 +7351,6 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
     return;
   }
 
-  // CRITICAL FIX: Sanitize tbodyId to create a valid JS identifier
-  // Hyphens in IDs cause "table is not defined" ReferenceError
   const safeFuncKey = tbodyId.replace(/[^a-zA-Z0-9_]/g, '_');
   const paginationFuncName = `changePage_${safeFuncKey}`;
 
@@ -7437,7 +7411,7 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
       container.appendChild(paginationContainer);
     }
 
-    // FIX: Center the pagination controls
+    // Center the pagination controls
     paginationContainer.style.cssText = `
       display: flex;
       align-items: center;
@@ -7455,8 +7429,6 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
 
     paginationContainer.style.display = 'flex';
 
-    // FIX: Use data attributes + addEventListener instead of inline onclick
-    // This avoids the hyphen-in-identifier ReferenceError entirely
     paginationContainer.innerHTML = `
       <button
         class="pagination-prev"
@@ -7481,7 +7453,7 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
       </button>
     `;
 
-    // FIX: Use addEventListener instead of inline onclick to avoid identifier issues
+    // Use addEventListener instead of inline onclick to avoid identifier issues
     const prevBtn = paginationContainer.querySelector('.pagination-prev');
     const nextBtn = paginationContainer.querySelector('.pagination-next');
 
@@ -7515,7 +7487,7 @@ function paginateTable(data, tbodyId, itemsPerPage = 20, renderRowCallback) {
 window.paginateTable = paginateTable;
 
 /**
- * FIXED: Moved session history loader to top
+ * Session history loader
  */
 async function loadSessionHistory() {
   const tbody = document.getElementById('session-history-table');
@@ -7572,13 +7544,13 @@ async function loadSessionHistory() {
 }
 
 /**
- * FIXED: Moved alumni loader to top
+ * Alumni loader
  */
 // Global variable to store all alumni data
 let allAlumniData = [];
 
 /**
- * ✅ FIXED: Load Alumni (Client-Side Filtering)
+ * Load Alumni (Client-Side Filtering)
  */
 async function loadAlumni() {
   const tbody = document.getElementById('alumni-table');
@@ -7590,7 +7562,7 @@ async function loadAlumni() {
   tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>';
   
   try {
-    // ✅ FIX: Get all pupils, filter alumni client-side
+    // Get all pupils, filter alumni client-side
     const snapshot = await db.collection('pupils')
       .orderBy('name')
       .get();
@@ -7621,7 +7593,7 @@ async function loadAlumni() {
     
     console.log(`✓ Loaded ${alumni.length} alumni out of ${snapshot.size} total pupils`);
     
-    // ✅ Store globally for search
+    // Store globally for search
     allAlumniData = alumni;
     
     // Render with pagination
@@ -7706,7 +7678,7 @@ window.filterAlumni = filterAlumni;
 window.renderAlumniTable = renderAlumniTable;
 
 /**
- * ✅ FIXED: Delete Alumni (Non-Destructive Model)
+ * Delete Alumni (Non-Destructive Model)
  * Removes alumni status and restores to active pupil
  */
 async function deleteAlumni(alumniId) {
@@ -7737,15 +7709,12 @@ async function deleteAlumni(alumniId) {
       status: 'active',
       isActive: true,
 
-      // ✅ Explicitly mark class as unassigned
-      // class.id is null from the alumni transition — make this visible to admin
       'class.id': null,
       'class.name': 'UNASSIGNED — Please reassign',
       subjects: [],
       'assignedTeacher.id': null,
       'assignedTeacher.name': null,
 
-      // ✅ Flag so admin list can highlight this pupil needs reassignment
       requiresClassAssignment: true,
       restoredFromAlumni: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -7843,7 +7812,7 @@ async function loadDashboardStats() {
   try {
     const teachersSnap = await db.collection('teachers').get();
     
-    // ✅ FIX: Get all pupils, filter alumni client-side
+    // Get all pupils, filter alumni client-side
     const allPupilsSnap = await db.collection('pupils').get();
     
     // Count only active pupils (exclude alumni)
@@ -7950,8 +7919,7 @@ function cancelTeacherForm() {
 }
 
 /* =====================================================
-   CRITICAL FIX #3: TEACHER FORM HANDLER
-   Complete rewrite with proper error handling
+   TEACHER FORM HANDLER
 ===================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8034,7 +8002,6 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       if (teacherId) {
-        // ── UPDATE EXISTING TEACHER ───────────────────────────────
         console.log(`📝 Updating teacher: ${teacherId}`);
 
         await db.collection('teachers').doc(teacherId).update(teacherData);
@@ -8152,7 +8119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get form values
     const pupilId = document.getElementById('pupil-id')?.value;
 
-    // ✅ NEW: Read the three name boxes and combine them into the
+    // Read the three name boxes and combine them into the
     // same "name" field the rest of the system already expects.
     const firstName = document.getElementById('pupil-first-name')?.value.trim() || '';
     const middleName = document.getElementById('pupil-middle-name')?.value.trim() || '';
@@ -8164,7 +8131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = document.getElementById('pupil-email')?.value.trim();
     const password = document.getElementById('pupil-password')?.value;
 
-    // ✅ NEW: Religion — used to filter out the mismatched Religious Studies subject
+    // Religion — used to filter out the mismatched Religious Studies subject
     const religion = document.getElementById('pupil-religion')?.value || '';
     
     // Validation
@@ -8252,7 +8219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // ✅ NEW: Filter class subjects by this pupil's religion so they never get
+      // Filter class subjects by this pupil's religion so they never get
       // assigned the Religious Studies subject that doesn't match their faith.
       const rawClassSubjects = Array.isArray(classData.subjects) ? classData.subjects : [];
       const filteredSubjects = window.filterSubjectsByReligion
@@ -8263,13 +8230,12 @@ document.addEventListener('DOMContentLoaded', () => {
 const pupilData = {
     admissionNo,
     name,
-    // ✅ NEW: store the individual name parts alongside the combined name
     firstName,
     middleName,
     lastName,
     dob: document.getElementById('pupil-dob')?.value || '',
     gender: document.getElementById('pupil-gender')?.value || '',
-    religion: religion, // ✅ NEW
+    religion: religion,
     parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
     parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
     contact: document.getElementById('pupil-contact')?.value.trim() || '',
@@ -8278,13 +8244,12 @@ const pupilData = {
         id: classId,
         name: classData.name || 'Unknown Class'
     },
-    subjects: filteredSubjects, // ✅ CHANGED: was Array.isArray(classData.subjects) ? classData.subjects : []
+    subjects: filteredSubjects,
     assignedTeacher: {
         id: teacherId,
         name: teacherName
     },
 
-    // ✅ New Optional Fields
     admissionTerm: document.getElementById('pupil-admission-term')?.value || settings.term || 'First Term',
     admissionSession: settings.session || null,
     exitTerm: document.getElementById('pupil-exit-term')?.value || 'Third Term',
@@ -8361,13 +8326,13 @@ await db.collection('pupils').doc(uid).set(pupilData);
 
 console.log('✓ Pupil profile created');
 
-// ✅ FIXED: Auto-create payment record using permanent fee structure ID
+// Auto-create payment record using permanent fee structure ID
 try {
   const settings = await window.getCurrentSettings();
   const session = settings.session;
   const term = settings.term;
   
-  // FIXED: Use permanent class-based fee structure ID (not session-based)
+  // Use permanent class-based fee structure ID (not session-based)
   const feeDocId = `fee_${classId}`;
   const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
   
@@ -8571,7 +8536,6 @@ function renderTeachersTable(teachersData) {
 
 /**
  * Toggle a teacher's ability to publish results directly without admin approval.
- * Called from the Direct Publish button in the teachers table.
  */
 async function toggleDirectPublish(teacherId, currentValue) {
   const newValue = !currentValue;
@@ -8647,7 +8611,6 @@ async function editTeacher(uid) {
     document.getElementById('teacher-notes').value       = data.notes || '';
 
     // --- EDIT MODE: handle credentials section ---
-    // Show email as read-only (can't be changed via admin portal)
     const emailField = document.getElementById('teacher-email');
     if (emailField) {
       emailField.value = data.email || '';
@@ -8859,7 +8822,6 @@ window.renderTeachersTable = renderTeachersTable;
 
 /**
  * Generate a printable PDF of pupil login credentials (admission number + password)
- * grouped by class, laid out as cards for cutting and distributing to parents.
  * Password format: surname + year of birth (e.g. ogunwale2015)
  */
 async function generatePupilCredentialsPDF() {
@@ -8976,7 +8938,7 @@ async function generatePupilCredentialsPDF() {
     const margin = 10;
 
     const cardWidth = 88;
-    const cardHeight = 42; // increased to fit website footer cleanly below credentials
+    const cardHeight = 42;
     const gapX = 4;
     const gapY = 4;
     const headerHeight = 14;
@@ -9045,8 +9007,7 @@ async function generatePupilCredentialsPDF() {
       doc.setTextColor(15, 118, 110);
       doc.text(pupil.password, x + cardWidth - 5, cursorY, { align: 'right' });
 
-      // Footer separator — fixed position near bottom of card, independent of
-      // how many lines the name wrapped to, so every card looks consistent
+      // Footer separator 
       const footerLineY = y + cardHeight - 9;
       const footerTextY = y + cardHeight - 4;
 
@@ -9116,7 +9077,7 @@ async function generatePupilCredentialsPDF() {
 window.generatePupilCredentialsPDF = generatePupilCredentialsPDF;
 
 /* ======================================== 
-   PUPILS MANAGEMENT - FIXED
+   PUPILS MANAGEMENT
 ======================================== */
 
 async function showPupilForm(isEditing = false) {
@@ -9186,15 +9147,13 @@ function cancelPupilForm() {
 }
 
 /**
- * FIXED: Load Pupils with Proper Event Delegation
- * Replace the entire loadPupils() function in admin.js (around line 2280)
+ * Load Pupils with Proper Event Delegation
  */
 // Global variable to store all pupils data
 let allPupilsData = [];
 
 /**
- * ✅ FIXED: Load Pupils (Client-Side Alumni Filtering)
- * Avoids composite index requirement
+ * Load Pupils (Client-Side Alumni Filtering)
  */
 async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
@@ -9206,7 +9165,7 @@ async function loadPupils() {
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
   try {
-    // ✅ FIX: Simple query (no compound inequality)
+    // Simple query (no compound inequality)
     const snapshot = await db.collection('pupils')
       .orderBy('name')
       .limit(500)
@@ -9224,7 +9183,7 @@ async function loadPupils() {
       return;
     }
 
-    // ✅ FIX: Filter out alumni CLIENT-SIDE
+    // Filter out alumni CLIENT-SIDE
     const pupils = [];
     snapshot.forEach(doc => {
       const data = doc.data();
@@ -9237,7 +9196,7 @@ async function loadPupils() {
 
     console.log(`✓ Loaded ${snapshot.size} total pupils, ${pupils.length} active (${snapshot.size - pupils.length} alumni filtered out)`);
 
-    // ✅ Store filtered data globally for search
+    // Store filtered data globally for search
     allPupilsData = pupils;
 
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
@@ -9341,14 +9300,11 @@ window.renderPupilsTable = renderPupilsTable;
 
 /* =====================================================
    BULK OPERATIONS - COMPLETE IMPLEMENTATION
-   Add this entire section after loadPupils() function
 ===================================================== */
 
 /**
  * Setup bulk actions event listeners
- * Called AFTER pupils table is loaded
  */
-// REPLACE THE ENTIRE FUNCTION:
 function setupBulkActionsEventListeners() {
   console.log('🔧 Setting up bulk actions event listeners...');
   
@@ -9365,14 +9321,12 @@ function setupBulkActionsEventListeners() {
     });
   }
   
-  // 2. Individual pupil checkboxes — use delegation on TABLE, not tbody
-  // CRITICAL FIX: Attach to the stable parent container, NOT tbody (which paginateTable replaces)
+  // 2. Individual pupil checkboxes
   const tableContainer = document.querySelector('#pupils .table-container') 
     || document.getElementById('pupils-table')?.closest('.table-container')
     || document.getElementById('pupils-table')?.parentElement;
   
   if (tableContainer) {
-    // Remove old delegation flag to allow fresh attachment
     if (!tableContainer.dataset.bulkDelegationActive) {
       tableContainer.addEventListener('change', function(e) {
         if (e.target.classList.contains('pupil-checkbox')) {
@@ -9562,8 +9516,6 @@ async function bulkReassignClass(pupilIds) {
         for (const pupilId of pupilIds) {
           const pupilRef = db.collection('pupils').doc(pupilId);
 
-          // ✅ NEW: Read this pupil's religion so we can filter out the
-          // mismatched Religious Studies subject from the new class's list.
           let pupilReligion = '';
           try {
             const pupilSnap = await pupilRef.get();
@@ -9579,7 +9531,7 @@ async function bulkReassignClass(pupilIds) {
           batch.update(pupilRef, {
             'class.id': newClassId,
             'class.name': classData.name,
-            subjects: filteredSubjects, // ✅ CHANGED: was classData.subjects || []
+            subjects: filteredSubjects,
             'assignedTeacher.id': teacherId,
             'assignedTeacher.name': teacherName,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -9622,17 +9574,7 @@ async function bulkReassignClass(pupilIds) {
 }
 
 /**
- * ✅ NEW: Bulk-set religion for selected pupils.
- *
- * This does TWO things per pupil:
- *  1. Sets/updates the `religion` field.
- *  2. Recomputes `subjects` from the pupil's OWN class's master subject list,
- *     filtered by the new religion — this retroactively removes the wrong
- *     Religious Studies subject from pupils who were assigned subjects
- *     before religion-based filtering existed.
- *
- * Pupils can be in different classes, so class subject lists are fetched
- * per-pupil (with a small cache to avoid re-fetching the same class twice).
+ * Bulk-set religion for selected pupils.
  */
 async function bulkSetReligion(pupilIds) {
   console.log(`📝 bulkSetReligion called with ${pupilIds.length} pupils`);
@@ -9727,7 +9669,6 @@ async function bulkSetReligion(pupilIds) {
           const classId = pupilData.class?.id || null;
 
           // Get the FULL master subject list from the pupil's class
-          // (not the pupil's current possibly-already-filtered list)
           const masterSubjects = await getClassSubjects(classId);
 
           const filteredSubjects = window.filterSubjectsByReligion
@@ -9826,25 +9767,25 @@ async function bulkDeletePupils(pupilIds) {
         batch.delete(db.collection('users').doc(pupilId));
         batchCount++;
 
-        // ✅ Delete associated payment records
+        // Delete associated payment records
         const paymentsSnap = await db.collection('payments')
           .where('pupilId', '==', pupilId).get();
         paymentsSnap.forEach(doc => { batch.delete(doc.ref); batchCount++; });
         await flushIfNeeded();
 
-        // ✅ Delete associated payment transactions
+        // Delete associated payment transactions
         const txSnap = await db.collection('payment_transactions')
           .where('pupilId', '==', pupilId).get();
         txSnap.forEach(doc => { batch.delete(doc.ref); batchCount++; });
         await flushIfNeeded();
 
-        // ✅ Delete associated approved results
+        // Delete associated approved results
         const resultsSnap = await db.collection('results')
           .where('pupilId', '==', pupilId).get();
         resultsSnap.forEach(doc => { batch.delete(doc.ref); batchCount++; });
         await flushIfNeeded();
 
-        // ✅ Delete associated draft results
+        // Delete associated draft results
         const draftsSnap = await db.collection('results_draft')
           .where('pupilId', '==', pupilId).get();
         draftsSnap.forEach(doc => { batch.delete(doc.ref); batchCount++; });
@@ -9875,7 +9816,7 @@ async function bulkDeletePupils(pupilIds) {
   }
 }
 
-// ✅ CRITICAL: Make ALL functions globally available
+// Make ALL functions globally available
 window.loadPupils = loadPupils;
 window.setupBulkActionsEventListeners = setupBulkActionsEventListeners;
 window.updateBulkActionButtons = updateBulkActionButtons;
@@ -9934,9 +9875,7 @@ async function editPupil(uid) {
 
     document.getElementById('pupil-id').value = uid;
 
-    // ✅ NEW: Populate the three name fields.
-    // Prefer stored firstName/middleName/lastName; fall back to splitting
-    // the existing combined "name" field for pupils created before this update.
+    // Populate the three name fields.
     const nameParts = (data.firstName && data.lastName)
       ? { firstName: data.firstName, middleName: data.middleName || '', lastName: data.lastName }
       : window.splitPupilName(data.name || '');
@@ -9949,7 +9888,7 @@ async function editPupil(uid) {
     document.getElementById('pupil-dob').value = data.dob || '';
     document.getElementById('pupil-gender').value = data.gender || '';
 
-    // ✅ NEW: Populate religion field (used for Religious Studies subject filtering)
+    // Populate religion field (used for Religious Studies subject filtering)
     const religionField = document.getElementById('pupil-religion');
     if (religionField) religionField.value = data.religion || '';
 
@@ -10042,8 +9981,7 @@ function showClassForm() {
 }
 
 /**
- * FIXED: Add Class with Duplicate Name Prevention
- * Ensures unique class names to avoid migration conflicts
+ * Add Class with Duplicate Name Prevention
  */
 async function addClass() {
   const className = document.getElementById('class-name')?.value.trim();
@@ -10053,7 +9991,7 @@ async function addClass() {
     return;
   }
   
-  // CRITICAL FIX: Check for duplicate class names (case-insensitive)
+  // Check for duplicate class names (case-insensitive)
   try {
     const existingSnap = await db.collection('classes')
       .where('name', '==', className)
@@ -10087,7 +10025,7 @@ async function addClass() {
     // Create the class
     await db.collection('classes').add({
       name: className,
-      subjects: [], // Initialize empty subjects array
+      subjects: [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: auth.currentUser?.uid || 'unknown'
     });
@@ -10114,12 +10052,12 @@ async function loadClasses() {
     const classesSnap = await db.collection('classes').get();
     const pupilsSnap = await db.collection('pupils').get();
     
-// ✓ FIXED: Exclude alumni from class pupil counts
+// Exclude alumni from class pupil counts
 const pupilCountMap = {};
 pupilsSnap.forEach(pupilDoc => {
   const pupilData = pupilDoc.data();
   
-  // ✓ Skip alumni
+  // Skip alumni
   if (pupilData.status === 'alumni' || pupilData.isActive === false) {
     return;
   }
@@ -10374,7 +10312,7 @@ async function saveClassSubjects() {
   }
 
   try {
-    // CRITICAL FIX: Use transaction for atomic updates
+    // Use transaction for atomic updates
     await db.runTransaction(async (transaction) => {
       const classRef = db.collection('classes').doc(currentAssignmentClassId);
       
@@ -10400,9 +10338,7 @@ async function saveClassSubjects() {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       
-      // ✅ CHANGED: Update each pupil's subjects individually, filtered by their
-      // own religion, so Muslim pupils never get Christian Religious Studies
-      // and Christian pupils never get Islamic Religious Studies.
+      // Update each pupil's subjects individually
       pupilsSnap.forEach(pupilDoc => {
         const pupilReligion = pupilDoc.data().religion || '';
         const filteredSubjects = window.filterSubjectsByReligion
@@ -10787,7 +10723,6 @@ async function addAnnouncement() {
 }
 
 // Delete all announcements whose expiresAt is in the past.
-// Called on publish and on page load of the announcements section.
 async function _deleteExpiredAnnouncements() {
   try {
     const now = firebase.firestore.Timestamp.now();
@@ -10802,7 +10737,6 @@ async function _deleteExpiredAnnouncements() {
     await batch.commit();
     console.log(`Auto-deleted ${snap.size} expired announcement(s)`);
   } catch (err) {
-    // Non-critical — fail silently
     console.warn('Could not delete expired announcements:', err);
   }
 }
@@ -10813,7 +10747,6 @@ async function loadAdminAnnouncements() {
 
   list.innerHTML = '<div class="loading-container"><div class="spinner"></div><p>Loading announcements...</p></div>';
 
-  // Clean up expired announcements every time admin views this section
   await _deleteExpiredAnnouncements();
 
   function getAudienceBadge(audience) {
@@ -10858,7 +10791,6 @@ async function loadAdminAnnouncements() {
     let icon = '⏳';
 
     if (diffHours < 0) {
-      // Should have been deleted — still show it until next cleanup
       color = '#dc2626'; bg = '#fef2f2'; icon = '🗑️';
     } else if (diffHours < 24) {
       color = '#dc2626'; bg = '#fef2f2'; icon = '⚠️';
@@ -10980,9 +10912,6 @@ async function loadAdminAnnouncements() {
    LOAD CURRENT SETTINGS INTO FORM
 ======================================== */
 
-/**
- * FIXED: Load current settings without auto-redirecting
- */
 async function loadCurrentSettings() {
   try {
     console.log('📋 Loading school settings...');
@@ -11066,7 +10995,6 @@ async function loadCurrentSettings() {
         endDateInput.value = endDate.toISOString().split('T')[0];
       }
     } else if (data.session) {
-      // Old format fallback
       const displaySessionName = document.getElementById('display-session-name');
       const displayCurrentTerm = document.getElementById('display-current-term');
       
@@ -11107,8 +11035,7 @@ async function loadCurrentSettings() {
     
     console.log('✓ Settings loaded successfully');
     
-    // CRITICAL FIX: Load class hierarchy AFTER settings display is complete
-    // Use setTimeout to prevent blocking the UI
+    // Load class hierarchy AFTER settings display is complete
     setTimeout(async () => {
       try {
         console.log('📊 Initializing class hierarchy...');
@@ -11118,7 +11045,7 @@ async function loadCurrentSettings() {
           console.log('⚠️ Class hierarchy is empty');
         }
         
-        // CRITICAL: Only load UI if we're still on settings page
+        // Only load UI if we're still on settings page
         const settingsSection = document.getElementById('settings');
         if (settingsSection && settingsSection.style.display !== 'none') {
           await loadClassHierarchyUI();
@@ -11128,7 +11055,6 @@ async function loadCurrentSettings() {
         }
       } catch (error) {
         console.error('⚠️ Class hierarchy load failed:', error);
-        // Don't throw error - settings page should still work
       }
     }, 300);
     
@@ -11142,9 +11068,6 @@ async function loadCurrentSettings() {
    UPDATE SESSION SETTINGS
 ======================================== */
 
-/**
- * Update session settings from the settings form
- */
 async function updateSessionSettings() {
   const startYear       = parseInt(document.getElementById('session-start-year')?.value);
   const endYear         = parseInt(document.getElementById('session-end-year')?.value);
@@ -11321,7 +11244,6 @@ window.updateSessionSettings = updateSessionSettings;
 document.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.getElementById('save-settings-btn');
   if (saveBtn) {
-    // Clone to remove any stale listeners
     const freshBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(freshBtn, saveBtn);
     document.getElementById('save-settings-btn').addEventListener('click', updateSessionSettings);
@@ -11332,19 +11254,16 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ======================================== 
    START NEW ACADEMIC SESSION
 ======================================== */
-/**
- * FIXED: Start New Session with Pre-Flight Validation
- * Checks for pending work before allowing session rollover
- */
+
 async function confirmStartNewSession() {
-  // VALIDATION STEP 1: Check for pending promotions
+  // Check for pending promotions
   const pendingPromotions = await db.collection('promotions')
     .where('status', '==', 'pending')
     .get();
   
   const pendingCount = pendingPromotions.size;
   
-  // VALIDATION STEP 2: Check for pupils in terminal class
+  // Check for pupils in terminal class
   let pupilsInTerminalClass = 0;
   
   try {
@@ -11364,7 +11283,7 @@ async function confirmStartNewSession() {
     console.error('Error checking terminal class pupils:', error);
   }
   
-  // VALIDATION STEP 3: Build warning message
+  // Build warning message
   const issues = [];
   
   if (pendingCount > 0) {
@@ -11375,7 +11294,7 @@ async function confirmStartNewSession() {
     issues.push(`• ${pupilsInTerminalClass} pupil(s) still in terminal class (should be in alumni)`);
   }
   
-  // VALIDATION STEP 4: Show blocking or warning dialog
+  // Show blocking or warning dialog
   if (issues.length > 0) {
     const warningMessage = 
       '⚠️ WARNING: Issues detected before starting new session:\n\n' +
@@ -11418,7 +11337,6 @@ async function confirmStartNewSession() {
     });
     
   } else {
-    // No issues - normal confirmation
     const confirmation = confirm(
       '⚠️ START NEW ACADEMIC SESSION?\n\n' +
       'This will:\n' +
@@ -11503,10 +11421,7 @@ async function startNewSession() {
     });
 
 // ════════════════════════════════════════════════════════════════
-// FIXED: New-session arrears migration
-// 1. Ensures old session Third Term docs exist with valid balances
-// 2. Creates new session First Term payment docs with correct arrears
-// 3. Preserves any docs already created (re-run safe)
+// New-session arrears migration
 // ════════════════════════════════════════════════════════════════
 
 console.log('🔄 Migrating arrears from old session to new session...');
@@ -11532,11 +11447,7 @@ let pupilsWithArrears  = 0;
 let totalArrearsAmount = 0;
 let skippedCount       = 0;
 
-// ── Step 1: Ensure old session Third Term docs exist ─────────────
-// calculateCompleteArrears (called in Step 2) reads Third Term's
-// `balance` field. If the doc is missing or corrupted we repair it
-// first so the cascade is correct.
-
+// Ensure old session Third Term docs exist ─────────────
 for (const pupilDoc of pupilsSnap.docs) {
   const pupilId   = pupilDoc.id;
   const pupilData = pupilDoc.data();
@@ -11562,9 +11473,6 @@ for (const pupilDoc of pupilsSnap.docs) {
     const thirdTermDoc = await thirdTermRef.get();
 
     if (!thirdTermDoc.exists) {
-      // Recalculate full balance for Third Term of old session.
-      // We need to include Third Term's own inherited arrears, so
-      // we call calculateCompleteArrears for (oldSession, Third Term).
       let thirdTermArrears = 0;
       try {
         thirdTermArrears = await window.calculateCompleteArrears(
@@ -11648,10 +11556,7 @@ for (const pupilDoc of pupilsSnap.docs) {
 
 console.log(`  ✓ Old session Third Term repair complete: ${prevTermRepaired} created/repaired`);
 
-// ── Step 2: Create new session First Term payment docs ───────────
-// Now that Third Term docs are guaranteed valid, calculateCompleteArrears
-// for (newSession, First Term) will read them correctly.
-
+// Create new session First Term payment docs ───────────
 let batch      = db.batch();
 let batchCount = 0;
 
@@ -11686,8 +11591,6 @@ for (const pupilDoc of pupilsSnap.docs) {
   }
 
   try {
-    // calculateCompleteArrears for First Term of newSession reads
-    // Third Term of oldSession — which we just ensured exists above.
     const arrears = await window.calculateCompleteArrears(
       pupilId, newSessionName, 'First Term'
     );
@@ -11727,8 +11630,6 @@ for (const pupilDoc of pupilsSnap.docs) {
       batch.set(newFirstTermRef, payload);
       newDocsCreated++;
     } else {
-      // Doc already exists — update arrears/balance but preserve
-      // any payments already recorded against it
       const existingPaid = Math.round(Number(existingDoc.data().totalPaid) || 0);
       const newTotalDue  = amountDue + arrears;
       const newBalance   = Math.max(0, newTotalDue - existingPaid);
@@ -11789,7 +11690,6 @@ console.log(`   Pupils with arrears:                  ${pupilsWithArrears}`);
 console.log(`   Total arrears carried forward:        ₦${totalArrearsAmount.toLocaleString()}`);
 console.log(`   Skipped (alumni/no class/no fee):     ${skippedCount}`);
 
-// ── Update the success toast to include migration results ────────
 window.showToast?.(
   `✓ New session ${newSessionName} started!\n\n` +
   `Arrears Migration:\n` +
@@ -11828,14 +11728,12 @@ async function loadClassHierarchyUI() {
   
   if (!container) {
     console.error('❌ hierarchy-container element not found in DOM');
-    // REMOVED: Don't redirect - just log error
     return;
   }
   
   console.log('📋 Loading class hierarchy UI...');
   
   try {
-    // Get all classes from the "classes" collection
     const classesSnapshot = await db.collection('classes').orderBy('name').get();
     
     if (classesSnapshot.empty) {
@@ -11994,8 +11892,8 @@ function renderHierarchyUI(orderedClasses) {
   });
 
   // ── Drag state ───────────────────────────────────────────────────────────
-  let dragSrc = null;         // the element being dragged
-  let dragSrcIndex = -1;      // its original position
+  let dragSrc = null;   
+  let dragSrcIndex = -1;  
 
   // ── Helper: re-number all items and update terminal badge ─────────────────
   function updateNumbers() {
@@ -12149,10 +12047,7 @@ function renderHierarchyUI(orderedClasses) {
 }
 
 /**
- * ✅ FIXED: Automatic arrears migration when term changes
- * 
- * This runs when admin changes the term in School Settings.
- * It creates payment records for the new term with proper arrears.
+ * Automatic arrears migration when term changes
  */
 async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
   console.log(`\n🔄 TERM CHANGE MIGRATION: ${oldTerm} → ${newTerm} (${session})`);
@@ -12160,10 +12055,7 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
   try {
     const encodedSession = session.replace(/\//g, '-');
 
-    // ─── Step 1: Ensure previous term payment docs exist ──────────────────
-    // calculateCompleteArrears relies on the previous term's payment doc
-    // having a correct `balance` field. If those docs are missing, create
-    // them now so arrears cascade correctly.
+    // Ensure previous term payment docs exist ──────────────────
     console.log(`  📋 Ensuring ${oldTerm} payment docs exist before migrating...`);
 
     const pupilsSnap = await db.collection('pupils').get();
@@ -12179,9 +12071,7 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
       feeStructureMap[data.classId] = Math.round(Number(data.total) || 0);
     });
 
-    // ─── Step 2: Build/repair previous term docs ──────────────────────────
-    // We must do this BEFORE calculating new-term arrears, because
-    // calculateCompleteArrears reads the previous term doc's `balance` field.
+    // Build/repair previous term docs ──────────────────────────
     let prevTermRepaired = 0;
 
     for (const pupilDoc of pupilsSnap.docs) {
@@ -12208,8 +12098,6 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
 
       if (!oldTermDoc.exists) {
         // Doc is missing — calculate what the balance should be.
-        // We use calculateCompleteArrears for the OLD term to get ITS
-        // arrears (e.g. from previous session), then compute balance.
         let oldTermArrears = 0;
         try {
           oldTermArrears = await window.calculateCompleteArrears(pupilId, session, oldTerm);
@@ -12294,9 +12182,7 @@ async function migrateArrearsOnTermChange(oldTerm, newTerm, session) {
 
     console.log(`  ✓ Previous term doc repair complete: ${prevTermRepaired} created/repaired`);
 
-    // ─── Step 3: Now create new-term payment docs ─────────────────────────
-    // Previous term docs are now guaranteed to exist with valid balance fields,
-    // so calculateCompleteArrears will read them correctly.
+    // Now create new-term payment docs ─────────────────────────
 
     let createdCount      = 0;
     let updatedCount      = 0;
@@ -12454,7 +12340,7 @@ window.migrateArrearsOnTermChange = migrateArrearsOnTermChange;
 console.log('✅ Complete fee management fixes loaded');
 
 /**
- * ✅ ONE-TIME DATA MIGRATION: Fix All Payment Records
+ * ONE-TIME DATA MIGRATION: Fix All Payment Records
  * Run this ONCE to correct all existing payment data
  */
 async function migratePaymentRecordsToAdjustedFees() {
@@ -12529,10 +12415,10 @@ async function migratePaymentRecordsToAdjustedFees() {
         
         const baseFee = Number(feeDoc.data().total) || 0;
         
-        // ✅ RECALCULATE adjusted fee
+        // RECALCULATE adjusted fee
         const newAmountDue = window.calculateAdjustedFee(pupilInfo, baseFee, term);
         
-        // ✅ RECALCULATE arrears
+        // RECALCULATE arrears
         const newArrears = await window.calculateCompleteArrears(pupilId, session, term);
         
         const oldAmountDue = Number(paymentData.amountDue) || 0;
@@ -12628,10 +12514,6 @@ window.migratePaymentRecordsToAdjustedFees = migratePaymentRecordsToAdjustedFees
    DATA MIGRATION: BACKFILL SESSION INFO
 ======================================== */
 
-/**
- * FIXED: Session Data Migration with Date-Based Validation
- * Only migrates results that belong to current session based on dates
- */
 async function backfillSessionData() {
   const btn = document.getElementById('backfill-btn');
   const statusDiv = document.getElementById('migration-status');
@@ -12919,17 +12801,8 @@ async function backfillSessionData() {
 window.backfillSessionData = backfillSessionData;
 
 /**
- * ✅ ONE-TIME DATA MIGRATION: Split existing pupil "name" into
+ * ONE-TIME DATA MIGRATION: Split existing pupil "name" into
  * firstName / middleName / lastName fields.
- *
- * This does NOT change the existing `name` field pupils are already
- * displayed and referenced by everywhere else in the system — it only
- * ADDS the three new fields alongside it, computed from the existing
- * name using the same "first token = first name, last token = last
- * name" convention already used by generatePupilCredentialsPDF().
- *
- * Safe to run multiple times — pupils that already have firstName
- * and lastName set are skipped.
  */
 async function migrateExistingPupilNames() {
   const confirmation = confirm(
@@ -13088,14 +12961,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-/**
- * BULK OPERATIONS FUNCTIONS - FIXED
- * Replace the entire bulk operations section in admin.js (around line 2800-2900)
- */
-
-/**
- * Toggle all pupils selection for bulk operations
- */
+// Toggle all pupils selection for bulk operations
 function toggleAllPupils(masterCheckbox) {
   console.log('🔘 toggleAllPupils called:', masterCheckbox?.checked);
   
@@ -13109,7 +12975,6 @@ function toggleAllPupils(masterCheckbox) {
   updateBulkActionButtons();
 }
 
-// ✅ CRITICAL: Make functions globally available IMMEDIATELY
 window.toggleAllPupils = toggleAllPupils;
 window.updateBulkActionButtons = updateBulkActionButtons;
 window.applyBulkAction = applyBulkAction;
