@@ -200,6 +200,35 @@ function getValidSubjects() {
   return Array.isArray(allSubjects) ? allSubjects : [];
 }
 
+/**
+ * ✅ NEW: Religion-based subject applicability check.
+ * Returns false only when the subject is the Religious Studies variant
+ * that conflicts with the pupil's religion — true for everything else,
+ * including when religion is unset (fail-open, so nothing breaks for
+ * pupils whose religion hasn't been set yet).
+ */
+function isSubjectApplicableToPupil(subject, pupilReligion) {
+  const s = (subject || '').toLowerCase();
+  const religion = (pupilReligion || '').trim().toLowerCase();
+
+  const isChristianRS = s.includes('christian religious') || s === 'crs' || s === 'crk' || s.includes('bible knowledge');
+  const isIslamicRS   = s.includes('islamic religious')   || s === 'irs' || s === 'irk' || s.includes('islamic studies');
+
+  if (!isChristianRS && !isIslamicRS) return true; // not a religion subject at all
+
+  if (religion === 'muslim' || religion === 'islam') {
+    return !isChristianRS; // Muslim pupils excluded from Christian RS
+  }
+  if (religion === 'christian' || religion === 'christianity') {
+    return !isIslamicRS; // Christian pupils excluded from Islamic RS
+  }
+
+  // Religion unset — don't hide either subject, admin/teacher hasn't specified
+  return true;
+}
+
+window.isSubjectApplicableToPupil = isSubjectApplicableToPupil;
+
 /* ======================================== 
    PAGINATION WITH DEFENSIVE CHECKS
 ======================================== */
@@ -816,10 +845,18 @@ async function loadResultsTable() {
   if (saveBtn) saveBtn.hidden = true;
   // ────────────────────────────────────────────────────────────────────────
 
-  const classFilteredPupils = allPupils.filter(p => p.class?.id === selectedClassId);
+  // ✅ CHANGED: filter by class AND subject-religion applicability, so
+  // e.g. Muslim pupils never get a score-entry row for Christian Religious
+  // Studies, and vice versa. Pupils with no religion set are unaffected.
+  const classFilteredPupils = allPupils.filter(p => {
+    if (p.class?.id !== selectedClassId) return false;
+    return window.isSubjectApplicableToPupil
+      ? window.isSubjectApplicableToPupil(subject, p.religion)
+      : true;
+  });
 
   if (classFilteredPupils.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils found in this class.</p>';
+    container.innerHTML = '<p style="text-align:center; color:var(--color-gray-600);">No pupils found in this class for this subject.</p>';
     if (saveBtn) saveBtn.hidden = true;
     return;
   }
