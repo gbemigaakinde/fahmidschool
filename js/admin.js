@@ -7255,6 +7255,49 @@ function getClassIdFromPupilData(classData) {
 }
 
 /**
+ * Splits a full name string into first, middle, and last name parts.
+ * Convention: first token = first name, last token = last name,
+ * anything in between = middle name. This matches the convention
+ * already used elsewhere in the system (e.g. generatePupilCredentialsPDF
+ * uses the last token as the surname).
+ */
+function splitPupilName(fullName) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return { firstName: '', middleName: '', lastName: '' };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], middleName: '', lastName: '' };
+  }
+  if (parts.length === 2) {
+    return { firstName: parts[0], middleName: '', lastName: parts[1] };
+  }
+
+  return {
+    firstName: parts[0],
+    middleName: parts.slice(1, -1).join(' '),
+    lastName: parts[parts.length - 1]
+  };
+}
+
+window.splitPupilName = splitPupilName;
+
+/**
+ * Combines first, middle, and last name into a single full-name string,
+ * in the same "First Middle Last" order the rest of the system expects
+ * wherever it reads pupilData.name.
+ */
+function combinePupilName(firstName, middleName, lastName) {
+  return [firstName, middleName, lastName]
+    .map(p => (p || '').trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+window.combinePupilName = combinePupilName;
+
+/**
  * ✅ RELIGION-BASED SUBJECT FILTERING
  * Removes the Religious Studies subject that does NOT match the pupil's religion,
  * so Muslim pupils never get Christian Religious Studies and vice versa.
@@ -8183,7 +8226,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Get form values
     const pupilId = document.getElementById('pupil-id')?.value;
-    const name = document.getElementById('pupil-name')?.value.trim();
+
+    // ✅ NEW: Read the three name boxes and combine them into the
+    // same "name" field the rest of the system already expects.
+    const firstName = document.getElementById('pupil-first-name')?.value.trim() || '';
+    const middleName = document.getElementById('pupil-middle-name')?.value.trim() || '';
+    const lastName = document.getElementById('pupil-last-name')?.value.trim() || '';
+    const name = window.combinePupilName(firstName, middleName, lastName);
+
     const admissionNo = document.getElementById('pupil-admission-no')?.value.trim();
     const classId = document.getElementById('pupil-class')?.value;
     const email = document.getElementById('pupil-email')?.value.trim();
@@ -8193,9 +8243,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const religion = document.getElementById('pupil-religion')?.value || '';
     
     // Validation
-    if (!name || !classId) {
+    if (!firstName || !lastName || !classId) {
       console.warn('⚠️ Form validation failed');
-      window.showToast?.('Name and class are required', 'warning');
+      window.showToast?.('First name, last name, and class are required', 'warning');
       return;
     }
     
@@ -8288,6 +8338,10 @@ document.addEventListener('DOMContentLoaded', () => {
 const pupilData = {
     admissionNo,
     name,
+    // ✅ NEW: store the individual name parts alongside the combined name
+    firstName,
+    middleName,
+    lastName,
     dob: document.getElementById('pupil-dob')?.value || '',
     gender: document.getElementById('pupil-gender')?.value || '',
     religion: religion, // ✅ NEW
@@ -9172,7 +9226,7 @@ async function showPupilForm(isEditing = false) {
   // If isEditing=true, credentials state is already set by editPupil() before this call
 
   form.style.display = 'block';
-  document.getElementById('pupil-name')?.focus();
+  document.getElementById('pupil-first-name')?.focus();
 }
 
 function cancelPupilForm() {
@@ -9954,7 +10008,18 @@ async function editPupil(uid) {
     await populateClassDropdown(classId);
 
     document.getElementById('pupil-id').value = uid;
-    document.getElementById('pupil-name').value = data.name || '';
+
+    // ✅ NEW: Populate the three name fields.
+    // Prefer stored firstName/middleName/lastName; fall back to splitting
+    // the existing combined "name" field for pupils created before this update.
+    const nameParts = (data.firstName && data.lastName)
+      ? { firstName: data.firstName, middleName: data.middleName || '', lastName: data.lastName }
+      : window.splitPupilName(data.name || '');
+
+    document.getElementById('pupil-first-name').value = nameParts.firstName || '';
+    document.getElementById('pupil-middle-name').value = nameParts.middleName || '';
+    document.getElementById('pupil-last-name').value = nameParts.lastName || '';
+
     document.getElementById('pupil-admission-no').value = data.admissionNo || '';
     document.getElementById('pupil-dob').value = data.dob || '';
     document.getElementById('pupil-gender').value = data.gender || '';
@@ -10028,7 +10093,7 @@ async function editPupil(uid) {
     document.getElementById('pupil-form-title').textContent = `Edit Pupil: ${data.name}`;
     document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
 
-    document.getElementById('pupil-name')?.focus();
+    document.getElementById('pupil-first-name')?.focus();
     console.log('✅ Pupil form loaded successfully for editing');
 
   } catch (error) {
@@ -12927,6 +12992,121 @@ async function backfillSessionData() {
 
 // Make function globally available
 window.backfillSessionData = backfillSessionData;
+
+/**
+ * ✅ ONE-TIME DATA MIGRATION: Split existing pupil "name" into
+ * firstName / middleName / lastName fields.
+ *
+ * This does NOT change the existing `name` field pupils are already
+ * displayed and referenced by everywhere else in the system — it only
+ * ADDS the three new fields alongside it, computed from the existing
+ * name using the same "first token = first name, last token = last
+ * name" convention already used by generatePupilCredentialsPDF().
+ *
+ * Safe to run multiple times — pupils that already have firstName
+ * and lastName set are skipped.
+ */
+async function migrateExistingPupilNames() {
+  const confirmation = confirm(
+    '⚠️ DATA MIGRATION: Split Pupil Names\n\n' +
+    'This will:\n' +
+    '• Read every pupil\'s existing full name\n' +
+    '• Split it into First / Middle / Last name fields\n' +
+    '• Leave the existing name field completely untouched\n' +
+    '• Skip pupils that already have this data\n\n' +
+    'Continue?'
+  );
+
+  if (!confirmation) return;
+
+  const btn = document.getElementById('migrate-pupil-names-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-loading">Migrating...</span>';
+  }
+
+  try {
+    const pupilsSnap = await db.collection('pupils').get();
+
+    if (pupilsSnap.empty) {
+      window.showToast?.('No pupils found', 'info');
+      return;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    let batch = db.batch();
+    let batchCount = 0;
+
+    for (const pupilDoc of pupilsSnap.docs) {
+      try {
+        const data = pupilDoc.data();
+
+        // Skip pupils that already have first/last name set
+        if (data.firstName && data.lastName) {
+          skipped++;
+          continue;
+        }
+
+        const { firstName, middleName, lastName } = window.splitPupilName(data.name || '');
+
+        if (!firstName || !lastName) {
+          console.warn(`⚠️ Could not split name for pupil ${pupilDoc.id}: "${data.name}"`);
+          skipped++;
+          continue;
+        }
+
+        batch.update(pupilDoc.ref, {
+          firstName,
+          middleName: middleName || '',
+          lastName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        batchCount++;
+        updated++;
+
+        if (batchCount >= 400) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+        }
+
+      } catch (pupilError) {
+        console.error(`❌ Error migrating pupil ${pupilDoc.id}:`, pupilError.message);
+        errors++;
+      }
+    }
+
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    window.showToast?.(
+      `✅ Name Migration Complete!\n\n` +
+      `• Updated: ${updated}\n` +
+      `• Skipped (already had names or unsplittable): ${skipped}\n` +
+      `• Errors: ${errors}`,
+      'success',
+      10000
+    );
+
+    await loadPupils();
+
+  } catch (error) {
+    console.error('❌ Pupil name migration failed:', error);
+    window.showToast?.(`Migration failed: ${error.message}`, 'danger', 8000);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '🔧 Split Existing Pupil Names';
+    }
+  }
+}
+
+window.migrateExistingPupilNames = migrateExistingPupilNames;
 
 // Make all UI functions globally available
 window.showTeacherForm = showTeacherForm;
