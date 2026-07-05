@@ -343,7 +343,8 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  flex-shrink: 0;
+  flex-shrink: 1;      /* FIX: was 0 — logo is now allowed to shrink if space is tight */
+  min-width: 0;        /* FIX: required for text-overflow ellipsis to work inside a flex item */
   text-decoration: none;
 }
 
@@ -352,7 +353,7 @@ p:not(:last-child) { margin-bottom: 1em; }
   height: 36px;
   border-radius: var(--pp-r-sm);
   overflow: hidden;
-  flex-shrink: 0;
+  flex-shrink: 0;       /* icon itself never shrinks, only the text next to it does */
 }
 
 .nav-logo-icon img {
@@ -365,6 +366,7 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   flex-direction: column;
   line-height: 1.1;
+  min-width: 0;         /* FIX: allows the name below to truncate instead of overflowing */
 }
 
 .nav-logo-name {
@@ -372,6 +374,8 @@ p:not(:last-child) { margin-bottom: 1em; }
   font-size: var(--text-base);
   color: var(--ink-900);
   white-space: nowrap;
+  overflow: hidden;          /* FIX: truncate long text instead of forcing extra width */
+  text-overflow: ellipsis;   /* FIX: shows "Fahmid Sch…" instead of pushing layout wider */
 }
 
 .nav-logo-tagline {
@@ -385,10 +389,10 @@ p:not(:last-child) { margin-bottom: 1em; }
 
 @media (min-width: 640px) {
   .nav-logo-name {
-    font-size: var(--text-lg); /* ← restore original size on larger screens */
+    font-size: var(--text-lg);
   }
   .nav-logo-tagline {
-    display: block; /* ← bring it back on larger screens */
+    display: block;
   }
 }
 
@@ -430,7 +434,8 @@ p:not(:last-child) { margin-bottom: 1em; }
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  flex-shrink: 0;
+  flex-shrink: 0;        /* the action group itself still holds its size... */
+  min-width: max-content; /* ...but never gets squashed into the logo */
 }
 
 .nav-portal-link {
@@ -450,6 +455,12 @@ p:not(:last-child) { margin-bottom: 1em; }
 
 @media (min-width: 768px) {
   .nav-portal-link { display: block; }
+}
+
+@media (max-width: 420px) {
+  .nav-apply-btn {
+    display: none;
+  }
 }
 
 /* Hamburger */
