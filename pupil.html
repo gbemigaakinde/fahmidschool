@@ -1437,7 +1437,6 @@ async function loadPupilTests() {
   if (!container) return;
 
   try {
-    // Get the currently logged-in user directly from Firebase Auth
     const user = firebase.auth().currentUser;
     if (!user) {
       container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Please log in to view your tests.</p>';
@@ -1446,7 +1445,6 @@ async function loadPupilTests() {
 
     const pupilId = user.uid;
 
-    // Get pupil document to find classId
     const pupilDoc = await db.collection('pupils').doc(pupilId).get();
     if (!pupilDoc.exists) {
       container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Pupil profile not found. Contact admin.</p>';
@@ -1458,13 +1456,15 @@ async function loadPupilTests() {
       ? pData.class.id
       : null;
 
+    // ✅ NEW: pupil's religion, used to filter out mismatched Religious Studies tests
+    const pupilReligion = pData.religion || '';
+
     if (!classId) {
       container.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:24px;font-size:13px;">Class information missing. Contact admin to update your profile.</p>';
       return;
     }
 
     // Load published tests for this class
-    // NOTE: No orderBy here to avoid requiring a composite index
     const testsSnap = await db.collection('cbt_tests')
       .where('classId', '==', classId)
       .where('published', '==', true)
@@ -1488,9 +1488,40 @@ async function loadPupilTests() {
       .get();
     const completedTestIds = new Set(completedSnap.docs.map(d => d.data().testId));
 
+    // ✅ NEW: helper — mirrors the same logic used in admin.js/teacher.js
+    function isTestSubjectApplicable(subject, religion) {
+      const s = (subject || '').toLowerCase();
+      const r = (religion || '').trim().toLowerCase();
+
+      const isChristianRS = s.includes('christian religious') || s === 'crs' || s === 'crk' || s.includes('bible knowledge');
+      const isIslamicRS   = s.includes('islamic religious')   || s === 'irs' || s === 'irk' || s.includes('islamic studies');
+
+      if (!isChristianRS && !isIslamicRS) return true;
+
+      if (r === 'muslim' || r === 'islam') return !isChristianRS;
+      if (r === 'christian' || r === 'christianity') return !isIslamicRS;
+
+      return true; // religion unset — don't hide either
+    }
+
+    // ✅ NEW: filter out tests whose subject doesn't apply to this pupil's religion
+    let tests = testsSnap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(t => isTestSubjectApplicable(t.subject, pupilReligion));
+
+    if (tests.length === 0) {
+      container.innerHTML = `
+        <div class="cbt-empty">
+          <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;display:block;margin-left:auto;margin-right:auto;"></i>
+          <div class="cbt-empty-title">No tests yet</div>
+          <div class="cbt-empty-desc">Your teacher has not published any tests yet. Check back soon.</div>
+        </div>`;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+
     // Sort tests client-side: open first, then upcoming, then expired/done
     const now = new Date();
-    const tests = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     tests.sort((a, b) => {
       const getPriority = t => {
         const done = completedTestIds.has(t.id);
@@ -1597,7 +1628,6 @@ async function loadPupilTests() {
   } catch (err) {
     console.error('Error loading pupil tests:', err);
 
-    // Show a helpful message based on the error type
     let msg = 'Failed to load tests. Please refresh the page.';
     if (err.code === 'permission-denied') {
       msg = 'Permission denied. This may be a Firestore rules issue — contact admin.';
