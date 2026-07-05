@@ -8,7 +8,7 @@
 
 'use strict';
 
-const CACHE_VERSION = 'fahmid-pwa-v2.0.7';
+const CACHE_VERSION = 'fahmid-pwa-v2.0.8';
 const CACHE_NAME = `${CACHE_VERSION}`;
 const MAX_CACHE_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
