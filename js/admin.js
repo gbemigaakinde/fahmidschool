@@ -1,16 +1,10 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Admin Portal JavaScript - FULLY FIXED
+ * Admin Portal JavaScript
  * 
- * @version 7.0.0 - USER CREATION BUGS FIXED
+ * @version 7.0.0
  * @date 2026-01-27
  * 
- * CRITICAL FIXES:
- * - Secondary auth properly initialized BEFORE any form handlers
- * - createSecondaryUser exposed to window IMMEDIATELY
- * - Form handlers use proper error boundaries
- * - All async operations have timeout protection
- * - Detailed error logging for debugging
  */
 
 'use strict';
@@ -45,9 +39,6 @@ window.calculateAdjustedFee = function(pupilData, baseFee, currentTerm) {
   const percentAdjustment = Number(pupilData.feeAdjustmentPercent) || 0;
   const amountAdjustment  = Number(pupilData.feeAdjustmentAmount)  || 0;
 
-  // FIXED: Both adjustments apply to baseFee independently, then combine.
-  // Previously: percent was applied first, then amount was applied to the
-  // already-discounted result — causing unintended compounding.
   const percentDiscount = Math.round(base * (percentAdjustment / 100));
   const adjustedFee     = Math.round(base + percentDiscount + amountAdjustment);
 
@@ -65,21 +56,8 @@ window.calculateAdjustedFee = function(pupilData, baseFee, currentTerm) {
 console.log('✅ calculateAdjustedFee() FIX 1 loaded');
 
 /**
- * ✅ FIXED: Calculate complete arrears WITHOUT double-counting
+ * Calculate complete arrears WITHOUT double-counting
  * 
- * LOGIC:
- * - First Term of any session: Add ENTIRE previous session balance
- * - Second/Third Term: Add ONLY previous term balance (already contains cascaded arrears)
- * 
- * This prevents double-counting because:
- * - First Term 2025/2026 gets ₦45,000 from 2024/2025
- * - Second Term 2025/2026 gets First Term balance (which INCLUDES the ₦45,000)
- * - We DON'T add 2024/2025 again in Second Term
- */
-/**
- * ✅ FIXED: Calculate complete arrears WITHOUT double-counting
- * ALSO FIXED: Falls back to fee-structure recalculation when previous term
- * payment doc doesn't exist (e.g. pupil never paid, doc was never created).
  */
 window.calculateCompleteArrears = async function (pupilId, currentSession, currentTerm) {
   try {
@@ -96,9 +74,7 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
 
     console.log(`📊 Calculating arrears for pupil ${pupilId} — ${currentTerm}, ${currentSession}`);
 
-    // ─── Helper: was this pupil enrolled in a given session + term? ──────────
-    // FIX 2: When admissionSession is null (legacy data), fall back to
-    // admissionTerm as a within-session guard instead of assuming always enrolled.
+    // ─── Helper: was this pupil enrolled in a given session + term?
     async function wasEnrolledIn(pupilData, checkSession, checkTerm) {
       const admissionSession = pupilData.admissionSession || null;
       const admissionTerm    = pupilData.admissionTerm    || 'First Term';
@@ -130,7 +106,6 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
 
       return true;
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     // Fetch pupil data once
     let pupilDataCache = null;
@@ -200,8 +175,6 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
                 `  ⚠️ Previous term balance field is not a valid number (value: "${rawBalance}"). ` +
                 `Recalculating from full outstanding...`
               );
-              // FIX 4: Use calculateCurrentOutstanding instead of _recalculateTermBalance
-              // so that the previous term's own arrears are included in the cascade.
               try {
                 const outstanding = await window.calculateCurrentOutstanding(
                   pupilId, currentSession, previousTermName
@@ -220,9 +193,6 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
             }
 
           } else {
-            // Payment doc missing — pupil was enrolled but has no record.
-            // FIX 4: Use calculateCurrentOutstanding (recursive) instead of
-            // _recalculateTermBalance so multi-term debt chains cascade correctly.
             console.warn(
               `  ⚠️ No payment record for ${previousTermName} in ${currentSession} for pupil ${pupilId}. ` +
               `Calculating full outstanding balance...`
@@ -235,7 +205,6 @@ window.calculateCompleteArrears = async function (pupilId, currentSession, curre
               totalArrears = outstanding.balance || 0;
             } catch (e) {
               console.error(`  ❌ calculateCurrentOutstanding fallback failed:`, e.message);
-              // Last resort: fall back to single-term calculation
               totalArrears = await _recalculateTermBalance(
                 pupilId, currentSession, previousTermName
               );
@@ -268,8 +237,6 @@ console.log('✅ calculateCompleteArrears() FIX 2+4 loaded');
 
 /**
  * Helper: Safe session balance calculation
- * FIXED: If Third Term payment doc doesn't exist or has no balance,
- * calculate what they actually owe by reading fee structure + payments made.
  */
 async function calculateSessionBalanceSafe(pupilId, session) {
   try {
@@ -346,8 +313,6 @@ async function calculateSessionBalanceSafe(pupilId, session) {
 /**
  * NEW Helper: Calculate a pupil's actual outstanding balance for a specific term
  * by reading fee structure and total payments made, rather than relying on stored balance field.
- * 
- * Used as fallback when payment doc doesn't exist or balance field is unreliable.
  */
 async function _recalculateTermBalance(pupilId, session, term) {
   try {
@@ -406,8 +371,6 @@ async function _recalculateTermBalance(pupilId, session, term) {
       console.warn(`  ⚠️ Could not read payment doc for recalculation:`, e.message);
     }
 
-    // NOTE: We do NOT add arrears here — this function calculates ONE term's own balance.
-    // Arrears from previous terms are handled by calculateCompleteArrears separately.
     const balance = Math.max(0, amountDue - totalPaid);
 
     console.log(
@@ -442,7 +405,7 @@ function getPreviousSessionName(currentSession) {
 console.log('✅ calculateCompleteArrears() loaded for admin portal');
 
 /**
- * ✅ FIXED: Calculate current outstanding balance
+ *  Calculate current outstanding balance
  * This is the SINGLE SOURCE OF TRUTH for outstanding calculations
  */
 window.calculateCurrentOutstanding = async function(pupilId, session, term) {
@@ -514,12 +477,12 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
 
     const totalDue  = amountDue + arrears;
 
-    // FIX 3: Preserve the raw signed balance so overpayments surface.
+    // Preserve the raw signed balance so overpayments surface.
     const rawBalance = totalDue - totalPaid;
     const balance    = Math.max(0, rawBalance);
     const credit     = rawBalance < 0 ? Math.abs(rawBalance) : 0;
 
-    // FIX 3: Status now includes 'overpaid'.
+    // Status now includes 'overpaid'.
     let status;
     if (rawBalance < 0) {
       status = 'overpaid';
@@ -544,7 +507,7 @@ window.calculateCurrentOutstanding = async function(pupilId, session, term) {
       totalDue,
       totalPaid,
       balance,
-      credit,   // NEW: positive number when pupil has overpaid, 0 otherwise
+      credit,  
       status
     };
 
@@ -641,7 +604,7 @@ const auth = window.auth;
 console.log('🔧 Admin.js v7.0.0 loading...');
 
 /* =====================================================
-   CRITICAL FIX #1: SECONDARY AUTH INITIALIZATION
+   SECONDARY AUTH INITIALIZATION
    This MUST run FIRST before anything else
 ===================================================== */
 
@@ -664,7 +627,7 @@ let secondaryApp = null;
       console.log('✓ Created new secondary app');
     }
     
-    // CRITICAL FIX: Expose function to window IMMEDIATELY
+    // Expose function to window IMMEDIATELY
     window.createSecondaryUser = async function(email, password) {
   console.log(`📝 createSecondaryUser called for: ${email}`);
 
@@ -699,7 +662,7 @@ let secondaryApp = null;
     throw error;
   }
 
-  // FIX: Clear any stale session from a previous failed attempt
+  // Clear any stale session from a previous failed attempt
   try {
     if (secondaryAuth.currentUser) {
       console.warn('⚠️ Secondary auth had stale session, clearing before proceeding');
@@ -716,11 +679,11 @@ let secondaryApp = null;
   try {
     const userCredential = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     
-    // FIX: Capture UID immediately — never rely on secondaryAuth.currentUser later
+    // Capture UID immediately — never rely on secondaryAuth.currentUser later
     newUid = userCredential.user.uid;
     console.log(`✓ User created: ${newUid}`);
 
-    // FIX: Send password reset email as non-fatal — a network blip should not
+    // Send password reset email as non-fatal — a network blip should not
     // orphan the Auth account or leave secondaryAuth signed in
     try {
       console.log('📨 Sending password reset email...');
@@ -742,7 +705,7 @@ let secondaryApp = null;
     console.error('Error code:', error.code);
     console.error('Error message:', error.message);
 
-    // FIX: Always clean up secondary auth session on any failure
+    // Always clean up secondary auth session on any failure
     try {
       await secondaryAuth.signOut();
     } catch (cleanupError) {
@@ -769,7 +732,7 @@ console.log('✅ createSecondaryUser exposed to window');
 })();
 
 /* =====================================================
-   CRITICAL FIX #2: WAIT FOR AUTHENTICATION
+   WAIT FOR AUTHENTICATION
 ===================================================== */
 
 console.log('🔐 Waiting for authentication...');
@@ -824,7 +787,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Initialize admin portal with proper loading sequence
- * Replace initializeAdminPortal function (around line 100)
  */
 async function initializeAdminPortal() {
   console.log('🚀 Initializing admin portal...');
@@ -839,8 +801,7 @@ async function initializeAdminPortal() {
     return;
   }
 
-  // ✅ FIX: Only set up sidebar if not already done.
-  //    Do NOT reset the flag to false here — that caused double-init.
+  // Only set up sidebar if not already done.
   if (!window.adminSidebarInitialized) {
     setupSidebarNavigation();
   }
@@ -870,13 +831,13 @@ async function initializeAdminPortal() {
 }
 
 // ============================================
-// LOADING STATE FLAGS (Add at top of admin.js after line 20)
+// LOADING STATE FLAGS
 // ============================================
 let adminDataLoaded = false;
 let isLoadingAdminData = false;
 
 // ============================================
-// SIDEBAR NAVIGATION SETUP (Replaces lines 168-265)
+// SIDEBAR NAVIGATION SETUP
 // ============================================
 
 function setupSidebarNavigation() {
@@ -914,10 +875,7 @@ function setupSidebarNavigation() {
     console.log('🔘 Hamburger toggled. Sidebar open:', isNowOpen);
   });
 
-  // ── Outside-click closes sidebar ──────────────────────────────────────────
-  // ✅ FIX: Store the handler reference so it can never be added twice.
-  //    If for any reason this function were called again, the guard above
-  //    prevents it, but we name the handler defensively anyway.
+  // ── Outside-click closes sidebar
   if (!window._adminSidebarOutsideClickHandler) {
     window._adminSidebarOutsideClickHandler = function (e) {
       const sb = document.getElementById('admin-sidebar');
@@ -1034,13 +992,8 @@ function setupSidebarNavigation() {
 }
 
 // ============================================
-// SHOW SECTION (Teacher-style validation)
+// SHOW SECTION
 // ============================================
-
-/**
- * Show section with loading state validation (like teacher portal)
- * Replace showSection function in admin.js (around line 280)
- */
 function showSection(sectionId) {
   if (!sectionId) {
     console.error('❌ showSection called with no sectionId');
@@ -1049,14 +1002,14 @@ function showSection(sectionId) {
 
   console.log(`📄 Showing section: ${sectionId}`);
 
-  // TEACHER-STYLE: Check if data is loaded (except dashboard)
+  // Check if data is loaded (except dashboard)
   if (!adminDataLoaded && sectionId !== 'dashboard' && !isLoadingAdminData) {
     window.showToast?.('Loading data, please wait...', 'info', 3000);
     console.warn('⚠️ Data not loaded yet, showing dashboard instead');
     sectionId = 'dashboard'; // Fallback to dashboard
   }
 
-  // ✅ FIXED: Hide only TOP-LEVEL sections, not nested .admin-card elements
+  // Hide only TOP-LEVEL sections, not nested .admin-card elements
   document
     .querySelectorAll('main > .content-wrapper > .admin-card')
     .forEach(card => {
@@ -1230,7 +1183,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Load Audit Log Section
- * CRITICAL FIX: This function was missing, causing ReferenceError
  */
 // Global variable to store all audit log data
 let allAuditLogsData = [];
@@ -1274,7 +1226,7 @@ async function loadAuditLog() {
       logs.push({ id: doc.id, ...doc.data() });
     });
     
-    // ✅ Store globally for search
+    // Store globally for search
     allAuditLogsData = logs;
     
     // Render audit log table with search
@@ -1571,7 +1523,6 @@ async function downloadAuditLog() {
 
 /**
  * Load section data with validation
- * Replace loadSectionData function (around line 320)
  */
 function loadSectionData(sectionId) {
   console.log(`📊 Loading data for: ${sectionId}`);
@@ -1643,7 +1594,7 @@ function loadSectionData(sectionId) {
         loadViewResultsSection();
         break;
       case 'settings':
-        loadCurrentSettings(); // This already handles hierarchy loading internally
+        loadCurrentSettings();
         loadSessionHistory();
         break;
       case 'fee-management':
@@ -1951,7 +1902,7 @@ function closePromotionDetailsModal() {
     if (modal) modal.style.display = 'none';
     currentPromotionId = null;
     currentPromotionData = null;
-    manualOverrides = []; // ← ADD THIS LINE
+    manualOverrides = [];
 }
 
 async function populateOverrideDropdowns() {
@@ -1997,8 +1948,6 @@ async function populateOverrideDropdowns() {
 let manualOverrides = [];
 
 function handlePromotionOverride() {
-  // This function is called when checkboxes change
-  // We'll collect the overrides when approving
   console.log('Promotion overrides changed');
 }
 
@@ -2086,13 +2035,9 @@ async function approvePromotion() {
   }
 
   try {
-    // ✅ Build a single assignment map — each pupilId can only have ONE final state.
-    // Last explicit decision wins. Eliminates the possibility of a pupil appearing
-    // in both finalPromotedPupils and finalHeldBackPupils arrays.
-    const pupilAssignment = new Map(); // pupilId -> 'promote' | 'hold'
+    const pupilAssignment = new Map();
 
     // Process promote-list checkboxes first
-    // Checkbox checked = keep promoted. Unchecked = admin overrides to hold.
     document.querySelectorAll('.override-promote-checkbox').forEach(checkbox => {
       const pupilId = checkbox.dataset.pupilId;
       if (!pupilId) return;
@@ -2100,14 +2045,12 @@ async function approvePromotion() {
     });
 
     // Process hold-list checkboxes
-    // Checkbox checked = admin overrides to promote. Unchecked = confirm hold.
     document.querySelectorAll('.override-hold-checkbox').forEach(checkbox => {
       const pupilId = checkbox.dataset.pupilId;
       if (!pupilId) return;
       if (checkbox.checked) {
         pupilAssignment.set(pupilId, 'promote');
       } else {
-        // Do not overwrite a 'promote' decision already set from the promote-list
         if (!pupilAssignment.has(pupilId)) {
           pupilAssignment.set(pupilId, 'hold');
         }
@@ -2170,8 +2113,8 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
     throw new Error('Invalid promotion data: missing target class');
   }
   
- // CRITICAL FIX: Proper batch size limit
-const BATCH_SIZE = 400; // Safe limit under Firestore's 500
+ // Proper batch size limit
+const BATCH_SIZE = 400;
 let currentBatch = db.batch();
 let operationCount = 0;
 let batchNumber = 1;
@@ -2614,10 +2557,10 @@ async function loadPromotionPeriodStatus() {
    STATE
 ───────────────────────────────────────────────────────────────────────────── */
 
-let _resultApprovalsTab = 'pending'; // 'pending' | 'approved'
+let _resultApprovalsTab = 'pending';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   MAIN LOADER  (replaces existing loadResultApprovals)
+   MAIN LOADER
 ───────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -2645,7 +2588,7 @@ function _ensureTabBar() {
   // Look for an existing controls container or create one before the table
   let controls = document.getElementById('result-approvals-tab-bar');
 
-  if (controls) return; // Already injected
+  if (controls) return;
 
   // Find the section root — try the section element first, then fall back
   const section = document.getElementById('result-approvals');
@@ -2722,7 +2665,7 @@ async function switchResultApprovalsTab(tab) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PENDING TAB  (original logic, preserved exactly)
+   PENDING TAB 
 ───────────────────────────────────────────────────────────────────────────── */
 
 async function _loadPendingResults() {
@@ -2875,7 +2818,7 @@ async function _loadPendingResults() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   APPROVED TAB  (new)
+   APPROVED TAB
 ───────────────────────────────────────────────────────────────────────────── */
 
 async function _loadApprovedResults() {
@@ -2980,20 +2923,8 @@ async function _loadApprovedResults() {
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   UNLOCK  (new core function)
-───────────────────────────────────────────────────────────────────────────── */
-
 /**
  * Unlock an approved submission so the teacher can re-edit and resubmit.
- *
- * Steps:
- *  1. Confirm with admin.
- *  2. Move result_submissions doc back to 'rejected' with a clear reason
- *     so the teacher portal surfaces the rejection and allows editing.
- *  3. Set every corresponding approved result in the `results` collection
- *     back to status:'draft' — this hides them from pupils immediately.
- *  4. Reload the approved tab.
  */
 async function unlockApprovedResult(submissionId) {
   if (!confirm(
@@ -3152,9 +3083,7 @@ console.log('   • Approved tab: view all approved results + 🔓 Unlock button
 console.log('   • unlockApprovedResult(): reverts results to draft, submission to rejected');
 
 /**
- * ✅ FIXED: Approve results - REMOVED SESSION FILTER
- * Uses only classId + term + subject (3 fields = no index required)
- * ✅ IDEMPOTENCY GUARD: Transaction prevents duplicate approvals on double-click
+ * Approve results 
  */
 async function approveResultSubmission(submissionId) {
     if (!confirm(
@@ -3169,8 +3098,7 @@ async function approveResultSubmission(submissionId) {
     }
 
     try {
-        // ✅ IDEMPOTENCY GUARD: Atomically check status and mark as 'approving'
-        // This blocks any second click from proceeding past this point
+        // IDEMPOTENCY GUARD: Atomically check status and mark as 'approving'
         const submissionRef = db.collection('result_submissions').doc(submissionId);
         let submissionData;
 
@@ -3228,13 +3156,10 @@ async function approveResultSubmission(submissionId) {
 
         console.log('📋 Approving submission:', { classId, term, subject, session });
 
-        // ✅ CRITICAL FIX: Query WITHOUT session filter (only 3 fields)
-        // This avoids the composite index requirement
         const draftsSnap = await db.collection('results_draft')
             .where('classId', '==', classId)
             .where('term', '==', term)
             .where('subject', '==', subject)
-            // ❌ REMOVED: .where('session', '==', session)
             .get();
 
         if (draftsSnap.empty) {
@@ -3251,7 +3176,7 @@ async function approveResultSubmission(submissionId) {
 
         console.log(`✓ Found ${draftsSnap.size} draft results to publish`);
 
-        // ✅ Verify session matches (client-side filter for safety)
+        // Verify session matches (client-side filter for safety)
         const validDrafts = [];
         draftsSnap.forEach(draftDoc => {
             const data = draftDoc.data();
@@ -3275,7 +3200,7 @@ async function approveResultSubmission(submissionId) {
 
         console.log(`✓ Validated ${validDrafts.length} drafts for session ${session}`);
 
-        // ✅ Copy results from draft to FINAL collection
+        // Copy results from draft to FINAL collection
         const batch = db.batch();
         let copiedCount = 0;
 
@@ -3287,7 +3212,7 @@ async function approveResultSubmission(submissionId) {
             const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
             const finalRef = db.collection('results').doc(finalDocId);
 
-            // ✅ Copy ALL data from draft, mark as approved
+            // Copy ALL data from draft, mark as approved
             batch.set(finalRef, {
                 ...draftData,
                 status: 'approved',
@@ -3299,7 +3224,7 @@ async function approveResultSubmission(submissionId) {
             copiedCount++;
         });
 
-        // ✅ Update submission status to fully approved
+        // Update submission status to fully approved
         batch.update(submissionRef, {
             status: 'approved',
             approvedBy: auth.currentUser.uid,
@@ -3307,7 +3232,7 @@ async function approveResultSubmission(submissionId) {
             resultsPublished: copiedCount
         });
 
-        // ✅ Commit all changes atomically
+        // Commit all changes atomically
         await batch.commit();
 
         console.log(`✅ Published ${copiedCount} results to final collection`);
@@ -3325,7 +3250,7 @@ async function approveResultSubmission(submissionId) {
     } catch (error) {
         console.error('❌ Error approving results:', error);
 
-        // ✅ Roll back 'approving' status so the submission doesn't get stuck
+        // Roll back 'approving' status so the submission doesn't get stuck
         try {
             const currentDoc = await db.collection('result_submissions').doc(submissionId).get();
             if (currentDoc.exists && currentDoc.data().status === 'approving') {
@@ -3349,7 +3274,7 @@ async function approveResultSubmission(submissionId) {
 }
 
 /**
- * ✅ FIXED: Reject results - keeps them in draft, allows teacher to edit
+ * Reject results - keeps them in draft, allows teacher to edit
  */
 async function rejectResultSubmission(submissionId) {
     const reason = prompt(
