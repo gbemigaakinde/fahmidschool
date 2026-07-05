@@ -121,6 +121,9 @@
 /* ────────────────────────────────────────────────────────────
    3. SIDEBAR
 ──────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────
+   3. SIDEBAR
+──────────────────────────────────────────────────────────── */
 .tp-sidebar.admin-sidebar {
     width: var(--tp-sidebar-w);
     background: var(--tp-sidebar-bg);
@@ -128,19 +131,15 @@
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh; /* FIX: uses real visible height on mobile (ignores address bar) */
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden; /* FIX: was overflow-y:auto — outer container should NOT scroll, only the nav should */
     z-index: 800;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
     padding: 0;
 }
-
-.tp-sidebar::-webkit-scrollbar { width: 4px; }
-.tp-sidebar::-webkit-scrollbar-track { background: transparent; }
-.tp-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 /* Brand */
 .tp-sidebar-top {
@@ -199,10 +198,16 @@
 /* Nav */
 .tp-sidebar-nav {
     flex: 1;
+    min-height: 0; /* ★ THE ACTUAL FIX: without this, the menu refuses to shrink
+                       and pushes Logout off-screen on short mobile screens */
     padding: var(--tp-space-3) var(--tp-space-3);
     overflow-y: auto;
     overflow-x: hidden;
 }
+
+.tp-sidebar-nav::-webkit-scrollbar { width: 4px; }
+.tp-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.tp-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 .tp-nav-label {
     font-size: 0.625rem;
@@ -263,7 +268,9 @@
 
 /* Sidebar Footer */
 .tp-sidebar-footer {
-    padding: var(--tp-space-4) var(--tp-space-3) var(--tp-space-5);
+    padding: var(--tp-space-4) var(--tp-space-3) calc(var(--tp-space-5) + env(safe-area-inset-bottom));
+    /* FIX: adds extra bottom padding on phones with a home-bar (iPhone X and newer)
+       so Logout never sits underneath it */
     border-top: 1px solid rgba(255,255,255,0.08);
     flex-shrink: 0;
 }
