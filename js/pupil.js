@@ -69,6 +69,47 @@ function getClassNameFromPupilData(classData) {
 }
 
 // ============================================
+// HELPER: Religion-based subject filtering
+// ============================================
+function filterSubjectsByReligion(subjects, religion) {
+  if (!Array.isArray(subjects) || subjects.length === 0) return subjects || [];
+
+  const normalizedReligion = (religion || '').trim().toLowerCase();
+
+  const isChristianRS = (name) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.includes('christian religious') ||
+      n === 'crs' ||
+      n === 'crk' ||
+      n.includes('bible knowledge')
+    );
+  };
+
+  const isIslamicRS = (name) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.includes('islamic religious') ||
+      n === 'irs' ||
+      n === 'irk' ||
+      n.includes('islamic studies')
+    );
+  };
+
+  if (normalizedReligion === 'muslim' || normalizedReligion === 'islam') {
+    return subjects.filter(s => !isChristianRS(s));
+  }
+
+  if (normalizedReligion === 'christian' || normalizedReligion === 'christianity') {
+    return subjects.filter(s => !isIslamicRS(s));
+  }
+
+  return subjects;
+}
+
+window.filterSubjectsByReligion = filterSubjectsByReligion;
+
+// ============================================
 // PUPIL PROFILE
 // ============================================
 
@@ -158,7 +199,11 @@ async function loadPupilProfile(user) {
         currentClassInfo = { 
           name: className, 
           teacher: data.assignedTeacher?.name || '-', 
-          subjects: Array.isArray(data.subjects) ? data.subjects : [] 
+          // ✅ CHANGED: filter by this pupil's religion as a safety net
+          subjects: window.filterSubjectsByReligion(
+            Array.isArray(data.subjects) ? data.subjects : [],
+            data.religion
+          )
         };
 
         if (classId) {
@@ -167,7 +212,11 @@ async function loadPupilProfile(user) {
                 if (classDoc.exists) {
                     const classData = classDoc.data();
                     currentClassInfo.name = classData.name || className;
-                    currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+                    // ✅ CHANGED: filter the class's raw subject list by this pupil's religion
+                    currentClassInfo.subjects = window.filterSubjectsByReligion(
+                        Array.isArray(classData.subjects) ? classData.subjects : [],
+                        data.religion
+                    );
                     
                     if (classData.teacherName) {
                         currentClassInfo.teacher = classData.teacherName;
@@ -198,7 +247,11 @@ async function loadPupilProfile(user) {
                         const matchedClassDoc = classesSnapshot.docs[0];
                         const matchedClassData = matchedClassDoc.data();
                         
-                        currentClassInfo.subjects = Array.isArray(matchedClassData.subjects) ? matchedClassData.subjects : [];
+                        // ✅ CHANGED: filter by this pupil's religion
+                        currentClassInfo.subjects = window.filterSubjectsByReligion(
+                            Array.isArray(matchedClassData.subjects) ? matchedClassData.subjects : [],
+                            data.religion
+                        );
                         
                         if (matchedClassData.teacherName) {
                             currentClassInfo.teacher = matchedClassData.teacherName;
@@ -301,7 +354,11 @@ async function loadPupilProfile(user) {
                   
                   currentClassInfo.name = updatedClassName;
                   currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
-                  currentClassInfo.subjects = Array.isArray(updatedData.subjects) ? updatedData.subjects : [];
+                  // ✅ CHANGED: filter by this pupil's (possibly updated) religion
+                  currentClassInfo.subjects = window.filterSubjectsByReligion(
+                    Array.isArray(updatedData.subjects) ? updatedData.subjects : [],
+                    updatedData.religion
+                  );
                   
                   renderProfile({
                     name: updatedData.name || '-',
@@ -354,10 +411,18 @@ async function loadPupilProfile(user) {
                     if (!snap.exists) return;
                     
                     const classData = snap.data();
+
+                    // ✅ CHANGED: compute the religion-filtered version first,
+                    // then compare against it, so a class subject change that only
+                    // affects a subject this pupil doesn't take won't cause a false "no change"
+                    const filteredIncoming = window.filterSubjectsByReligion(
+                      Array.isArray(classData.subjects) ? classData.subjects : [],
+                      currentPupilData?.religion
+                    );
                     
                     const hasChanges = 
                       currentClassInfo.name !== classData.name ||
-                      JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(classData.subjects);
+                      JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(filteredIncoming);
                     
                     if (!hasChanges) {
                       console.log('No class changes, skipping');
@@ -367,7 +432,7 @@ async function loadPupilProfile(user) {
                     console.log('Class data changed, updating...');
                     
                     currentClassInfo.name = classData.name || currentClassInfo.name;
-                    currentClassInfo.subjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+                    currentClassInfo.subjects = filteredIncoming;
                     
                     if (classData.teacherName) {
                       currentClassInfo.teacher = classData.teacherName;
