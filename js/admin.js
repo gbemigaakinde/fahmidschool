@@ -7255,6 +7255,55 @@ function getClassIdFromPupilData(classData) {
 }
 
 /**
+ * ✅ RELIGION-BASED SUBJECT FILTERING
+ * Removes the Religious Studies subject that does NOT match the pupil's religion,
+ * so Muslim pupils never get Christian Religious Studies and vice versa.
+ *
+ * Recognizes common naming variants (CRS/CRK, IRS/IRK, full names).
+ * If religion is unset/unknown ("", "Other"), nothing is filtered — admin/teacher
+ * can still manually assign the correct subject later.
+ */
+function filterSubjectsByReligion(subjects, religion) {
+  if (!Array.isArray(subjects) || subjects.length === 0) return subjects || [];
+
+  const normalizedReligion = (religion || '').trim().toLowerCase();
+
+  const isChristianRS = (name) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.includes('christian religious') ||
+      n === 'crs' ||
+      n === 'crk' ||
+      n.includes('bible knowledge')
+    );
+  };
+
+  const isIslamicRS = (name) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.includes('islamic religious') ||
+      n === 'irs' ||
+      n === 'irk' ||
+      n.includes('islamic studies')
+    );
+  };
+
+  if (normalizedReligion === 'muslim' || normalizedReligion === 'islam') {
+    return subjects.filter(s => !isChristianRS(s));
+  }
+
+  if (normalizedReligion === 'christian' || normalizedReligion === 'christianity') {
+    return subjects.filter(s => !isIslamicRS(s));
+  }
+
+  // Unspecified/"Other" — leave subjects untouched
+  return subjects;
+}
+
+// Expose globally
+window.filterSubjectsByReligion = filterSubjectsByReligion;
+
+/**
  * FIXED: Populate class dropdown with defensive checks
  */
 async function populateClassDropdown(selectedClass = '') {
@@ -8139,6 +8188,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const classId = document.getElementById('pupil-class')?.value;
     const email = document.getElementById('pupil-email')?.value.trim();
     const password = document.getElementById('pupil-password')?.value;
+
+    // ✅ NEW: Religion — used to filter out the mismatched Religious Studies subject
+    const religion = document.getElementById('pupil-religion')?.value || '';
     
     // Validation
     if (!name || !classId) {
@@ -8224,6 +8276,13 @@ document.addEventListener('DOMContentLoaded', () => {
           teacherName = teacherDoc.data().name || '';
         }
       }
+
+      // ✅ NEW: Filter class subjects by this pupil's religion so they never get
+      // assigned the Religious Studies subject that doesn't match their faith.
+      const rawClassSubjects = Array.isArray(classData.subjects) ? classData.subjects : [];
+      const filteredSubjects = window.filterSubjectsByReligion
+        ? window.filterSubjectsByReligion(rawClassSubjects, religion)
+        : rawClassSubjects;
       
       // Build pupil data
 const pupilData = {
@@ -8231,6 +8290,7 @@ const pupilData = {
     name,
     dob: document.getElementById('pupil-dob')?.value || '',
     gender: document.getElementById('pupil-gender')?.value || '',
+    religion: religion, // ✅ NEW
     parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
     parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
     contact: document.getElementById('pupil-contact')?.value.trim() || '',
@@ -8239,7 +8299,7 @@ const pupilData = {
         id: classId,
         name: classData.name || 'Unknown Class'
     },
-    subjects: Array.isArray(classData.subjects) ? classData.subjects : [],
+    subjects: filteredSubjects, // ✅ CHANGED: was Array.isArray(classData.subjects) ? classData.subjects : []
     assignedTeacher: {
         id: teacherId,
         name: teacherName
@@ -9409,6 +9469,9 @@ async function applyBulkAction() {
     case 'reassign-class':
       await bulkReassignClass(selectedPupilIds);
       break;
+    case 'set-religion':
+      await bulkSetReligion(selectedPupilIds);
+      break;
     case 'delete':
       await bulkDeletePupils(selectedPupilIds);
       break;
@@ -9519,11 +9582,25 @@ async function bulkReassignClass(pupilIds) {
         
         for (const pupilId of pupilIds) {
           const pupilRef = db.collection('pupils').doc(pupilId);
+
+          // ✅ NEW: Read this pupil's religion so we can filter out the
+          // mismatched Religious Studies subject from the new class's list.
+          let pupilReligion = '';
+          try {
+            const pupilSnap = await pupilRef.get();
+            pupilReligion = pupilSnap.exists ? (pupilSnap.data().religion || '') : '';
+          } catch (readError) {
+            console.warn(`⚠️ Could not read religion for pupil ${pupilId}:`, readError.message);
+          }
+
+          const filteredSubjects = window.filterSubjectsByReligion
+            ? window.filterSubjectsByReligion(classData.subjects || [], pupilReligion)
+            : (classData.subjects || []);
           
           batch.update(pupilRef, {
             'class.id': newClassId,
             'class.name': classData.name,
-            subjects: classData.subjects || [],
+            subjects: filteredSubjects, // ✅ CHANGED: was classData.subjects || []
             'assignedTeacher.id': teacherId,
             'assignedTeacher.name': teacherName,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -9564,6 +9641,166 @@ async function bulkReassignClass(pupilIds) {
     window.showToast?.('Failed to load classes', 'danger');
   }
 }
+
+/**
+ * ✅ NEW: Bulk-set religion for selected pupils.
+ *
+ * This does TWO things per pupil:
+ *  1. Sets/updates the `religion` field.
+ *  2. Recomputes `subjects` from the pupil's OWN class's master subject list,
+ *     filtered by the new religion — this retroactively removes the wrong
+ *     Religious Studies subject from pupils who were assigned subjects
+ *     before religion-based filtering existed.
+ *
+ * Pupils can be in different classes, so class subject lists are fetched
+ * per-pupil (with a small cache to avoid re-fetching the same class twice).
+ */
+async function bulkSetReligion(pupilIds) {
+  console.log(`📝 bulkSetReligion called with ${pupilIds.length} pupils`);
+
+  // Create modal
+  const modalId = 'bulk-religion-modal-' + Date.now();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10000;';
+  modal.innerHTML = `
+    <div style="background:white; padding:var(--space-2xl); border-radius:var(--radius-lg); max-width:500px; width:90%;">
+      <h3 style="margin-top:0;">Set Religion for ${pupilIds.length} Pupil(s)</h3>
+      <p style="color:var(--color-gray-600); margin-bottom:var(--space-lg);">
+        This will set the religion for all selected pupils and automatically remove
+        the mismatched Religious Studies subject (Christian/Islamic) from their subject list.
+      </p>
+      <select id="bulk-religion-select-${modalId}" style="width:100%; padding:var(--space-sm); margin-bottom:var(--space-lg);">
+        <option value="">-- Select Religion --</option>
+        <option value="Christian">Christian</option>
+        <option value="Muslim">Muslim</option>
+        <option value="Other">Other / Not Specified</option>
+      </select>
+      <div style="display:flex; gap:var(--space-md); justify-content:flex-end;">
+        <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+        <button class="btn btn-primary" data-action="confirm">
+          Apply to All
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const cleanup = () => {
+    modal.remove();
+    document.removeEventListener('keydown', escapeHandler);
+    console.log('✓ Modal cleaned up');
+  };
+
+  const escapeHandler = (e) => {
+    if (e.key === 'Escape') cleanup();
+  };
+  document.addEventListener('keydown', escapeHandler);
+
+  modal.querySelector('[data-action="cancel"]').onclick = cleanup;
+
+  modal.querySelector('[data-action="confirm"]').onclick = async function() {
+    const selectId = `bulk-religion-select-${modalId}`;
+    const religion = document.getElementById(selectId)?.value;
+
+    if (!religion) {
+      window.showToast?.('Please select a religion', 'warning');
+      return;
+    }
+
+    this.disabled = true;
+    this.innerHTML = '<span class="btn-loading">Applying...</span>';
+
+    try {
+      // Cache class subject lists so we don't re-fetch the same class repeatedly
+      const classSubjectsCache = {};
+
+      async function getClassSubjects(classId) {
+        if (!classId) return [];
+        if (classSubjectsCache[classId]) return classSubjectsCache[classId];
+
+        const classDoc = await db.collection('classes').doc(classId).get();
+        const subjects = classDoc.exists && Array.isArray(classDoc.data().subjects)
+          ? classDoc.data().subjects
+          : [];
+
+        classSubjectsCache[classId] = subjects;
+        return subjects;
+      }
+
+      const BATCH_SIZE = 400;
+      let batch = db.batch();
+      let count = 0;
+      let updatedCount = 0;
+      let errorCount = 0;
+
+      for (const pupilId of pupilIds) {
+        try {
+          const pupilDoc = await db.collection('pupils').doc(pupilId).get();
+          if (!pupilDoc.exists) {
+            console.warn(`⚠️ Pupil ${pupilId} not found, skipping`);
+            errorCount++;
+            continue;
+          }
+
+          const pupilData = pupilDoc.data();
+          const classId = pupilData.class?.id || null;
+
+          // Get the FULL master subject list from the pupil's class
+          // (not the pupil's current possibly-already-filtered list)
+          const masterSubjects = await getClassSubjects(classId);
+
+          const filteredSubjects = window.filterSubjectsByReligion
+            ? window.filterSubjectsByReligion(masterSubjects, religion)
+            : masterSubjects;
+
+          const pupilRef = db.collection('pupils').doc(pupilId);
+          batch.update(pupilRef, {
+            religion: religion,
+            subjects: filteredSubjects,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          count++;
+          updatedCount++;
+
+          if (count >= BATCH_SIZE) {
+            await batch.commit();
+            batch = db.batch();
+            count = 0;
+          }
+
+        } catch (pupilError) {
+          console.error(`❌ Error processing pupil ${pupilId}:`, pupilError.message);
+          errorCount++;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      const message = errorCount === 0
+        ? `✓ Successfully set religion to "${religion}" for ${updatedCount} pupil(s).\n\nSubjects have been updated accordingly.`
+        : `Updated ${updatedCount} pupil(s). ${errorCount} failed — check console.`;
+
+      window.showToast?.(message, errorCount > 0 ? 'warning' : 'success', 6000);
+
+      cleanup();
+      await loadPupils();
+
+    } catch (error) {
+      console.error('Bulk set religion error:', error);
+      window.showToast?.(`Failed to set religion: ${error.message}`, 'danger');
+      this.disabled = false;
+      this.innerHTML = 'Apply to All';
+    }
+  };
+}
+
+// Make globally available
+window.bulkSetReligion = bulkSetReligion;
 
 /**
  * Bulk delete selected pupils
@@ -9721,6 +9958,11 @@ async function editPupil(uid) {
     document.getElementById('pupil-admission-no').value = data.admissionNo || '';
     document.getElementById('pupil-dob').value = data.dob || '';
     document.getElementById('pupil-gender').value = data.gender || '';
+
+    // ✅ NEW: Populate religion field (used for Religious Studies subject filtering)
+    const religionField = document.getElementById('pupil-religion');
+    if (religionField) religionField.value = data.religion || '';
+
     document.getElementById('pupil-parent-name').value = data.parentName || '';
     document.getElementById('pupil-parent-email').value = data.parentEmail || '';
     document.getElementById('pupil-contact').value = data.contact || '';
@@ -10162,21 +10404,28 @@ async function saveClassSubjects() {
       
       console.log(`Found ${pupilsSnap.size} pupils to update`);
       
-      // Update class subjects
+      // Update class subjects (class-level list is unfiltered — the "master" list)
       transaction.update(classRef, {
         subjects: selectedSubjects,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       
-      // Update all pupils' subjects atomically
+      // ✅ CHANGED: Update each pupil's subjects individually, filtered by their
+      // own religion, so Muslim pupils never get Christian Religious Studies
+      // and Christian pupils never get Islamic Religious Studies.
       pupilsSnap.forEach(pupilDoc => {
+        const pupilReligion = pupilDoc.data().religion || '';
+        const filteredSubjects = window.filterSubjectsByReligion
+          ? window.filterSubjectsByReligion(selectedSubjects, pupilReligion)
+          : selectedSubjects;
+
         transaction.update(pupilDoc.ref, {
-          subjects: selectedSubjects,
+          subjects: filteredSubjects,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
       
-      console.log('✓ Transaction prepared with all updates');
+      console.log('✓ Transaction prepared with all updates (religion-filtered per pupil)');
     });
 
     window.showToast?.(
