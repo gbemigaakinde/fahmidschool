@@ -773,16 +773,24 @@
                     <input type="hidden" id="pupil-id">
 
                     <!-- Personal Info -->
-                    <div class="form-row form-row-2">
-                        <div class="form-group">
-                            <label for="pupil-name">Full Name <span class="required">*</span></label>
-                            <input type="text" id="pupil-name" placeholder="Pupil's full name (first name first)" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="pupil-admission-no">Admission No <span class="required">*</span></label>
-                            <input type="text" id="pupil-admission-no" placeholder="Admission number" required>
-                        </div>
-                    </div>
+<div class="form-row form-row-3">
+    <div class="form-group">
+        <label for="pupil-first-name">First Name <span class="required">*</span></label>
+        <input type="text" id="pupil-first-name" placeholder="First name" required>
+    </div>
+    <div class="form-group">
+        <label for="pupil-middle-name">Middle Name</label>
+        <input type="text" id="pupil-middle-name" placeholder="Middle name (optional)">
+    </div>
+    <div class="form-group">
+        <label for="pupil-last-name">Last Name <span class="required">*</span></label>
+        <input type="text" id="pupil-last-name" placeholder="Last name" required>
+    </div>
+</div>
+<div class="form-group">
+    <label for="pupil-admission-no">Admission No <span class="required">*</span></label>
+    <input type="text" id="pupil-admission-no" placeholder="Admission number" required>
+</div>
                     <div class="form-row form-row-3">
                         <div class="form-group">
                             <label for="pupil-dob">Date of Birth <span class="required">*</span></label>
@@ -2011,6 +2019,23 @@
                             </button>
                         </div>
 
+                       <!-- Tool C -->
+                        <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; margin-top:1rem;">
+                            <h4 style="margin:0 0 0.5rem; font-size:0.9375rem; color:#0f172a;">
+                                🔧 Split Existing Pupil Names
+                            </h4>
+                            <p style="font-size:0.8125rem; color:#64748b; margin:0 0 0.875rem;">
+                                Splits every existing pupil's full name into First / Middle / Last name fields
+                                (used by the new three-box name entry). The existing name field is left
+                                completely untouched — this only adds the new fields alongside it.
+                            </p>
+                            <button id="migrate-pupil-names-btn" class="btn btn-warning"
+                                    onclick="migrateExistingPupilNames()">
+                                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+                                Split Existing Pupil Names
+                            </button>
+                        </div>
+                        
                         <!-- Tool B -->
                         <div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem;">
                             <h4 style="margin:0 0 0.5rem; font-size:0.9375rem; color:#0f172a;">
