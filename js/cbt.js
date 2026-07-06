@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Engine — Pupil Test-Taking Logic
- * @version 1.3.0 — Mid-test progress is now saved and restored on refresh
+ * @version 1.4.0 — Flagged questions now carried through to submission & teacher review
  */
 'use strict';
 
@@ -625,7 +625,11 @@ async function submitTest() {
             optionC: q.optionC, optionD: q.optionD,
             correctAnswer,
             pupilAnswer,
-            isCorrect
+            isCorrect,
+            // Carry the pupil's flag through to the saved review so the
+            // teacher can see exactly which questions were flagged for
+            // review, not just how many.
+            flagged: flagged.has(i)
         });
     });
 
@@ -658,6 +662,9 @@ async function submitTest() {
             grade,
             timeTakenSec: timeTaken,
             tabSwitches: tabSwitchCount,
+            // Quick summary field so the teacher's results table can show
+            // a flag count without needing to open the full review doc.
+            flaggedCount: flagged.size,
             submittedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -776,6 +783,7 @@ function showReview() {
                     color:${item.isCorrect ? '#14532d' : '#7f1d1d'}">
                     ${item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped'}
                 </span>
+                ${item.flagged ? '<span style="margin-left:6px;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:700;background:#fef3c7;color:#92400e;">Flagged</span>' : ''}
             </div>
             <div class="review-item__q">${item.questionText}</div>
             <div class="cbt-options">${optionsHTML}</div>
@@ -826,4 +834,4 @@ window.confirmSubmit  = confirmSubmit;
 window.submitTest     = submitTest;
 window.showReview     = showReview;
 
-console.log('✓ CBT engine v1.3.0 loaded (shuffling + mid-test progress resume)');
+console.log('✓ CBT engine v1.4.0 loaded (flagged questions now carried through to teacher review)');
