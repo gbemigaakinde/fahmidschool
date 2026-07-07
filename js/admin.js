@@ -943,26 +943,6 @@ function setupSidebarNavigation() {
     });
   });
 
-  // ── Group toggles ──────────────────────────────────────────────────────────
-  sidebar.querySelectorAll('.sidebar-group-toggle-modern').forEach(toggle => {
-    toggle.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const content    = this.nextElementSibling;
-      if (!content) return;
-
-      const isExpanded = this.getAttribute('aria-expanded') === 'true';
-      this.setAttribute('aria-expanded', String(!isExpanded));
-      content.classList.toggle('active', !isExpanded);
-
-      const chevron = this.querySelector('.toggle-icon');
-      if (chevron) {
-        chevron.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
-      }
-    });
-  });
-
   // ── Resize handler ─────────────────────────────────────────────────────────
   if (!window._adminSidebarResizeHandler) {
     let resizeTimer;
@@ -12543,8 +12523,6 @@ console.log('✓ Data export functions loaded');
 /**
  * ✅ Helper functions for financial calculations
  */
-
-// Already exists in pupil.js - copy to admin.js
 window.getPreviousSessionName = function(currentSession) {
     const match = currentSession.match(/(\d{4})\/(\d{4})/);
     if (!match) return null;
@@ -12561,7 +12539,6 @@ window.getPreviousSessionName = function(currentSession) {
 
 /**
  * Approve all currently pending result submissions.
- * Reuses existing approveResultSubmission() for each — no logic duplication.
  */
 async function approveAllPendingResults() {
   const pendingCheckboxes = document.querySelectorAll('.result-submission-checkbox:checked');
@@ -12789,13 +12766,6 @@ window.updateResultsBulkButtons = updateResultsBulkButtons;
    RESULT APPROVAL — INLINE PERFORMANCE PREVIEW PANEL
    ============================================================ */
 
-
-/* ------------------------------------------------------------
-   STEP 1 — PURE CALCULATION
-   Accepts an array of draft result objects.
-   Returns all stats needed by the UI.
------------------------------------------------------------- */
-
 function computePreviewStats(drafts) {
   if (!drafts || drafts.length === 0) {
     return null;
@@ -12834,12 +12804,6 @@ function computePreviewStats(drafts) {
     scores
   };
 }
-
-
-/* ------------------------------------------------------------
-   STEP 2 — RENDER
-   Builds the HTML string for the preview panel.
------------------------------------------------------------- */
 
 function renderResultPreviewPanel(stats, meta) {
   if (!stats) {
@@ -13116,14 +13080,6 @@ function renderResultPreviewPanel(stats, meta) {
     </div>
   `;
 }
-
-
-/* ------------------------------------------------------------
-   STEP 3 — TOGGLE
-   Called by the Preview button in each row.
-   Fetches drafts, computes stats, renders panel.
-   Second click collapses.
------------------------------------------------------------- */
 
 async function toggleResultPreview(submissionId, classId, term, subject, session, className) {
   const previewRowId = `preview-row-${submissionId}`;
