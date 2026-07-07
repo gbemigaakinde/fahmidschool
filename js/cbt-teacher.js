@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.4.0 — Teachers can now click a pupil's score to review their full attempt
+ * @version 1.5.0 — Results table now sortable (latest, oldest, score, name)
  */
 
 'use strict';
@@ -50,6 +50,15 @@ const _cbtTestMap = new Map();
 // summary fields — so the attempt-review modal can render its header
 // instantly without a second round trip to Firestore.
 const _cbtResultMap = new Map();
+
+// Holds the full fetched (and pupil-name-resolved) results array for the
+// test currently being viewed, plus which sort is active — so switching
+// sort order is a pure client-side re-render with zero extra Firestore reads.
+let _cbtResultsCache = {
+    testId: null,
+    results: [],   // [{ id, ...resultData, pupilName }]
+    sortBy: 'latest'
+};
 
 async function loadCbtTests(container) {
     if (!window.currentUser) return;
@@ -983,97 +992,154 @@ async function viewCbtResults(testId, testTitle) {
             return;
         }
 
-        // Keep both the doc id and the full result data (score, time taken,
-        // tab switches, etc.) so the attempt-review modal can render its
-        // header instantly, without a second Firestore round trip.
-        _cbtResultMap.clear();
+        // Resolve pupil names once, up front, and cache the full results
+        // array (in the order Firestore gave us — latest first). All
+        // subsequent sort changes are pure client-side re-renders of this
+        // cached array, so switching sort order costs zero Firestore reads.
         const results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const avgPct  = Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length);
-        const highest = Math.max(...results.map(r => r.percentage));
-        const lowest  = Math.min(...results.map(r => r.percentage));
-        const flaggedSubmissions = results.filter(r => (r.flaggedCount || 0) > 0).length;
 
-        let tableRows = '';
         for (const r of results) {
-            // Get pupil name
             let pupilName = r.pupilId;
             try {
                 const pDoc = await db.collection('pupils').doc(r.pupilId).get();
                 if (pDoc.exists) pupilName = pDoc.data().name;
             } catch(e) {}
-
-            _cbtResultMap.set(r.id, { ...r, pupilName });
-
-            const submittedDate = r.submittedAt?.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) || '—';
-            const flaggedCount  = r.flaggedCount || 0;
-            const flaggedCell   = flaggedCount > 0
-                ? `<button class="cbt-mgr-btn" data-action="view-flags" data-result-id="${r.id}"
-                       style="padding:4px 10px;font-size:11.5px;background:#fef3c7;border-color:#f59e0b;color:#92400e;">
-                       <i data-lucide="flag" style="width:12px;height:12px;" aria-hidden="true"></i> ${flaggedCount}
-                   </button>`
-                : `<span style="color:#94a3b8;">0</span>`;
-
-            tableRows += `
-                <tr>
-                    <td data-label="Pupil">${escHtml(pupilName)}</td>
-                    <td data-label="Score" style="text-align:center;">
-                        <button class="cbt-score-link" data-action="view-attempt" data-result-id="${r.id}"
-                            style="background:none;border:none;padding:0;cursor:pointer;font-weight:700;
-                                   font-size:13.5px;color:#1a56db;text-decoration:underline;text-underline-offset:2px;">
-                            ${r.score}/${r.total}
-                        </button>
-                    </td>
-                    <td data-label="Percentage" style="text-align:center;font-weight:700;color:${r.percentage >= 50 ? '#16a34a' : '#dc2626'};">${r.percentage}%</td>
-                    <td data-label="Grade" style="text-align:center;" class="grade-${r.grade}">${r.grade}</td>
-                    <td data-label="Flagged" style="text-align:center;">${flaggedCell}</td>
-                    <td data-label="Tab Switches" style="text-align:center;color:${(r.tabSwitches || 0) > 3 ? '#dc2626' : '#64748b'};">${r.tabSwitches || 0}</td>
-                    <td data-label="Submitted">${submittedDate}</td>
-                </tr>`;
+            r.pupilName = pupilName;
+            _cbtResultMap.set(r.id, r);
         }
 
-        content.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
-                <div class="stat-card"><h3>Submissions</h3><div class="stat-number">${results.length}</div></div>
-                <div class="stat-card stat-card-primary"><h3>Average</h3><div class="stat-number" style="color:#1a56db!important;-webkit-text-fill-color:#1a56db!important;">${avgPct}%</div></div>
-                <div class="stat-card stat-card-primary"><h3>Highest</h3><div class="stat-number" style="color:#16a34a!important;-webkit-text-fill-color:#16a34a!important;">${highest}%</div></div>
-                <div class="stat-card stat-card-orange"><h3>Lowest</h3><div class="stat-number">${lowest}%</div></div>
-                <div class="stat-card" style="border-left:3px solid #f59e0b;"><h3>Flagged</h3><div class="stat-number" style="color:#f59e0b!important;-webkit-text-fill-color:#f59e0b!important;">${flaggedSubmissions}</div></div>
-            </div>
-            <div class="table-container">
-                <table class="responsive-table">
-                    <thead>
-                        <tr>
-                            <th>Pupil</th>
-                            <th style="text-align:center;">Score</th>
-                            <th style="text-align:center;">Percentage</th>
-                            <th style="text-align:center;">Grade</th>
-                            <th style="text-align:center;">Flagged</th>
-                            <th style="text-align:center;">Tab Switches</th>
-                            <th>Submitted</th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-            </div>
-        `;
+        _cbtResultsCache = { testId, results, sortBy: 'latest' };
 
-        // Wire up the "View Attempt" (score) and "View Flags" buttons now
-        // that they're actually in the DOM. Both open the same modal —
-        // the flag badge just also scrolls straight to the first flagged
-        // question once it renders.
-        content.querySelectorAll('[data-action="view-attempt"]').forEach(btn => {
-            btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, false));
-        });
-        content.querySelectorAll('[data-action="view-flags"]').forEach(btn => {
-            btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, true));
-        });
-
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+        renderCbtResultsTable(content);
 
     } catch (err) {
         console.error('Error loading results:', err);
         document.getElementById('cbt-results-content').innerHTML = '<p style="color:red;padding:20px;">Error loading results.</p>';
     }
+}
+
+// Sorts _cbtResultsCache.results according to the given key. Returns a NEW
+// array — the cache's original (Firestore) order is left untouched so
+// switching back to "Latest first" never needs a re-fetch.
+function cbtSortResults(results, sortBy) {
+    const arr = results.slice();
+    switch (sortBy) {
+        case 'oldest':
+            return arr.sort((a, b) => (a.submittedAt?.toMillis?.() || 0) - (b.submittedAt?.toMillis?.() || 0));
+        case 'score-high':
+            return arr.sort((a, b) => b.percentage - a.percentage);
+        case 'score-low':
+            return arr.sort((a, b) => a.percentage - b.percentage);
+        case 'name':
+            return arr.sort((a, b) => (a.pupilName || '').localeCompare(b.pupilName || ''));
+        case 'latest':
+        default:
+            return arr.sort((a, b) => (b.submittedAt?.toMillis?.() || 0) - (a.submittedAt?.toMillis?.() || 0));
+    }
+}
+
+// Renders (or re-renders) the stat cards + sort control + table body from
+// _cbtResultsCache. Called on first load and every time the sort dropdown
+// changes — never touches Firestore.
+function renderCbtResultsTable(content) {
+    const { results, sortBy } = _cbtResultsCache;
+
+    const avgPct  = Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length);
+    const highest = Math.max(...results.map(r => r.percentage));
+    const lowest  = Math.min(...results.map(r => r.percentage));
+    const flaggedSubmissions = results.filter(r => (r.flaggedCount || 0) > 0).length;
+
+    const sortOptions = [
+        { value: 'latest',     label: 'Latest first' },
+        { value: 'oldest',     label: 'Oldest first' },
+        { value: 'score-high', label: 'Highest score' },
+        { value: 'score-low',  label: 'Lowest score' },
+        { value: 'name',       label: 'Pupil name (A–Z)' }
+    ];
+
+    const sortedResults = cbtSortResults(results, sortBy);
+
+    let tableRows = '';
+    for (const r of sortedResults) {
+        const submittedDate = r.submittedAt?.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) || '—';
+        const flaggedCount  = r.flaggedCount || 0;
+        const flaggedCell   = flaggedCount > 0
+            ? `<button class="cbt-mgr-btn" data-action="view-flags" data-result-id="${r.id}"
+                   style="padding:4px 10px;font-size:11.5px;background:#fef3c7;border-color:#f59e0b;color:#92400e;">
+                   <i data-lucide="flag" style="width:12px;height:12px;" aria-hidden="true"></i> ${flaggedCount}
+               </button>`
+            : `<span style="color:#94a3b8;">0</span>`;
+
+        tableRows += `
+            <tr>
+                <td data-label="Pupil">${escHtml(r.pupilName)}</td>
+                <td data-label="Score" style="text-align:center;">
+                    <button class="cbt-score-link" data-action="view-attempt" data-result-id="${r.id}"
+                        style="background:none;border:none;padding:0;cursor:pointer;font-weight:700;
+                               font-size:13.5px;color:#1a56db;text-decoration:underline;text-underline-offset:2px;">
+                        ${r.score}/${r.total}
+                    </button>
+                </td>
+                <td data-label="Percentage" style="text-align:center;font-weight:700;color:${r.percentage >= 50 ? '#16a34a' : '#dc2626'};">${r.percentage}%</td>
+                <td data-label="Grade" style="text-align:center;" class="grade-${r.grade}">${r.grade}</td>
+                <td data-label="Flagged" style="text-align:center;">${flaggedCell}</td>
+                <td data-label="Tab Switches" style="text-align:center;color:${(r.tabSwitches || 0) > 3 ? '#dc2626' : '#64748b'};">${r.tabSwitches || 0}</td>
+                <td data-label="Submitted">${submittedDate}</td>
+            </tr>`;
+    }
+
+    content.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
+            <div class="stat-card"><h3>Submissions</h3><div class="stat-number">${results.length}</div></div>
+            <div class="stat-card stat-card-primary"><h3>Average</h3><div class="stat-number" style="color:#1a56db!important;-webkit-text-fill-color:#1a56db!important;">${avgPct}%</div></div>
+            <div class="stat-card stat-card-primary"><h3>Highest</h3><div class="stat-number" style="color:#16a34a!important;-webkit-text-fill-color:#16a34a!important;">${highest}%</div></div>
+            <div class="stat-card stat-card-orange"><h3>Lowest</h3><div class="stat-number">${lowest}%</div></div>
+            <div class="stat-card" style="border-left:3px solid #f59e0b;"><h3>Flagged</h3><div class="stat-number" style="color:#f59e0b!important;-webkit-text-fill-color:#f59e0b!important;">${flaggedSubmissions}</div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <label for="cbt-results-sort" style="font-size:12.5px;font-weight:600;color:#64748b;">Sort by:</label>
+            <select id="cbt-results-sort" style="
+                padding:6px 12px;border-radius:8px;border:1.5px solid #e2e8f0;
+                background:#ffffff;color:#0f172a;font-size:13px;font-weight:600;cursor:pointer;">
+                ${sortOptions.map(o => `<option value="${o.value}" ${o.value === sortBy ? 'selected' : ''}>${o.label}</option>`).join('')}
+            </select>
+        </div>
+        <div class="table-container">
+            <table class="responsive-table">
+                <thead>
+                    <tr>
+                        <th>Pupil</th>
+                        <th style="text-align:center;">Score</th>
+                        <th style="text-align:center;">Percentage</th>
+                        <th style="text-align:center;">Grade</th>
+                        <th style="text-align:center;">Flagged</th>
+                        <th style="text-align:center;">Tab Switches</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>
+    `;
+
+    // Wire up sort dropdown — just re-renders from the cache, no re-fetch
+    const sortSelect = document.getElementById('cbt-results-sort');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            _cbtResultsCache.sortBy = this.value;
+            renderCbtResultsTable(content);
+        });
+    }
+
+    // Wire up the "View Attempt" (score) and "View Flags" buttons
+    content.querySelectorAll('[data-action="view-attempt"]').forEach(btn => {
+        btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, false));
+    });
+    content.querySelectorAll('[data-action="view-flags"]').forEach(btn => {
+        btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, true));
+    });
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ── View a pupil's full attempt ──────────────────────────────────────────
@@ -1270,4 +1336,4 @@ window.togglePublish       = togglePublish;
 window.viewCbtResults      = viewCbtResults;
 window.viewPupilAttempt    = viewPupilAttempt;
 
-console.log('✓ CBT Teacher module v1.4.0 loaded (full attempt review on score click)');
+console.log('✓ CBT Teacher module v1.5.0 loaded (sortable results table)');
