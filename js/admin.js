@@ -1453,9 +1453,6 @@ async function downloadAuditLog() {
   try {
     window.showToast?.('Preparing audit log export...', 'info', 2000);
     
-    // Cap the export instead of pulling the entire audit_log collection.
-    // Every delete, login-related event, settings change, promotion, and
-    // result approval writes a new entry here — it only ever grows.
     const EXPORT_LIMIT = 5000;
 
     const logsSnap = await db.collection('audit_log')
@@ -5568,9 +5565,6 @@ async function loadFinancialReports() {
     let skippedCount   = 0;
     let errorCount     = 0;
 
-    // Same batching approach as loadOutstandingFeesReport(): process pupils
-    // in small concurrent groups instead of one at a time, so this report
-    // doesn't get proportionally slower as pupil count grows.
     const CONCURRENCY = 8;
     const activeDocs = pupilsSnap.docs.filter(pupilDoc => {
       const d = pupilDoc.data();
@@ -6187,11 +6181,6 @@ async function ensureAllPupilsHavePaymentRecords() {
     let totalArrears = 0;
     let totalErrors  = 0;
 
-    // Process pupils in small concurrent batches instead of one at a time.
-    // Each pupil here involves a few Firestore reads/writes (checking for an
-    // existing payment record, calculating arrears, then creating the
-    // record), so this keeps things faster as pupil count grows while still
-    // being gentle on Firestore (5 at a time rather than 8).
     const CONCURRENCY = 5;
     const allDocs = pupilsSnap.docs;
 
@@ -6773,7 +6762,6 @@ async function exportFinancialPDF(session, term) {
         console.log(`📊 Preparing PDF for ${pupilsSnap.size} pupils...`);
 
         // Process pupils in small concurrent batches instead of one at a time.
-        // This keeps PDF export fast even as pupil count grows into the hundreds.
         const CONCURRENCY = 8;
         const allDocs = pupilsSnap.docs;
 
@@ -7621,8 +7609,7 @@ async function loadAlumni() {
   
   try {
     // Query alumni directly instead of pulling the entire pupils collection
-    // and throwing away everything that isn't alumni. This keeps the read
-    // size proportional to alumni count, not total pupils ever enrolled.
+    // and throwing away everything that isn't alumni.
     const snapshot = await db.collection('pupils')
       .where('status', '==', 'alumni')
       .get();
@@ -7640,8 +7627,7 @@ async function loadAlumni() {
       return;
     }
     
-    // Sort by graduation date (newest first). Safe to sort in-memory now
-    // because this result set only contains alumni, not the whole school.
+    // Sort by graduation date (newest first).
     alumni.sort((a, b) => {
       const dateA = a.graduationDate?.toMillis() || 0;
       const dateB = b.graduationDate?.toMillis() || 0;
@@ -9207,10 +9193,10 @@ function cancelPupilForm() {
 // Global variable to store all pupils data
 let allPupilsData = [];
 // Tracks pagination state for the Pupils "Load More" button
-let pupilsLastVisibleDoc = null;   // remembers where the last fetch stopped
-let pupilsHasMoreToLoad = true;     // whether more pupils exist beyond what's loaded
-const PUPILS_PAGE_SIZE = 200;       // how many pupils to fetch per click
-let pupilsSearchDebounceTimer = null; // delays the Firestore search slightly while typing
+let pupilsLastVisibleDoc = null;  
+let pupilsHasMoreToLoad = true;  
+const PUPILS_PAGE_SIZE = 200;     
+let pupilsSearchDebounceTimer = null; 
 
 /**
  * Load Pupils (Client-Side Alumni Filtering)
@@ -9282,7 +9268,7 @@ async function loadPupils() {
 
 /**
  * Fetches the next batch of pupils and appends them to the list already
- * shown on screen. Called when the admin clicks "Load More Pupils".
+ * shown on screen. 
  */
 async function loadMorePupils() {
   if (!pupilsHasMoreToLoad || !pupilsLastVisibleDoc) {
@@ -9405,9 +9391,6 @@ function renderPupilsTable(pupilsData) {
 
 /**
  * Handles typing in the pupils search box.
- * Step 1: instantly filters whatever pupils are already loaded (fast, "contains" search).
- * Step 2: if there might be pupils not yet loaded, asks Firestore for additional
- *         matches in the background and adds them in automatically.
  */
 function filterPupils() {
   const searchInput = document.getElementById('pupils-search');
@@ -9433,8 +9416,7 @@ function filterPupils() {
 
 /**
  * Filters the pupils currently held in memory (allPupilsData) and renders
- * the result. Used both for the instant local search and after Firestore
- * adds any newly-found pupils.
+ * the result.
  */
 function renderFilteredPupils(searchTerm) {
   if (!searchTerm) {
@@ -9465,9 +9447,7 @@ function renderFilteredPupils(searchTerm) {
 /**
  * Looks up Firestore directly for pupils matching the search term that
  * haven't been loaded into the browser yet, and merges any found into
- * the working list. Firestore can only match the START of a name or
- * admission number here (not anywhere in the middle) — that's a real
- * limitation of how Firestore search works, not a bug.
+ * the working list.
  */
 async function searchPupilsInFirestore(searchTerm) {
   const rawInput = document.getElementById('pupils-search')?.value.trim();
