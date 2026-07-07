@@ -577,9 +577,11 @@
   white-space: nowrap;
 }
 
-.cbt-test-card__meta i[data-lucide] {
-  width: 12px;
-  height: 12px;
+/* Target the rendered <svg> directly, not the original <i> tag,
+   since Lucide replaces <i data-lucide="..."> with an <svg>. */
+.cbt-test-card__meta svg {
+  width: 12px !important;
+  height: 12px !important;
   flex-shrink: 0;
 }
 
@@ -593,9 +595,9 @@
   gap: 5px;
 }
 
-.cbt-test-card__score i[data-lucide] {
-  width: 13px;
-  height: 13px;
+.cbt-test-card__score svg {
+  width: 13px !important;
+  height: 13px !important;
   flex-shrink: 0;
 }
 
@@ -604,6 +606,10 @@
   color: #64748b;
   margin-top: 2px;
   line-height: 1.5;
+}
+
+.cbt-test-card__dates:empty {
+  display: none;
 }
 
 .cbt-test-card__action {
@@ -620,7 +626,7 @@
   .cbt-test-card {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 12px !important;
+    gap: 10px !important;
     padding: 16px !important;
   }
 
@@ -643,6 +649,21 @@
     justify-content: center;
     text-align: center;
   }
+}
+
+/* ── Legible "Done" badge for completed tests on white cards ── */
+.cbt-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.cbt-done-badge svg {
+  width: 14px !important;
+  height: 14px !important;
 }
 
 /* ── Load More button for tests list ─────────────────────── */
@@ -1758,21 +1779,28 @@ async function renderPupilTestsPage() {
 
     const canTake = !done && windowStatus === 'open';
 
-    const actionBtn = canTake
-      ? `<a href="cbt.html?testId=${t.id}"
-            class="pp-action-btn pp-action-btn--solid"
-            style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
+    // Completed tests already show "✓ Completed" + score above —
+    // no need for a separate action button that just repeats "Done".
+    let actionHTML = '';
+    if (canTake) {
+      actionHTML = `
+        <div class="cbt-test-card__action">
+          <a href="cbt.html?testId=${t.id}"
+             class="pp-action-btn pp-action-btn--solid"
+             style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
             <i data-lucide="play" style="width:14px;height:14px;"></i>
             Start Test
-         </a>`
-      : done
-        ? `<span class="pp-action-btn pp-action-btn--outline" style="opacity:0.7;cursor:default;display:inline-flex;align-items:center;gap:6px;padding:10px 20px;">
-             <i data-lucide="check" style="width:14px;height:14px;"></i>
-             Done
-           </span>`
-        : `<span class="pp-action-btn pp-action-btn--outline" style="opacity:0.5;cursor:not-allowed;display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;">
-             ${windowStatus === 'upcoming' ? '⏳ Not yet open' : '✗ Expired'}
-           </span>`;
+          </a>
+        </div>`;
+    } else if (!done) {
+      actionHTML = `
+        <div class="cbt-test-card__action">
+          <span class="pp-action-btn" style="opacity:0.6;cursor:not-allowed;display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;background:#f1f5f9;color:#64748b;border:1.5px solid #e2e8f0;">
+            ${windowStatus === 'upcoming' ? '⏳ Not yet open' : '✗ Expired'}
+          </span>
+        </div>`;
+    }
+    // else: done === true → no action block at all
 
     const scheduleInfo = t.scheduledDate
       ? `<div>Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>`
@@ -1780,7 +1808,7 @@ async function renderPupilTestsPage() {
     const expiryInfo = t.expiryDate
       ? `<div>Closes: ${t.expiryDate.toDate().toLocaleString('en-GB')}</div>`
       : '';
-    const datesBlock = (scheduleInfo || expiryInfo)
+    const datesBlock = (!done && (scheduleInfo || expiryInfo))
       ? `<div class="cbt-test-card__dates">${scheduleInfo}${expiryInfo}</div>`
       : '';
 
@@ -1800,9 +1828,7 @@ async function renderPupilTestsPage() {
           ${scoreDisplay}
           ${datesBlock}
         </div>
-        <div class="cbt-test-card__action">
-          ${actionBtn}
-        </div>
+        ${actionHTML}
       </div>`;
   }
 
@@ -1819,6 +1845,7 @@ async function renderPupilTestsPage() {
   container.innerHTML = cardsHTML;
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+window.renderPupilTestsPage = renderPupilTestsPage;
 
 function loadMorePupilTests() {
   cbtVisibleCount += CBT_TESTS_PAGE_SIZE;
