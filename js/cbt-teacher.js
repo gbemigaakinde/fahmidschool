@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.5.0 — Results table now sortable (latest, oldest, score, name)
+ * @version 1.6.0 — Attempt review now includes the tab-switch proctoring timeline
  */
 
 'use strict';
@@ -1142,13 +1142,79 @@ function renderCbtResultsTable(content) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// ── Proctoring timeline ──────────────────────────────────────────────────
+// Fetches every cbt_proctoring event for this specific pupil + test. Query
+// uses two equality filters only (no orderBy) so no composite Firestore
+// index is required — the small result set is sorted client-side instead.
+async function cbtFetchProctoringEvents(testId, pupilId) {
+    try {
+        const snap = await db.collection('cbt_proctoring')
+            .where('testId', '==', testId)
+            .where('pupilId', '==', pupilId)
+            .get();
+
+        const events = snap.docs.map(d => d.data());
+        events.sort((a, b) => (a.timestamp?.toMillis?.() || 0) - (b.timestamp?.toMillis?.() || 0));
+        return events;
+    } catch (err) {
+        console.error('Error loading proctoring events:', err);
+        return [];
+    }
+}
+
+// Builds the HTML for the proctoring timeline block. Returns an empty-state
+// message if there were no incidents — that's the common case and should
+// read as reassuring, not like something failed to load.
+function cbtRenderProctoringTimeline(events) {
+    if (!events || events.length === 0) {
+        return `
+            <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:18px;">
+                <i data-lucide="shield-check" style="width:16px;height:16px;color:#16a34a;flex-shrink:0;"></i>
+                <span style="font-size:12.5px;color:#14532d;font-weight:600;">No tab-switch or focus-loss events were recorded during this attempt.</span>
+            </div>
+        `;
+    }
+
+    const eventLabels = {
+        tab_hidden:   { label: 'Switched away from the test tab', icon: 'eye-off' },
+        window_blur:  { label: 'Left the browser window',         icon: 'external-link' }
+    };
+
+    const rows = events.map((ev, idx) => {
+        const meta = eventLabels[ev.eventType] || { label: ev.eventType || 'Unknown event', icon: 'alert-triangle' };
+        const time = ev.timestamp?.toDate
+            ? ev.timestamp.toDate().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : '—';
+        return `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;${idx < events.length - 1 ? 'border-bottom:1px dashed #fde68a;' : ''}">
+                <span style="width:26px;height:26px;min-width:26px;border-radius:50%;background:#fef3c7;color:#92400e;display:flex;align-items:center;justify-content:center;">
+                    <i data-lucide="${meta.icon}" style="width:13px;height:13px;"></i>
+                </span>
+                <span style="font-size:12.5px;color:#78350f;font-weight:600;flex:1;">${escHtml(meta.label)}</span>
+                <span style="font-size:11.5px;color:#92400e;font-weight:700;font-family:monospace;">${time}</span>
+                <span style="font-size:10.5px;color:#a16207;">#${ev.switchCount || (idx + 1)}</span>
+            </div>`;
+    }).join('');
+
+    return `
+        <details style="margin-bottom:18px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;" open>
+            <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:6px;list-style:none;">
+                <i data-lucide="shield-alert" style="width:14px;height:14px;"></i>
+                Proctoring Timeline &nbsp;·&nbsp; ${events.length} event${events.length !== 1 ? 's' : ''}
+            </summary>
+            <div style="margin-top:10px;">${rows}</div>
+        </details>
+    `;
+}
+
 // ── View a pupil's full attempt ──────────────────────────────────────────
 // Opens a modal showing every question from that submission — the pupil's
 // answer vs. the correct one, in the order they appeared on the pupil's
-// screen — plus a summary header (score, time taken, tab switches). Any
-// question the pupil flagged is marked and, if scrollToFlagged is true
-// (i.e. opened via the Flagged badge rather than the score), the view
-// jumps straight to the first one.
+// screen — plus a summary header (score, time taken, tab switches) and,
+// now, the full chronological proctoring timeline (every tab-switch /
+// focus-loss event, not just the running count). Any question the pupil
+// flagged is marked and, if scrollToFlagged is true (i.e. opened via the
+// Flagged badge rather than the score), the view jumps straight to it.
 async function viewPupilAttempt(resultId, scrollToFlagged) {
     const resultMeta = _cbtResultMap.get(resultId);
     const pupilName  = resultMeta?.pupilName || 'Pupil';
@@ -1227,6 +1293,9 @@ async function viewPupilAttempt(resultId, scrollToFlagged) {
             </button>
         </div>
         ${headerStatsHTML}
+        <div id="cbt-proctoring-timeline">
+            <div style="text-align:center;padding:10px;color:#94a3b8;font-size:12px;">Loading proctoring log…</div>
+        </div>
         <div id="cbt-attempt-body">
             <div style="text-align:center;padding:24px;color:#94a3b8;">
                 <div class="spinner" style="margin:0 auto 10px;"></div>
@@ -1243,69 +1312,79 @@ async function viewPupilAttempt(resultId, scrollToFlagged) {
     document.getElementById('cbt-attempt-close').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    const bodyEl = document.getElementById('cbt-attempt-body');
+    const timelineEl = document.getElementById('cbt-proctoring-timeline');
+    const bodyEl     = document.getElementById('cbt-attempt-body');
 
-    try {
-        const reviewSnap = await db.collection('cbt_reviews')
-            .where('resultId', '==', resultId)
-            .limit(1)
-            .get();
+    // Fetch the proctoring timeline and the question-by-question review in
+    // parallel — they're independent queries against different collections.
+    const [proctoringEvents] = await Promise.all([
+        resultMeta ? cbtFetchProctoringEvents(resultMeta.testId, resultMeta.pupilId) : Promise.resolve([]),
+        (async () => {
+            try {
+                const reviewSnap = await db.collection('cbt_reviews')
+                    .where('resultId', '==', resultId)
+                    .limit(1)
+                    .get();
 
-        if (reviewSnap.empty) {
-            bodyEl.innerHTML = `<p style="text-align:center;color:#94a3b8;padding:20px;">No review data found for this submission.</p>`;
-            return;
-        }
+                if (reviewSnap.empty) {
+                    bodyEl.innerHTML = `<p style="text-align:center;color:#94a3b8;padding:20px;">No review data found for this submission.</p>`;
+                    return;
+                }
 
-        const reviewData = reviewSnap.docs[0].data().answers || [];
-        const letters = ['A','B','C','D'];
-        const keys    = ['optionA','optionB','optionC','optionD'];
+                const reviewData = reviewSnap.docs[0].data().answers || [];
+                const letters = ['A','B','C','D'];
+                const keys    = ['optionA','optionB','optionC','optionD'];
 
-        bodyEl.innerHTML = reviewData.map((item, i) => {
-            let optionsHTML = '';
-            keys.forEach((key, ki) => {
-                if (!item[key]) return;
-                const letter     = letters[ki];
-                const isPupil    = item.pupilAnswer === letter;
-                const isCorrect  = item.correctAnswer === letter;
-                let extraStyle = '';
-                if (isCorrect)                    extraStyle = 'border-color:#16a34a;background:#f0fdf4;color:#14532d;';
-                else if (isPupil && !isCorrect)   extraStyle = 'border-color:#dc2626;background:#fef2f2;color:#7f1d1d;';
-                optionsHTML += `
-                    <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid #e2e8f0;margin-bottom:6px;font-size:13px;${extraStyle}">
-                        <span style="width:22px;height:22px;min-width:22px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">${letter}</span>
-                        <span>${escHtml(item[key])}</span>
-                        ${isCorrect ? '<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#16a34a;">Correct</span>' : ''}
-                        ${isPupil && !isCorrect ? '<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#dc2626;">Pupil&rsquo;s answer</span>' : ''}
-                    </div>`;
-            });
+                bodyEl.innerHTML = reviewData.map((item, i) => {
+                    let optionsHTML = '';
+                    keys.forEach((key, ki) => {
+                        if (!item[key]) return;
+                        const letter     = letters[ki];
+                        const isPupil    = item.pupilAnswer === letter;
+                        const isCorrect  = item.correctAnswer === letter;
+                        let extraStyle = '';
+                        if (isCorrect)                    extraStyle = 'border-color:#16a34a;background:#f0fdf4;color:#14532d;';
+                        else if (isPupil && !isCorrect)   extraStyle = 'border-color:#dc2626;background:#fef2f2;color:#7f1d1d;';
+                        optionsHTML += `
+                            <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;border:1.5px solid #e2e8f0;margin-bottom:6px;font-size:13px;${extraStyle}">
+                                <span style="width:22px;height:22px;min-width:22px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">${letter}</span>
+                                <span>${escHtml(item[key])}</span>
+                                ${isCorrect ? '<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#16a34a;">Correct</span>' : ''}
+                                ${isPupil && !isCorrect ? '<span style="margin-left:auto;font-size:10.5px;font-weight:700;color:#dc2626;">Pupil&rsquo;s answer</span>' : ''}
+                            </div>`;
+                    });
 
-            const statusLabel = item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped';
-            const statusColor = item.isCorrect ? '#16a34a' : item.pupilAnswer ? '#dc2626' : '#94a3b8';
-            const isFlagged   = !!item.flagged;
+                    const statusLabel = item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped';
+                    const statusColor = item.isCorrect ? '#16a34a' : item.pupilAnswer ? '#dc2626' : '#94a3b8';
+                    const isFlagged   = !!item.flagged;
 
-            return `
-                <div class="${isFlagged ? 'cbt-attempt-flagged' : ''}"
-                     style="border:1px solid ${isFlagged ? '#fde68a' : '#e2e8f0'};background:${isFlagged ? '#fffbeb' : '#ffffff'};border-radius:12px;padding:16px;margin-bottom:14px;">
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-                        <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Question ${i + 1}</span>
-                        <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:${statusColor}1a;color:${statusColor};">${statusLabel}</span>
-                        ${isFlagged ? '<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#fef3c7;color:#92400e;"><i data-lucide="flag" style="width:10px;height:10px;vertical-align:-1px;"></i> Flagged</span>' : ''}
-                    </div>
-                    <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:12px;line-height:1.5;">${escHtml(item.questionText)}</div>
-                    ${optionsHTML}
-                </div>`;
-        }).join('');
+                    return `
+                        <div class="${isFlagged ? 'cbt-attempt-flagged' : ''}"
+                             style="border:1px solid ${isFlagged ? '#fde68a' : '#e2e8f0'};background:${isFlagged ? '#fffbeb' : '#ffffff'};border-radius:12px;padding:16px;margin-bottom:14px;">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                                <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Question ${i + 1}</span>
+                                <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:${statusColor}1a;color:${statusColor};">${statusLabel}</span>
+                                ${isFlagged ? '<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#fef3c7;color:#92400e;"><i data-lucide="flag" style="width:10px;height:10px;vertical-align:-1px;"></i> Flagged</span>' : ''}
+                            </div>
+                            <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:12px;line-height:1.5;">${escHtml(item.questionText)}</div>
+                            ${optionsHTML}
+                        </div>`;
+                }).join('');
 
-        if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (err) {
+                console.error('Error loading pupil attempt:', err);
+                bodyEl.innerHTML = `<p style="text-align:center;color:#dc2626;padding:20px;">Failed to load this attempt.</p>`;
+            }
+        })()
+    ]);
 
-        if (scrollToFlagged) {
-            const firstFlagged = bodyEl.querySelector('.cbt-attempt-flagged');
-            if (firstFlagged) firstFlagged.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+    timelineEl.innerHTML = cbtRenderProctoringTimeline(proctoringEvents);
 
-    } catch (err) {
-        console.error('Error loading pupil attempt:', err);
-        bodyEl.innerHTML = `<p style="text-align:center;color:#dc2626;padding:20px;">Failed to load this attempt.</p>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    if (scrollToFlagged) {
+        const firstFlagged = bodyEl.querySelector('.cbt-attempt-flagged');
+        if (firstFlagged) firstFlagged.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
@@ -1336,4 +1415,4 @@ window.togglePublish       = togglePublish;
 window.viewCbtResults      = viewCbtResults;
 window.viewPupilAttempt    = viewPupilAttempt;
 
-console.log('✓ CBT Teacher module v1.5.0 loaded (sortable results table)');
+console.log('✓ CBT Teacher module v1.6.0 loaded (proctoring timeline added to attempt review)');
