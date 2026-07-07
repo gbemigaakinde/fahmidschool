@@ -7850,11 +7850,7 @@ async function loadDashboardStats() {
   classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
 
-  // ── PRIMARY PATH: Firestore count() aggregation ──────────────────────────
-  // These queries ask Firestore to count matching documents server-side and
-  // return only the number — no document contents are downloaded. This is
-  // dramatically cheaper than fetching every pupil just to count them,
-  // and it scales flat regardless of how many pupils the school has.
+  // ── PRIMARY PATH ──────────────────────────
   try {
     const [
       teachersCountSnap,
@@ -7895,10 +7891,7 @@ async function loadDashboardStats() {
     );
   }
 
-  // ── FALLBACK PATH: original behavior ──────────────────────────────────────
-  // Only runs if count() aggregation isn't supported by the loaded Firebase
-  // SDK version. Functionally identical to the previous version of this
-  // function — nothing changes for the admin if this path is used.
+  // ── FALLBACK PATH ──────────────────────────────────────
   try {
     const teachersSnap = await db.collection('teachers').get();
     const allPupilsSnap = await db.collection('pupils').get();
