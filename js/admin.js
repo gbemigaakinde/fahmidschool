@@ -9938,6 +9938,11 @@ async function editPupil(uid) {
     document.getElementById('save-pupil-btn').textContent = 'Update Pupil';
 
     document.getElementById('pupil-first-name')?.focus();
+
+    // Scroll to top of the page so the admin sees the edit form immediately
+    // (mirrors the same behavior already present in editTeacher())
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     console.log('✅ Pupil form loaded successfully for editing');
 
   } catch (error) {
