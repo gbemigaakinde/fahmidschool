@@ -1453,8 +1453,14 @@ async function downloadAuditLog() {
   try {
     window.showToast?.('Preparing audit log export...', 'info', 2000);
     
+    // Cap the export instead of pulling the entire audit_log collection.
+    // Every delete, login-related event, settings change, promotion, and
+    // result approval writes a new entry here — it only ever grows.
+    const EXPORT_LIMIT = 5000;
+
     const logsSnap = await db.collection('audit_log')
       .orderBy('timestamp', 'desc')
+      .limit(EXPORT_LIMIT)
       .get();
     
     if (logsSnap.empty) {
@@ -1462,7 +1468,6 @@ async function downloadAuditLog() {
       return;
     }
     
-    // Build CSV
     let csv = 'Timestamp,Action,Collection,Document ID,Performed By,Email,User Agent\n';
     
     logsSnap.forEach(doc => {
@@ -1478,7 +1483,6 @@ async function downloadAuditLog() {
       csv += `"${timestamp}","${action}","${collection}","${docId}","${userId}","${email}","${userAgent}"\n`;
     });
     
-    // Download
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1489,7 +1493,16 @@ async function downloadAuditLog() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
     
-    window.showToast?.(`✓ Exported ${logsSnap.size} audit log entries`, 'success');
+    if (logsSnap.size >= EXPORT_LIMIT) {
+      window.showToast?.(
+        `✓ Exported the most recent ${logsSnap.size} audit log entries. ` +
+        `There are older entries beyond this that were not included.`,
+        'warning',
+        8000
+      );
+    } else {
+      window.showToast?.(`✓ Exported ${logsSnap.size} audit log entries`, 'success');
+    }
     
   } catch (error) {
     console.error('Error downloading audit log:', error);
@@ -5292,47 +5305,63 @@ async function loadOutstandingFeesReport() {
     }
 
     const outstandingPupils = [];
-    const alumniWithBalance = []; 
+    const alumniWithBalance = [];
     let totalOutstanding    = 0;
     let errorCount          = 0;
 
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId   = pupilDoc.id;
-      const pupilData = pupilDoc.data();
+    // Process pupils in small concurrent batches instead of strictly one at
+    // a time. calculateCurrentOutstanding() does several Firestore reads
+    // internally per pupil, so doing this one-by-one made the report take
+    // longer and longer as the school enrolled more pupils. Batching 8 at a
+    // time keeps this responsive as enrollment grows, with no change to the
+    // actual calculation logic.
+    const CONCURRENCY = 8;
+    const allDocs = pupilsSnap.docs;
 
-      const isAlumni = pupilData.status === 'alumni' || pupilData.isActive === false;
+    for (let i = 0; i < allDocs.length; i += CONCURRENCY) {
+      const batch = allDocs.slice(i, i + CONCURRENCY);
 
-      if (isAlumni) {
-        // Still check alumni for outstanding balances instead of silently skipping.
+      const results = await Promise.all(batch.map(async (pupilDoc) => {
+        const pupilId   = pupilDoc.id;
+        const pupilData = pupilDoc.data();
+        const isAlumni  = pupilData.status === 'alumni' || pupilData.isActive === false;
+
         try {
           const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
+          return { isAlumni, result, error: null };
+        } catch (error) {
+          console.error(`❌ Error calculating for pupil ${pupilId}:`, error.message);
+          return { isAlumni, result: null, error };
+        }
+      }));
+
+      results.forEach(({ isAlumni, result, error }) => {
+        if (error) {
+          errorCount++;
+          return;
+        }
+
+        if (isAlumni) {
           if (!result.reason && result.balance > 0) {
             console.warn(
-              `⚠️ Alumni ${pupilData.name} has outstanding balance: ₦${result.balance.toLocaleString()}`
+              `⚠️ Alumni ${result.pupilName} has outstanding balance: ₦${result.balance.toLocaleString()}`
             );
             alumniWithBalance.push({ ...result, isAlumni: true });
           }
-        } catch (e) {
-          // Silent — don't let alumni errors abort active pupil loop
+          return;
         }
-        continue;
-      }
 
-      try {
-        const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
-        if (result.reason) continue;
+        if (result.reason) return;
+
         if (result.balance > 0) {
           outstandingPupils.push(result);
           totalOutstanding += result.balance;
         }
-        // surface overpaid pupils in console for admin awareness
+
         if (result.status === 'overpaid') {
           console.log(`ℹ️ ${result.pupilName} has credit of ₦${result.credit.toLocaleString()}`);
         }
-      } catch (error) {
-        console.error(`❌ Error calculating for pupil ${pupilId}:`, error.message);
-        errorCount++;
-      }
+      });
     }
 
     tbody.innerHTML = '';
@@ -5350,7 +5379,6 @@ async function loadOutstandingFeesReport() {
 
     const fragment = document.createDocumentFragment();
 
-    // Active pupils with outstanding balance
     outstandingPupils.forEach(pupil => {
       const tr = document.createElement('tr');
 
@@ -5387,7 +5415,6 @@ async function loadOutstandingFeesReport() {
       fragment.appendChild(tr);
     });
 
-    // FIX 5: Alumni with outstanding balances shown in a separate section
     if (alumniWithBalance.length > 0) {
       const alumniHeaderTr = document.createElement('tr');
       alumniHeaderTr.innerHTML = `
@@ -5447,7 +5474,7 @@ async function loadOutstandingFeesReport() {
 }
 
 window.loadOutstandingFeesReport = loadOutstandingFeesReport;
-console.log('✅ loadOutstandingFeesReport() FIX 5 loaded');
+console.log('✅ loadOutstandingFeesReport() loaded');
 
 /**
  * Show detailed fee breakdown in modal
@@ -5529,7 +5556,6 @@ async function loadFinancialReports() {
 
     console.log(`✓ Found ${pupilsSnap.size} pupils for financial report`);
 
-    // Track current-term fees and arrears separately
     let totalCurrentFees  = 0;
     let totalArrears      = 0;
     let totalCollected    = 0;
@@ -5542,24 +5568,43 @@ async function loadFinancialReports() {
     let skippedCount   = 0;
     let errorCount     = 0;
 
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId   = pupilDoc.id;
-      const pupilData = pupilDoc.data();
+    // Same batching approach as loadOutstandingFeesReport(): process pupils
+    // in small concurrent groups instead of one at a time, so this report
+    // doesn't get proportionally slower as pupil count grows.
+    const CONCURRENCY = 8;
+    const activeDocs = pupilsSnap.docs.filter(pupilDoc => {
+      const d = pupilDoc.data();
+      return !(d.status === 'alumni' || d.isActive === false);
+    });
 
-      if (pupilData.status === 'alumni' || pupilData.isActive === false) {
-        skippedCount++;
-        continue;
-      }
+    skippedCount += pupilsSnap.docs.length - activeDocs.length;
 
-      try {
-        const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
+    for (let i = 0; i < activeDocs.length; i += CONCURRENCY) {
+      const batch = activeDocs.slice(i, i + CONCURRENCY);
+
+      const results = await Promise.all(batch.map(async (pupilDoc) => {
+        const pupilId   = pupilDoc.id;
+        const pupilData = pupilDoc.data();
+        try {
+          const result = await window.calculateCurrentOutstanding(pupilId, session, currentTerm);
+          return { result, error: null, pupilName: pupilData.name };
+        } catch (error) {
+          return { result: null, error, pupilName: pupilData.name };
+        }
+      }));
+
+      results.forEach(({ result, error, pupilName }) => {
+        if (error) {
+          console.error(`❌ Error calculating for ${pupilName}:`, error.message);
+          errorCount++;
+          return;
+        }
 
         if (result.reason) {
           skippedCount++;
-          continue;
+          return;
         }
 
-        // Accumulate current fees and arrears separately
         totalCurrentFees += result.amountDue;
         totalArrears     += result.arrears;
         totalCollected   += result.totalPaid;
@@ -5574,11 +5619,7 @@ async function loadFinancialReports() {
         }
 
         processedCount++;
-
-      } catch (error) {
-        console.error(`❌ Error calculating for ${pupilData.name}:`, error.message);
-        errorCount++;
-      }
+      });
     }
 
     console.log(`\n📊 Financial Report Summary:`);
@@ -5592,15 +5633,11 @@ async function loadFinancialReports() {
 
     const totalExpected = totalCurrentFees + totalArrears;
 
-    // Two separate collection rates:
-    // (a) Current-term rate: how much of THIS term's fees have been collected
-    //     (capped at current fees — overpayment of arrears doesn't inflate this)
     const currentTermCollected = Math.min(totalCollected, totalCurrentFees);
     const currentTermCollectionRate = totalCurrentFees > 0
       ? ((currentTermCollected / totalCurrentFees) * 100).toFixed(1)
       : 0;
 
-    // (b) Overall rate: collections against total debt (fees + arrears)
     const overallCollectionRate = totalExpected > 0
       ? ((totalCollected / totalExpected) * 100).toFixed(1)
       : 0;
@@ -5620,13 +5657,11 @@ async function loadFinancialReports() {
       currentTerm
     );
 
-    // Surface the current-term rate in the UI if the element exists.
     const currentTermRateEl = document.getElementById('report-current-term-collection-rate');
     if (currentTermRateEl) {
       currentTermRateEl.textContent = `${currentTermCollectionRate}%`;
     }
 
-    // Also annotate the existing rate display to clarify it's the overall rate
     const overallRateEl = document.getElementById('report-collection-rate');
     if (overallRateEl) {
       overallRateEl.textContent = `${overallCollectionRate}%`;
@@ -5641,7 +5676,7 @@ async function loadFinancialReports() {
 }
 
 window.loadFinancialReports = loadFinancialReports;
-console.log('✅ loadFinancialReports() FIX 6 loaded');
+console.log('✅ loadFinancialReports() loaded');
 
 // Helper function (keep existing one)
 function updateFinancialDisplays(
@@ -6152,108 +6187,125 @@ async function ensureAllPupilsHavePaymentRecords() {
     let totalArrears = 0;
     let totalErrors  = 0;
 
-    let batch      = db.batch();
-    let batchCount = 0;
+    // Process pupils in small concurrent batches instead of one at a time.
+    // Each pupil here involves a few Firestore reads/writes (checking for an
+    // existing payment record, calculating arrears, then creating the
+    // record), so this keeps things faster as pupil count grows while still
+    // being gentle on Firestore (5 at a time rather than 8).
+    const CONCURRENCY = 5;
+    const allDocs = pupilsSnap.docs;
 
-    for (const pupilDoc of pupilsSnap.docs) {
-      const pupilId   = pupilDoc.id;
-      const pupilData = pupilDoc.data();
+    for (let i = 0; i < allDocs.length; i += CONCURRENCY) {
+      const batch = allDocs.slice(i, i + CONCURRENCY);
 
-      if (pupilData.status === 'alumni' || pupilData.isActive === false) {
-        totalSkipped++;
-        continue;
-      }
+      const results = await Promise.all(batch.map(async (pupilDoc) => {
+        const pupilId   = pupilDoc.id;
+        const pupilData = pupilDoc.data();
 
-      try {
-        const classId = pupilData.class?.id;
-        if (!classId) { totalSkipped++; continue; }
-
-        const baseFee = feeStructureMap[classId];
-        if (!baseFee) { totalSkipped++; continue; }
-
-        const amountDue = window.calculateAdjustedFee
-          ? window.calculateAdjustedFee(pupilData, baseFee, term)
-          : baseFee;
-
-        if (amountDue === 0 && baseFee > 0) { totalSkipped++; continue; }
-
-        const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
-        const paymentRef   = db.collection('payments').doc(paymentDocId);
-
-        let shouldCreate = false;
-        let arrears      = 0;
-
-        await db.runTransaction(async (tx) => {
-          const docInTx = await tx.get(paymentRef);
-
-          if (docInTx.exists) {
-            // Already exists — respect existing data, do nothing.
-            return;
-          }
-
-          // Not yet created — calculate arrears and mark for creation.
-          shouldCreate = true;
-        });
-
-        if (!shouldCreate) {
-          totalSkipped++;
-          continue;
+        if (pupilData.status === 'alumni' || pupilData.isActive === false) {
+          return { outcome: 'skipped' };
         }
 
-        // Calculate arrears outside the transaction
         try {
-          arrears = await window.calculateCompleteArrears(pupilId, session, term);
-          if (arrears > 0) totalArrears += arrears;
-        } catch (arrearsError) {
-          console.warn(`⚠️ Arrears calc failed for ${pupilData.name}, defaulting to ₦0:`, arrearsError.message);
-          arrears = 0;
-        }
+          const classId = pupilData.class?.id;
+          if (!classId) return { outcome: 'skipped' };
 
-        // Second transaction: create the doc only if it still doesn't exist.
-        // This handles the edge case where another session created it between
-        // our check above and now.
-        await db.runTransaction(async (tx) => {
-          const docInTx = await tx.get(paymentRef);
+          const baseFee = feeStructureMap[classId];
+          if (!baseFee) return { outcome: 'skipped' };
 
-          if (docInTx.exists) {
-            // Someone else created it between our two transactions — skip.
-            return;
+          const amountDue = window.calculateAdjustedFee
+            ? window.calculateAdjustedFee(pupilData, baseFee, term)
+            : baseFee;
+
+          if (amountDue === 0 && baseFee > 0) return { outcome: 'skipped' };
+
+          const paymentDocId = `${pupilId}_${encodedSession}_${term}`;
+          const paymentRef   = db.collection('payments').doc(paymentDocId);
+
+          let shouldCreate = false;
+
+          await db.runTransaction(async (tx) => {
+            const docInTx = await tx.get(paymentRef);
+            if (docInTx.exists) {
+              // Already exists — respect existing data, do nothing.
+              return;
+            }
+            shouldCreate = true;
+          });
+
+          if (!shouldCreate) {
+            return { outcome: 'skipped' };
           }
 
-          tx.set(paymentRef, {
-            pupilId,
-            pupilName:   pupilData.name || 'Unknown',
-            classId,
-            className:   pupilData.class?.name || 'Unknown',
-            session,
-            term,
-            baseFee,
-            adjustedFee: amountDue,
-            amountDue,
-            arrears,
-            totalDue:    amountDue + arrears,
-            totalPaid:   0,
-            balance:     amountDue + arrears,
-            status:      arrears > 0 ? 'owing_with_arrears' : 'owing',
-            lastPaymentDate: null,
-            createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
-            autoCreated: true
+          // Calculate arrears outside the transaction
+          let arrears = 0;
+          try {
+            arrears = await window.calculateCompleteArrears(pupilId, session, term);
+          } catch (arrearsError) {
+            console.warn(`⚠️ Arrears calc failed for ${pupilData.name}, defaulting to ₦0:`, arrearsError.message);
+            arrears = 0;
+          }
+
+          // Second transaction: create the doc only if it still doesn't exist.
+          // This handles the edge case where another session created it between
+          // our check above and now.
+          let wasCreated = false;
+
+          await db.runTransaction(async (tx) => {
+            const docInTx = await tx.get(paymentRef);
+
+            if (docInTx.exists) {
+              // Someone else created it between our two transactions — skip.
+              return;
+            }
+
+            tx.set(paymentRef, {
+              pupilId,
+              pupilName:   pupilData.name || 'Unknown',
+              classId,
+              className:   pupilData.class?.name || 'Unknown',
+              session,
+              term,
+              baseFee,
+              adjustedFee: amountDue,
+              amountDue,
+              arrears,
+              totalDue:    amountDue + arrears,
+              totalPaid:   0,
+              balance:     amountDue + arrears,
+              status:      arrears > 0 ? 'owing_with_arrears' : 'owing',
+              lastPaymentDate: null,
+              createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+              updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+              autoCreated: true
+            });
+
+            wasCreated = true;
           });
-        });
 
-        totalCreated++;
+          if (wasCreated) {
+            return { outcome: 'created', arrears };
+          } else {
+            return { outcome: 'skipped' };
+          }
 
-      } catch (pupilError) {
-        console.error(`⚠️ Skipping pupil ${pupilId}:`, pupilError.message);
-        totalErrors++;
-        totalSkipped++;
-      }
-    }
+        } catch (pupilError) {
+          console.error(`⚠️ Skipping pupil ${pupilId}:`, pupilError.message);
+          return { outcome: 'error' };
+        }
+      }));
 
-    // Commit any remaining batch operations (used for non-transaction work above)
-    if (batchCount > 0) {
-      await batch.commit();
+      results.forEach(r => {
+        if (r.outcome === 'created') {
+          totalCreated++;
+          if (r.arrears > 0) totalArrears += r.arrears;
+        } else if (r.outcome === 'error') {
+          totalErrors++;
+          totalSkipped++;
+        } else {
+          totalSkipped++;
+        }
+      });
     }
 
     window.showToast?.(
@@ -6577,21 +6629,38 @@ async function exportFinancialCSV(session, term) {
 
         console.log(`📊 Exporting financial data for ${pupilsSnap.size} pupils...`);
 
-        // Use canonical calculation
-        for (const pupilDoc of pupilsSnap.docs) {
-            const pupilId = pupilDoc.id;
-            const pupilData = pupilDoc.data();
-            
-            try {
-                // Use the SINGLE SOURCE OF TRUTH
-                const result = await window.calculateCurrentOutstanding(pupilId, session, term);
-                
-                // Skip if no fee configured
+        // Process pupils in small concurrent batches instead of one at a time.
+        // This keeps CSV export fast even as pupil count grows into the hundreds.
+        const CONCURRENCY = 8;
+        const allDocs = pupilsSnap.docs;
+
+        for (let i = 0; i < allDocs.length; i += CONCURRENCY) {
+            const batch = allDocs.slice(i, i + CONCURRENCY);
+
+            const results = await Promise.all(batch.map(async (pupilDoc) => {
+                const pupilId   = pupilDoc.id;
+                const pupilData = pupilDoc.data();
+
+                try {
+                    const result = await window.calculateCurrentOutstanding(pupilId, session, term);
+                    return { result, error: null };
+                } catch (error) {
+                    console.error(`Error processing ${pupilData.name}:`, error.message);
+                    return { result: null, error };
+                }
+            }));
+
+            results.forEach(({ result, error }) => {
+                if (error) {
+                    skippedCount++;
+                    return;
+                }
+
                 if (result.reason) {
                     skippedCount++;
-                    continue;
+                    return;
                 }
-                
+
                 reportData.push({
                     pupilName: result.pupilName,
                     className: result.className,
@@ -6603,13 +6672,9 @@ async function exportFinancialCSV(session, term) {
                     balance: result.balance,
                     status: result.status
                 });
-                
+
                 processedCount++;
-                
-            } catch (error) {
-                console.error(`Error processing ${pupilData.name}:`, error.message);
-                skippedCount++;
-            }
+            });
         }
 
         if (reportData.length === 0) {
@@ -6707,21 +6772,38 @@ async function exportFinancialPDF(session, term) {
 
         console.log(`📊 Preparing PDF for ${pupilsSnap.size} pupils...`);
 
-        // Use canonical calculation
-        for (const pupilDoc of pupilsSnap.docs) {
-            const pupilId = pupilDoc.id;
-            const pupilData = pupilDoc.data();
-            
-            try {
-                // Use the SINGLE SOURCE OF TRUTH
-                const result = await window.calculateCurrentOutstanding(pupilId, session, term);
-                
-                // Skip if no fee configured
+        // Process pupils in small concurrent batches instead of one at a time.
+        // This keeps PDF export fast even as pupil count grows into the hundreds.
+        const CONCURRENCY = 8;
+        const allDocs = pupilsSnap.docs;
+
+        for (let i = 0; i < allDocs.length; i += CONCURRENCY) {
+            const batch = allDocs.slice(i, i + CONCURRENCY);
+
+            const results = await Promise.all(batch.map(async (pupilDoc) => {
+                const pupilId   = pupilDoc.id;
+                const pupilData = pupilDoc.data();
+
+                try {
+                    const result = await window.calculateCurrentOutstanding(pupilId, session, term);
+                    return { result, error: null };
+                } catch (error) {
+                    console.error(`Error processing ${pupilData.name}:`, error.message);
+                    return { result: null, error };
+                }
+            }));
+
+            results.forEach(({ result, error }) => {
+                if (error) {
+                    skippedCount++;
+                    return;
+                }
+
                 if (result.reason) {
                     skippedCount++;
-                    continue;
+                    return;
                 }
-                
+
                 reportData.push({
                     pupilName: result.pupilName,
                     className: result.className,
@@ -6733,13 +6815,9 @@ async function exportFinancialPDF(session, term) {
                     balance: `₦${result.balance.toLocaleString()}`,
                     status: result.status.charAt(0).toUpperCase() + result.status.slice(1)
                 });
-                
+
                 processedCount++;
-                
-            } catch (error) {
-                console.error(`Error processing ${pupilData.name}:`, error.message);
-                skippedCount++;
-            }
+            });
         }
 
         if (reportData.length === 0) {
@@ -7542,20 +7620,18 @@ async function loadAlumni() {
   tbody.innerHTML = '<tr><td colspan="5" class="table-loading">Loading alumni...</td></tr>';
   
   try {
-    // Get all pupils, filter alumni client-side
+    // Query alumni directly instead of pulling the entire pupils collection
+    // and throwing away everything that isn't alumni. This keeps the read
+    // size proportional to alumni count, not total pupils ever enrolled.
     const snapshot = await db.collection('pupils')
-      .orderBy('name')
+      .where('status', '==', 'alumni')
       .get();
     
     tbody.innerHTML = '';
     
-    // Filter alumni client-side
     const alumni = [];
     snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.status === 'alumni') {
-        alumni.push({ id: doc.id, ...data });
-      }
+      alumni.push({ id: doc.id, ...doc.data() });
     });
     
     if (alumni.length === 0) {
@@ -7564,19 +7640,18 @@ async function loadAlumni() {
       return;
     }
     
-    // Sort by graduation date (newest first)
+    // Sort by graduation date (newest first). Safe to sort in-memory now
+    // because this result set only contains alumni, not the whole school.
     alumni.sort((a, b) => {
       const dateA = a.graduationDate?.toMillis() || 0;
       const dateB = b.graduationDate?.toMillis() || 0;
       return dateB - dateA;
     });
     
-    console.log(`✓ Loaded ${alumni.length} alumni out of ${snapshot.size} total pupils`);
+    console.log(`✓ Loaded ${alumni.length} alumni directly (no longer scanning all pupils)`);
     
-    // Store globally for search
     allAlumniData = alumni;
     
-    // Render with pagination
     renderAlumniTable(allAlumniData);
     
   } catch (error) {
@@ -9131,6 +9206,11 @@ function cancelPupilForm() {
  */
 // Global variable to store all pupils data
 let allPupilsData = [];
+// Tracks pagination state for the Pupils "Load More" button
+let pupilsLastVisibleDoc = null;   // remembers where the last fetch stopped
+let pupilsHasMoreToLoad = true;     // whether more pupils exist beyond what's loaded
+const PUPILS_PAGE_SIZE = 200;       // how many pupils to fetch per click
+let pupilsSearchDebounceTimer = null; // delays the Firestore search slightly while typing
 
 /**
  * Load Pupils (Client-Side Alumni Filtering)
@@ -9139,60 +9219,146 @@ async function loadPupils() {
   const tbody = document.getElementById('pupils-table');
   if (!tbody) return;
 
-  // Populate class dropdown first
   await populateClassDropdown();
 
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading pupils...</td></tr>';
 
+  // Reset pagination state — this is a fresh load, not a "load more" click
+  pupilsLastVisibleDoc = null;
+  pupilsHasMoreToLoad = true;
+  allPupilsData = [];
+
   try {
-    // Simple query (no compound inequality)
     const snapshot = await db.collection('pupils')
       .orderBy('name')
-      .limit(500)
+      .limit(PUPILS_PAGE_SIZE)
       .get();
-    
+
     tbody.innerHTML = '';
 
     if (snapshot.empty) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-gray-600);">No pupils registered yet. Add one above.</td></tr>';
-      
+
       const bulkActionsBar = document.getElementById('bulk-actions-bar');
       if (bulkActionsBar) bulkActionsBar.style.display = 'none';
-      
-      allPupilsData = [];
+
+      pupilsHasMoreToLoad = false;
+      updateLoadMorePupilsButton();
       return;
     }
 
-    // Filter out alumni CLIENT-SIDE
+    // Remember the last document fetched, so "Load More" knows where to continue
+    pupilsLastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+
+    // If we got fewer results than we asked for, there's nothing left to load
+    pupilsHasMoreToLoad = snapshot.docs.length === PUPILS_PAGE_SIZE;
+
     const pupils = [];
     snapshot.forEach(doc => {
       const data = doc.data();
-      
-      // Exclude alumni (check status field if it exists)
       if (data.status !== 'alumni') {
         pupils.push({ id: doc.id, ...data });
       }
     });
 
-    console.log(`✓ Loaded ${snapshot.size} total pupils, ${pupils.length} active (${snapshot.size - pupils.length} alumni filtered out)`);
+    console.log(`✓ Loaded ${snapshot.size} pupils this batch, ${pupils.length} active (${snapshot.size - pupils.length} alumni filtered out)`);
 
-    // Store filtered data globally for search
     allPupilsData = pupils;
 
     const bulkActionsBar = document.getElementById('bulk-actions-bar');
     if (bulkActionsBar) bulkActionsBar.style.display = pupils.length > 0 ? 'flex' : 'none';
 
-    // Render with pagination
     renderPupilsTable(allPupilsData);
-    
+    updateLoadMorePupilsButton();
+
     setupBulkActionsEventListeners();
-    
+
   } catch (error) {
     console.error('Error loading pupils:', error);
     window.showToast?.('Failed to load pupils list. Check connection and try again.', 'danger');
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--color-danger);">Error loading pupils - please refresh</td></tr>';
   }
 }
+
+/**
+ * Fetches the next batch of pupils and appends them to the list already
+ * shown on screen. Called when the admin clicks "Load More Pupils".
+ */
+async function loadMorePupils() {
+  if (!pupilsHasMoreToLoad || !pupilsLastVisibleDoc) {
+    return;
+  }
+
+  const loadMoreBtn = document.getElementById('load-more-pupils-btn');
+  if (loadMoreBtn) {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.innerHTML = '<span class="btn-loading">Loading more...</span>';
+  }
+
+  try {
+    const snapshot = await db.collection('pupils')
+      .orderBy('name')
+      .startAfter(pupilsLastVisibleDoc)
+      .limit(PUPILS_PAGE_SIZE)
+      .get();
+
+    if (snapshot.empty) {
+      pupilsHasMoreToLoad = false;
+      updateLoadMorePupilsButton();
+      return;
+    }
+
+    pupilsLastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+    pupilsHasMoreToLoad = snapshot.docs.length === PUPILS_PAGE_SIZE;
+
+    const newPupils = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.status !== 'alumni') {
+        newPupils.push({ id: doc.id, ...data });
+      }
+    });
+
+    console.log(`✓ Loaded ${newPupils.length} more active pupils (total now: ${allPupilsData.length + newPupils.length})`);
+
+    // Add the newly fetched pupils onto the list already on screen
+    allPupilsData = allPupilsData.concat(newPupils);
+
+    // Re-apply whatever search term is currently typed, so new pupils
+    // are correctly included or excluded from the visible results
+    const searchInput = document.getElementById('pupils-search');
+    if (searchInput && searchInput.value.trim() !== '') {
+      filterPupils();
+    } else {
+      renderPupilsTable(allPupilsData);
+    }
+
+    updateLoadMorePupilsButton();
+
+  } catch (error) {
+    console.error('Error loading more pupils:', error);
+    window.showToast?.('Failed to load more pupils. Please try again.', 'danger');
+  } finally {
+    if (loadMoreBtn) {
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.innerHTML = 'Load More Pupils';
+    }
+  }
+}
+
+/**
+ * Shows or hides the "Load More Pupils" button depending on whether
+ * more pupils exist beyond what's currently loaded.
+ */
+function updateLoadMorePupilsButton() {
+  const wrapper = document.getElementById('load-more-pupils-wrapper');
+  if (!wrapper) return;
+
+  wrapper.style.display = pupilsHasMoreToLoad ? 'block' : 'none';
+}
+
+window.loadMorePupils = loadMorePupils;
+window.updateLoadMorePupilsButton = updateLoadMorePupilsButton;
 
 /**
  * Render pupils table with pagination
@@ -9238,45 +9404,163 @@ function renderPupilsTable(pupilsData) {
 }
 
 /**
- * Filter pupils by search term
+ * Handles typing in the pupils search box.
+ * Step 1: instantly filters whatever pupils are already loaded (fast, "contains" search).
+ * Step 2: if there might be pupils not yet loaded, asks Firestore for additional
+ *         matches in the background and adds them in automatically.
  */
 function filterPupils() {
   const searchInput = document.getElementById('pupils-search');
   if (!searchInput) return;
-  
+
   const searchTerm = searchInput.value.toLowerCase().trim();
-  
+
+  // Step 1: instant search of what's already loaded
+  renderFilteredPupils(searchTerm);
+
+  // Cancel any previously scheduled Firestore search — the admin is still typing
+  clearTimeout(pupilsSearchDebounceTimer);
+
+  if (!searchTerm) return;
+
+  // Step 2: only bother checking Firestore if there's more data we haven't loaded yet
+  if (pupilsHasMoreToLoad) {
+    pupilsSearchDebounceTimer = setTimeout(() => {
+      searchPupilsInFirestore(searchTerm);
+    }, 400); // small delay so it doesn't search on every single keystroke
+  }
+}
+
+/**
+ * Filters the pupils currently held in memory (allPupilsData) and renders
+ * the result. Used both for the instant local search and after Firestore
+ * adds any newly-found pupils.
+ */
+function renderFilteredPupils(searchTerm) {
   if (!searchTerm) {
-    // No search - show all
     renderPupilsTable(allPupilsData);
+    const countDisplay = document.getElementById('pupils-search-count');
+    if (countDisplay) countDisplay.textContent = '';
     return;
   }
-  
-  // Filter by name or admission number
+
   const filtered = allPupilsData.filter(pupil => {
     const name = (pupil.name || '').toLowerCase();
     const admissionNo = (pupil.admissionNo || '').toLowerCase();
-    
     return name.includes(searchTerm) || admissionNo.includes(searchTerm);
   });
-  
-  console.log(`Pupils search: "${searchTerm}" → ${filtered.length} of ${allPupilsData.length} matches`);
-  
-  // Re-render with filtered data
+
+  console.log(`Pupils search: "${searchTerm}" → ${filtered.length} of ${allPupilsData.length} loaded pupils`);
+
   renderPupilsTable(filtered);
-  
-  // Show count
+
   const countDisplay = document.getElementById('pupils-search-count');
   if (countDisplay) {
-    countDisplay.textContent = filtered.length === allPupilsData.length 
-      ? '' 
-      : `Showing ${filtered.length} of ${allPupilsData.length}`;
+    countDisplay.textContent = filtered.length === allPupilsData.length
+      ? ''
+      : `Showing ${filtered.length} of ${allPupilsData.length} loaded pupils`;
   }
+}
+
+/**
+ * Looks up Firestore directly for pupils matching the search term that
+ * haven't been loaded into the browser yet, and merges any found into
+ * the working list. Firestore can only match the START of a name or
+ * admission number here (not anywhere in the middle) — that's a real
+ * limitation of how Firestore search works, not a bug.
+ */
+async function searchPupilsInFirestore(searchTerm) {
+  const rawInput = document.getElementById('pupils-search')?.value.trim();
+  if (!rawInput) return;
+
+  const countDisplay = document.getElementById('pupils-search-count');
+  const previousCountText = countDisplay ? countDisplay.textContent : '';
+  if (countDisplay) {
+    countDisplay.textContent = 'Checking for more matches...';
+  }
+
+  try {
+    // Try both as typed, and a Capitalized version, since Firestore search
+    // is case-sensitive and names are usually stored with capital letters.
+    const nameVariants = Array.from(new Set([rawInput, capitalizeWords(rawInput)]));
+    const admissionVariants = Array.from(new Set([rawInput, rawInput.toUpperCase()]));
+
+    const queries = [];
+
+    nameVariants.forEach(term => {
+      queries.push(
+        db.collection('pupils')
+          .orderBy('name')
+          .startAt(term)
+          .endAt(term + '\uf8ff')
+          .limit(50)
+          .get()
+          .catch(err => {
+            console.warn('Name search query failed, skipping:', err.message);
+            return null;
+          })
+      );
+    });
+
+    admissionVariants.forEach(term => {
+      queries.push(
+        db.collection('pupils')
+          .orderBy('admissionNo')
+          .startAt(term)
+          .endAt(term + '\uf8ff')
+          .limit(50)
+          .get()
+          .catch(err => {
+            console.warn('Admission number search query failed, skipping:', err.message);
+            return null;
+          })
+      );
+    });
+
+    const snapshots = await Promise.all(queries);
+
+    const existingIds = new Set(allPupilsData.map(p => p.id));
+    let newMatchesCount = 0;
+
+    snapshots.forEach(snap => {
+      if (!snap) return;
+      snap.forEach(doc => {
+        if (existingIds.has(doc.id)) return;
+        const data = doc.data();
+        if (data.status === 'alumni') return; // keep alumni out, same as everywhere else
+
+        allPupilsData.push({ id: doc.id, ...data });
+        existingIds.add(doc.id);
+        newMatchesCount++;
+      });
+    });
+
+    if (newMatchesCount > 0) {
+      console.log(`✓ Found ${newMatchesCount} additional matching pupil(s) not yet loaded — added to results`);
+    }
+
+    // Re-filter and re-render now that allPupilsData may have grown
+    renderFilteredPupils(searchTerm);
+
+  } catch (error) {
+    console.error('Error searching pupils in Firestore:', error);
+    if (countDisplay) countDisplay.textContent = previousCountText;
+  }
+}
+
+/**
+ * Small helper: turns "ade" into "Ade", "ade tunde" into "Ade Tunde" —
+ * used to guess proper-case name formatting for the Firestore search above.
+ */
+function capitalizeWords(str) {
+  return str.replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // Make functions globally available
 window.filterPupils = filterPupils;
 window.renderPupilsTable = renderPupilsTable;
+window.renderFilteredPupils = renderFilteredPupils;
+window.searchPupilsInFirestore = searchPupilsInFirestore;
 
 /* =====================================================
    BULK OPERATIONS - COMPLETE IMPLEMENTATION
