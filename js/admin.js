@@ -7830,33 +7830,79 @@ window.toggleSidebarGroup = toggleSidebarGroup;
 ======================================== */
 async function loadDashboardStats() {
   console.log('📊 Loading dashboard stats...');
-  
+
   // Wait a bit for DOM to be ready
   await new Promise(resolve => setTimeout(resolve, 100));
-  
+
   const teacherCount = document.getElementById('teacher-count');
   const pupilCount = document.getElementById('pupil-count');
   const classCount = document.getElementById('class-count');
   const announceCount = document.getElementById('announce-count');
-  
+
   if (!teacherCount || !pupilCount || !classCount || !announceCount) {
     console.error('❌ Dashboard stat elements missing!');
     return;
   }
-  
+
   // Show loading state
   teacherCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   pupilCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
-  
+
+  // ── PRIMARY PATH: Firestore count() aggregation ──────────────────────────
+  // These queries ask Firestore to count matching documents server-side and
+  // return only the number — no document contents are downloaded. This is
+  // dramatically cheaper than fetching every pupil just to count them,
+  // and it scales flat regardless of how many pupils the school has.
+  try {
+    const [
+      teachersCountSnap,
+      classesCountSnap,
+      announcementsCountSnap,
+      totalPupilsCountSnap,
+      alumniCountSnap
+    ] = await Promise.all([
+      db.collection('teachers').count().get(),
+      db.collection('classes').count().get(),
+      db.collection('announcements').count().get(),
+      db.collection('pupils').count().get(),
+      db.collection('pupils').where('status', '==', 'alumni').count().get()
+    ]);
+
+    const teacherTotal    = teachersCountSnap.data().count;
+    const classTotal      = classesCountSnap.data().count;
+    const announceTotal   = announcementsCountSnap.data().count;
+    const totalPupils     = totalPupilsCountSnap.data().count;
+    const alumniTotal     = alumniCountSnap.data().count;
+    const activePupilCount = totalPupils - alumniTotal;
+
+    teacherCount.textContent  = teacherTotal;
+    pupilCount.textContent    = activePupilCount;
+    classCount.textContent    = classTotal;
+    announceCount.textContent = announceTotal;
+
+    console.log(
+      `✅ Dashboard stats loaded via count() aggregation: ` +
+      `${activePupilCount} active pupils (${alumniTotal} alumni, ${totalPupils} total)`
+    );
+    return;
+
+  } catch (countError) {
+    console.warn(
+      '⚠️ count() aggregation not available, falling back to full document fetch:',
+      countError.message
+    );
+  }
+
+  // ── FALLBACK PATH: original behavior ──────────────────────────────────────
+  // Only runs if count() aggregation isn't supported by the loaded Firebase
+  // SDK version. Functionally identical to the previous version of this
+  // function — nothing changes for the admin if this path is used.
   try {
     const teachersSnap = await db.collection('teachers').get();
-    
-    // Get all pupils, filter alumni client-side
     const allPupilsSnap = await db.collection('pupils').get();
-    
-    // Count only active pupils (exclude alumni)
+
     let activePupilCount = 0;
     allPupilsSnap.forEach(doc => {
       const data = doc.data();
@@ -7864,21 +7910,24 @@ async function loadDashboardStats() {
         activePupilCount++;
       }
     });
-    
+
     const classesSnap = await db.collection('classes').get();
     const announcementsSnap = await db.collection('announcements').get();
-    
-    teacherCount.textContent = teachersSnap.size;
-    pupilCount.textContent = activePupilCount;
-    classCount.textContent = classesSnap.size;
+
+    teacherCount.textContent  = teachersSnap.size;
+    pupilCount.textContent    = activePupilCount;
+    classCount.textContent    = classesSnap.size;
     announceCount.textContent = announcementsSnap.size;
-    
-    console.log(`✅ Dashboard stats loaded: ${activePupilCount} active pupils (${allPupilsSnap.size - activePupilCount} alumni)`);
-    
+
+    console.log(
+      `✅ Dashboard stats loaded via fallback: ${activePupilCount} active pupils ` +
+      `(${allPupilsSnap.size - activePupilCount} alumni)`
+    );
+
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics', 'danger');
-    
+
     teacherCount.textContent = '!';
     pupilCount.textContent = '!';
     classCount.textContent = '!';
