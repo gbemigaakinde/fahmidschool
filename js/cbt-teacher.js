@@ -1,7 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * CBT Teacher Module — Create and manage tests
- * @version 1.3.0 — Teachers can now see and review pupils' flagged questions
+ * @version 1.4.0 — Teachers can now click a pupil's score to review their full attempt
  */
 
 'use strict';
@@ -46,8 +46,9 @@ function renderCbtListView(container) {
 // Store test metadata keyed by doc ID so buttons can look it up safely
 const _cbtTestMap = new Map();
 
-// Store per-result data (pupil name, flagged count) keyed by result doc ID,
-// so the "View Flags" button can look things up without re-querying.
+// Store per-result data keyed by result doc ID — pupil name plus the score
+// summary fields — so the attempt-review modal can render its header
+// instantly without a second round trip to Firestore.
 const _cbtResultMap = new Map();
 
 async function loadCbtTests(container) {
@@ -951,7 +952,7 @@ async function viewCbtResults(testId, testTitle) {
             </button>
             <div>
                 <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;color:#0f172a;margin:0 0 2px;">${escHtml(testTitle)} — Results</h3>
-                <p style="font-size:12px;color:#64748b;margin:0;">All submissions for this test</p>
+                <p style="font-size:12px;color:#64748b;margin:0;">All submissions for this test. Click a pupil's score to review their full attempt.</p>
             </div>
         </div>
         <div id="cbt-results-content">
@@ -982,8 +983,9 @@ async function viewCbtResults(testId, testTitle) {
             return;
         }
 
-        // Summary stats — keep the doc id so the "View Flags" button can
-        // pull the matching cbt_reviews doc without a second lookup pass.
+        // Keep both the doc id and the full result data (score, time taken,
+        // tab switches, etc.) so the attempt-review modal can render its
+        // header instantly, without a second Firestore round trip.
         _cbtResultMap.clear();
         const results = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const avgPct  = Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length);
@@ -1000,7 +1002,7 @@ async function viewCbtResults(testId, testTitle) {
                 if (pDoc.exists) pupilName = pDoc.data().name;
             } catch(e) {}
 
-            _cbtResultMap.set(r.id, { pupilName, flaggedCount: r.flaggedCount || 0 });
+            _cbtResultMap.set(r.id, { ...r, pupilName });
 
             const submittedDate = r.submittedAt?.toDate().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) || '—';
             const flaggedCount  = r.flaggedCount || 0;
@@ -1014,7 +1016,13 @@ async function viewCbtResults(testId, testTitle) {
             tableRows += `
                 <tr>
                     <td data-label="Pupil">${escHtml(pupilName)}</td>
-                    <td data-label="Score" style="text-align:center;font-weight:700;">${r.score}/${r.total}</td>
+                    <td data-label="Score" style="text-align:center;">
+                        <button class="cbt-score-link" data-action="view-attempt" data-result-id="${r.id}"
+                            style="background:none;border:none;padding:0;cursor:pointer;font-weight:700;
+                                   font-size:13.5px;color:#1a56db;text-decoration:underline;text-underline-offset:2px;">
+                            ${r.score}/${r.total}
+                        </button>
+                    </td>
                     <td data-label="Percentage" style="text-align:center;font-weight:700;color:${r.percentage >= 50 ? '#16a34a' : '#dc2626'};">${r.percentage}%</td>
                     <td data-label="Grade" style="text-align:center;" class="grade-${r.grade}">${r.grade}</td>
                     <td data-label="Flagged" style="text-align:center;">${flaggedCell}</td>
@@ -1049,13 +1057,15 @@ async function viewCbtResults(testId, testTitle) {
             </div>
         `;
 
-        // Wire up the "View Flags" buttons now that they're in the DOM
+        // Wire up the "View Attempt" (score) and "View Flags" buttons now
+        // that they're actually in the DOM. Both open the same modal —
+        // the flag badge just also scrolls straight to the first flagged
+        // question once it renders.
+        content.querySelectorAll('[data-action="view-attempt"]').forEach(btn => {
+            btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, false));
+        });
         content.querySelectorAll('[data-action="view-flags"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const resultId = btn.dataset.resultId;
-                const entry    = _cbtResultMap.get(resultId);
-                viewFlaggedQuestions(resultId, entry?.pupilName || 'Pupil');
-            });
+            btn.addEventListener('click', () => viewPupilAttempt(btn.dataset.resultId, true));
         });
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1066,11 +1076,17 @@ async function viewCbtResults(testId, testTitle) {
     }
 }
 
-// ── View Flagged Questions (per pupil submission) ───────────────────────────
-// Opens a lightweight modal pulling the matching cbt_reviews doc and showing
-// only the questions that pupil flagged, with their answer vs. the correct
-// one highlighted — same visual language the pupil sees in their own review.
-async function viewFlaggedQuestions(resultId, pupilName) {
+// ── View a pupil's full attempt ──────────────────────────────────────────
+// Opens a modal showing every question from that submission — the pupil's
+// answer vs. the correct one, in the order they appeared on the pupil's
+// screen — plus a summary header (score, time taken, tab switches). Any
+// question the pupil flagged is marked and, if scrollToFlagged is true
+// (i.e. opened via the Flagged badge rather than the score), the view
+// jumps straight to the first one.
+async function viewPupilAttempt(resultId, scrollToFlagged) {
+    const resultMeta = _cbtResultMap.get(resultId);
+    const pupilName  = resultMeta?.pupilName || 'Pupil';
+
     const overlay = document.createElement('div');
     overlay.style.cssText = `
         position: fixed; inset: 0; z-index: 99999;
@@ -1082,32 +1098,73 @@ async function viewFlaggedQuestions(resultId, pupilName) {
     const box = document.createElement('div');
     box.style.cssText = `
         background: #ffffff; border-radius: 18px;
-        padding: 28px; max-width: 640px; width: 100%;
-        max-height: 82vh; overflow-y: auto;
+        padding: 28px; max-width: 700px; width: 100%;
+        max-height: 86vh; overflow-y: auto;
         box-shadow: 0 20px 60px rgba(0,0,0,0.25);
         font-family: 'DM Sans', sans-serif;
     `;
 
+    // ── Header: pupil name + summary stats (already have this data in
+    //    _cbtResultMap — no Firestore round trip needed for it) ──────────
+    let headerStatsHTML = '';
+    if (resultMeta) {
+        const mins = resultMeta.timeTakenSec != null ? Math.floor(resultMeta.timeTakenSec / 60) : null;
+        const secs = resultMeta.timeTakenSec != null ? resultMeta.timeTakenSec % 60 : null;
+        const timeStr = resultMeta.timeTakenSec != null
+            ? `${mins}m ${secs}s`
+            : 'No timer';
+        const submittedStr = resultMeta.submittedAt?.toDate
+            ? resultMeta.submittedAt.toDate().toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+            : '—';
+
+        headerStatsHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:18px;">
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Score</div>
+                    <div style="font-size:15px;font-weight:800;color:#0f172a;">${resultMeta.score}/${resultMeta.total}</div>
+                </div>
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Percentage</div>
+                    <div style="font-size:15px;font-weight:800;color:${resultMeta.percentage >= 50 ? '#16a34a' : '#dc2626'};">${resultMeta.percentage}%</div>
+                </div>
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Grade</div>
+                    <div style="font-size:15px;font-weight:800;color:#0f172a;">${resultMeta.grade}</div>
+                </div>
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Time Taken</div>
+                    <div style="font-size:13px;font-weight:700;color:#0f172a;">${timeStr}</div>
+                </div>
+                <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;text-align:center;">
+                    <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Tab Switches</div>
+                    <div style="font-size:13px;font-weight:700;color:${(resultMeta.tabSwitches || 0) > 3 ? '#dc2626' : '#0f172a'};">${resultMeta.tabSwitches || 0}</div>
+                </div>
+            </div>
+            <div style="font-size:11.5px;color:#94a3b8;margin-bottom:18px;">Submitted ${submittedStr}</div>
+        `;
+    }
+
     box.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:12px;">
             <div style="min-width:0;">
-                <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.05rem;font-weight:800;color:#0f172a;margin:0 0 2px;">
-                    <i data-lucide="flag" style="width:16px;height:16px;vertical-align:-3px;color:#f59e0b;"></i>
-                    Flagged Questions
+                <h3 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;color:#0f172a;margin:0 0 2px;">
+                    <i data-lucide="file-text" style="width:16px;height:16px;vertical-align:-3px;color:#1a56db;"></i>
+                    Full Attempt Review
                 </h3>
                 <p style="font-size:12.5px;color:#64748b;margin:0;">${escHtml(pupilName)}</p>
             </div>
-            <button id="cbt-flags-close" style="
+            <button id="cbt-attempt-close" style="
                 width:30px;height:30px;border-radius:50%;border:none;
                 background:#eef2f7;color:#475569;display:flex;align-items:center;
                 justify-content:center;cursor:pointer;flex-shrink:0;">
                 <i data-lucide="x" style="width:15px;height:15px;"></i>
             </button>
         </div>
-        <div id="cbt-flags-body">
+        ${headerStatsHTML}
+        <div id="cbt-attempt-body">
             <div style="text-align:center;padding:24px;color:#94a3b8;">
                 <div class="spinner" style="margin:0 auto 10px;"></div>
-                <p style="font-size:13px;">Loading flagged questions…</p>
+                <p style="font-size:13px;">Loading attempt…</p>
             </div>
         </div>
     `;
@@ -1117,10 +1174,10 @@ async function viewFlaggedQuestions(resultId, pupilName) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     function close() { document.body.removeChild(overlay); }
-    document.getElementById('cbt-flags-close').addEventListener('click', close);
+    document.getElementById('cbt-attempt-close').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-    const bodyEl = document.getElementById('cbt-flags-body');
+    const bodyEl = document.getElementById('cbt-attempt-body');
 
     try {
         const reviewSnap = await db.collection('cbt_reviews')
@@ -1134,19 +1191,10 @@ async function viewFlaggedQuestions(resultId, pupilName) {
         }
 
         const reviewData = reviewSnap.docs[0].data().answers || [];
-        const flaggedItems = reviewData
-            .map((item, idx) => ({ ...item, originalIndex: idx }))
-            .filter(item => item.flagged);
-
-        if (flaggedItems.length === 0) {
-            bodyEl.innerHTML = `<p style="text-align:center;color:#94a3b8;padding:20px;">This pupil didn't flag any questions.</p>`;
-            return;
-        }
-
         const letters = ['A','B','C','D'];
         const keys    = ['optionA','optionB','optionC','optionD'];
 
-        bodyEl.innerHTML = flaggedItems.map(item => {
+        bodyEl.innerHTML = reviewData.map((item, i) => {
             let optionsHTML = '';
             keys.forEach((key, ki) => {
                 if (!item[key]) return;
@@ -1165,10 +1213,17 @@ async function viewFlaggedQuestions(resultId, pupilName) {
                     </div>`;
             });
 
+            const statusLabel = item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped';
+            const statusColor = item.isCorrect ? '#16a34a' : item.pupilAnswer ? '#dc2626' : '#94a3b8';
+            const isFlagged   = !!item.flagged;
+
             return `
-                <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:12px;padding:16px;margin-bottom:14px;">
-                    <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
-                        Question ${item.originalIndex + 1} &nbsp;·&nbsp; Flagged for review
+                <div class="${isFlagged ? 'cbt-attempt-flagged' : ''}"
+                     style="border:1px solid ${isFlagged ? '#fde68a' : '#e2e8f0'};background:${isFlagged ? '#fffbeb' : '#ffffff'};border-radius:12px;padding:16px;margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                        <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Question ${i + 1}</span>
+                        <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:${statusColor}1a;color:${statusColor};">${statusLabel}</span>
+                        ${isFlagged ? '<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#fef3c7;color:#92400e;"><i data-lucide="flag" style="width:10px;height:10px;vertical-align:-1px;"></i> Flagged</span>' : ''}
                     </div>
                     <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:12px;line-height:1.5;">${escHtml(item.questionText)}</div>
                     ${optionsHTML}
@@ -1177,9 +1232,14 @@ async function viewFlaggedQuestions(resultId, pupilName) {
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
+        if (scrollToFlagged) {
+            const firstFlagged = bodyEl.querySelector('.cbt-attempt-flagged');
+            if (firstFlagged) firstFlagged.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
     } catch (err) {
-        console.error('Error loading flagged questions:', err);
-        bodyEl.innerHTML = `<p style="text-align:center;color:#dc2626;padding:20px;">Failed to load flagged questions.</p>`;
+        console.error('Error loading pupil attempt:', err);
+        bodyEl.innerHTML = `<p style="text-align:center;color:#dc2626;padding:20px;">Failed to load this attempt.</p>`;
     }
 }
 
@@ -1199,15 +1259,15 @@ function toDatetimeLocalString(date) {
 }
 
 // ── Expose ─────────────────────────────────────────────────────────────────
-window.loadCbtSection        = loadCbtSection;
-window.showCbtCreateForm     = showCbtCreateForm;
-window.addCbtQuestion        = addCbtQuestion;
-window.removeCbtQuestion     = removeCbtQuestion;
-window.saveCbtTest           = saveCbtTest;
-window.editCbtTest           = editCbtTest;
-window.deleteCbtTest         = deleteCbtTest;
-window.togglePublish         = togglePublish;
-window.viewCbtResults        = viewCbtResults;
-window.viewFlaggedQuestions  = viewFlaggedQuestions;
+window.loadCbtSection      = loadCbtSection;
+window.showCbtCreateForm   = showCbtCreateForm;
+window.addCbtQuestion      = addCbtQuestion;
+window.removeCbtQuestion   = removeCbtQuestion;
+window.saveCbtTest         = saveCbtTest;
+window.editCbtTest         = editCbtTest;
+window.deleteCbtTest       = deleteCbtTest;
+window.togglePublish       = togglePublish;
+window.viewCbtResults      = viewCbtResults;
+window.viewPupilAttempt    = viewPupilAttempt;
 
-console.log('✓ CBT Teacher module v1.3.0 loaded (flagged-question review added)');
+console.log('✓ CBT Teacher module v1.4.0 loaded (full attempt review on score click)');
