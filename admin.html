@@ -2039,22 +2039,31 @@
     /* ─── 1. SIDEBAR GROUP TOGGLES ─────────────────── */
     function initSidebarGroups() {
         const toggles = document.querySelectorAll('.sidebar-group-toggle-modern');
-        toggles.forEach(function(toggle) {
-            toggle.addEventListener('click', function() {
-                const isExpanded = this.getAttribute('aria-expanded') === 'true';
-                const content = this.nextElementSibling;
 
-                // Collapse all other groups first
+        toggles.forEach(function(toggle) {
+            // Skip buttons that already have this listener, so clicking never fires it twice
+            if (toggle.dataset.groupToggleBound === 'true') return;
+            toggle.dataset.groupToggleBound = 'true';
+
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const clickedToggle = this;
+                const content = clickedToggle.nextElementSibling;
+                const wasExpanded = clickedToggle.getAttribute('aria-expanded') === 'true';
+
+                // Step 1: close every group (including this one)
                 toggles.forEach(function(other) {
-                    if (other !== toggle) {
-                        other.setAttribute('aria-expanded', 'false');
-                        const otherContent = other.nextElementSibling;
-                        if (otherContent) otherContent.classList.remove('active');
-                    }
+                    other.setAttribute('aria-expanded', 'false');
+                    const otherContent = other.nextElementSibling;
+                    if (otherContent) otherContent.classList.remove('active');
                 });
 
-                this.setAttribute('aria-expanded', String(!isExpanded));
-                if (content) content.classList.toggle('active', !isExpanded);
+                // Step 2: if the clicked group was closed, open ONLY that one
+                if (!wasExpanded) {
+                    clickedToggle.setAttribute('aria-expanded', 'true');
+                    if (content) content.classList.add('active');
+                }
             });
         });
     }
