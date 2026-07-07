@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Admin Portal JavaScript
  * 
- * @version 7.0.0
+ * @version 8.0.0
  * @date 2026-01-27
  * 
  */
