@@ -204,11 +204,14 @@ body {
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh; /* fixes mobile browsers that miscalculate 100vh, which was clipping the sidebar footer */
     padding: 0;
     overflow-y: auto;
     z-index: var(--z-sidebar);
     transition: transform var(--duration-medium) var(--ease-in-out);
     box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
 }
 
 .admin-sidebar::-webkit-scrollbar { width: 6px; }
@@ -1203,6 +1206,7 @@ tbody tr:last-child td {
     padding: 1.5rem 1.25rem;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.05);
+    flex-shrink: 0; /* never let the header get squeezed on short screens */
 }
 
 .sidebar-logo {
@@ -1227,6 +1231,7 @@ tbody tr:last-child td {
 
 .sidebar-nav-modern {
     flex: 1;
+    min-height: 0; 
     padding: 1rem 0;
     overflow-y: auto;
 }
@@ -1348,8 +1353,10 @@ tbody tr:last-child td {
 /* Sidebar footer */
 .sidebar-footer-modern {
     padding: 1rem 0.75rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom)); /* keeps Logout clear of the iPhone home-indicator bar */
     border-top: 1px solid rgba(255,255,255,0.1);
     background: rgba(0,0,0,0.1);
+    flex-shrink: 0; /* never let the footer get squeezed or clipped */
 }
 
 .sidebar-link-secondary { color: rgba(255,255,255,0.75) !important; }
