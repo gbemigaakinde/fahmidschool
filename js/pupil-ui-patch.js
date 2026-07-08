@@ -38,7 +38,8 @@
         const name = nameEl.textContent?.trim();
         const greetingEl = document.getElementById('pupil-welcome');
         if (name && name !== 'Loading…' && name !== '-' && greetingEl) {
-          greetingEl.innerHTML = `Hello, <strong>${name}</strong>!`;
+          const firstName = name.split(/\s+/)[0];
+          greetingEl.innerHTML = `Hello, <strong>${firstName}</strong>!`;
         }
       });
       obs.observe(nameEl, { childList: true, characterData: true, subtree: true });
