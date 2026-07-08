@@ -300,6 +300,7 @@ body {
     line-height: 1.25;
 }
 
+/* --- Attendance: compact strip, not oversized cards --- */
 .att-row { display: grid; grid-template-columns: repeat(3, 1fr); }
 .att-card {
     padding: 4px 6px;
@@ -332,20 +333,20 @@ body {
 .section--academic { overflow: hidden; min-width: 0; }
 .ac-table-wrap { overflow: visible; min-width: 0; }
 
-/* table-layout:fixed + colgroup means this table can never force the
-   row wider than its grid column, regardless of subject count. */
+/* table-layout:fixed + colgroup below means this table can never force
+   the row wider than its grid column, regardless of subject count or
+   long subject names/positions — that was the page-overflow cause. */
 .ac-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 7.5pt; }
 .ac-table thead { position: static; }
 .ac-table thead tr { background: var(--paper-alt); border-bottom: 1.5px solid var(--blue-deep); }
 .ac-table th {
-    padding: 5px 3px;
+    padding: 5px 4px;
     text-align: center;
     font-size: 6pt;
     font-weight: 600;
     color: var(--ink-2);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
+    letter-spacing: 0.06em;
     background: var(--paper-alt);
 }
 .ac-table th:first-child { text-align: left; padding-left: 9px; }
@@ -368,6 +369,7 @@ body {
 .grade-D7,.grade-D8  { color: var(--grade-d); font-weight: 700; }
 .grade-F9            { color: var(--grade-f); font-weight: 700; }
 
+/* --- Performance summary: it's a side-note, not a major section --- */
 .perf-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
 .perf-row {
     display: flex;
@@ -390,6 +392,9 @@ body {
 .ac-table th, .ac-table td { vertical-align: middle; }
 .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
+/* --- Grading key: must stay on one line, chips sized to their own
+   content (not forced to equal widths — that's what pushed the last
+   chip past the box edge before) --- */
 .key {
     border: 1px solid var(--rule);
     border-radius: var(--radius);
@@ -404,20 +409,15 @@ body {
     letter-spacing: 0.09em;
     margin-bottom: 3px;
 }
-/* Chips size to their own content now (flex:0 0 auto) instead of being
-   forced into equal shares — that equal-share rule was what pushed F9
-   past the container edge, since it forced short/long chips to the
-   same width and let the longer ones grow past it. */
-.key__items { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 3px; }
+.key__items { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 2px; }
 .key__item {
-    font-size: 5.2pt;
-    padding: 1px 4px;
+    font-size: 5pt;
+    padding: 1px 3px;
     border-radius: 2px;
     border: 1px solid var(--rule);
     background: var(--paper);
     color: var(--ink-2);
     white-space: nowrap;
-    flex: 0 0 auto;
 }
 
 .row-traits {
@@ -508,6 +508,8 @@ body {
     line-height: 1.5;
     min-height: 20px;
 }
+/* --- Signature area: was reserving far more height than a signature
+   image needs; tightened min-height and image cap below --- */
 .remark-blk__sig {
     padding: 6px 12px 6px;
     border-top: 1px solid var(--rule);
@@ -726,17 +728,16 @@ body {
 
             <div class="section section--academic">
                 <div class="section__hd"><span class="section__title">Academic Performance</span></div>
-                <div class="scale-note">Max marks &nbsp;·&nbsp; Assign 10 &nbsp;·&nbsp; Midterm 20 &nbsp;·&nbsp; Project 10 &nbsp;·&nbsp; CA Total 40 &nbsp;·&nbsp; Exam 60 &nbsp;·&nbsp; Total 100</div>
                 <div class="ac-table-wrap">
                     <table class="ac-table">
                         <colgroup>
                             <col style="width:20%;">
-                            <col style="width:7%;">
-                            <col style="width:8%;">
                             <col style="width:8%;">
                             <col style="width:9%;">
                             <col style="width:8%;">
-                            <col style="width:8%;">
+                            <col style="width:9%;">
+                            <col style="width:7%;">
+                            <col style="width:7%;">
                             <col style="width:8%;">
                             <col style="width:8%;">
                             <col style="width:6%;">
@@ -745,19 +746,21 @@ body {
                         <thead>
                             <tr>
                                 <th rowspan="2">Subject</th>
-                                <th colspan="4">C.A.</th>
-                                <th rowspan="2">Exam</th>
-                                <th rowspan="2">Total</th>
-                                <th rowspan="2">Avg</th>
+                                <th colspan="4" style="text-align:center; border-bottom:1px solid var(--rule);">
+                                    Continuous Assessment<br><span style="font-weight:400;opacity:0.6;">(40)</span>
+                                </th>
+                                <th rowspan="2">Exam<br><span style="font-weight:400;opacity:0.6;">(60)</span></th>
+                                <th rowspan="2">Total<br><span style="font-weight:400;opacity:0.6;">(100)</span></th>
+                                <th rowspan="2">Class<br>Avg</th>
                                 <th rowspan="2">Pos.</th>
                                 <th rowspan="2">Grade</th>
                                 <th rowspan="2">Remark</th>
                             </tr>
                             <tr>
-                                <th style="font-size:5.3pt; font-weight:500; opacity:0.8;">Assign</th>
-                                <th style="font-size:5.3pt; font-weight:500; opacity:0.8;">Midterm</th>
-                                <th style="font-size:5.3pt; font-weight:500; opacity:0.8;">Project</th>
-                                <th style="font-size:5.3pt; font-weight:600; color:var(--blue-mid);">CA Total</th>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Assign<br><span style="opacity:0.6;">(10)</span></th>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Mid-term<br><span style="opacity:0.6;">(20)</span></th>
+                                <th style="font-size:5.5pt; font-weight:500; opacity:0.75;">Project<br><span style="opacity:0.6;">(10)</span></th>
+                                <th style="font-size:5.5pt; font-weight:600; color:var(--blue-mid);">CA Total<br><span style="opacity:0.6;">(40)</span></th>
                             </tr>
                         </thead>
                         <tbody id="academic-tbody">
@@ -947,9 +950,10 @@ body {
     // Shrinks the whole report card proportionally (fonts, spacing,
     // everything together — nothing gets stretched or squished) just
     // enough to make it fit inside one A4 page, no matter how many
-    // subjects Firestore returns. There is intentionally no meaningful
-    // "minimum scale" floor here — a report card must NEVER spill onto
-    // a second page, even at 20+ subjects.
+    // subjects Firestore returns. There is intentionally no "minimum
+    // scale" floor here anymore — a report card must NEVER spill onto
+    // a second page, even at 20+ subjects, so we scale down as far as
+    // the content requires to guarantee a single page.
     function fitDocToPage() {
         const doc = document.querySelector('.doc');
         if (!doc) return;
