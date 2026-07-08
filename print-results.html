@@ -328,53 +328,29 @@ body {
     gap: 8px;
     align-items: start;
 }
-/* Grid columns default to "auto" min-width, which means a column will
-   never shrink below the natural width of its content (e.g. a wide
-   table). That default is what was pushing the Performance Summary
-   card off the right edge of the printed page. Forcing min-width: 0
-   on the direct grid children lets them shrink to the track size
-   instead of forcing the row wider than the page. */
-.row-ac > * { min-width: 0; }
 
 .section--academic { overflow: hidden; }
-.ac-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    min-width: 0;
-}
+.ac-table-wrap { overflow: visible; }
 
-.ac-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 7.5pt;
-    table-layout: fixed;
-}
+.ac-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
 .ac-table thead { position: static; }
 .ac-table thead tr { background: var(--paper-alt); border-bottom: 1.5px solid var(--blue-deep); }
 .ac-table th {
-    padding: 5px 4px;
+    padding: 5px 5px;
     text-align: center;
     font-size: 6pt;
     font-weight: 600;
     color: var(--ink-2);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    white-space: normal;
-    line-height: 1.15;
+    white-space: nowrap;
     background: var(--paper-alt);
-    overflow-wrap: break-word;
 }
-.ac-table th:first-child { text-align: left; padding-left: 9px; }
+.ac-table th:first-child { text-align: left; padding-left: 9px; width: 36%; }
 .ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 22px; }
 .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
 .ac-table tbody tr:last-child { border-bottom: none; }
-.ac-table td {
-    padding: 3px 4px;
-    text-align: center;
-    color: var(--ink);
-    font-size: 7.5pt;
-    overflow-wrap: break-word;
-}
+.ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
 .ac-table td:first-child {
     text-align: left;
     padding-left: 9px;
@@ -415,7 +391,7 @@ body {
 .key {
     border: 1px solid var(--rule);
     border-radius: var(--radius);
-    padding: 4px 10px 5px;
+    padding: 5px 10px;
     background: var(--paper-alt);
 }
 .key__title {
@@ -424,23 +400,15 @@ body {
     color: var(--ink-3);
     text-transform: uppercase;
     letter-spacing: 0.09em;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
 }
-/* All nine grade bands now sit on a single row instead of wrapping
-   onto two, which was quietly costing an extra line of vertical
-   space on every report card. */
-.key__items {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 2px;
-}
+.key__items { display: flex; flex-wrap: wrap; gap: 3px; }
 .key__item {
-    font-size: 5.3pt;
-    padding: 0;
-    border: none;
-    background: transparent;
+    font-size: 6pt;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
     color: var(--ink-2);
     white-space: nowrap;
 }
@@ -451,7 +419,6 @@ body {
     gap: 8px;
     align-items: start;
 }
-.row-traits > * { min-width: 0; }
 
 .scale-note {
     background: var(--paper-alt);
@@ -754,19 +721,6 @@ body {
                 <div class="section__hd"><span class="section__title">Academic Performance</span></div>
                 <div class="ac-table-wrap">
                     <table class="ac-table">
-                        <colgroup>
-                            <col style="width:25%">
-                            <col style="width:6.5%">
-                            <col style="width:7%">
-                            <col style="width:6.5%">
-                            <col style="width:7%">
-                            <col style="width:7%">
-                            <col style="width:7%">
-                            <col style="width:7.5%">
-                            <col style="width:8%">
-                            <col style="width:6.5%">
-                            <col style="width:12%">
-                        </colgroup>
                         <thead>
                             <tr>
                                 <th rowspan="2">Subject</th>
@@ -829,8 +783,8 @@ body {
         <div class="key">
             <div class="key__title">Grading System</div>
             <div class="key__items">
-                <div class="key__item"><strong class="grade-A1">A1</strong>&nbsp;75–100&nbsp;Exc.</div>
-                <div class="key__item"><strong class="grade-B2">B2</strong>&nbsp;70–74&nbsp;V.Good</div>
+                <div class="key__item"><strong class="grade-A1">A1</strong>&nbsp;75–100&nbsp;Excellent</div>
+                <div class="key__item"><strong class="grade-B2">B2</strong>&nbsp;70–74&nbsp;Very Good</div>
                 <div class="key__item"><strong class="grade-B3">B3</strong>&nbsp;65–69&nbsp;Good</div>
                 <div class="key__item"><strong class="grade-C4">C4</strong>&nbsp;60–64&nbsp;Credit</div>
                 <div class="key__item"><strong class="grade-C5">C5</strong>&nbsp;55–59&nbsp;Credit</div>
@@ -926,7 +880,6 @@ body {
 <script>
 (function () {
     let wmOverlay = null;
-    let mediaQueryList = null;
 
     function buildWatermarkOverlay() {
         if (wmOverlay) return Promise.resolve(wmOverlay);
@@ -1001,7 +954,7 @@ body {
         if (doc) doc.style.transform = '';
     }
 
-    async function prepareForPrint() {
+    window.addEventListener('beforeprint', async function () {
         const doc = document.querySelector('.doc');
         if (!doc) return;
         const cs = getComputedStyle(doc);
@@ -1017,47 +970,14 @@ body {
         }
 
         fitDocToPage();
-    }
+    });
 
-    function cleanupAfterPrint() {
+    window.addEventListener('afterprint', function () {
         const overlay = document.getElementById('wm-print-overlay');
         if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         wmOverlay = null;
         resetDocScale();
-    }
-
-    // Standard print hooks. These fire for window.print() and for the
-    // in-page "Print Report Card" button.
-    window.addEventListener('beforeprint', prepareForPrint);
-    window.addEventListener('afterprint', cleanupAfterPrint);
-
-    // Second, independent trigger. Some mobile browsers — notably iOS
-    // Safari when printing from the Share Sheet instead of a page
-    // button, which is what produced the cut-off preview — do not
-    // always fire beforeprint/afterprint reliably. matchMedia('print')
-    // is a separate signal that still fires in those cases, so the
-    // "shrink to one page" logic still runs no matter how printing
-    // was started.
-    if (window.matchMedia) {
-        mediaQueryList = window.matchMedia('print');
-        const handleChange = (mql) => {
-            if (mql.matches) {
-                prepareForPrint();
-            } else {
-                cleanupAfterPrint();
-            }
-        };
-        if (mediaQueryList.addEventListener) {
-            mediaQueryList.addEventListener('change', handleChange);
-        } else if (mediaQueryList.addListener) {
-            // Older WebKit fallback
-            mediaQueryList.addListener(handleChange);
-        }
-    }
-
-    // Exposed in case other scripts ever need to trigger a re-fit.
-    window.fitDocToPage  = fitDocToPage;
-    window.resetDocScale = resetDocScale;
+    });
 })();
 </script>
 
