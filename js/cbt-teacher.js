@@ -528,6 +528,13 @@ async function showCbtCreateForm(testId = null) {
                     <input type="text" id="cbt-title" placeholder="e.g. First Term Mathematics Test" value="${escHtml(existingData?.title || '')}">
                 </div>
                 <div class="form-group">
+                    <label for="cbt-class">Class <span class="required">*</span></label>
+                    <select id="cbt-class">
+                        <option value="">— Select Class —</option>
+                        ${classes.map(c => `<option value="${c.id}" data-name="${escHtml(c.name)}" ${existingData?.classId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="cbt-subject">Subject <span class="required">*</span></label>
                     <select id="cbt-subject">
                         <option value="">-- Select Class First --</option>
@@ -542,13 +549,6 @@ async function showCbtCreateForm(testId = null) {
                         <option value="Exam" ${existingData?.type === 'Exam' ? 'selected' : ''}>Exam</option>
                         <option value="Quiz" ${existingData?.type === 'Quiz' ? 'selected' : ''}>Quiz</option>
                         <option value="Practice" ${existingData?.type === 'Practice' ? 'selected' : ''}>Practice</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="cbt-class">Class <span class="required">*</span></label>
-                    <select id="cbt-class">
-                        <option value="">— Select Class —</option>
-                        ${classes.map(c => `<option value="${c.id}" data-name="${escHtml(c.name)}" ${existingData?.classId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="form-group">
