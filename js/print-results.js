@@ -2,8 +2,8 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Print Results JavaScript
  *
- * Version: 8.1.0
- * Date: 2026-05-11
+ * Version: 8.3.0
+ * Date: 2026-07-08
  */
 'use strict';
 
@@ -363,15 +363,12 @@ async function setupTermSelector() {
         }
     }
 
-    setText('current-term', termToSelect);
-
     const newSelect = select.cloneNode(true);
     Array.from(newSelect.options).forEach(o => { o.selected = o.value === termToSelect; });
     select.parentNode.replaceChild(newSelect, select);
 
     newSelect.addEventListener('change', async e => {
         currentSettings.term = e.target.value;
-        setText('current-term', currentSettings.term);
         updateReportHeader();
         await loadReportData();
     });
@@ -386,9 +383,6 @@ function updateReportHeader() {
     const term    = currentSettings.term    || '';
     const session = currentSettings.session || '';
 
-    setText('report-title',      `${term} Report Card${session ? ' — ' + session + ' Academic Session' : ''}`);
-    setText('current-term',      term    || '-');
-    setText('current-session',   session || '-');
     setText('header-term-badge', term    || 'Termly Report');
     setText('header-session',    session ? `Session: ${session}` : 'Session –');
 
@@ -777,4 +771,4 @@ const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
 
-console.log('✓ print-results.js v8.2.0 ready');
+console.log('✓ print-results.js v8.3.0 ready');
