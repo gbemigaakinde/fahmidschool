@@ -300,43 +300,47 @@ body {
     line-height: 1.25;
 }
 
+/* --- Attendance: compact strip, not oversized cards --- */
 .att-row { display: grid; grid-template-columns: repeat(3, 1fr); }
 .att-card {
-    padding: 10px 10px;
+    padding: 4px 6px;
     text-align: center;
     border-right: 1px solid var(--rule);
 }
 .att-card:last-child { border-right: none; }
 .att-card__n {
-    font-size: 15pt;
+    font-size: 10pt;
     font-weight: 700;
     color: var(--blue-deep);
     line-height: 1;
-    margin-bottom: 3px;
+    margin-bottom: 1px;
 }
 .att-card__lbl {
-    font-size: 6pt;
+    font-size: 5.5pt;
     color: var(--ink-3);
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
 }
 
 .row-ac {
     display: grid;
-    grid-template-columns: 1fr 200px;
+    grid-template-columns: 1fr 150px;
     gap: 8px;
     align-items: start;
 }
 
-.section--academic { overflow: hidden; }
-.ac-table-wrap { overflow: visible; }
+.section--academic { overflow: hidden; min-width: 0; }
+.ac-table-wrap { overflow: visible; min-width: 0; }
 
-.ac-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+/* table-layout:fixed + colgroup below means this table can never force
+   the row wider than its grid column, regardless of subject count or
+   long subject names/positions — that was the page-overflow cause. */
+.ac-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 7.5pt; }
 .ac-table thead { position: static; }
 .ac-table thead tr { background: var(--paper-alt); border-bottom: 1.5px solid var(--blue-deep); }
 .ac-table th {
-    padding: 5px 5px;
+    padding: 5px 4px;
     text-align: center;
     font-size: 6pt;
     font-weight: 600;
@@ -345,12 +349,14 @@ body {
     letter-spacing: 0.06em;
     white-space: nowrap;
     background: var(--paper-alt);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.ac-table th:first-child { text-align: left; padding-left: 9px; width: 36%; }
-.ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 22px; }
+.ac-table th:first-child { text-align: left; padding-left: 9px; }
+.ac-table tbody tr { border-bottom: 1px solid var(--rule); height: 20px; }
 .ac-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
 .ac-table tbody tr:last-child { border-bottom: none; }
-.ac-table td { padding: 3px 5px; text-align: center; color: var(--ink); font-size: 7.5pt; }
+.ac-table td { padding: 3px 4px; text-align: center; color: var(--ink); font-size: 7.5pt; overflow-wrap: break-word; }
 .ac-table td:first-child {
     text-align: left;
     padding-left: 9px;
@@ -366,32 +372,34 @@ body {
 .grade-D7,.grade-D8  { color: var(--grade-d); font-weight: 700; }
 .grade-F9            { color: var(--grade-f); font-weight: 700; }
 
-.perf-body { padding: 9px 11px; display: flex; flex-direction: column; gap: 5px; }
+/* --- Performance summary: it's a side-note, not a major section --- */
+.perf-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
 .perf-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
     border-bottom: 1px solid var(--rule);
 }
 .perf-row:last-child { border-bottom: none; padding-bottom: 0; }
 .perf-row__lbl {
-    font-size: 6pt;
+    font-size: 5.5pt;
     font-weight: 600;
     color: var(--ink-3);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
 }
-.perf-row__val { font-size: 10pt; font-weight: 700; color: var(--blue-deep); }
-#perf-grade { font-size: 13pt; }
+.perf-row__val { font-size: 8pt; font-weight: 700; color: var(--blue-deep); }
+#perf-grade { font-size: 9pt; }
 
 .ac-table th, .ac-table td { vertical-align: middle; }
 .ac-table thead tr:first-child th { border-bottom: 1px solid var(--rule); }
 
+/* --- Grading key: must stay on one line --- */
 .key {
     border: 1px solid var(--rule);
     border-radius: var(--radius);
-    padding: 5px 10px;
+    padding: 4px 8px;
     background: var(--paper-alt);
 }
 .key__title {
@@ -400,17 +408,19 @@ body {
     color: var(--ink-3);
     text-transform: uppercase;
     letter-spacing: 0.09em;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
-.key__items { display: flex; flex-wrap: wrap; gap: 3px; }
+.key__items { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 2px; }
 .key__item {
-    font-size: 6pt;
-    padding: 1px 5px;
+    font-size: 5pt;
+    padding: 1px 3px;
     border-radius: 2px;
     border: 1px solid var(--rule);
     background: var(--paper);
     color: var(--ink-2);
     white-space: nowrap;
+    flex: 1 1 0;
+    text-align: center;
 }
 
 .row-traits {
@@ -501,19 +511,21 @@ body {
     line-height: 1.5;
     min-height: 20px;
 }
+/* --- Signature area: was reserving far more height than a signature
+   image needs; tightened min-height and image cap below --- */
 .remark-blk__sig {
-    padding: 10px 12px 10px;
+    padding: 6px 12px 6px;
     border-top: 1px solid var(--rule);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-height: 70px;
+    gap: 3px;
+    min-height: 42px;
     justify-content: flex-end;
 }
 .sig-img {
     display: block;
-    height: 54px;
-    max-width: 180px;
+    height: 30px;
+    max-width: 130px;
     object-fit: contain;
     object-position: left bottom;
     margin-bottom: 2px;
@@ -721,6 +733,19 @@ body {
                 <div class="section__hd"><span class="section__title">Academic Performance</span></div>
                 <div class="ac-table-wrap">
                     <table class="ac-table">
+                        <colgroup>
+                            <col style="width:26%;">
+                            <col style="width:6%;">
+                            <col style="width:7%;">
+                            <col style="width:6%;">
+                            <col style="width:7%;">
+                            <col style="width:7%;">
+                            <col style="width:7%;">
+                            <col style="width:8%;">
+                            <col style="width:8%;">
+                            <col style="width:6%;">
+                            <col style="width:12%;">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th rowspan="2">Subject</th>
@@ -928,7 +953,10 @@ body {
     // Shrinks the whole report card proportionally (fonts, spacing,
     // everything together — nothing gets stretched or squished) just
     // enough to make it fit inside one A4 page, no matter how many
-    // subjects Firestore returns (tested up to 16+).
+    // subjects Firestore returns. There is intentionally no "minimum
+    // scale" floor here anymore — a report card must NEVER spill onto
+    // a second page, even at 20+ subjects, so we scale down as far as
+    // the content requires to guarantee a single page.
     function fitDocToPage() {
         const doc = document.querySelector('.doc');
         if (!doc) return;
@@ -938,11 +966,11 @@ body {
 
         const naturalHeight = doc.scrollHeight;
         const targetHeight  = pxFromMm(282); // matches .page-fit height in print CSS
-        const MIN_SCALE      = 0.72;         // never shrink past this (stays legible)
+        const ABSOLUTE_FLOOR = 0.35;         // only guards against a broken/zero measurement
 
         if (naturalHeight > targetHeight) {
-            let scale = (targetHeight / naturalHeight) * 0.99; // tiny safety buffer
-            if (scale < MIN_SCALE) scale = MIN_SCALE;
+            let scale = (targetHeight / naturalHeight) * 0.985; // small safety buffer
+            if (scale < ABSOLUTE_FLOOR) scale = ABSOLUTE_FLOOR;
             doc.style.transform = `scale(${scale.toFixed(4)})`;
         } else {
             doc.style.transform = 'none';
