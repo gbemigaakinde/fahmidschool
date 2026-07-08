@@ -1451,12 +1451,18 @@ async function loadSessionResults() {
 
         if (pupilResults.length === 0) {
             container.innerHTML = `
-                <p style="text-align:center; padding:var(--space-2xl); font-size:var(--text-lg); color:var(--color-gray-600);">
-                    📚 No approved results found for this session.<br>
-                    ${selectedSession === 'current' 
-                        ? 'Your teachers will upload and admin will approve scores soon.' 
-                        : 'No approved results available for this historical session.'}
-                </p>`;
+                <div style="text-align:center; padding:40px 24px;">
+                    <i data-lucide="inbox" style="width:36px;height:36px;margin:0 auto 12px;opacity:0.35;display:block;color:#64748b;"></i>
+                    <p style="margin:0 0 4px; font-size:14px; font-weight:600; color:#475569;">
+                        No approved results found for this session
+                    </p>
+                    <p style="margin:0; font-size:12.5px; color:#94a3b8;">
+                        ${selectedSession === 'current' 
+                            ? 'Your teachers will upload and admin will approve scores soon.' 
+                            : 'No approved results available for this historical session.'}
+                    </p>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
 
