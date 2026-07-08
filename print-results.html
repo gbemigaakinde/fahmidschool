@@ -132,6 +132,10 @@ body {
     background-position: right 0 center;
 }
 
+.page-fit {
+    width: 100%;
+}
+
 .doc {
     width: 740px;
     margin: 0 auto;
@@ -269,7 +273,7 @@ body {
     white-space: nowrap;
 }
 
-.id-grid { display: grid; grid-template-columns: repeat(6, 1fr); }
+.id-grid { display: grid; grid-template-columns: 2fr 1.3fr 1fr 0.8fr; }
 .id-cell {
     padding: 5px 9px;
     border-right: 1px solid var(--rule);
@@ -290,9 +294,10 @@ body {
     font-size: 7.5pt;
     font-weight: 600;
     color: var(--ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.25;
 }
 
 .att-row { display: grid; grid-template-columns: repeat(3, 1fr); }
@@ -574,6 +579,13 @@ body {
 
     .ctrl, .no-print { display: none !important; }
 
+    .page-fit {
+        width: 100%;
+        height: 282mm;
+        overflow: hidden;
+        position: relative;
+    }
+
     .doc {
         width: 100% !important;
         max-width: 100% !important;
@@ -582,6 +594,7 @@ body {
         border-radius: 0 !important;
         overflow: visible !important;
         font-size: 8.5pt;
+        transform-origin: top center;
     }
 
     .watermark { display: none !important; }
@@ -634,6 +647,7 @@ body {
     </div>
 </div>
 
+<div class="page-fit">
 <div class="doc">
 
     <img class="watermark" src="IMG_4629.png" alt="" aria-hidden="true">
@@ -656,7 +670,7 @@ body {
     </div>
 
     <div class="doc-title">
-        <div class="doc-title__text" id="report-title">Termly Report Card</div>
+        <div class="doc-title__text" id="report-title">Academic Report Card</div>
     </div>
 
     <div class="doc-body">
@@ -679,14 +693,6 @@ body {
                 <div class="id-cell">
                     <span class="id-cell__lbl">Gender</span>
                     <span class="id-cell__val" id="student-gender">Loading…</span>
-                </div>
-                <div class="id-cell">
-                    <span class="id-cell__lbl">Term</span>
-                    <span class="id-cell__val" id="current-term">Loading…</span>
-                </div>
-                <div class="id-cell">
-                    <span class="id-cell__lbl">Session</span>
-                    <span class="id-cell__val" id="current-session">Loading…</span>
                 </div>
             </div>
         </div>
@@ -862,6 +868,7 @@ body {
     </div>
 
 </div>
+</div>
 
 <canvas id="wm-canvas" style="display:none;"></canvas>
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -912,21 +919,64 @@ body {
         });
     }
 
+    // Converts a millimetre measurement into the CSS-pixel equivalent
+    // (browsers always treat 1in = 96px, print or screen).
+    function pxFromMm(mm) {
+        return mm * (96 / 25.4);
+    }
+
+    // Shrinks the whole report card proportionally (fonts, spacing,
+    // everything together — nothing gets stretched or squished) just
+    // enough to make it fit inside one A4 page, no matter how many
+    // subjects Firestore returns (tested up to 16+).
+    function fitDocToPage() {
+        const doc = document.querySelector('.doc');
+        if (!doc) return;
+
+        // Reset first so we measure the *true*, unscaled height.
+        doc.style.transform = 'none';
+
+        const naturalHeight = doc.scrollHeight;
+        const targetHeight  = pxFromMm(282); // matches .page-fit height in print CSS
+        const MIN_SCALE      = 0.72;         // never shrink past this (stays legible)
+
+        if (naturalHeight > targetHeight) {
+            let scale = (targetHeight / naturalHeight) * 0.99; // tiny safety buffer
+            if (scale < MIN_SCALE) scale = MIN_SCALE;
+            doc.style.transform = `scale(${scale.toFixed(4)})`;
+        } else {
+            doc.style.transform = 'none';
+        }
+    }
+
+    function resetDocScale() {
+        const doc = document.querySelector('.doc');
+        if (doc) doc.style.transform = '';
+    }
+
     window.addEventListener('beforeprint', async function () {
         const doc = document.querySelector('.doc');
         if (!doc) return;
         const cs = getComputedStyle(doc);
         if (cs.position === 'static') doc.style.position = 'relative';
+
         const overlay = await buildWatermarkOverlay();
         if (overlay && !doc.contains(overlay)) {
             doc.insertBefore(overlay, doc.firstChild);
         }
+
+        if (document.fonts && document.fonts.ready) {
+            try { await document.fonts.ready; } catch (e) { /* ignore */ }
+        }
+
+        fitDocToPage();
     });
 
     window.addEventListener('afterprint', function () {
         const overlay = document.getElementById('wm-print-overlay');
         if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
         wmOverlay = null;
+        resetDocScale();
     });
 })();
 </script>
