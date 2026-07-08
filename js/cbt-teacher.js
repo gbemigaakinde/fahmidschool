@@ -429,6 +429,42 @@ async function cbtCheckForAutosave(existingData, existingQs) {
     return { existingData: restoredData, existingQs: restoredQs };
 }
 
+// Fills the Subject dropdown with the subjects that actually belong to the
+// selected class — the same source of truth the religion filter reads from,
+// so a saved test's subject can never drift into an unrecognised variant
+// like "C.R.S" or "Christian R.S" again.
+function populateCbtSubjectsForClass(classId, preselectSubject = '') {
+    const subjectSelect = document.getElementById('cbt-subject');
+    if (!subjectSelect) return;
+
+    if (!classId) {
+        subjectSelect.innerHTML = '<option value="">-- Select Class First --</option>';
+        return;
+    }
+
+    const classes = window.assignedClasses || [];
+    const cls = classes.find(c => c.id === classId);
+    const subjects = (cls && Array.isArray(cls.subjects)) ? cls.subjects.slice() : [];
+
+    // If editing an existing test whose saved subject isn't in the class's
+    // current subject list (e.g. it was free-typed before this dropdown
+    // existed, or the class's subjects changed since), keep it as a
+    // selectable option so editing the test never silently discards it.
+    if (preselectSubject && !subjects.some(s => s.toLowerCase() === preselectSubject.toLowerCase())) {
+        subjects.push(preselectSubject);
+    }
+
+    if (subjects.length === 0) {
+        subjectSelect.innerHTML = '<option value="">-- No subjects set for this class --</option>';
+        return;
+    }
+
+    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>' +
+        subjects
+            .map(s => `<option value="${escHtml(s)}" ${s === preselectSubject ? 'selected' : ''}>${escHtml(s)}</option>`)
+            .join('');
+}
+
 // ── Show Create/Edit Form ──────────────────────────────────────────────────
 async function showCbtCreateForm(testId = null) {
     cbtEditingTestId = testId;
@@ -493,7 +529,9 @@ async function showCbtCreateForm(testId = null) {
                 </div>
                 <div class="form-group">
                     <label for="cbt-subject">Subject <span class="required">*</span></label>
-                    <input type="text" id="cbt-subject" placeholder="e.g. Mathematics" value="${escHtml(existingData?.subject || '')}">
+                    <select id="cbt-subject">
+                        <option value="">-- Select Class First --</option>
+                    </select>
                 </div>
             </div>
             <div class="form-row form-row-3">
@@ -572,6 +610,18 @@ async function showCbtCreateForm(testId = null) {
     `;
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // ── Subject dropdown: populate from the selected class's own subject
+    // list, and keep it in sync whenever the teacher changes the class.
+    // This guarantees the saved subject string always exactly matches what
+    // the religion filter expects — no more free-typed variants like
+    // "C.R.S" slipping through and breaking the Muslim/Christian filter.
+    const cbtClassSelectEl = document.getElementById('cbt-class');
+    populateCbtSubjectsForClass(cbtClassSelectEl?.value || '', existingData?.subject || '');
+
+    cbtClassSelectEl?.addEventListener('change', function () {
+        populateCbtSubjectsForClass(this.value, '');
+    });
 
     // Pre-load existing questions (from Firestore or a restored draft)
     if (existingQs.length > 0) {
