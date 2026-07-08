@@ -110,6 +110,16 @@ function filterSubjectsByReligion(subjects, religion) {
 window.filterSubjectsByReligion = filterSubjectsByReligion;
 
 // ============================================
+// HELPER: Get first name only (for greeting)
+// ============================================
+function getFirstNameOnly(fullName) {
+  if (!fullName || typeof fullName !== 'string') return '-';
+  return fullName.trim().split(/\s+/)[0];
+}
+
+window.getFirstNameOnly = getFirstNameOnly;
+
+// ============================================
 // PUPIL PROFILE
 // ============================================
 
@@ -176,7 +186,7 @@ async function loadPupilProfile(user) {
             const sessionEl = document.getElementById('student-session');
             
             if (welcomeEl) {
-                welcomeEl.innerHTML = `Hello, <strong>${data.name}</strong>!`;
+                welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(data.name)}</strong>!`;
             }
             if (classEl) {
                 classEl.innerHTML = '<span style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; padding: 4px 12px; border-radius: 20px; font-weight: 600;">🎓 Alumni (Graduated!)</span>';
@@ -292,7 +302,7 @@ async function loadPupilProfile(user) {
         const sessionEl = document.getElementById('student-session');
         
         if (welcomeEl) {
-            welcomeEl.innerHTML = `Hello, <strong>${data.name}</strong>!`;
+            welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(data.name)}</strong>!`;
         }
         if (classEl) {
             classEl.textContent = currentClassInfo.name;
@@ -378,7 +388,7 @@ async function loadPupilProfile(user) {
                   const classEl = document.getElementById('student-class');
                   const sessionEl = document.getElementById('student-session');
                   
-                  if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${updatedData.name}</strong>!`;
+                  if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(updatedData.name)}</strong>!`;
                   if (classEl) classEl.textContent = currentClassInfo.name;
                   if (sessionEl) sessionEl.textContent = settings.session;
 
