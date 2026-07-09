@@ -42,8 +42,7 @@ function formatResumptionDate(date) {
 
 function abbreviateSubject(name) {
     if (!name) return '-';
-    
-    // Clean the name: lowercase and remove extra internal spaces
+
     const cleanName = name.trim().toLowerCase().replace(/\s+/g, ' ');
 
     const abbr = {
@@ -73,11 +72,8 @@ function abbreviateSubject(name) {
         'business studies':              'Business Stud.'
     };
 
-    // 1. Check for manual mapping
     if (abbr[cleanName]) return abbr[cleanName];
 
-    // 2. If subject name is still very long and not in list, truncate it
-    // This prevents UI breaking for unknown long subjects
     if (name.length > 22) {
         return name.substring(0, 19) + '...';
     }
@@ -159,9 +155,7 @@ async function initPrintResultsWrapper() {
                             .where('admissionNo', '==', urlAdmissionNo)
                             .limit(1).get();
                         if (!snap.empty) resolvedPupilId = snap.docs[0].id;
-                        else console.error('No pupil found with admissionNo:', urlAdmissionNo);
                     } catch (e) {
-                        console.error('Error looking up pupil by admissionNo:', e);
                     }
                 } else if (urlPupilId) {
                     resolvedPupilId = urlPupilId;
@@ -232,7 +226,6 @@ async function initPrintResultsWrapper() {
             await loadReportData();
 
         } catch (err) {
-            console.error('Print results initialization failed:', err);
             window.location.href = 'index.html';
         }
     });
@@ -243,14 +236,12 @@ initPrintResultsWrapper();
 async function fetchSchoolSettings() {
     try {
         const doc = await db.collection('settings').doc('current').get();
-        if (!doc.exists) { console.warn('Settings document not found'); return; }
+        if (!doc.exists) { return; }
         const data = doc.data();
         currentSettings.term           = data.term           || currentSettings.term;
         currentSettings.session        = data.session        || '';
         currentSettings.resumptionDate = data.resumptionDate || '-';
-        console.log('Settings loaded:', currentSettings);
     } catch (error) {
-        console.error('Error loading settings:', error);
         throw error;
     }
 }
@@ -284,15 +275,12 @@ async function fetchPupilProfile(uid) {
                         className = classSnap.docs[0].data().name || className;
                     }
                 } catch (e) {
-                    console.warn('Could not look up classId by name:', e.message);
                 }
             }
         }
 
         pupilProfile._resolvedClassId   = classId;
         pupilProfile._resolvedClassName = className;
-
-        console.log('Resolved classId:', classId, '| className:', className);
 
         setText('student-class', className);
 
@@ -310,7 +298,6 @@ async function fetchPupilProfile(uid) {
                     }
                 }
             } catch (e) {
-                console.warn('Could not fetch teacher info:', e.message);
             }
         }
 
@@ -318,23 +305,20 @@ async function fetchPupilProfile(uid) {
         loadSignatures(className);
 
     } catch (error) {
-        console.error('Error loading pupil profile:', error);
         throw error;
     }
 }
 
 async function setupTermSelector() {
     const select = document.getElementById('print-term');
-    if (!select) { console.error('Term selector not found'); return; }
+    if (!select) { return; }
 
     const urlSession = getSessionFromUrl();
     const isHistoricalSession = !!urlSession;
 
-    let termToSelect = currentSettings.term; // default: live current term
+    let termToSelect = currentSettings.term;
 
     if (isHistoricalSession) {
-        // For a historical session, find which terms actually have approved
-        // results for this pupil, then default to the first one found.
         try {
             const snap = await db.collection('results')
                 .where('pupilId', '==', currentPupilId)
@@ -348,18 +332,11 @@ async function setupTermSelector() {
                 if (t) termsWithResults.add(t);
             });
 
-            // Prefer the term order: First → Second → Third
             const termOrder = ['First Term', 'Second Term', 'Third Term'];
             const firstAvailable = termOrder.find(t => termsWithResults.has(t));
             if (firstAvailable) termToSelect = firstAvailable;
 
-            console.log(
-                'Historical session:', urlSession,
-                '| Terms with results:', [...termsWithResults],
-                '| Defaulting to:', termToSelect
-            );
         } catch (e) {
-            console.warn('Could not determine terms for historical session:', e.message);
         }
     }
 
@@ -375,7 +352,6 @@ async function setupTermSelector() {
 
     if (newSelect.value !== termToSelect) newSelect.value = termToSelect;
 
-    // Update the in-memory term so loadReportData() uses the right one
     currentSettings.term = termToSelect;
 }
 
@@ -411,7 +387,6 @@ async function loadReportData() {
             loadRemarks()
         ]);
     } catch (error) {
-        console.error('Error loading report data:', error);
     }
 }
 
@@ -440,8 +415,6 @@ async function loadAcademicResults() {
     try {
         const TARGET_TERM    = currentSettings.term;
         const TARGET_SESSION = currentSettings.session;
-
-        console.log('Loading results | term:', TARGET_TERM, '| session:', TARGET_SESSION);
 
         const mySnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
@@ -472,22 +445,18 @@ async function loadAcademicResults() {
             });
         });
 
-        console.log('Own results count:', myResults.length);
-
         let effectiveClassId = pupilProfile._resolvedClassId || null;
 
         if (!effectiveClassId) {
             for (const r of myResults) {
                 if (r._classId) {
                     effectiveClassId = r._classId;
-                    console.log('Derived classId from own result doc:', effectiveClassId);
                     break;
                 }
             }
         }
 
         if (!effectiveClassId) {
-            console.warn('No classId found — class stats will show –');
             renderResults(myResults.map(r => ({
                 ...r,
                 classAverage: null,
@@ -503,8 +472,6 @@ async function loadAcademicResults() {
             .where('session', '==', TARGET_SESSION)
             .where('status',  '==', 'approved')
             .get();
-
-        console.log('Class results fetched:', classSnap.size, 'documents');
 
         const subjectScoresMap = {};
 
@@ -523,14 +490,11 @@ async function loadAcademicResults() {
             }
         });
 
-        console.log('Subjects with class data:', Object.keys(subjectScoresMap));
-
         const enrichedResults = myResults.map(r => {
             const normKey = normaliseSubject(r.subject);
             const scores  = subjectScoresMap[normKey];
 
             if (!scores || scores.length === 0) {
-                console.warn('No class scores for subject:', r.subject);
                 return { ...r, classAverage: null, position: null, classSize: null };
             }
 
@@ -538,12 +502,6 @@ async function loadAcademicResults() {
             const average  = sum / scores.length;
             const sorted   = [...scores].sort((a, b) => b.total - a.total);
             const posIndex = sorted.findIndex(s => s.pupilId === currentPupilId);
-
-            console.log(
-                `"${r.subject}": classSize=${scores.length},`,
-                `avg=${average.toFixed(1)}, pos=${posIndex + 1},`,
-                `scores=[${scores.map(s => s.total).join(',')}]`
-            );
 
             return {
                 ...r,
@@ -556,7 +514,6 @@ async function loadAcademicResults() {
         renderResults(enrichedResults, tbody);
 
     } catch (err) {
-        console.error('loadAcademicResults error:', err);
         tbody.innerHTML = errorRow('Error loading results. Reload page.');
         clearPerformanceSummary();
     }
@@ -654,7 +611,6 @@ async function loadAttendance() {
         setText('times-present', typeof d.timesPresent === 'number' ? d.timesPresent : '-');
         setText('times-absent',  typeof d.timesAbsent  === 'number' ? d.timesAbsent  : '-');
     } catch (e) {
-        console.error('Error loading attendance:', e);
     }
 }
 
@@ -676,7 +632,6 @@ async function loadKeyedCollection(collection, prefix) {
             setText(prefix + k.toLowerCase(), v !== null && v !== undefined ? v : '-');
         });
     } catch (e) {
-        console.error(`Error loading ${collection}:`, e);
     }
 }
 
@@ -690,7 +645,6 @@ async function loadRemarks() {
         setText('teacher-remark', typeof data.teacherRemark === 'string' ? data.teacherRemark : '-');
         setText('head-remark',    typeof data.headRemark    === 'string' ? data.headRemark    : '-');
     } catch (e) {
-        console.error('Error loading remarks:', e);
     }
 }
 
@@ -770,5 +724,3 @@ function getRemark(score) {
 const _spinStyle = document.createElement('style');
 _spinStyle.textContent = '@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}';
 document.head.appendChild(_spinStyle);
-
-console.log('✓ print-results.js v8.3.0 ready');
