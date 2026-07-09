@@ -1,14 +1,11 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Main JavaScript — v3.1
- * Full replacement for script.js — includes all UI fixes.
+ * Main JavaScript
  */
 
 'use strict';
 
-/* ================================================================
-   NAVIGATION
-   ================================================================ */
+/* NAVIGATION */
 
 function initNavigation() {
   const nav = document.querySelector('.site-nav');
@@ -47,12 +44,9 @@ function initNavigation() {
   mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
   window.addEventListener('resize', debounce(() => { if (window.innerWidth >= 1024) closeMenu(); }, 200));
-
 }
 
-/* ================================================================
-   SCROLL REVEAL
-   ================================================================ */
+/* SCROLL REVEAL */
 
 function initScrollReveal() {
   const elements = document.querySelectorAll('.reveal');
@@ -75,28 +69,19 @@ function initScrollReveal() {
   elements.forEach(el => observer.observe(el));
 }
 
-/*/*
-  In script.js, replace initTypingHeadline() with this.
-  The animation is now pure CSS (clip-path), so JS only needs
-  to handle the reduced-motion preference gracefully.
-*/
+/* TYPING HEADLINE (CSS-driven animation; JS only handles reduced motion) */
 
 function initTypingHeadline() {
   const line2 = document.querySelector('.hero h1 .hero-line-2');
   if (!line2) return;
 
-  // If user prefers reduced motion, skip the animation entirely
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     line2.style.clipPath = 'inset(0 0% 0 0)';
     line2.style.animation = 'none';
   }
-
 }
 
-/* ================================================================
-   FIX: COUNT-UP — trust bar numbers animate from 0
-   Requires data-target and data-suffix on .trust-number elements.
-   ================================================================ */
+/* COUNT-UP — trust bar numbers animate from 0. Requires data-target and data-suffix. */
 
 function initCountUp() {
   const els = document.querySelectorAll('.trust-number[data-target]');
@@ -137,20 +122,12 @@ function initCountUp() {
   }, { threshold: 0.5 });
 
   els.forEach(el => {
-    // Start at 0 so the count-up is visible from the beginning
     el.textContent = '0' + (el.dataset.suffix || '');
     observer.observe(el);
   });
-
 }
 
-/* ================================================================
-   FIX: TESTIMONIAL MARQUEE — pixel-perfect seamless loop
-   - Removes any old hard-coded clones
-   - Clones Set A dynamically
-   - Measures exact pixel width after paint
-   - Sets --set-width as a CSS custom property (no rounding drift)
-   ================================================================ */
+/* TESTIMONIAL MARQUEE — seamless loop via dynamic clone + measured pixel width */
 
 function initTestimonialMarquee() {
   const track = document.getElementById('testimonials-track') ||
@@ -159,14 +136,11 @@ function initTestimonialMarquee() {
 
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  // Remove any previously hard-coded clone cards
   track.querySelectorAll('.testimonial-card-clone').forEach(el => el.remove());
 
-  // Collect original Set A cards
   const setA = Array.from(track.children);
   if (!setA.length) return;
 
-  // Clone Set A → Set B
   setA.forEach(card => {
     const clone = card.cloneNode(true);
     clone.classList.add('testimonial-card-clone');
@@ -174,7 +148,6 @@ function initTestimonialMarquee() {
     track.appendChild(clone);
   });
 
-  // After two paint frames (guarantees stable layout), measure Set A
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       const gap = parseFloat(getComputedStyle(track).gap) || 24;
@@ -183,20 +156,15 @@ function initTestimonialMarquee() {
         setWidth += card.getBoundingClientRect().width + gap;
       });
 
-      // Apply exact pixel width — eliminates sub-pixel drift
       track.style.setProperty('--set-width', `${setWidth}px`);
 
-      // ~85px/s feels smooth for testimonial cards
       const duration = Math.max(20, Math.round(setWidth / 20));
       track.style.setProperty('--marquee-duration', `${duration}s`);
-
     });
   });
 }
 
-/* ================================================================
-   FAQ ACCORDION
-   ================================================================ */
+/* FAQ ACCORDION */
 
 function initFAQ() {
   const faqItems = document.querySelectorAll('.faq-item');
@@ -223,13 +191,9 @@ function initFAQ() {
       question.setAttribute('aria-expanded', String(!isOpen));
     });
   });
-
-  console.log('✓ FAQ accordion initialized');
 }
 
-/* ================================================================
-   GALLERY LIGHTBOX
-   ================================================================ */
+/* GALLERY LIGHTBOX */
 
 function initGalleryLightbox() {
   const galleryItems = document.querySelectorAll('.gallery-item');
@@ -270,12 +234,9 @@ function initGalleryLightbox() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && lightbox.classList.contains('active')) closeLightbox();
   });
-
 }
 
-/* ================================================================
-   CONTACT FORM
-   ================================================================ */
+/* CONTACT FORM */
 
 function initContactForm() {
   const form = document.getElementById('contact-form');
@@ -296,13 +257,9 @@ function initContactForm() {
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = original; }
     }
   });
-
-  console.log('✓ Contact form initialized');
 }
 
-/* ================================================================
-   ADMISSIONS FORM
-   ================================================================ */
+/* ADMISSIONS FORM */
 
 function initAdmissionsForm() {
   const form = document.getElementById('admissions-form');
@@ -325,9 +282,7 @@ function initAdmissionsForm() {
   });
 }
 
-/* ================================================================
-   SMOOTH SCROLL
-   ================================================================ */
+/* SMOOTH SCROLL */
 
 function initSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -344,9 +299,7 @@ function initSmoothScroll() {
   });
 }
 
-/* ================================================================
-   COPYRIGHT YEAR
-   ================================================================ */
+/* COPYRIGHT YEAR */
 
 function setCopyrightYear() {
   document.querySelectorAll('#copyright-year').forEach(el => {
@@ -354,9 +307,7 @@ function setCopyrightYear() {
   });
 }
 
-/* ================================================================
-   TOAST NOTIFICATIONS (preserved)
-   ================================================================ */
+/* TOAST NOTIFICATIONS */
 
 window.showToast = function (message, type = 'info', duration = 3000) {
   if (!document.body) {
@@ -401,9 +352,7 @@ window.showToast = function (message, type = 'info', duration = 3000) {
   }, duration);
 };
 
-/* ================================================================
-   LOADING INDICATOR (preserved)
-   ================================================================ */
+/* LOADING INDICATOR */
 
 window.showLoading = function (elementId, message = 'Loading…') {
   const el = document.getElementById(elementId);
@@ -422,9 +371,7 @@ window.hideLoading = function (elementId) {
   if (el) el.innerHTML = '';
 };
 
-/* ================================================================
-   RETRY HELPER (preserved)
-   ================================================================ */
+/* RETRY HELPER */
 
 window.retryOperation = async function (operation, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -437,9 +384,7 @@ window.retryOperation = async function (operation, maxRetries = 3) {
   }
 };
 
-/* ================================================================
-   UTILITY FUNCTIONS
-   ================================================================ */
+/* UTILITY FUNCTIONS */
 
 function debounce(fn, delay) {
   let timer;
@@ -465,9 +410,7 @@ function announceToScreenReader(message, priority = 'polite') {
 
 window.FahmidUtils = { debounce, throttle, announceToScreenReader };
 
-/* ================================================================
-   KEYBOARD NAVIGATION
-   ================================================================ */
+/* KEYBOARD NAVIGATION */
 
 function initKeyboardNavigation() {
   if (!document.body) return;
@@ -475,39 +418,28 @@ function initKeyboardNavigation() {
   document.body.addEventListener('mousedown', () => document.body.classList.remove('keyboard-nav'));
 }
 
-/* ================================================================
-   ONLINE / OFFLINE
-   ================================================================ */
+/* ONLINE / OFFLINE */
 
 window.addEventListener('online', () => window.showToast?.('Connection restored', 'success', 3000));
 window.addEventListener('offline', () => window.showToast?.('No internet connection — some features may be unavailable.', 'warning', 8000));
 
-/* ================================================================
-   ERROR HANDLING
-   ================================================================ */
-
-window.addEventListener('error', e => console.error('Global error:', e.error));
-window.addEventListener('unhandledrejection', e => console.error('Unhandled rejection:', e.reason));
-
-/* ================================================================
-   MAIN ENTRY POINT
-   ================================================================ */
+/* MAIN ENTRY POINT */
 
 document.addEventListener('DOMContentLoaded', () => {
 
   setCopyrightYear();
   initKeyboardNavigation();
 
-  try { initNavigation(); }            catch (e) { console.error('Nav:', e); }
-  try { initScrollReveal(); }          catch (e) { console.error('Reveal:', e); }
-  try { initTypingHeadline(); }        catch (e) { console.error('Typing:', e); }
-  try { initCountUp(); }               catch (e) { console.error('CountUp:', e); }
-  try { initTestimonialMarquee(); }    catch (e) { console.error('Marquee:', e); }
-  try { initFAQ(); }                   catch (e) { console.error('FAQ:', e); }
-  try { initGalleryLightbox(); }       catch (e) { console.error('Lightbox:', e); }
-  try { initContactForm(); }           catch (e) { console.error('Contact form:', e); }
-  try { initAdmissionsForm(); }        catch (e) { console.error('Admissions form:', e); }
-  try { initSmoothScroll(); }          catch (e) { console.error('Smooth scroll:', e); }
+  try { initNavigation(); }            catch (e) {}
+  try { initScrollReveal(); }          catch (e) {}
+  try { initTypingHeadline(); }        catch (e) {}
+  try { initCountUp(); }               catch (e) {}
+  try { initTestimonialMarquee(); }    catch (e) {}
+  try { initFAQ(); }                   catch (e) {}
+  try { initGalleryLightbox(); }       catch (e) {}
+  try { initContactForm(); }           catch (e) {}
+  try { initAdmissionsForm(); }        catch (e) {}
+  try { initSmoothScroll(); }          catch (e) {}
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
