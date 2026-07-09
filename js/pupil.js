@@ -1,8 +1,7 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Pupil Portal JavaScript - FIXED SESSION SELECTOR
- * 
- * @version 4.4.0 - SESSION SELECTOR FIXED
+ * Pupil Portal JavaScript
+ * @version 4.4.0
  * @date 2026-01-10
  */
 
@@ -12,16 +11,13 @@ let currentPupilId = null;
 let currentPupilData = null;
 let currentClassInfo = null;
 
-// Listener references to prevent duplicates
 let pupilListener = null;
 let classListener = null;
 
-// Enforce pupil access and load profile
 checkRole('pupil')
     .then(async user => await loadPupilProfile(user))
     .catch(() => window.location.href = 'login');
 
-// Clean up listeners when page unloads
 window.addEventListener('beforeunload', () => {
     if (pupilListener) {
         pupilListener();
@@ -33,44 +29,25 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// ============================================
-// HELPER: Safely extract class ID from pupil data
-// ============================================
 function getClassIdFromPupilData(classData) {
   if (!classData) return null;
-  
-  // New format: {id: "xyz", name: "Primary 3"}
   if (typeof classData === 'object' && classData.id) {
     return classData.id;
   }
-  
-  // Old format: just "Primary 3" as string
-  // We can't get an ID from this, so return null
   return null;
 }
 
-// ============================================
-// HELPER: Safely extract class name from pupil data
-// ============================================
 function getClassNameFromPupilData(classData) {
   if (!classData) return 'Unknown';
-  
-  // New format: {id: "xyz", name: "Primary 3"}
   if (typeof classData === 'object' && classData.name) {
     return classData.name;
   }
-  
-  // Old format: just "Primary 3" as string
   if (typeof classData === 'string') {
     return classData;
   }
-  
   return 'Unknown';
 }
 
-// ============================================
-// HELPER: Religion-based subject filtering
-// ============================================
 function filterSubjectsByReligion(subjects, religion) {
   if (!Array.isArray(subjects) || subjects.length === 0) return subjects || [];
 
@@ -109,9 +86,6 @@ function filterSubjectsByReligion(subjects, religion) {
 
 window.filterSubjectsByReligion = filterSubjectsByReligion;
 
-// ============================================
-// HELPER: Get first name only (for greeting)
-// ============================================
 function getFirstNameOnly(fullName) {
   if (!fullName || typeof fullName !== 'string') return '-';
   return fullName.trim().split(/\s+/)[0];
@@ -119,36 +93,26 @@ function getFirstNameOnly(fullName) {
 
 window.getFirstNameOnly = getFirstNameOnly;
 
-// ============================================
-// PUPIL PROFILE
-// ============================================
-
 async function loadPupilProfile(user) {
-    // FIXED: Add loading flag to prevent re-entry
     if (window.isLoadingProfile) {
-        console.log('Profile already loading, skipping...');
         return;
     }
-    
+
     window.isLoadingProfile = true;
-    
+
     try {
-        // FIXED: Detach existing listeners BEFORE creating new ones
         if (pupilListener) {
             pupilListener();
             pupilListener = null;
-            console.log('✓ Detached old pupil listener');
         }
         if (classListener) {
             classListener();
             classListener = null;
-            console.log('✓ Detached old class listener');
         }
 
         const pupilDoc = await db.collection('pupils').doc(user.uid).get();
 
         if (!pupilDoc.exists) {
-            console.error('No pupil profile found for UID:', user.uid);
             window.showToast?.('No pupil profile found. Contact admin.', 'danger');
             setTimeout(() => window.location.href = 'login', 3000);
             window.isLoadingProfile = false;
@@ -158,13 +122,10 @@ async function loadPupilProfile(user) {
         const data = pupilDoc.data();
         currentPupilId = pupilDoc.id;
         currentPupilData = data;
-// ✅ ALUMNI CHECK - Stop here if user is alumni
+
         const isAlumni = data.status === 'alumni' || data.isActive === false;
-        
+
         if (isAlumni) {
-            console.log('✓ Alumni detected, rendering alumni profile');
-            
-            // Render alumni-specific profile (no class/teacher/subjects)
             renderProfile({
                 name: data.name || '-',
                 dob: data.dob || '-',
@@ -179,12 +140,11 @@ async function loadPupilProfile(user) {
                 isAlumni: true,
                 graduationSession: data.graduationSession || '-'
             });
-            
-            // Update dashboard header for alumni
+
             const welcomeEl = document.getElementById('pupil-welcome');
             const classEl = document.getElementById('student-class');
             const sessionEl = document.getElementById('student-session');
-            
+
             if (welcomeEl) {
                 welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(data.name)}</strong>!`;
             }
@@ -194,22 +154,19 @@ async function loadPupilProfile(user) {
             if (sessionEl) {
                 sessionEl.textContent = data.graduationSession || 'Graduated';
             }
-            
-            // Load alumni-appropriate data
-            await loadResults(); // Historical results only
-            await loadFeeBalance(); // Payment history only
-            
-            console.log('✓ Alumni profile loaded successfully');
+
+            await loadResults();
+            await loadFeeBalance();
+
             window.isLoadingProfile = false;
-            return; // STOP HERE - no class listeners for alumni
+            return;
         }
         const classId = getClassIdFromPupilData(data.class);
         const className = getClassNameFromPupilData(data.class);
 
-        currentClassInfo = { 
-          name: className, 
-          teacher: data.assignedTeacher?.name || '-', 
-          // ✅ CHANGED: filter by this pupil's religion as a safety net
+        currentClassInfo = {
+          name: className,
+          teacher: data.assignedTeacher?.name || '-',
           subjects: window.filterSubjectsByReligion(
             Array.isArray(data.subjects) ? data.subjects : [],
             data.religion
@@ -222,12 +179,11 @@ async function loadPupilProfile(user) {
                 if (classDoc.exists) {
                     const classData = classDoc.data();
                     currentClassInfo.name = classData.name || className;
-                    // ✅ CHANGED: filter the class's raw subject list by this pupil's religion
                     currentClassInfo.subjects = window.filterSubjectsByReligion(
                         Array.isArray(classData.subjects) ? classData.subjects : [],
                         data.religion
                     );
-                    
+
                     if (classData.teacherName) {
                         currentClassInfo.teacher = classData.teacherName;
                     } else if (classData.teacherId) {
@@ -235,7 +191,6 @@ async function loadPupilProfile(user) {
                             const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
                             currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
                         } catch (teacherError) {
-                            console.error('Error fetching teacher:', teacherError);
                             currentClassInfo.teacher = '-';
                         }
                     } else {
@@ -243,7 +198,6 @@ async function loadPupilProfile(user) {
                     }
                 }
             } catch (error) {
-                console.error('Error fetching class details:', error);
             }
         } else {
             if (typeof data.class === 'string') {
@@ -252,17 +206,16 @@ async function loadPupilProfile(user) {
                         .where('name', '==', data.class)
                         .limit(1)
                         .get();
-                    
+
                     if (!classesSnapshot.empty) {
                         const matchedClassDoc = classesSnapshot.docs[0];
                         const matchedClassData = matchedClassDoc.data();
-                        
-                        // ✅ CHANGED: filter by this pupil's religion
+
                         currentClassInfo.subjects = window.filterSubjectsByReligion(
                             Array.isArray(matchedClassData.subjects) ? matchedClassData.subjects : [],
                             data.religion
                         );
-                        
+
                         if (matchedClassData.teacherName) {
                             currentClassInfo.teacher = matchedClassData.teacherName;
                         } else if (matchedClassData.teacherId) {
@@ -270,15 +223,11 @@ async function loadPupilProfile(user) {
                                 const teacherDoc = await db.collection('teachers').doc(matchedClassData.teacherId).get();
                                 currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
                             } catch (teacherError) {
-                                console.error('Error fetching teacher:', teacherError);
                                 currentClassInfo.teacher = '-';
                             }
                         }
-                        
-                        console.log('Note: Pupil has old class format. Admin should edit and save to upgrade.');
                     }
                 } catch (error) {
-                    console.error('Error finding class by name:', error);
                 }
             }
         }
@@ -300,7 +249,7 @@ async function loadPupilProfile(user) {
         const welcomeEl = document.getElementById('pupil-welcome');
         const classEl = document.getElementById('student-class');
         const sessionEl = document.getElementById('student-session');
-        
+
         if (welcomeEl) {
             welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(data.name)}</strong>!`;
         }
@@ -314,7 +263,6 @@ async function loadPupilProfile(user) {
         await loadResults();
         await loadFeeBalance();
 
-        // Load targeted announcements for this pupil
         if (typeof window.loadAnnouncementsForUser === 'function' && currentPupilId) {
           const annClassId = getClassIdFromPupilData(data.class);
           window.loadAnnouncementsForUser(
@@ -334,42 +282,39 @@ async function loadPupilProfile(user) {
               if (pupilUpdateTimeout) {
                 clearTimeout(pupilUpdateTimeout);
               }
-              
+
               pupilUpdateTimeout = setTimeout(async () => {
                 try {
                   if (!snap.exists) return;
-                  
+
                   const updatedData = snap.data();
-                  
+
                   const currentDataCopy = { ...currentPupilData };
                   const updatedDataCopy = { ...updatedData };
-                  
+
                   delete currentDataCopy.updatedAt;
                   delete currentDataCopy.createdAt;
                   delete updatedDataCopy.updatedAt;
                   delete updatedDataCopy.createdAt;
-                  
+
                   const hasChanges = JSON.stringify(currentDataCopy) !== JSON.stringify(updatedDataCopy);
-                  
+
                   if (!hasChanges) {
-                    console.log('No meaningful changes detected (only timestamp updated), skipping update');
                     return;
                   }
-                  
-                  console.log('Pupil data changed, updating...');
+
                   currentPupilData = updatedData;
-                  
+
                   const updatedClassId = getClassIdFromPupilData(updatedData.class);
                   const updatedClassName = getClassNameFromPupilData(updatedData.class);
-                  
+
                   currentClassInfo.name = updatedClassName;
                   currentClassInfo.teacher = updatedData.assignedTeacher?.name || '-';
-                  // ✅ CHANGED: filter by this pupil's (possibly updated) religion
                   currentClassInfo.subjects = window.filterSubjectsByReligion(
                     Array.isArray(updatedData.subjects) ? updatedData.subjects : [],
                     updatedData.religion
                   );
-                  
+
                   renderProfile({
                     name: updatedData.name || '-',
                     dob: updatedData.dob || '-',
@@ -387,23 +332,20 @@ async function loadPupilProfile(user) {
                   const welcomeEl = document.getElementById('pupil-welcome');
                   const classEl = document.getElementById('student-class');
                   const sessionEl = document.getElementById('student-session');
-                  
+
                   if (welcomeEl) welcomeEl.innerHTML = `Hello, <strong>${getFirstNameOnly(updatedData.name)}</strong>!`;
                   if (classEl) classEl.textContent = currentClassInfo.name;
                   if (sessionEl) sessionEl.textContent = settings.session;
 
                   await loadResults();
-                  console.log('✓ Profile updated');
-                  
+
                 } catch (error) {
-                  console.error('Error in pupil listener:', error);
                 } finally {
                   pupilUpdateTimeout = null;
                 }
               }, 500);
             },
             error => {
-              console.error('Pupil listener error:', error);
               window.showToast?.('Connection lost. Please refresh.', 'warning');
             }
           );
@@ -415,35 +357,29 @@ async function loadPupilProfile(user) {
                 if (classUpdateTimeout) {
                   clearTimeout(classUpdateTimeout);
                 }
-                
+
                 classUpdateTimeout = setTimeout(async () => {
                   try {
                     if (!snap.exists) return;
-                    
+
                     const classData = snap.data();
 
-                    // ✅ CHANGED: compute the religion-filtered version first,
-                    // then compare against it, so a class subject change that only
-                    // affects a subject this pupil doesn't take won't cause a false "no change"
                     const filteredIncoming = window.filterSubjectsByReligion(
                       Array.isArray(classData.subjects) ? classData.subjects : [],
                       currentPupilData?.religion
                     );
-                    
-                    const hasChanges = 
+
+                    const hasChanges =
                       currentClassInfo.name !== classData.name ||
                       JSON.stringify(currentClassInfo.subjects) !== JSON.stringify(filteredIncoming);
-                    
+
                     if (!hasChanges) {
-                      console.log('No class changes, skipping');
                       return;
                     }
-                    
-                    console.log('Class data changed, updating...');
-                    
+
                     currentClassInfo.name = classData.name || currentClassInfo.name;
                     currentClassInfo.subjects = filteredIncoming;
-                    
+
                     if (classData.teacherName) {
                       currentClassInfo.teacher = classData.teacherName;
                     } else if (classData.teacherId) {
@@ -451,10 +387,9 @@ async function loadPupilProfile(user) {
                         const teacherDoc = await db.collection('teachers').doc(classData.teacherId).get();
                         currentClassInfo.teacher = teacherDoc.exists ? teacherDoc.data().name : '-';
                       } catch (err) {
-                        console.error('Error fetching teacher:', err);
                       }
                     }
-                    
+
                     renderProfile({
                       name: currentPupilData.name || '-',
                       dob: currentPupilData.dob || '-',
@@ -469,34 +404,26 @@ async function loadPupilProfile(user) {
                     });
 
                     renderSubjects(currentClassInfo.subjects, currentClassInfo.teacher);
-                    console.log('✓ Class info updated');
-                    
+
                   } catch (error) {
-                    console.error('Error in class listener:', error);
                   } finally {
                     classUpdateTimeout = null;
                   }
                 }, 500);
               },
               error => {
-                console.error('Class listener error:', error);
               }
             );
         }
-        
+
     } catch (error) {
-        console.error('Error loading pupil profile:', error);
         window.handleError?.(error, 'Failed to load pupil profile');
     } finally {
         window.isLoadingProfile = false;
     }
 }
 
-// ============================================
-// PROFILE RENDER
-// ============================================
 function renderProfile(profile) {
-    // Update the existing profile table fields
     const nameDisplay = document.getElementById('pupil-name-display');
     const dobDisplay = document.getElementById('pupil-dob-display');
     const admissionDisplay = document.getElementById('pupil-admission-display');
@@ -513,10 +440,8 @@ function renderProfile(profile) {
     if (genderDisplay) genderDisplay.textContent = profile.gender;
     if (contactDisplay) contactDisplay.textContent = profile.contact;
     if (addressDisplay) addressDisplay.textContent = profile.address;
-    
-    // ✅ ALUMNI FIX: Conditional rendering for class/teacher/subjects
+
     if (profile.isAlumni) {
-        // Alumni: Show final class with graduation badge
         if (classDisplay) {
             classDisplay.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -525,28 +450,25 @@ function renderProfile(profile) {
                 </div>
             `;
         }
-        
-        // Alumni: Hide teacher info
+
         if (teacherDisplay) {
             teacherDisplay.textContent = '-';
             teacherDisplay.style.color = '#94a3b8';
         }
-        
-        // Alumni: Hide subjects
+
         if (subjectsDisplay) {
             subjectsDisplay.textContent = '-';
             subjectsDisplay.style.color = '#94a3b8';
         }
     } else {
-        // Active pupil: Normal display
         if (classDisplay) classDisplay.textContent = profile.class;
         if (teacherDisplay) {
             teacherDisplay.textContent = profile.teacher;
             teacherDisplay.style.color = '';
         }
         if (subjectsDisplay) {
-            const subjectList = profile.subjects && profile.subjects.length > 0 
-                ? profile.subjects.join(', ') 
+            const subjectList = profile.subjects && profile.subjects.length > 0
+                ? profile.subjects.join(', ')
                 : '-';
             subjectsDisplay.textContent = subjectList;
             subjectsDisplay.style.color = '';
@@ -554,29 +476,15 @@ function renderProfile(profile) {
     }
 }
 
-// ============================================
-// SUBJECTS RENDER (Kept for compatibility)
-// ============================================
 function renderSubjects(subjects, teacher) {
-    // This function is kept for backward compatibility
-    // but the subjects are now displayed in the main profile table
     const subjectsDisplay = document.getElementById('pupil-subjects-display');
     if (subjectsDisplay) {
-        const subjectList = subjects && subjects.length > 0 
-            ? subjects.join(', ') 
+        const subjectList = subjects && subjects.length > 0
+            ? subjects.join(', ')
             : '-';
         subjectsDisplay.textContent = subjectList;
     }
 }
-
-// ============================================
-// LOAD RESULTS WITH SESSION SUPPORT - FIXED
-// ============================================
-
-/**
- * FIXED: Load Results with Working Session Selector
- * Replace the loadResults function in pupil.js
- */
 
 async function loadResults() {
     if (!currentPupilId) return;
@@ -584,7 +492,6 @@ async function loadResults() {
     const container = document.getElementById('results-container');
     if (!container) return;
 
-    // Show loading skeleton
     container.innerHTML = `
         <div class="skeleton-container">
             <div class="skeleton" style="height:40px;width:60%;margin:var(--space-xl) auto;"></div>
@@ -594,84 +501,56 @@ async function loadResults() {
     `;
 
     try {
-        // Populate session selector first
         await populateSessionSelector();
-        
-        // CRITICAL FIX: Add event listener AFTER selector is in DOM and wait for next frame
+
         await new Promise(resolve => requestAnimationFrame(resolve));
-        
+
         const sessionSelect = document.getElementById('pupil-session-select');
         if (sessionSelect) {
-            console.log('✓ Session selector found in DOM');
-            
-            // Remove any existing listeners to prevent duplicates
             const newSessionSelect = sessionSelect.cloneNode(true);
             sessionSelect.parentNode.replaceChild(newSessionSelect, sessionSelect);
-            
-            // Add new listener with proper logging
+
             newSessionSelect.addEventListener('change', async function() {
                 const selectedValue = this.value;
-                console.log('Session changed to:', selectedValue);
-                
-                // Show loading state
+
                 container.innerHTML = `
                     <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
                         <div class="spinner" style="margin: 0 auto var(--space-md); width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                         <p>Loading results for ${selectedValue === 'current' ? 'current session' : selectedValue}...</p>
                     </div>
                 `;
-                
-                // Load results with small delay for visual feedback
+
                 await new Promise(resolve => setTimeout(resolve, 300));
                 await loadSessionResults();
             });
-            
-            console.log('✓ Session selector event listener attached');
-        } else {
-            console.error('❌ Session selector not found after populateSessionSelector()');
         }
-        
-        // Load results for selected session
+
         await loadSessionResults();
 
     } catch (error) {
-        console.error('Error loading results:', error);
         container.innerHTML = `<p style="text-align:center;color:var(--color-danger); padding:var(--space-2xl);">
             ⚠️ Unable to load results. Try again later.
         </p>`;
     }
 }
 
-/**
- * FIXED: Safely extract class ID with fallback for old format
- */
 function getClassIdSafely(pupilData) {
   if (!pupilData || !pupilData.class) {
-    console.error('❌ No class data found for pupil');
     return null;
   }
-  
-  // New format: {id: "xyz", name: "Primary 3"}
+
   if (typeof pupilData.class === 'object' && pupilData.class.id) {
     return pupilData.class.id;
   }
-  
-  // Old format: just "Primary 3" as string
-  // We need to look it up in the classes collection
+
   if (typeof pupilData.class === 'string') {
-    console.warn('⚠️ Old class format detected, returning null (admin should update pupil record)');
     return null;
   }
-  
+
   return null;
 }
 
-// Make globally available
 window.getClassIdSafely = getClassIdSafely;
-
-/**
- * ✅ FIXED: Load Fee Balance with Correct Fee Structure Lookup
- */
 
 async function loadFeeBalance() {
     if (!currentPupilId) return;
@@ -679,7 +558,6 @@ async function loadFeeBalance() {
     const feeSection = document.getElementById('fee-balance-section');
     if (!feeSection) return;
 
-    // Show loading state
     feeSection.style.display = 'block';
     feeSection.innerHTML = `
         <div style="text-align:center; padding:var(--space-2xl);">
@@ -689,18 +567,14 @@ async function loadFeeBalance() {
     `;
 
     try {
-        // ✅ ALUMNI CHECK FIRST
         const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
         if (!pupilDoc.exists) {
             throw new Error('Pupil profile not found');
         }
-        
+
         const pupilData = pupilDoc.data();
         const isAlumni = pupilData.status === 'alumni' || pupilData.isActive === false;
-        
-        // ═══════════════════════════════════════════════════════════
-        // ALUMNI: Show payment history only (NO current fees)
-        // ═══════════════════════════════════════════════════════════
+
         if (isAlumni) {
             feeSection.innerHTML = `
                 <div class="section-header">
@@ -752,41 +626,34 @@ async function loadFeeBalance() {
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
             await loadAllPaymentHistory(currentPupilId);
-            return; // STOP HERE for alumni
+            return;
         }
-        
-        // ═══════════════════════════════════════════════════════════
-        // ACTIVE PUPIL: Calculate current fees (existing logic)
-        // ═══════════════════════════════════════════════════════════
-        
+
         const settings = await window.getCurrentSettings();
         const session = settings.session;
         const currentTerm = settings.term;
-        
-        // Extract class info
+
         let classId = null;
         let className = 'Unknown';
-        
+
         if (pupilData.class) {
             if (typeof pupilData.class === 'object') {
                 classId = pupilData.class.id || null;
                 className = pupilData.class.name || 'Unknown';
             } else if (typeof pupilData.class === 'string') {
                 className = pupilData.class;
-                
-                // Try lookup for old format
+
                 const classesSnap = await db.collection('classes')
                     .where('name', '==', className)
                     .limit(1)
                     .get();
-                
+
                 if (!classesSnap.empty) {
                     classId = classesSnap.docs[0].id;
                 }
             }
         }
-        
-        // Validate classId
+
         if (!classId || classId === 'undefined' || classId === 'null') {
             feeSection.innerHTML = `
                 <div class="section-header">
@@ -809,15 +676,13 @@ async function loadFeeBalance() {
             return;
         }
 
-        // ✅ Use canonical calculation
         const result = await window.calculateCurrentOutstanding(
             currentPupilId,
             session,
             currentTerm
         );
-        
+
         if (result.reason) {
-            // Handle special cases (no fee structure, invalid class, etc.)
             feeSection.innerHTML = `
                 <div class="section-header">
                     <div class="section-icon" style="background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);">
@@ -832,8 +697,7 @@ async function loadFeeBalance() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
-        
-        // Use result.* for all values
+
         const baseFee = result.baseFee;
         const amountDue = result.amountDue;
         const arrears = result.arrears;
@@ -841,7 +705,6 @@ async function loadFeeBalance() {
         const balance = result.balance;
         const status = result.status;
 
-        // Status colors
         let statusColor = '#f44336';
         let statusText = 'Outstanding Balance';
         let statusIcon = 'alert-circle';
@@ -856,7 +719,6 @@ async function loadFeeBalance() {
             statusIcon = 'clock';
         }
 
-        // Special case badges
         let specialCaseBadge = '';
         if (amountDue === 0 && baseFee > 0) {
             specialCaseBadge = `
@@ -880,11 +742,8 @@ async function loadFeeBalance() {
             `;
         }
 
-        // Arrears warning
-        // Arrears are cleared when the outstanding balance is at most the current term fee.
-// If balance <= amountDue, arrears have been fully absorbed by payments.
-const arrearsCleared = balance <= amountDue;
-const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
+        const arrearsCleared = balance <= amountDue;
+        const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
             <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: var(--space-xl); border-radius: var(--radius-lg); margin-bottom: var(--space-xl); box-shadow: 0 4px 20px rgba(220, 53, 69, 0.3);">
                 <div style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md);">
                     <i data-lucide="alert-circle" style="width: 32px; height: 32px;"></i>
@@ -905,7 +764,6 @@ const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
         const totalDue = amountDue + arrears;
         const percentPaid = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
-        // Render complete fee section
         feeSection.innerHTML = `
             <div class="section-header">
                 <div class="section-icon" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%);">
@@ -966,7 +824,7 @@ const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
                     ${balance > 0 ? 'Payment Required' : 'Term Fees Paid'}
                 </h4>
                 <p style="margin: 0; font-size: var(--text-sm); color: ${balance > 0 ? '#7f1d1d' : '#14532d'};">
-                    ${balance > 0 
+                    ${balance > 0
                         ? `Outstanding balance of ₦${balance.toLocaleString()} for ${currentTerm}. Please visit the school office.`
                         : `All fees for ${currentTerm} have been paid in full. Thank you!`}
                 </p>
@@ -977,7 +835,6 @@ const arrearsHTML = (arrears > 0 && !arrearsCleared) ? `
         await loadAllPaymentHistory(currentPupilId);
 
     } catch (error) {
-        console.error('❌ Error loading fee balance:', error);
         feeSection.innerHTML = `
             <div style="text-align:center; padding:var(--space-2xl); color:var(--color-danger);">
                 <i data-lucide="alert-triangle" style="width: 48px; height: 48px;"></i>
@@ -1018,7 +875,6 @@ async function loadAllPaymentHistory(pupilId) {
 
         container.innerHTML = '';
 
-        // ── Group transactions by session ────────────────────────────
         const transactionsBySession = {};
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -1027,12 +883,10 @@ async function loadAllPaymentHistory(pupilId) {
             transactionsBySession[session].push({ id: doc.id, ...data });
         });
 
-        // Sort sessions newest first
         const sortedSessions = Object.keys(transactionsBySession).sort((a, b) => {
             return (parseInt(b.split('/')[0]) || 0) - (parseInt(a.split('/')[0]) || 0);
         });
 
-        // ── Build a transaction card element ─────────────────────────
         function buildTransactionCard(txn) {
             const paymentDate = txn.paymentDate
                 ? txn.paymentDate.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -1109,13 +963,11 @@ async function loadAllPaymentHistory(pupilId) {
             return itemDiv;
         }
 
-        // ── Render each session group ────────────────────────────────
         sortedSessions.forEach((session, sessionIndex) => {
-            const txns = transactionsBySession[session]; // already sorted newest first
+            const txns = transactionsBySession[session];
             const isMostRecent = sessionIndex === 0;
-            const hiddenCount = txns.length - 1; // all except the first (most recent)
+            const hiddenCount = txns.length - 1;
 
-            // Session header
             const header = document.createElement('div');
             header.style.cssText = `
                 font-weight: 700; font-size: var(--text-lg);
@@ -1128,12 +980,9 @@ async function loadAllPaymentHistory(pupilId) {
             `;
             container.appendChild(header);
 
-            // Most recent card — always visible
             container.appendChild(buildTransactionCard(txns[0]));
 
-            // If there are older payments in this session, collapse them
             if (hiddenCount > 0) {
-                // Collapsible wrapper for older payments
                 const collapseId = `history-collapse-${sessionIndex}`;
 
                 const olderWrapper = document.createElement('div');
@@ -1154,7 +1003,6 @@ async function loadAllPaymentHistory(pupilId) {
 
                 container.appendChild(olderWrapper);
 
-                // Toggle button
                 const toggleBtn = document.createElement('button');
                 toggleBtn.style.cssText = `
                     display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -1204,10 +1052,8 @@ async function loadAllPaymentHistory(pupilId) {
         });
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
-        console.log(`✓ Loaded ${snapshot.size} total payment records for pupil`);
 
     } catch (error) {
-        console.error('Error loading payment history:', error);
         container.innerHTML = `
             <div style="text-align:center; padding:var(--space-lg); color:var(--color-danger); background: #fef2f2; border-radius: var(--radius-md);">
                 <p style="margin: 0;">Error loading payment history</p>
@@ -1219,67 +1065,53 @@ async function loadAllPaymentHistory(pupilId) {
 window.loadFeeBalance = loadFeeBalance;
 window.loadAllPaymentHistory = loadAllPaymentHistory;
 
-/**
- * Open receipt in new window
- */
 function viewReceipt(receiptNo) {
     const receiptWindow = window.open(
         `receipt.html?receipt=${receiptNo}`,
         '_blank',
         'width=800,height=600'
     );
-    
+
     if (!receiptWindow) {
         window.showToast?.('Please allow popups to view receipts', 'warning');
     }
 }
 
-// Make functions globally available
 window.viewReceipt = viewReceipt;
 
 async function populateSessionSelector() {
     const selector = document.getElementById('pupil-session-select');
     if (!selector) {
-        console.warn('Session selector not found');
         return;
     }
-    
+
     try {
-        // ✅ ALUMNI CHECK
         const pupilDoc = await db.collection('pupils').doc(currentPupilId).get();
-        const isAlumni = pupilDoc.exists && 
+        const isAlumni = pupilDoc.exists &&
             (pupilDoc.data().status === 'alumni' || pupilDoc.data().isActive === false);
-        
-        // Get current session settings
+
         const settings = await window.getCurrentSettings();
         const currentSession = settings.session || 'Current Session';
-        
-        // Clear and rebuild selector
+
         selector.innerHTML = '';
-        
-        // ✅ ONLY add "current session" for ACTIVE pupils
+
         if (!isAlumni) {
             const currentOpt = document.createElement('option');
             currentOpt.value = 'current';
             currentOpt.textContent = `Current Session (${currentSession})`;
             selector.appendChild(currentOpt);
         }
-        
-        // ✅ Query only APPROVED results to find sessions with viewable data
+
         const resultsSnap = await db.collection('results')
             .where('pupilId', '==', currentPupilId)
             .get();
-        
-        // Extract unique sessions that have approved results
+
         const sessions = new Set();
         let approvedCount = 0;
-        
+
         resultsSnap.forEach(doc => {
             const data = doc.data();
-            
-            // ✅ Only include sessions with approved results
-            // For alumni: Include all historical sessions
-            // For active pupils: Exclude current session (already in dropdown)
+
             if (data.session && data.status === 'approved') {
                 if (isAlumni || data.session !== currentSession) {
                     sessions.add(data.session);
@@ -1287,35 +1119,25 @@ async function populateSessionSelector() {
                 }
             }
         });
-        
-        console.log(`Found ${approvedCount} approved results across ${sessions.size} historical sessions`);
-        
-        // Add historical sessions (sorted newest to oldest)
+
         const sortedSessions = Array.from(sessions).sort((a, b) => {
-            // Extract years from session format "2023/2024"
             const yearA = parseInt(a.split('/')[0]) || 0;
             const yearB = parseInt(b.split('/')[0]) || 0;
-            return yearB - yearA; // Descending order (newest first)
+            return yearB - yearA;
         });
-        
+
         sortedSessions.forEach(session => {
             const opt = document.createElement('option');
             opt.value = session;
             opt.textContent = `${session} Session`;
             selector.appendChild(opt);
         });
-        
-        const typeLabel = isAlumni ? 'alumni (historical only)' : 'active pupil';
-        console.log(`✓ Session selector populated for ${typeLabel}: ${!isAlumni ? '1 current + ' : ''}${sortedSessions.length} historical`);
-        
-        // ✅ Show helpful message if no sessions available
+
         if (sortedSessions.length === 0 && isAlumni) {
             selector.innerHTML = '<option value="">No results available</option>';
-            console.log('ℹ️ No approved results found for this alumni');
         }
-        
+
     } catch (error) {
-        console.error('Error populating session selector:', error);
         selector.innerHTML = '<option value="current">Current Session (Error loading)</option>';
     }
 }
@@ -1330,7 +1152,6 @@ async function loadSessionResults() {
     const sessionInfo = document.getElementById('session-info');
     const selectedSessionNameEl = document.getElementById('selected-session-name');
 
-    // Show loading state
     container.innerHTML = `
         <div style="text-align:center; padding:var(--space-2xl); color:var(--color-gray-600);">
             <div class="spinner" style="margin: 0 auto var(--space-md); width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #00B2FF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
@@ -1343,13 +1164,11 @@ async function loadSessionResults() {
         let resultsSnap;
         let displaySessionName;
 
-        // ── Determine session name & fetch results ───────────────────────────────
         if (selectedSession === 'current') {
             const settings = await window.getCurrentSettings();
             const currentSessionName = settings.session;
             displaySessionName = `Current Session (${currentSessionName})`;
 
-            // ✅ FIX: Try composite query first, but simplify fallback
             try {
                 resultsSnap = await db.collection('results')
                     .where('pupilId', '==', currentPupilId)
@@ -1357,30 +1176,20 @@ async function loadSessionResults() {
                     .where('status', '==', 'approved')
                     .get();
 
-                console.log(`✓ Loaded ${resultsSnap.size} approved results via indexed query`);
-
             } catch (error) {
-                // Fallback: Query by pupilId + session only, then filter status manually
-                console.warn('Composite index missing, using fallback query');
-
                 const allResultsSnap = await db.collection('results')
                     .where('pupilId', '==', currentPupilId)
                     .where('session', '==', currentSessionName)
                     .get();
 
-                // ✅ CRITICAL FIX: Only include results with explicit approved status
                 const approvedDocs = [];
                 allResultsSnap.forEach(doc => {
                     const data = doc.data();
-                    // STRICT: Only approved results show
                     if (data.status === 'approved') {
                         approvedDocs.push(doc);
                     }
                 });
 
-                console.log(`✓ Fallback: Found ${approvedDocs.length} approved results out of ${allResultsSnap.size} total`);
-
-                // Create pseudo-snapshot
                 resultsSnap = {
                     empty: approvedDocs.length === 0,
                     size: approvedDocs.length,
@@ -1388,8 +1197,7 @@ async function loadSessionResults() {
                     docs: approvedDocs
                 };
             }
-        } 
-        // Historical session
+        }
         else {
             displaySessionName = `${selectedSession} Session`;
 
@@ -1401,7 +1209,6 @@ async function loadSessionResults() {
                     .get();
 
             } catch (error) {
-                // Fallback for historical sessions
                 const allResultsSnap = await db.collection('results')
                     .where('pupilId', '==', currentPupilId)
                     .where('session', '==', selectedSession)
@@ -1423,7 +1230,6 @@ async function loadSessionResults() {
             }
         }
 
-        // ── Update UI header ─────────────────────────────────────────────────────
         if (selectedSessionNameEl) {
             selectedSessionNameEl.textContent = displaySessionName;
         }
@@ -1432,7 +1238,6 @@ async function loadSessionResults() {
             sessionInfo.style.display = 'block';
         }
 
-        // ── Process results ──────────────────────────────────────────────────────
         const pupilResults = [];
 
         resultsSnap.forEach(doc => {
@@ -1446,7 +1251,6 @@ async function loadSessionResults() {
             });
         });
 
-        // Clear loading state
         container.innerHTML = '';
 
         if (pupilResults.length === 0) {
@@ -1457,8 +1261,8 @@ async function loadSessionResults() {
                         No approved results found for this session
                     </p>
                     <p style="margin:0; font-size:12.5px; color:#94a3b8;">
-                        ${selectedSession === 'current' 
-                            ? 'Your teachers will upload and admin will approve scores soon.' 
+                        ${selectedSession === 'current'
+                            ? 'Your teachers will upload and admin will approve scores soon.'
                             : 'No approved results available for this historical session.'}
                     </p>
                 </div>`;
@@ -1466,14 +1270,12 @@ async function loadSessionResults() {
             return;
         }
 
-        // ── Group by term ────────────────────────────────────────────────────────
         const terms = {};
         pupilResults.forEach(r => {
             if (!terms[r.term]) terms[r.term] = [];
             terms[r.term].push(r);
         });
 
-        // ── Render each term ─────────────────────────────────────────────────────
         ['First Term', 'Second Term', 'Third Term'].forEach(termName => {
             if (!terms[termName]) return;
 
@@ -1489,7 +1291,6 @@ async function loadSessionResults() {
 
             const table = document.createElement('table');
 table.className = 'results-table';
-// Add caption for accessibility
 const caption = document.createElement('caption');
 caption.className = 'visually-hidden';
 caption.textContent = `${termName} results`;
@@ -1546,10 +1347,7 @@ table.innerHTML += `
             container.appendChild(termSection);
         });
 
-        console.log(`✓ Rendered ${pupilResults.length} approved results for ${displaySessionName}`);
-
     } catch (error) {
-        console.error('Error loading session results:', error);
         container.innerHTML = `
             <p style="text-align:center; color:var(--color-danger); padding:var(--space-2xl);">
                 ⚠️ Unable to load results. Please try again.
@@ -1557,12 +1355,8 @@ table.innerHTML += `
     }
 }
 
-// Make function globally available
 window.loadSessionResults = loadSessionResults;
 
-// ============================================
-// GRADE CALCULATION
-// ============================================
 function getGrade(score) {
     if (score >= 75) return 'A1';
     if (score >= 70) return 'B2';
@@ -1575,7 +1369,6 @@ function getGrade(score) {
     return 'F9';
 }
 
-// Add CSS for spinner animation if not already in styles.css
 const style = document.createElement('style');
 style.textContent = `
 @keyframes spin {
@@ -1585,9 +1378,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-/**
- * Scroll to fee balance section smoothly
- */
 function scrollToFees() {
   const feeSection = document.getElementById('fee-balance-section');
   if (feeSection) {
@@ -1597,7 +1387,4 @@ function scrollToFees() {
   }
 }
 
-// Make function globally available
 window.scrollToFees = scrollToFees;
-
-console.log('✓ Pupil portal initialized (v4.4.0 - SESSION SELECTOR FIXED)');
