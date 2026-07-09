@@ -1,46 +1,19 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
- * Shared Announcements Module — js/announcements.js
- *
- * Handles fetching, rendering, and dismissing targeted announcements
- * across Teacher and Pupil portals.
- *
- * Audience values stored in Firestore:
- *   'all'               — every logged-in user sees it
- *   'teachers'          — all teachers
- *   'pupils'            — all pupils
- *   'class:CLASS_ID'    — all pupils in a specific class
- *   'user:UID'          — one specific teacher or pupil
- *
- * @version 1.0.0
+ * Shared Announcements Module
  */
 'use strict';
 
 (function () {
 
-  /* ================================================================
-     PUBLIC API
-  ================================================================ */
-
-  /**
-   * Load and render announcements targeted at a specific user.
-   * Call this once after the user's identity is confirmed.
-   *
-   * @param {string}      role        'teacher' | 'pupil'
-   * @param {string}      userId      Firebase Auth UID
-   * @param {string|null} classId     Class ID for pupils; null for teachers
-   * @param {string}      containerId DOM id of the element to render into
-   */
+  /* Load and render announcements targeted at a specific user. */
   window.loadAnnouncementsForUser = async function (role, userId, classId, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     try {
       const db = window.db;
-      if (!db) {
-        console.warn('announcements.js: window.db not available');
-        return;
-      }
+      if (!db) return;
 
       const audienceKeys = [
         'all',
@@ -65,7 +38,6 @@
         const audience = data.targetAudience || 'all';
         if (audienceKeys.indexOf(audience) === -1) return;
 
-        // Skip expired announcements
         if (data.expiresAt && data.expiresAt.toDate && data.expiresAt.toDate() < now) return;
 
         relevant.push(Object.assign({ id: doc.id }, data));
@@ -96,22 +68,12 @@
       container.style.display = 'block';
       container.innerHTML = _buildBannersHTML(toShow, userId, storageKey);
 
-    } catch (err) {
-      console.error('loadAnnouncementsForUser error:', err);
-    }
+    } catch (err) {}
   };
 
 
-  /**
-   * Dismiss one announcement banner for this browser session.
-   * Called via inline onclick from rendered HTML.
-   *
-   * @param {string} announcementId
-   * @param {string} userId
-   * @param {string} storageKey
-   */
+  /* Dismiss one announcement banner for this browser session. */
   window.dismissAnnouncement = function (announcementId, userId, storageKey) {
-    // Persist dismissal in sessionStorage
     try {
       var dismissed = [];
       try {
@@ -123,7 +85,6 @@
       sessionStorage.setItem(storageKey, JSON.stringify(dismissed));
     } catch (e) {}
 
-    // Animate the banner out
     var banner = document.getElementById('ann-banner-' + announcementId);
     if (banner) {
       banner.style.transition = 'opacity 0.25s ease, max-height 0.35s ease, padding 0.35s ease, margin 0.35s ease';
@@ -135,7 +96,6 @@
       banner.style.overflow = 'hidden';
       setTimeout(function () {
         if (banner.parentNode) banner.parentNode.removeChild(banner);
-        // Hide wrapper if nothing remains
         var remaining = document.querySelectorAll('.ann-banner-item');
         if (remaining.length === 0) {
           var wrapper = document.getElementById('announcements-banner-container');
@@ -145,10 +105,6 @@
     }
   };
 
-
-  /* ================================================================
-     PRIVATE HELPERS
-  ================================================================ */
 
   function _buildBannersHTML(announcements, userId, storageKey) {
     return announcements.map(function (ann) {
@@ -244,9 +200,7 @@
   }
 
 
-  /* ================================================================
-     SHARED CSS — injected once into <head>
-  ================================================================ */
+  /* SHARED CSS — injected once into <head> */
 
   var CSS = '\n' +
     '#announcements-banner-container {\n' +
