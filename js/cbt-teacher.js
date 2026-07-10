@@ -726,7 +726,7 @@ function cbtRenumberQuestions() {
 
 // ── Save Test ──────────────────────────────────────────────────────────────
 async function saveCbtTest(publish = false) {
-    // Validate
+    // Validate — these basic details are always required, draft or not
     const title    = document.getElementById('cbt-title')?.value.trim();
     const subject  = document.getElementById('cbt-subject')?.value.trim();
     const classEl  = document.getElementById('cbt-class');
@@ -745,25 +745,32 @@ async function saveCbtTest(publish = false) {
 
     // Collect questions
     const questionBlocks = document.querySelectorAll('.cbt-question-builder');
-    if (questionBlocks.length === 0) {
-        window.showToast?.('Please add at least one question.', 'warning'); return;
+
+    // Only require at least one question when actually PUBLISHING.
+    // A draft can be saved with zero questions — that's the point of a draft.
+    if (publish && questionBlocks.length === 0) {
+        window.showToast?.('Please add at least one question before publishing.', 'warning'); return;
     }
 
     const questions = [];
     let hasError = false;
 
     questionBlocks.forEach((block, idx) => {
-        const n           = block.id.replace('cbt-q-', '');
-        const questionText = document.getElementById(`cbt-q${n}-text`)?.value.trim();
-        const optA        = document.getElementById(`cbt-q${n}-optA`)?.value.trim();
-        const optB        = document.getElementById(`cbt-q${n}-optB`)?.value.trim();
-        const optC        = document.getElementById(`cbt-q${n}-optC`)?.value.trim();
-        const optD        = document.getElementById(`cbt-q${n}-optD`)?.value.trim();
+        const n            = block.id.replace('cbt-q-', '');
+        const questionText = document.getElementById(`cbt-q${n}-text`)?.value.trim() || '';
+        const optA         = document.getElementById(`cbt-q${n}-optA`)?.value.trim() || '';
+        const optB         = document.getElementById(`cbt-q${n}-optB`)?.value.trim() || '';
+        const optC         = document.getElementById(`cbt-q${n}-optC`)?.value.trim() || '';
+        const optD         = document.getElementById(`cbt-q${n}-optD`)?.value.trim() || '';
         const correctRadio = document.querySelector(`input[name="cbt-q${n}-correct"]:checked`);
 
-        if (!questionText) { window.showToast?.(`Question ${idx+1}: Please enter the question text.`, 'warning'); hasError = true; return; }
-        if (!optA || !optB) { window.showToast?.(`Question ${idx+1}: Options A and B are required.`, 'warning'); hasError = true; return; }
-        if (!correctRadio)   { window.showToast?.(`Question ${idx+1}: Please select the correct answer.`, 'warning'); hasError = true; return; }
+        // Full validation of each question only applies when publishing.
+        // When saving a draft, whatever has been typed so far is kept as-is.
+        if (publish) {
+            if (!questionText) { window.showToast?.(`Question ${idx+1}: Please enter the question text.`, 'warning'); hasError = true; return; }
+            if (!optA || !optB) { window.showToast?.(`Question ${idx+1}: Options A and B are required.`, 'warning'); hasError = true; return; }
+            if (!correctRadio)   { window.showToast?.(`Question ${idx+1}: Please select the correct answer.`, 'warning'); hasError = true; return; }
+        }
 
         questions.push({
             questionText,
@@ -771,7 +778,7 @@ async function saveCbtTest(publish = false) {
             optionB: optB,
             optionC: optC || null,
             optionD: optD || null,
-            correctAnswer: correctRadio.value,
+            correctAnswer: correctRadio ? correctRadio.value : null,
             order: idx,
             existingId: block.dataset.qid || null
         });
