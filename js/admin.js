@@ -1029,7 +1029,7 @@ function showSection(sectionId) {
       if (toggle?.classList.contains('sidebar-group-toggle-modern')) {
         toggle.setAttribute('aria-expanded', 'true');
         const icon = toggle.querySelector('.toggle-icon');
-        if (icon) icon.style.transform = 'rotate(180deg)';
+        if (icon) icon.style.transform = '';
       }
     }
   }
