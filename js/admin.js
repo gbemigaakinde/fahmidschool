@@ -7844,11 +7844,38 @@ async function loadDashboardStats() {
     return;
   }
 
-  // Show loading state
-  teacherCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
-  pupilCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
-  classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
-  announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+  const CACHE_KEY = 'fahmid_dashboard_stats_cache';
+  const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Show cached numbers immediately (if we have any and they're not too old)
+  let cachedStats = null;
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      cachedStats = JSON.parse(raw);
+      const age = Date.now() - (cachedStats.savedAt || 0);
+      if (age < CACHE_MAX_AGE_MS) {
+        teacherCount.textContent = cachedStats.teachers;
+        pupilCount.textContent = cachedStats.pupils;
+        classCount.textContent = cachedStats.classes;
+        announceCount.textContent = cachedStats.announcements;
+        console.log('✓ Dashboard stats shown from cache while fresh data loads...');
+      } else {
+        cachedStats = null; // too old — treat as if there's no cache
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not read dashboard stats cache:', e.message);
+    cachedStats = null;
+  }
+
+  // Only show spinners if we had nothing cached to show in the meantime
+  if (!cachedStats) {
+    teacherCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+    pupilCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+    classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+    announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
+  }
 
   try {
     const teachersSnap = await db.collection('teachers').get();
@@ -7865,24 +7892,49 @@ async function loadDashboardStats() {
     const classesSnap = await db.collection('classes').get();
     const announcementsSnap = await db.collection('announcements').get();
 
-    teacherCount.textContent  = teachersSnap.size;
-    pupilCount.textContent    = activePupilCount;
-    classCount.textContent    = classesSnap.size;
-    announceCount.textContent = announcementsSnap.size;
+    const freshStats = {
+      teachers: teachersSnap.size,
+      pupils: activePupilCount,
+      classes: classesSnap.size,
+      announcements: announcementsSnap.size,
+      savedAt: Date.now()
+    };
+
+    if (!cachedStats || cachedStats.teachers !== freshStats.teachers) {
+      teacherCount.textContent = freshStats.teachers;
+    }
+    if (!cachedStats || cachedStats.pupils !== freshStats.pupils) {
+      pupilCount.textContent = freshStats.pupils;
+    }
+    if (!cachedStats || cachedStats.classes !== freshStats.classes) {
+      classCount.textContent = freshStats.classes;
+    }
+    if (!cachedStats || cachedStats.announcements !== freshStats.announcements) {
+      announceCount.textContent = freshStats.announcements;
+    }
+
+    // Save the fresh numbers for next time
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(freshStats));
+    } catch (e) {
+      console.warn('⚠️ Could not save dashboard stats cache:', e.message);
+    }
 
     console.log(
-      `✅ Dashboard stats loaded: ${activePupilCount} active pupils ` +
-      `(${allPupilsSnap.size - activePupilCount} alumni)`
+      `✅ Dashboard stats loaded: ${freshStats.pupils} active pupils ` +
+      `(${allPupilsSnap.size - freshStats.pupils} alumni)`
     );
 
   } catch (error) {
     console.error('❌ Error loading dashboard stats:', error);
     window.showToast?.('Failed to load dashboard statistics', 'danger');
 
-    teacherCount.textContent = '!';
-    pupilCount.textContent = '!';
-    classCount.textContent = '!';
-    announceCount.textContent = '!';
+    if (!cachedStats) {
+      teacherCount.textContent = '!';
+      pupilCount.textContent = '!';
+      classCount.textContent = '!';
+      announceCount.textContent = '!';
+    }
   }
 }
 
