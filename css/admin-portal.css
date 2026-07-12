@@ -4826,11 +4826,13 @@ body > div[style*="position:fixed"][style*="z-index"] {
 #dashboard-clock-time {
     font-variant-numeric: tabular-nums;
     display: inline-block;
-    min-width: 4.6em;
+    min-width: 4.35em;
+    text-align: right;
 }
 
 #dashboard-clock-ampm {
     display: inline-block;
-    min-width: 2em;
+    min-width: 1.6em;
     text-align: left;
+    margin-left: 0.25em;
 }
