@@ -7850,48 +7850,6 @@ async function loadDashboardStats() {
   classCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
   announceCount.innerHTML = '<div class="spinner" style="width:20px; height:20px;"></div>';
 
-  // ── PRIMARY PATH ──────────────────────────
-  try {
-    const [
-      teachersCountSnap,
-      classesCountSnap,
-      announcementsCountSnap,
-      totalPupilsCountSnap,
-      alumniCountSnap
-    ] = await Promise.all([
-      db.collection('teachers').count().get(),
-      db.collection('classes').count().get(),
-      db.collection('announcements').count().get(),
-      db.collection('pupils').count().get(),
-      db.collection('pupils').where('status', '==', 'alumni').count().get()
-    ]);
-
-    const teacherTotal    = teachersCountSnap.data().count;
-    const classTotal      = classesCountSnap.data().count;
-    const announceTotal   = announcementsCountSnap.data().count;
-    const totalPupils     = totalPupilsCountSnap.data().count;
-    const alumniTotal     = alumniCountSnap.data().count;
-    const activePupilCount = totalPupils - alumniTotal;
-
-    teacherCount.textContent  = teacherTotal;
-    pupilCount.textContent    = activePupilCount;
-    classCount.textContent    = classTotal;
-    announceCount.textContent = announceTotal;
-
-    console.log(
-      `✅ Dashboard stats loaded via count() aggregation: ` +
-      `${activePupilCount} active pupils (${alumniTotal} alumni, ${totalPupils} total)`
-    );
-    return;
-
-  } catch (countError) {
-    console.warn(
-      '⚠️ count() aggregation not available, falling back to full document fetch:',
-      countError.message
-    );
-  }
-
-  // ── FALLBACK PATH ──────────────────────────────────────
   try {
     const teachersSnap = await db.collection('teachers').get();
     const allPupilsSnap = await db.collection('pupils').get();
@@ -7913,7 +7871,7 @@ async function loadDashboardStats() {
     announceCount.textContent = announcementsSnap.size;
 
     console.log(
-      `✅ Dashboard stats loaded via fallback: ${activePupilCount} active pupils ` +
+      `✅ Dashboard stats loaded: ${activePupilCount} active pupils ` +
       `(${allPupilsSnap.size - activePupilCount} alumni)`
     );
 
