@@ -470,6 +470,10 @@
           <i data-lucide="calendar" style="width:14px;height:14px;opacity:.6;"></i>
           <span id="dashboard-date-text">Loading…</span>
         </div>
+        <div class="dashboard-date" id="dashboard-live-clock">
+          <i data-lucide="clock" style="width:14px;height:14px;opacity:.6;"></i>
+          <span id="dashboard-clock-text">Loading…</span>
+        </div>
       </div>
     </div>
 
@@ -2139,16 +2143,30 @@
         });
     }
 
-    // Live date display on dashboard
+    // Live date + time display on dashboard
     function updateDashboardDate() {
-        var el = document.getElementById('dashboard-date-text');
-        if (!el) return;
+        var dateEl = document.getElementById('dashboard-date-text');
+        if (!dateEl) return;
         var now = new Date();
-        el.textContent = now.toLocaleDateString('en-GB', {
+        dateEl.textContent = now.toLocaleDateString('en-GB', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
         });
     }
+
+    function updateDashboardClock() {
+        var clockEl = document.getElementById('dashboard-clock-text');
+        if (!clockEl) return;
+        var now = new Date();
+        clockEl.textContent = now.toLocaleTimeString('en-GB', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+        });
+    }
+
     updateDashboardDate();
+    updateDashboardClock();
+
+    setInterval(updateDashboardClock, 1000);
+    setInterval(updateDashboardDate, 60000);
 
     // Strip any background from dashboard count elements
     ['teacher-count','pupil-count','class-count','announce-count'].forEach(function(id) {
