@@ -1652,10 +1652,17 @@ async function loadPupilTests() {
       return;
     }
 
-    // Load published tests for this class
+    // Get the current session/term so we only show tests relevant to right now.
+    const settings = await window.getCurrentSettings();
+    const currentSession = settings.session;
+    const currentTerm = settings.term;
+
+    // Load published tests for this class, THIS session and term only.
     const testsSnap = await db.collection('cbt_tests')
       .where('classId', '==', classId)
       .where('published', '==', true)
+      .where('session', '==', currentSession)
+      .where('term', '==', currentTerm)
       .get();
 
     if (testsSnap.empty) {
@@ -1663,7 +1670,7 @@ async function loadPupilTests() {
         <div class="cbt-empty">
           <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;display:block;margin-left:auto;margin-right:auto;"></i>
           <div class="cbt-empty-title">No tests yet</div>
-          <div class="cbt-empty-desc">Your teacher has not published any tests yet. Check back soon.</div>
+          <div class="cbt-empty-desc">Your teacher has not published any tests for ${currentTerm} yet. Check back soon.</div>
         </div>`;
       if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
@@ -1702,15 +1709,12 @@ async function loadPupilTests() {
         <div class="cbt-empty">
           <i data-lucide="monitor" style="width:40px;height:40px;margin-bottom:10px;opacity:0.3;display:block;margin-left:auto;margin-right:auto;"></i>
           <div class="cbt-empty-title">No tests yet</div>
-          <div class="cbt-empty-desc">Your teacher has not published any tests yet. Check back soon.</div>
+          <div class="cbt-empty-desc">Your teacher has not published any tests for ${currentTerm} yet. Check back soon.</div>
         </div>`;
       if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
     }
 
-    // Sort tests client-side: open first, then upcoming, then expired/done.
-    // Within each of those groups, newest test (by scheduledDate) comes first,
-    // so the order is stable and predictable every time the page loads.
     const now = new Date();
 
     function getTestTimestamp(t) {
