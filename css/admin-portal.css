@@ -4823,16 +4823,22 @@ body > div[style*="position:fixed"][style*="z-index"] {
 /* ============================================================
    DASHBOARD CLOCK — prevent pill from resizing as digits change
    ============================================================ */
+#dashboard-live-clock {
+    width: 148px;
+    white-space: nowrap;
+    justify-content: flex-start;
+}
+
 #dashboard-clock-time {
     font-variant-numeric: tabular-nums;
     display: inline-block;
-    min-width: 4.35em;
+    width: 4.35em;
     text-align: right;
 }
 
 #dashboard-clock-ampm {
     display: inline-block;
-    min-width: 1.6em;
+    width: 1.6em;
     text-align: left;
     margin-left: 0.25em;
 }
