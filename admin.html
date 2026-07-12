@@ -2157,9 +2157,10 @@
         var clockEl = document.getElementById('dashboard-clock-text');
         if (!clockEl) return;
         var now = new Date();
-        clockEl.textContent = now.toLocaleTimeString('en-GB', {
+        var timeString = now.toLocaleTimeString('en-GB', {
             hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
         });
+        clockEl.textContent = timeString.toUpperCase();
     }
 
     updateDashboardDate();
