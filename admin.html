@@ -472,7 +472,8 @@
         </div>
         <div class="dashboard-date" id="dashboard-live-clock">
           <i data-lucide="clock" style="width:14px;height:14px;opacity:.6;"></i>
-          <span id="dashboard-clock-text">Loading…</span>
+          <span id="dashboard-clock-time">Loading…</span>
+          <span id="dashboard-clock-ampm"></span>
         </div>
       </div>
     </div>
@@ -2154,13 +2155,25 @@
     }
 
     function updateDashboardClock() {
-        var clockEl = document.getElementById('dashboard-clock-text');
-        if (!clockEl) return;
+        var timeEl = document.getElementById('dashboard-clock-time');
+        var ampmEl = document.getElementById('dashboard-clock-ampm');
+        if (!timeEl || !ampmEl) return;
+
         var now = new Date();
-        var timeString = now.toLocaleTimeString('en-GB', {
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-        });
-        clockEl.textContent = timeString.toUpperCase();
+        var hours = now.getHours();
+        var minutes = now.getMinutes();
+        var seconds = now.getSeconds();
+
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        var hours12 = hours % 12;
+        if (hours12 === 0) hours12 = 12;
+
+        function pad(n) {
+            return n < 10 ? '0' + n : '' + n;
+        }
+
+        timeEl.textContent = pad(hours12) + ':' + pad(minutes) + ':' + pad(seconds);
+        ampmEl.textContent = ampm;
     }
 
     updateDashboardDate();
