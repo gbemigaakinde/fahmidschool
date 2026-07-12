@@ -10543,6 +10543,12 @@ async function openSubjectAssignmentModal(classId, className) {
 
   modal.style.display = 'block';
 
+  const mainContent = document.getElementById('main-content');
+  if (mainContent) {
+    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   try {
     const subjectsSnap = await db.collection('subjects').orderBy('name').get();
 
