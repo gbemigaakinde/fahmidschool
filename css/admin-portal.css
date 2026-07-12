@@ -4819,3 +4819,12 @@ body > div[style*="position:fixed"][style*="z-index"] {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ============================================================
+   DASHBOARD CLOCK — prevent pill from resizing as digits change
+   ============================================================ */
+#dashboard-clock-text {
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    min-width: 6.5em;
+}
