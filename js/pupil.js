@@ -1019,23 +1019,39 @@ async function loadAllPaymentHistory(pupilId) {
                 let expanded = false;
                 toggleBtn.addEventListener('click', () => {
                     expanded = !expanded;
-                    olderWrapper.style.display = expanded ? 'flex' : 'none';
-                     olderWrapper.style.flexDirection = 'column';
-                     olderWrapper.style.width = '100%';
-                     olderWrapper.style.minWidth = '0';
-                     olderWrapper.style.boxSizing = 'border-box';
-                      olderWrapper.style.overflow = 'hidden';
 
-                    const icon = toggleBtn.querySelector('i[data-lucide]');
                     if (expanded) {
-                        toggleBtn.innerHTML = `
-                            <i data-lucide="chevron-up" style="width:14px;height:14px;"></i>
-                            Hide older payments
-                        `;
-                        toggleBtn.style.background = '#e0e7ff';
-                        toggleBtn.style.borderColor = '#a5b4fc';
-                        toggleBtn.style.color = '#3730a3';
+                        // Loading state — dimmed button + pulsing text, no spinner
+                        toggleBtn.disabled = true;
+                        toggleBtn.style.cursor = 'not-allowed';
+                        toggleBtn.style.background = '#eef2ff';
+                        toggleBtn.style.borderColor = '#c7d2fe';
+                        toggleBtn.style.borderStyle = 'solid';
+                        toggleBtn.style.color = '#4338ca';
+                        toggleBtn.innerHTML = `<span class="cbt-btn-loading-text">Loading older payments…</span>`;
+
+                        setTimeout(() => {
+                            olderWrapper.style.display = 'flex';
+                            olderWrapper.style.flexDirection = 'column';
+                            olderWrapper.style.width = '100%';
+                            olderWrapper.style.minWidth = '0';
+                            olderWrapper.style.boxSizing = 'border-box';
+                            olderWrapper.style.overflow = 'hidden';
+
+                            toggleBtn.disabled = false;
+                            toggleBtn.style.cursor = 'pointer';
+                            toggleBtn.style.borderStyle = 'dashed';
+                            toggleBtn.innerHTML = `
+                                <i data-lucide="chevron-up" style="width:14px;height:14px;"></i>
+                                Hide older payments
+                            `;
+                            toggleBtn.style.background = '#e0e7ff';
+                            toggleBtn.style.borderColor = '#a5b4fc';
+                            toggleBtn.style.color = '#3730a3';
+                            if (typeof lucide !== 'undefined') lucide.createIcons();
+                        }, 200);
                     } else {
+                        olderWrapper.style.display = 'none';
                         toggleBtn.innerHTML = `
                             <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
                             Show ${hiddenCount} older payment${hiddenCount > 1 ? 's' : ''} in this session
@@ -1043,8 +1059,8 @@ async function loadAllPaymentHistory(pupilId) {
                         toggleBtn.style.background = '#f1f5f9';
                         toggleBtn.style.borderColor = '#cbd5e1';
                         toggleBtn.style.color = '#475569';
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
                     }
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
                 });
 
                 container.appendChild(toggleBtn);
