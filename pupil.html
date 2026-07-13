@@ -712,6 +712,25 @@
   height: 14px;
 }
 
+/* Loading state — no spinner, just a dimmed button + pulsing text */
+.cbt-load-more-btn:disabled,
+button.btn-small.btn-secondary:disabled {
+  cursor: not-allowed;
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  border-style: solid;
+  color: #4338ca;
+}
+
+.cbt-btn-loading-text {
+  animation: cbt-text-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes cbt-text-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 /* ============================================================
    FEE BALANCE & PAYMENT HISTORY — UI REFINEMENT
    Scope: #pp-fees (proxied from #fee-balance-section)
@@ -1788,7 +1807,6 @@ async function renderPupilTestsPage() {
     if (t.scheduledDate && t.scheduledDate.toDate() > now) windowStatus = 'upcoming';
     if (t.expiryDate    && t.expiryDate.toDate()    < now) windowStatus = 'expired';
 
-    // Get score if pupil already did this test
     let scoreDisplay = '';
     if (done && pupilId) {
       try {
@@ -1818,8 +1836,6 @@ async function renderPupilTestsPage() {
 
     const canTake = !done && windowStatus === 'open';
 
-    // Completed tests already show "✓ Completed" + score above —
-    // no need for a separate action button that just repeats "Done".
     let actionHTML = '';
     if (canTake) {
       actionHTML = `
@@ -1839,7 +1855,6 @@ async function renderPupilTestsPage() {
           </span>
         </div>`;
     }
-    // else: done === true → no action block at all
 
     const scheduleInfo = t.scheduledDate
       ? `<div>Opens: ${t.scheduledDate.toDate().toLocaleString('en-GB')}</div>`
@@ -1875,7 +1890,7 @@ async function renderPupilTestsPage() {
 
   if (remaining > 0) {
     cardsHTML += `
-      <button type="button" class="cbt-load-more-btn" onclick="loadMorePupilTests()">
+      <button type="button" class="cbt-load-more-btn" onclick="loadMorePupilTests(this)">
         <i data-lucide="chevron-down"></i>
         Load ${Math.min(remaining, CBT_TESTS_PAGE_SIZE)} more test${Math.min(remaining, CBT_TESTS_PAGE_SIZE) > 1 ? 's' : ''} (${remaining} remaining)
       </button>`;
@@ -1886,9 +1901,16 @@ async function renderPupilTestsPage() {
 }
 window.renderPupilTestsPage = renderPupilTestsPage;
 
-function loadMorePupilTests() {
+async function loadMorePupilTests(btnEl) {
+  const btn = btnEl || document.querySelector('.cbt-load-more-btn');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="cbt-btn-loading-text">Loading more tests…</span>`;
+  }
+
   cbtVisibleCount += CBT_TESTS_PAGE_SIZE;
-  renderPupilTestsPage();
+  await renderPupilTestsPage();
 }
 window.loadMorePupilTests = loadMorePupilTests;
 
