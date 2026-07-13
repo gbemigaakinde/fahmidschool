@@ -187,6 +187,15 @@ async function startTest() {
     if (submitted || attemptStarted) return;
     attemptStarted = true;
 
+    // Show a loading state on the button while we set up fullscreen + save the attempt
+    const startBtn = document.querySelector('.start-btn');
+    if (startBtn) {
+        startBtn.disabled = true;
+        startBtn.style.opacity = '0.6';
+        startBtn.style.cursor = 'not-allowed';
+        startBtn.textContent = 'Starting test…';
+    }
+
     try {
         await document.documentElement.requestFullscreen();
     } catch(e) {}
@@ -521,6 +530,24 @@ function autoSubmit() {
     submitTest();
 }
 
+function showSubmittingOverlay() {
+    if (document.getElementById('cbt-submitting-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'cbt-submitting-overlay';
+    overlay.className = 'cbt-submitting-overlay';
+    overlay.innerHTML = `
+        <div class="cbt-submitting-card">
+            <div class="cbt-submitting-text">Submitting your answers…</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function hideSubmittingOverlay() {
+    const overlay = document.getElementById('cbt-submitting-overlay');
+    if (overlay) overlay.remove();
+}
+
 async function submitTest() {
     if (submitted) return;
     submitted = true;
@@ -534,6 +561,8 @@ async function submitTest() {
     closeNavDrawer();
 
     try { document.exitFullscreen(); } catch(e) {}
+
+    showSubmittingOverlay();
 
     let correct = 0;
     const reviewData = [];
@@ -617,9 +646,11 @@ async function submitTest() {
         }
 
         await batch.commit();
+        hideSubmittingOverlay();
         showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData });
 
     } catch (err) {
+        hideSubmittingOverlay();
         showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData });
         window.showToast?.('Your score was calculated but could not be saved. Please contact your teacher.', 'warning', 8000);
     }
