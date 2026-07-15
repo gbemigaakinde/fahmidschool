@@ -1,22 +1,6 @@
 /**
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Global Button Loading State Manager — button-loader.js
- *
- * STRATEGY: Event delegation on document.body — one handler catches
- * every button/submit click in the portal, wraps the mapped async
- * function in a loading state, and restores the button when done.
- *
- * HOW IT WORKS:
- *  1. Buttons declare data-action="fnName" (preferred) OR are matched
- *     by their onclick="fnName()" attribute string.
- *  2. A registry maps action names → the actual window function.
- *  3. The interceptor wraps the call: disable button, show spinner + label,
- *     await the function, restore button.
- *  4. For inline onclick buttons with no data-action, a MutationObserver
- *     patches them automatically after they render into the DOM.
- *
- * ZERO CHANGES NEEDED to teacher.js, attendance-teacher-ui.js, etc.
- *
  * @version 2.1.0
  */
 
@@ -403,8 +387,6 @@ function init() {
 
     // Watch for buttons added later (section loads, modals, etc.)
     startMutationObserver();
-
-    console.log('✓ ButtonLoader v2.1.0 — global auto-intercept active');
 }
 
 if (document.readyState === 'loading') {
