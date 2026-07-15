@@ -2,7 +2,7 @@
  * FAHMID NURSERY & PRIMARY SCHOOL
  * Session Cache Manager - Optimization Module
  * 
- * Purpose: Reduce Firestore reads by caching session data
+ * Purpose: Reduce reads by caching session data
  * 
  * @version 1.0.0
  * @date 2026-01-11
@@ -41,11 +41,9 @@ window.SessionCache = (function() {
    */
   async function getSettings(forceRefresh = false) {
     if (!forceRefresh && isCacheValid('settings') && cache.settings) {
-      console.log('✓ Using cached settings');
       return cache.settings;
     }
     
-    console.log('⟳ Fetching fresh settings from Firestore');
     
     try {
       const settingsDoc = await window.db.collection('settings').doc('current').get();
@@ -76,7 +74,6 @@ window.SessionCache = (function() {
         
         cache.lastFetch.settings = Date.now();
         
-        console.log('✓ Settings cached:', cache.settings);
         return cache.settings;
       }
       
@@ -95,11 +92,9 @@ window.SessionCache = (function() {
       return defaults;
       
     } catch (error) {
-      console.error('Error fetching settings:', error);
       
       // Return cached data if available, even if expired
       if (cache.settings) {
-        console.warn('Using stale cache due to error');
         return cache.settings;
       }
       
@@ -119,11 +114,8 @@ window.SessionCache = (function() {
    */
   async function getAllSessions(forceRefresh = false) {
     if (!forceRefresh && isCacheValid('sessions') && cache.sessions) {
-      console.log('✓ Using cached sessions');
       return cache.sessions;
     }
-    
-    console.log('⟳ Fetching sessions from Firestore');
     
     try {
       const settings = await getSettings();
@@ -154,15 +146,12 @@ window.SessionCache = (function() {
       cache.sessions = sessions;
       cache.lastFetch.sessions = Date.now();
       
-      console.log(`✓ Cached ${sessions.length} sessions`);
       return sessions;
       
     } catch (error) {
-      console.error('Error fetching sessions:', error);
       
       // Return cached data if available
       if (cache.sessions) {
-        console.warn('Using stale session cache due to error');
         return cache.sessions;
       }
       
@@ -184,13 +173,11 @@ window.SessionCache = (function() {
     if (type === 'all' || type === 'settings') {
       cache.settings = null;
       cache.lastFetch.settings = null;
-      console.log('✓ Settings cache cleared');
     }
     
     if (type === 'all' || type === 'sessions') {
       cache.sessions = null;
       cache.lastFetch.sessions = null;
-      console.log('✓ Sessions cache cleared');
     }
   }
   
@@ -226,5 +213,3 @@ window.SessionCache = (function() {
  * Override the original getCurrentSettings to use cache
  */
 window.getCurrentSettings = window.SessionCache.getSettings;
-
-console.log('✓ Session cache manager loaded');
