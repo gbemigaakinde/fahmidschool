@@ -409,52 +409,53 @@
 
                 <div id="remarks-form-container" class="remarks-form tp-remarks-form" hidden>
 
-                    <!-- AI Suggestions Panel -->
-                    <div id="remark-suggestions" class="tp-suggestions-panel" style="display:none;">
-                        <div class="tp-suggestions-header">
-                            <div class="tp-suggestions-icon"><i data-lucide="sparkles"></i></div>
-                            <div>
-                                <div class="tp-suggestions-title">Suggested Remarks</div>
-                                <div id="suggestion-info" class="tp-suggestions-meta"></div>
+                    <!-- Both suggestion panels sit side by side, above the two textareas -->
+                    <div class="tp-suggestions-row">
+                        <div id="remark-suggestions" class="tp-suggestions-panel" style="display:none;">
+                            <div class="tp-suggestions-header">
+                                <div class="tp-suggestions-icon"><i data-lucide="sparkles"></i></div>
+                                <div>
+                                    <div class="tp-suggestions-title">Suggested Remarks</div>
+                                    <div id="suggestion-info" class="tp-suggestions-meta"></div>
+                                </div>
+                                <button type="button" class="tp-refresh-btn" onclick="refreshRemarkSuggestions()" title="Refresh suggestions">
+                                    <i data-lucide="refresh-cw"></i>
+                                </button>
                             </div>
-                            <button type="button" class="tp-refresh-btn" onclick="refreshRemarkSuggestions()" title="Refresh suggestions">
-                                <i data-lucide="refresh-cw"></i>
-                            </button>
+                            <div id="suggestion-buttons" class="tp-suggestion-chips"></div>
                         </div>
-                        <div id="suggestion-buttons" class="tp-suggestion-chips"></div>
+
+                        <div id="head-remark-suggestions" class="tp-suggestions-panel" style="display:none;">
+                            <div class="tp-suggestions-header">
+                                <div class="tp-suggestions-icon"><i data-lucide="sparkles"></i></div>
+                                <div>
+                                    <div class="tp-suggestions-title">Suggested Remarks</div>
+                                    <div id="head-suggestion-info" class="tp-suggestions-meta"></div>
+                                </div>
+                            </div>
+                            <div id="head-suggestion-buttons" class="tp-suggestion-chips"></div>
+                        </div>
                     </div>
 
+                    <!-- Both textareas now match, since neither column carries extra content -->
                     <div class="tp-remarks-grid">
-    <div class="tp-remark-block">
-        <label class="tp-field-label" for="teacher-remark">
-            <i data-lucide="pen-line"></i>
-            Teacher's Remark
-        </label>
-        <textarea id="teacher-remark" class="tp-textarea" rows="5"
-            placeholder="Write your remark, or click a suggestion above…"></textarea>
-    </div>
-    <div class="tp-remark-block">
-        <label class="tp-field-label" for="head-remark">
-            <i data-lucide="briefcase"></i>
-            Headteacher's Remark
-        </label>
-
-        <!-- Head Teacher Suggestions Panel -->
-        <div id="head-remark-suggestions" class="tp-suggestions-panel" style="display:none; margin-bottom:10px;">
-            <div class="tp-suggestions-header">
-                <div class="tp-suggestions-icon"><i data-lucide="sparkles"></i></div>
-                <div>
-                    <div class="tp-suggestions-title">Suggested Remarks</div>
-                    <div id="head-suggestion-info" class="tp-suggestions-meta"></div>
-                </div>
-            </div>
-            <div id="head-suggestion-buttons" class="tp-suggestion-chips"></div>
-        </div>
-
-        <textarea id="head-remark" class="tp-textarea" rows="5"
-            placeholder="Write the headteacher's remark, or a suggestion will be auto-filled…"></textarea>
-    </div>
-</div>
+                        <div class="tp-remark-block">
+                            <label class="tp-field-label" for="teacher-remark">
+                                <i data-lucide="pen-line"></i>
+                                Teacher's Remark
+                            </label>
+                            <textarea id="teacher-remark" class="tp-textarea" rows="5"
+                                placeholder="Write your remark, or click a suggestion above…"></textarea>
+                        </div>
+                        <div class="tp-remark-block">
+                            <label class="tp-field-label" for="head-remark">
+                                <i data-lucide="briefcase"></i>
+                                Headteacher's Remark
+                            </label>
+                            <textarea id="head-remark" class="tp-textarea" rows="5"
+                                placeholder="Write the headteacher's remark, or a suggestion will be auto-filled…"></textarea>
+                        </div>
+                    </div>
 
                     <div class="tp-action-bar">
                         <button class="btn tp-btn-primary" onclick="saveRemarks()">
