@@ -1151,6 +1151,13 @@
     box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
 }
 
+.tp-suggestions-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--tp-space-5);
+    margin-bottom: var(--tp-space-5);
+}
+
 /* ────────────────────────────────────────────────────────────
    13. PROMOTION SECTION
 ──────────────────────────────────────────────────────────── */
@@ -1560,8 +1567,10 @@
 
     .tp-filter-group { min-width: 100%; }
 
-    .tp-remarks-grid {
+    .tp-remarks-grid,
+    .tp-suggestions-row {
         grid-template-columns: 1fr;
+        gap: var(--tp-space-4);
     }
 
     .tp-promo-controls.promotion-controls {
@@ -2491,13 +2500,14 @@
 /* ── CA sub-fields: 3-column grid ───────────────────────── */
 .tp-result-card__ca-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--tp-border);
 }
 
 .tp-result-card__field {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: var(--tp-space-3) var(--tp-space-3);
   gap: 6px;
   border-right: 1px solid var(--tp-border-light);
@@ -2554,7 +2564,7 @@
 /* ── Totals row ─────────────────────────────────────────── */
 .tp-result-card__totals {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   background: var(--tp-bg);
 }
 
@@ -2563,6 +2573,7 @@
 .tp-result-card__grand-total {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 5px;
   padding: var(--tp-space-3);
   border-right: 1px solid var(--tp-border-light);
@@ -2606,14 +2617,14 @@
 @media (min-width: 900px) {
   .tp-result-cards {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--tp-space-4);
   }
 }
 
 @media (min-width: 1200px) {
   .tp-result-cards {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
