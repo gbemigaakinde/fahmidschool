@@ -46,6 +46,23 @@ function initNavigation() {
   window.addEventListener('resize', debounce(() => { if (window.innerWidth >= 1024) closeMenu(); }, 200));
 }
 
+/* SCROLL PROGRESS BAR — thin gold line under the nav that fills as you scroll */
+
+function initScrollProgress() {
+  const bar = document.getElementById('nav-progress');
+  if (!bar) return;
+
+  const update = throttle(() => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    bar.style.width = pct + '%';
+  }, 50);
+
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
 /* SCROLL REVEAL */
 
 function initScrollReveal() {
@@ -79,6 +96,51 @@ function initTypingHeadline() {
     line2.style.clipPath = 'inset(0 0% 0 0)';
     line2.style.animation = 'none';
   }
+}
+
+/* HERO PARALLAX — background photo drifts gently with the pointer */
+
+function initHeroParallax() {
+  const heroBg = document.querySelector('.hero-bg img');
+  const hero = document.querySelector('.hero');
+  if (!heroBg || !hero) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(hover: none)').matches) return;
+
+  hero.addEventListener('mousemove', (e) => {
+    const rect = hero.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    heroBg.style.transform = `scale(1.06) translate(${(x * -16).toFixed(2)}px, ${(y * -12).toFixed(2)}px)`;
+  });
+
+  hero.addEventListener('mouseleave', () => {
+    heroBg.style.transform = 'scale(1.06) translate(0, 0)';
+  });
+}
+
+/* PROGRAM CARD TILT — the Nursery/Primary cards lean toward the pointer */
+
+function initCardTilt() {
+  const cards = document.querySelectorAll('.program-card');
+  if (!cards.length) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(hover: none)').matches) return;
+
+  cards.forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      const rotateX = (y * -8).toFixed(2);
+      const rotateY = (x * 10).toFixed(2);
+      card.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+  });
 }
 
 /* COUNT-UP — trust bar numbers animate from 0. Requires data-target and data-suffix. */
@@ -431,8 +493,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initKeyboardNavigation();
 
   try { initNavigation(); }            catch (e) {}
+  try { initScrollProgress(); }        catch (e) {}
   try { initScrollReveal(); }          catch (e) {}
   try { initTypingHeadline(); }        catch (e) {}
+  try { initHeroParallax(); }          catch (e) {}
+  try { initCardTilt(); }              catch (e) {}
   try { initCountUp(); }               catch (e) {}
   try { initTestimonialMarquee(); }    catch (e) {}
   try { initFAQ(); }                   catch (e) {}
