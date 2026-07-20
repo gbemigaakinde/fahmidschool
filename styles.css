@@ -330,6 +330,20 @@ p:not(:last-child) { margin-bottom: 1em; }
   box-shadow: var(--shadow-sm);
 }
 
+/* ----------------------------------------------------------------
+   NAV SCROLL PROGRESS BAR
+   ---------------------------------------------------------------- */
+.nav-progress-bar {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--accent-light));
+  transition: width 0.1s linear;
+  z-index: 1;
+}
+
 .nav-inner {
   height: 100%;
   display: flex;
@@ -465,6 +479,23 @@ p:not(:last-child) { margin-bottom: 1em; }
   }
 }
 
+/* The Apply Now button needs its pulse ring to show past its own edges,
+   so it opts out of the sheen effect and the overflow clipping on .btn */
+.nav-apply-btn {
+  overflow: visible;
+  animation: apply-pulse-ring 2.8s ease-out infinite;
+}
+
+.nav-apply-btn::before {
+  display: none;
+}
+
+@keyframes apply-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(200, 159, 77, 0.55); }
+  70%  { box-shadow: 0 0 0 9px rgba(200, 159, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 159, 77, 0); }
+}
+
 /* Hamburger */
 .nav-toggle {
   display: flex;
@@ -593,6 +624,8 @@ p:not(:last-child) { margin-bottom: 1em; }
    BUTTONS
    ---------------------------------------------------------------- */
 .btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -608,6 +641,23 @@ p:not(:last-child) { margin-bottom: 1em; }
   transition: all var(--t-base) var(--ease-out);
   text-decoration: none;
   white-space: nowrap;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.btn:hover::before {
+  left: 125%;
 }
 
 .btn:focus-visible {
@@ -813,6 +863,53 @@ p:not(:last-child) { margin-bottom: 1em; }
   max-width: 42ch;
 }
 
+/* ----------------------------------------------------------------
+   AMBIENT BACKGROUND BLOBS (used behind "Why Fahmid" section)
+   ---------------------------------------------------------------- */
+.section--motion {
+  position: relative;
+  overflow: hidden;
+}
+
+.section--motion .container {
+  position: relative;
+  z-index: 1;
+}
+
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  animation: ambient-drift 22s ease-in-out infinite;
+}
+
+.ambient-blob-1 {
+  width: 320px;
+  height: 320px;
+  background: var(--accent-pale);
+  top: -80px;
+  right: -100px;
+  animation-duration: 24s;
+}
+
+.ambient-blob-2 {
+  width: 260px;
+  height: 260px;
+  background: var(--gold-light);
+  bottom: -60px;
+  left: -80px;
+  animation-duration: 18s;
+  animation-delay: -6s;
+}
+
+@keyframes ambient-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(30px, -20px) scale(1.08); }
+}
+
 /* Stat card */
 .stat-card {
   padding: var(--s-8);
@@ -859,6 +956,8 @@ p:not(:last-child) { margin-bottom: 1em; }
   height: 100%;
   object-fit: cover;
   object-position: center 30%;
+  will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .hero-bg::after {
@@ -922,7 +1021,13 @@ p:not(:last-child) { margin-bottom: 1em; }
   font-style: italic;
   color: white;
   clip-path: inset(0 100% 0 0);
-  animation: hero-reveal 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
+  animation: hero-reveal 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards,
+             hero-glow 4s ease-in-out 3.2s infinite;
+}
+
+@keyframes hero-glow {
+  0%, 100% { text-shadow: 0 0 0 rgba(200, 159, 77, 0); }
+  50%      { text-shadow: 0 0 24px rgba(200, 159, 77, 0.35); }
 }
 
 /* Optional: cursor effect on line 2 via a pseudo-element */
@@ -1019,6 +1124,36 @@ p:not(:last-child) { margin-bottom: 1em; }
 @keyframes bounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(6px); }
+}
+
+/* ----------------------------------------------------------------
+   HERO — FLOATING ORBS (ambient motion layer)
+   ---------------------------------------------------------------- */
+.hero-orbs {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1px);
+  opacity: 0.5;
+  animation: orb-float 12s ease-in-out infinite;
+}
+
+.hero-orb-1 { width: 8px;  height: 8px;  top: 22%; left: 12%; background: var(--gold); animation-duration: 11s; }
+.hero-orb-2 { width: 5px;  height: 5px;  top: 65%; left: 22%; background: rgba(255,255,255,0.7); animation-duration: 9s; animation-delay: -3s; }
+.hero-orb-3 { width: 10px; height: 10px; top: 40%; left: 85%; background: var(--gold); animation-duration: 15s; animation-delay: -6s; }
+.hero-orb-4 { width: 6px;  height: 6px;  top: 78%; left: 70%; background: rgba(255,255,255,0.6); animation-duration: 12s; animation-delay: -2s; }
+.hero-orb-5 { width: 4px;  height: 4px;  top: 15%; left: 60%; background: var(--gold); animation-duration: 10s; animation-delay: -5s; }
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0); opacity: 0.3; }
+  50%      { transform: translate(18px, -26px); opacity: 0.8; }
 }
 
 /* Page hero (interior pages) */
@@ -1130,6 +1265,20 @@ p:not(:last-child) { margin-bottom: 1em; }
   text-transform: uppercase;
 }
 
+.trust-icon {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto var(--s-2);
+  color: var(--gold);
+  opacity: 0.9;
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.trust-item:hover .trust-icon {
+  transform: scale(1.15) rotate(-6deg);
+}
+
 /* ----------------------------------------------------------------
    GRIDS
    ---------------------------------------------------------------- */
@@ -1189,6 +1338,12 @@ p:not(:last-child) { margin-bottom: 1em; }
   flex-direction: column;
   justify-content: flex-end;
   cursor: pointer;
+  transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+}
+
+.program-card:hover {
+  box-shadow: var(--shadow-xl);
 }
 
 .program-card-bg {
@@ -1949,6 +2104,7 @@ select { cursor: pointer; }
   height: 400px;
   border-radius: 50%;
   background: rgba(255,255,255,0.04);
+  animation: cta-blob-float 16s ease-in-out infinite;
 }
 
 .cta-banner::after {
@@ -1960,6 +2116,12 @@ select { cursor: pointer; }
   height: 300px;
   border-radius: 50%;
   background: rgba(255,255,255,0.03);
+  animation: cta-blob-float 20s ease-in-out infinite reverse;
+}
+
+@keyframes cta-blob-float {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-24px, 24px); }
 }
 
 .cta-banner-inner {
@@ -2285,6 +2447,15 @@ select { cursor: pointer; }
 }
 
 .divider--center { margin-inline: auto; }
+
+.section-header .divider {
+  width: 0;
+  transition: width 0.8s var(--ease-out) 0.3s;
+}
+
+.section-header.revealed .divider {
+  width: 48px;
+}
 
 /* ----------------------------------------------------------------
    SCROLL ANIMATIONS
