@@ -748,6 +748,49 @@ function loadMyClassesSection() {
    RESULTS 
 ======================================== */
 
+/* ======================================== 
+   RESULTS AUTOSAVE (prevents lost work on
+   pagination or page refresh)
+======================================== */
+
+// Holds every pupil's typed-but-not-yet-saved scores for the class/term/
+// subject currently on screen. Rebuilt each time loadResultsTable() runs.
+let resultsEditBuffer = {};
+
+// Identifies which browser-storage slot belongs to the current
+// class + term + subject combination
+let currentResultsStorageKey = null;
+
+function getResultsStorageKey(classId, term, subject) {
+  return `fahmid_results_draft_${currentUser?.uid || 'anon'}_${classId}_${term}_${subject}`;
+}
+
+function saveResultsBufferToStorage() {
+  if (!currentResultsStorageKey) return;
+  try {
+    localStorage.setItem(currentResultsStorageKey, JSON.stringify(resultsEditBuffer));
+  } catch (e) {
+    console.warn('Could not save results draft to local storage:', e);
+  }
+}
+
+function loadResultsBufferFromStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('Could not read results draft from local storage:', e);
+    return {};
+  }
+}
+
+function clearResultsBufferStorage() {
+  if (!currentResultsStorageKey) return;
+  try {
+    localStorage.removeItem(currentResultsStorageKey);
+  } catch (e) {}
+}
+
 function loadResultsSection() {
   if (!ensureDataLoaded('loadResultsSection')) return;
 
@@ -835,8 +878,12 @@ async function loadResultsTable() {
   if (!container || !term || !subject || !selectedClassId) {
     if (container) container.innerHTML = '';
     if (saveBtn) saveBtn.hidden = true;
+    currentResultsStorageKey = null;
     return;
   }
+
+  // Every autosave is tied to this exact class + term + subject
+  currentResultsStorageKey = getResultsStorageKey(selectedClassId, term, subject);
 
   // ── SKELETON LOADER ──────────────────────────────────────────────────────
   const skeletonRows = Array.from({ length: 5 }, () => `
@@ -868,9 +915,6 @@ async function loadResultsTable() {
   if (saveBtn) saveBtn.hidden = true;
   // ────────────────────────────────────────────────────────────────────────
 
-  // ✅ CHANGED: filter by class AND subject-religion applicability, so
-  // e.g. Muslim pupils never get a score-entry row for Christian Religious
-  // Studies, and vice versa. Pupils with no religion set are unaffected.
   const classFilteredPupils = allPupils.filter(p => {
     if (p.class?.id !== selectedClassId) return false;
     return window.isSubjectApplicableToPupil
@@ -906,6 +950,31 @@ async function loadResultsTable() {
           };
         }
       }
+    }
+
+    // Rebuild the working copy for this class/term/subject. Anything the
+    // teacher typed but never saved (recovered from local storage) takes
+    // priority over the last saved draft, so nothing typed gets lost.
+    const storedBuffer = loadResultsBufferFromStorage(currentResultsStorageKey);
+    resultsEditBuffer = {};
+    let hasRestoredEdits = false;
+
+    classFilteredPupils.forEach(pupil => {
+      if (storedBuffer[pupil.id]) {
+        resultsEditBuffer[pupil.id] = { ...storedBuffer[pupil.id] };
+        hasRestoredEdits = true;
+      } else if (resultsMap[pupil.id]) {
+        resultsEditBuffer[pupil.id] = {
+          assignment: parseFloat(resultsMap[pupil.id].assignment) || 0,
+          midterm:    parseFloat(resultsMap[pupil.id].midterm)    || 0,
+          project:    parseFloat(resultsMap[pupil.id].project)    || 0,
+          exam:       parseFloat(resultsMap[pupil.id].exam)       || 0,
+        };
+      }
+    });
+
+    if (hasRestoredEdits) {
+      window.showToast?.('Restored your unsaved scores from before.', 'info', 4000);
     }
     
     // Rejection banner check
@@ -960,7 +1029,9 @@ async function loadResultsTable() {
       const pageData = classFilteredPupils.slice(start, start + ITEMS_PER_PAGE);
 
       cardsContainer.innerHTML = pageData.map(pupil => {
-        const existing = resultsMap[pupil.id] || { ca: 0, exam: 0, assignment: '', midterm: '', project: '' };
+        // Reads from the working copy (unsaved edits + restored drafts),
+        // not the raw Firestore draft, so values survive page switches
+        const existing = resultsEditBuffer[pupil.id] || { assignment: '', midterm: '', project: '', exam: '' };
         const caTotal = (parseFloat(existing.assignment) || 0) + (parseFloat(existing.midterm) || 0) + (parseFloat(existing.project) || 0);
         const grandTotal = caTotal + (parseFloat(existing.exam) || 0);
 
@@ -973,7 +1044,7 @@ async function loadResultsTable() {
                 <label class="tp-result-card__label">ASSIGNMENT <span class="tp-result-card__max">(max 10)</span></label>
                 <input type="number" min="0" max="10" step="0.5"
                        class="tp-result-card__input"
-                       value="${existing.assignment !== '' ? existing.assignment : ''}"
+                       value="${existing.assignment !== '' && existing.assignment !== undefined ? existing.assignment : ''}"
                        data-pupil="${pupil.id}" data-field="assignment"
                        placeholder="0–10">
               </div>
@@ -981,7 +1052,7 @@ async function loadResultsTable() {
                 <label class="tp-result-card__label">MID-TERM <span class="tp-result-card__max">(max 20)</span></label>
                 <input type="number" min="0" max="20" step="0.5"
                        class="tp-result-card__input"
-                       value="${existing.midterm !== '' ? existing.midterm : ''}"
+                       value="${existing.midterm !== '' && existing.midterm !== undefined ? existing.midterm : ''}"
                        data-pupil="${pupil.id}" data-field="midterm"
                        placeholder="0–20">
               </div>
@@ -989,7 +1060,7 @@ async function loadResultsTable() {
                 <label class="tp-result-card__label">PROJECT <span class="tp-result-card__max">(max 10)</span></label>
                 <input type="number" min="0" max="10" step="0.5"
                        class="tp-result-card__input"
-                       value="${existing.project !== '' ? existing.project : ''}"
+                       value="${existing.project !== '' && existing.project !== undefined ? existing.project : ''}"
                        data-pupil="${pupil.id}" data-field="project"
                        placeholder="0–10">
               </div>
@@ -1005,7 +1076,7 @@ async function loadResultsTable() {
                 <label class="tp-result-card__label">EXAM SCORE <span class="tp-result-card__max">(max 60)</span></label>
                 <input type="number" min="0" max="60" step="0.5"
                        class="tp-result-card__input tp-result-card__input--exam"
-                       value="${existing.exam || ''}"
+                       value="${existing.exam !== '' && existing.exam !== undefined ? existing.exam : ''}"
                        data-pupil="${pupil.id}" data-field="exam"
                        placeholder="0–60">
               </div>
@@ -1089,6 +1160,15 @@ function attachResultInputListeners() {
         if (value > max) { e.target.value = max; value = max; window.showToast?.(`Maximum for ${field} is ${max}`, 'warning', 2500); }
         if (value < 0)   { e.target.value = 0;   value = 0; }
       }
+
+      // Keep the working copy (and its local storage backup) up to date on
+      // every keystroke, for every pupil, on every page. This is what
+      // stops "Next"/"Prev" and a page refresh from wiping unsaved scores.
+      if (!resultsEditBuffer[pupilId]) {
+        resultsEditBuffer[pupilId] = { assignment: 0, midterm: 0, project: 0, exam: 0 };
+      }
+      resultsEditBuffer[pupilId][field] = isNaN(value) ? 0 : value;
+      saveResultsBufferToStorage();
 
       const card = e.target.closest('.tp-result-card');
       if (!card) return;
@@ -1694,7 +1774,6 @@ async function saveAllResults() {
     return;
   }
 
-  const inputs     = document.querySelectorAll('#results-entry-table-container input[type="number"]');
   const term       = document.getElementById('result-term')?.value;
   const subject    = document.getElementById('result-subject')?.value;
   const classSelect = document.getElementById('result-class');
@@ -1715,37 +1794,41 @@ async function saveAllResults() {
     return;
   }
 
-  // Validate scores
-  let hasInvalidScores = false;
-  inputs.forEach(input => {
-    const field = input.dataset.field;
-    const value = parseFloat(input.value) || 0;
-    const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
-    const max    = maxMap[field];
-    if (max !== undefined && value > max) {
-      hasInvalidScores = true;
-      input.style.borderColor = '#f44336';
-      input.value = max;
-    }
-    if (value < 0) { hasInvalidScores = true; input.style.borderColor = '#f44336'; input.value = 0; }
-  });
+  // Saves come from the working copy now, which covers every page the
+  // teacher has touched, not just whichever page happens to be on screen
+  const bufferEntries = Object.entries(resultsEditBuffer);
 
-  if (hasInvalidScores) {
-    window.showToast?.('Invalid scores corrected. Please review and save again.', 'warning', 5000);
+  if (bufferEntries.length === 0) {
+    window.showToast?.('No scores have been entered', 'warning');
     return;
   }
 
-  // Collect per-pupil data
+  const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
+  let hasInvalidScores = false;
   const pupilResults = {};
-  inputs.forEach(input => {
-    const pupilId = input.dataset.pupil;
-    const field   = input.dataset.field;
-    const value   = parseFloat(input.value) || 0;
-    if (!pupilResults[pupilId]) pupilResults[pupilId] = { assignment: 0, midterm: 0, project: 0, exam: 0 };
-    pupilResults[pupilId][field] = value;
+
+  bufferEntries.forEach(([pupilId, scores]) => {
+    const cleaned = { assignment: 0, midterm: 0, project: 0, exam: 0 };
+    Object.keys(maxMap).forEach(field => {
+      let value = parseFloat(scores[field]);
+      if (isNaN(value)) value = 0;
+      const max = maxMap[field];
+      if (value > max) { value = max; hasInvalidScores = true; }
+      if (value < 0)   { value = 0;   hasInvalidScores = true; }
+      cleaned[field] = value;
+    });
+    pupilResults[pupilId] = cleaned;
   });
 
-  // Check at least one score entered
+  if (hasInvalidScores) {
+    Object.entries(pupilResults).forEach(([pupilId, scores]) => {
+      resultsEditBuffer[pupilId] = scores;
+    });
+    saveResultsBufferToStorage();
+    window.showToast?.('Some scores were out of range and have been corrected. Please review and save again.', 'warning', 5000);
+    return;
+  }
+
   let hasChanges = false;
   Object.values(pupilResults).forEach(scores => {
     if (scores.assignment || scores.midterm || scores.project || scores.exam) hasChanges = true;
@@ -1779,7 +1862,6 @@ async function saveAllResults() {
       const classId   = selectedClass.id;
       const className = selectedClass.name;
 
-      // CA total = sum of sub-components
       const caScore   = (scores.assignment || 0) + (scores.midterm || 0) + (scores.project || 0);
       const examScore = scores.exam || 0;
 
@@ -1797,11 +1879,9 @@ async function saveAllResults() {
         sessionStartYear,
         sessionEndYear,
         sessionTerm: `${currentSession}_${term}`,
-        // Sub-CA breakdown
         assignment:  scores.assignment || 0,
         midterm:     scores.midterm    || 0,
         project:     scores.project    || 0,
-        // Totals (backward compatible)
         caScore,
         examScore,
         teacherId:   currentUser.uid,
@@ -1812,6 +1892,10 @@ async function saveAllResults() {
     }
 
     await batch.commit();
+
+    // Everything is now safely in Firestore, so the local autosave is no
+    // longer needed for this class/term/subject
+    clearResultsBufferStorage();
 
     window.showToast?.(
       '✓ Results saved to your workspace\n\nℹ️ Not visible to pupils yet — submit for approval when ready.',
