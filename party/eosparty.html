@@ -110,7 +110,11 @@
     display:flex;flex-direction:column;
     overflow:hidden;position:relative;
     box-shadow:inset 0 0 0 1px var(--line);
+    opacity:1;
+    transition:opacity .6s var(--ease);
   }
+  .page.dimmed{opacity:0.14;}
+  .page.focused{opacity:1;}
   .page-inner{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:60px 70px;position:relative;text-align:center;
@@ -338,9 +342,9 @@ pages.push({
 pages.push({
   layout:'verseQuran',
   tag:'02 · Holy Book', section:'Recitation of the Holy Book',
-  arabic: 'وَإِذْ قَالَ لُقْمَـٰنُ لِٱبْنِهِۦ وَهُوَ يَعِظُهُۥ يَـٰبُنَىَّ لَا تُشْرِكْ بِٱللَّهِ ۖ إِنَّ ٱلشِّرْكَ لَظُلْمٌ عَظِيمٌ',
-  translation:'"And [mention, O Muhammad], when Luqman said to his son while he was instructing him, O my son, do not associate anything with Allah. Indeed, association [with Him] is great injustice."',
-  ref:'Surah Luqman · 31:17 (context verse for the counsel that follows)'
+  arabic: 'يَا بُنَيَّ أَقِمِ الصَّلَاةَ وَأْمُرْ بِالْمَعْرُوفِ وَانْهَ عَنِ الْمُنكَرِ وَاصْبِرْ عَلَىٰ مَا أَصَابَكَ ۖ إِنَّ ذَٰلِكَ مِنْ عَزْمِ الْأُمُورِ',
+  translation:'"O my son, establish prayer, enjoin what is right, forbid what is wrong, and be patient over whatever befalls you. Indeed, that is of the matters requiring determination."',
+  ref:'Surah Luqman · 31:17 (Sahih International)'
 });
 
 pages.push({
@@ -355,25 +359,23 @@ pages.push({
 pages.push({
   layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'First Stanza',
   lines:[
-    'Arise, O compatriots, Nigeria\u2019s call obey',
-    'To serve our fatherland',
-    'With love and strength and faith',
-    'The labour of our heroes past',
-    'Shall never be in vain',
-    'To serve with heart and might',
-    'One nation bound in freedom, peace and unity'
+    'Nigeria, we hail thee,',
+    'Our own dear native land,',
+    'Though tribe and tongue may differ,',
+    'In brotherhood, we stand,',
+    'Nigerians all, and proud to serve',
+    'Our sovereign Motherland.'
   ]
 });
 pages.push({
   layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'Second Stanza',
   lines:[
-    'O God of creation, direct our noble cause',
-    'Guide our leaders right',
-    'Help our youth the truth to know',
-    'In love and honesty to grow',
-    'And living just and true',
-    'Great lofty heights attain',
-    'To build a nation where peace and justice shall reign'
+    'Our flag shall be a symbol',
+    'That truth and justice reign,',
+    'In peace or battle, honour\u2019d,',
+    'And this we count as gain,',
+    'To hand on to our children',
+    'A banner without stain.'
   ]
 });
 
@@ -687,9 +689,83 @@ pages.forEach((p, i) => {
 });
 
 /* ============================================================
-   6. INITIALISE STPAGEFLIP
+   6. INITIALISE STPAGEFLIP + ONE-SLIDE-AT-A-TIME FOCUS SYSTEM
 ============================================================ */
 let pageFlip;
+
+// focusIndex is the logical page (0-based) currently fully visible.
+// Its spread partner (the other physical page shown alongside it)
+// stays dimmed until the user steps onto it.
+let focusIndex = 0;
+let pendingDirection = null; // 'next' | 'prev' | null, set right before a physical flip
+
+function pairOf(idx){
+  const start = idx - (idx % 2);
+  const partner = (start + 1 < pages.length) ? start + 1 : null;
+  return { start, partner };
+}
+
+function fadeNavHint(){
+  document.getElementById('navHint').classList.add('fade');
+}
+
+function applyFocus(){
+  const { start, partner } = pairOf(focusIndex);
+  const indices = partner !== null ? [start, partner] : [start];
+
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active','focused','dimmed'));
+
+  let sectionText = null;
+
+  indices.forEach((idx) => {
+    const el = document.querySelector(`.page[data-index="${idx}"]`);
+    if(!el) return;
+    // restart CSS animations by forcing reflow
+    void el.offsetWidth;
+    el.classList.add('active');
+    el.classList.add(idx === focusIndex ? 'focused' : 'dimmed');
+
+    const p = pages[idx];
+    if(p && p.section && idx === focusIndex){ sectionText = p.section; }
+
+    runHandwriting(el);
+    if(p && p.layout === 'pdfSection') loadPdfSection(el);
+    if(p && p.layout === 'anthemStanza') runAnthemLines(el);
+  });
+
+  if(sectionText){ document.getElementById('liveSection').textContent = sectionText; }
+}
+
+function goNext(){
+  if(!pageFlip) return;
+  const { start, partner } = pairOf(focusIndex);
+  if(focusIndex === start && partner !== null){
+    // step onto the other half of the same spread — no physical page turn
+    focusIndex = partner;
+    applyFocus();
+  }else{
+    // move to the next physical spread
+    pendingDirection = 'next';
+    pageFlip.flipNext();
+  }
+  fadeNavHint();
+}
+
+function goPrev(){
+  if(!pageFlip) return;
+  const { start, partner } = pairOf(focusIndex);
+  if(partner !== null && focusIndex === partner){
+    // step back onto the first half of the same spread — no physical page turn
+    focusIndex = start;
+    applyFocus();
+  }else{
+    // move to the previous physical spread
+    pendingDirection = 'prev';
+    pageFlip.flipPrev();
+  }
+  fadeNavHint();
+}
+
 function initFlip(){
   pageFlip = new St.PageFlip(bookEl, {
     width: 900,
@@ -708,48 +784,18 @@ function initFlip(){
   pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
   pageFlip.on('flip', (e) => {
-    activateIndices(getPairIndices(e.data));
+    const { start, partner } = pairOf(e.data);
+    if(pendingDirection === 'prev' && partner !== null){
+      focusIndex = partner; // landing from a "prev" turn: focus the last half of the new spread
+    }else{
+      focusIndex = start; // default / forward turn: focus the first half of the new spread
+    }
+    pendingDirection = null;
+    applyFocus();
   });
 
-  activateIndices(getPairIndices(0), { fadeHint:false });
-}
-
-/* ---- Pages are shown two-at-a-time (a spread) on desktop, so both
-       members of the current spread must be activated together, not
-       just the single index the flip event reports. ---- */
-function getPairIndices(idx){
-  const start = idx - (idx % 2);
-  const indices = [start];
-  if(start + 1 < pages.length) indices.push(start + 1);
-  return indices;
-}
-
-function activateIndices(indices, opts){
-  opts = opts || {};
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-
-  let sectionText = null;
-
-  indices.forEach((idx) => {
-    const el = document.querySelector(`.page[data-index="${idx}"]`);
-    if(!el) return;
-    // restart CSS animations by forcing reflow
-    void el.offsetWidth;
-    el.classList.add('active');
-
-    const p = pages[idx];
-    if(p && p.section){ sectionText = p.section; }
-
-    runHandwriting(el);
-    if(p && p.layout === 'pdfSection') loadPdfSection(el);
-    if(p && p.layout === 'anthemStanza') runAnthemLines(el);
-  });
-
-  if(sectionText){ document.getElementById('liveSection').textContent = sectionText; }
-
-  if(opts.fadeHint !== false){
-    document.getElementById('navHint').classList.add('fade');
-  }
+  focusIndex = 0;
+  applyFocus();
 }
 
 function runHandwriting(el){
@@ -846,10 +892,10 @@ function tryImageFallback(host, msg){
 window.addEventListener('keydown', (e) => {
   if(!pageFlip) return;
   // the very first keypress only dismisses the start screen; don't
-  // also flip a page on that same press
+  // also step forward on that same press
   if(!startScreen.classList.contains('hidden')) return;
-  if(e.key === 'ArrowRight') pageFlip.flipNext();
-  if(e.key === 'ArrowLeft') pageFlip.flipPrev();
+  if(e.key === 'ArrowRight') goNext();
+  if(e.key === 'ArrowLeft') goPrev();
 });
 
 window.addEventListener('load', () => {
