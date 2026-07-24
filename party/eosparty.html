@@ -777,7 +777,7 @@ async function loadPdfSection(pageEl){
   try{
     if(window['pdfjsLib']){
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const loadingTask = pdfjsLib.getDocument('party/nurserypresentationslides.pdf');
+      const loadingTask = pdfjsLib.getDocument('nurserypresentationslides.pdf');
       const pdf = await loadingTask.promise;
       host.innerHTML = '';
       const canvas = document.createElement('canvas');
@@ -821,7 +821,7 @@ function tryImageFallback(host, msg){
   img.onerror = () => {
     if(msg) msg.textContent = 'Add slide images to the party/ folder named nursery-1.png, nursery-2.png and so on, or add nurserypresentationslides.pdf.';
   };
-  img.src = `party/nursery-${n}.png`;
+  img.src = `nursery-${n}.png`;
 }
 
 /* ============================================================
