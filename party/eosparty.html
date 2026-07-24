@@ -114,6 +114,7 @@
   .page-inner{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:60px 70px;position:relative;text-align:center;
+    overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
   }
   .page-tag{
     position:absolute;top:28px;left:36px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);
@@ -140,10 +141,10 @@
   .hw-line{display:block;}
   .hw-char{display:inline-block;opacity:0;filter:blur(2px);animation:hwIn .5s var(--ease) forwards;}
   @keyframes hwIn{to{opacity:1;filter:blur(0);}}
-  .arabic{font-family:'Amiri',serif;direction:rtl;font-size:clamp(26px,3.6vw,46px);line-height:2;color:var(--white);}
-  .translation{font-style:italic;font-weight:300;color:rgba(255,255,255,0.75);font-size:clamp(14px,1.6vw,19px);max-width:640px;margin-top:26px;line-height:1.7;opacity:0;transition:opacity 1.2s var(--ease);}
+  .arabic{font-family:'Amiri',serif;direction:rtl;font-size:clamp(20px,2.6vw,32px);line-height:1.75;color:var(--white);}
+  .translation{font-style:italic;font-weight:300;color:rgba(255,255,255,0.75);font-size:clamp(13px,1.4vw,17px);max-width:640px;margin-top:16px;line-height:1.6;opacity:0;transition:opacity 1.2s var(--ease);}
   .translation.show{opacity:1;}
-  .verse-ref{margin-top:20px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);}
+  .verse-ref{margin-top:12px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);}
 
   /* ---------- ticker ---------- */
   #ticker{
@@ -156,7 +157,7 @@
     font-size:12px;letter-spacing:3px;font-weight:700;white-space:nowrap;
   }
   #ticker .ticker-track-wrap{flex:1;overflow:hidden;display:flex;align-items:center;}
-  #ticker .ticker-track{display:flex;white-space:nowrap;animation:tickerScroll 38s linear infinite;}
+  #ticker .ticker-track{display:flex;white-space:nowrap;animation:tickerScroll 110s linear infinite;}
   #ticker .ticker-item{padding:0 46px;font-size:13.5px;font-weight:300;letter-spacing:.3px;color:rgba(255,255,255,0.88);position:relative;}
   #ticker .ticker-item::after{content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:var(--blue-soft);}
   @keyframes tickerScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
@@ -322,7 +323,7 @@ window.addEventListener('keydown', keyStart, { once:true });
 
 /* ============================================================
    3. PAGE DATA
-   layout options: cover, verse, anthem, program, medical, robot, debate, split
+   layout options: cover, verse, anthemStanza, program, medical, robot, debate, split
 ============================================================ */
 const pages = [];
 
@@ -352,26 +353,27 @@ pages.push({
 });
 
 pages.push({
-  layout:'anthem', tag:'03 · National Anthem', section:'National Anthem',
-  stanzas:[
-    { title:'First Stanza', lines:[
-      'Arise, O compatriots, Nigeria\u2019s call obey',
-      'To serve our fatherland',
-      'With love and strength and faith',
-      'The labour of our heroes past',
-      'Shall never be in vain',
-      'To serve with heart and might',
-      'One nation bound in freedom, peace and unity'
-    ]},
-    { title:'Second Stanza', lines:[
-      'O God of creation, direct our noble cause',
-      'Guide our leaders right',
-      'Help our youth the truth to know',
-      'In love and honesty to grow',
-      'And living just and true',
-      'Great lofty heights attain',
-      'To build a nation where peace and justice shall reign'
-    ]}
+  layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'First Stanza',
+  lines:[
+    'Arise, O compatriots, Nigeria\u2019s call obey',
+    'To serve our fatherland',
+    'With love and strength and faith',
+    'The labour of our heroes past',
+    'Shall never be in vain',
+    'To serve with heart and might',
+    'One nation bound in freedom, peace and unity'
+  ]
+});
+pages.push({
+  layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'Second Stanza',
+  lines:[
+    'O God of creation, direct our noble cause',
+    'Guide our leaders right',
+    'Help our youth the truth to know',
+    'In love and honesty to grow',
+    'And living just and true',
+    'Great lofty heights attain',
+    'To build a nation where peace and justice shall reign'
   ]
 });
 
@@ -493,7 +495,7 @@ function makeHandwriting(text, cls){
 function tplVerseQuran(p){
   return `
   <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner">
+  <div class="page-inner" style="justify-content:flex-start;padding-top:64px;">
     <div class="eyebrow reveal">${esc(p.section)}</div>
     <p class="arabic hw-line" data-hw="${encodeURIComponent(p.arabic)}"></p>
     <p class="translation" data-tr="${esc(p.translation)}"></p>
@@ -503,29 +505,25 @@ function tplVerseQuran(p){
 
 function tplVerseBible(p){
   const blocks = p.verses.map((v,i) => `
-    <p class="arabic" style="font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(18px,2.2vw,26px);direction:ltr;margin-top:${i? '34px':'0'};" data-hw2="${esc(v.text)}"></p>
+    <p class="arabic" style="font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(15px,1.8vw,21px);direction:ltr;line-height:1.6;margin-top:${i? '22px':'0'};" data-hw2="${esc(v.text)}"></p>
     <div class="verse-ref">${esc(v.ref)}</div>
   `).join('');
   return `
   <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner">
+  <div class="page-inner" style="justify-content:flex-start;padding-top:64px;">
     <div class="eyebrow reveal">Bible Reading</div>
     <div class="hw-multi">${blocks}</div>
   </div>`;
 }
 
-function tplAnthem(p){
-  const stanzas = p.stanzas.map((s,i) => `
-    <div class="anthem-stanza" style="display:${i===0?'block':'none'}" data-stanza="${i}">
-      <div class="eyebrow reveal">${s.title}</div>
-      ${s.lines.map((l,li) => `<p class="hw-line" style="font-family:'Playfair Display',serif;font-size:clamp(17px,2vw,25px);line-height:1.7;font-weight:500;" data-hw3="${esc(l)}" data-order="${li}"></p>`).join('')}
-    </div>
-  `).join('');
+function tplAnthemStanza(p){
+  const lines = p.lines.map((l) => `<p class="hw-line" style="font-family:'Playfair Display',serif;font-size:clamp(15px,1.7vw,21px);line-height:1.6;font-weight:500;" data-hw3="${esc(l)}"></p>`).join('');
   return `
   <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner">
-    <div class="eyebrow reveal" style="margin-bottom:4px;">National Anthem</div>
-    ${stanzas}
+  <div class="page-inner" style="justify-content:flex-start;padding-top:64px;">
+    <div class="eyebrow reveal">${esc(p.title)}</div>
+    <div class="accent-line reveal d1"></div>
+    ${lines}
   </div>`;
 }
 
@@ -661,7 +659,7 @@ function renderPage(p){
     case 'program': return tplProgram(p);
     case 'verseQuran': return tplVerseQuran(p);
     case 'verseBible': return tplVerseBible(p);
-    case 'anthem': return tplAnthem(p);
+    case 'anthemStanza': return tplAnthemStanza(p);
     case 'guests': return tplGuests();
     case 'pdfSection': return tplPdfSection();
     case 'medicalIntro': return tplMedicalIntro();
@@ -710,28 +708,48 @@ function initFlip(){
   pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
   pageFlip.on('flip', (e) => {
-    activatePage(e.data);
+    activateIndices(getPairIndices(e.data));
   });
 
-  activatePage(0);
+  activateIndices(getPairIndices(0), { fadeHint:false });
 }
 
-function activatePage(idx){
+/* ---- Pages are shown two-at-a-time (a spread) on desktop, so both
+       members of the current spread must be activated together, not
+       just the single index the flip event reports. ---- */
+function getPairIndices(idx){
+  const start = idx - (idx % 2);
+  const indices = [start];
+  if(start + 1 < pages.length) indices.push(start + 1);
+  return indices;
+}
+
+function activateIndices(indices, opts){
+  opts = opts || {};
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  const el = document.querySelector(`.page[data-index="${idx}"]`);
-  if(!el) return;
-  // restart CSS animations by forcing reflow
-  void el.offsetWidth;
-  el.classList.add('active');
 
-  const p = pages[idx];
-  if(p && p.section){ document.getElementById('liveSection').textContent = p.section; }
+  let sectionText = null;
 
-  runHandwriting(el);
-  if(p && p.layout === 'pdfSection') loadPdfSection(el);
-  if(p && p.layout === 'anthem') runAnthem(el);
+  indices.forEach((idx) => {
+    const el = document.querySelector(`.page[data-index="${idx}"]`);
+    if(!el) return;
+    // restart CSS animations by forcing reflow
+    void el.offsetWidth;
+    el.classList.add('active');
 
-  document.getElementById('navHint').classList.add('fade');
+    const p = pages[idx];
+    if(p && p.section){ sectionText = p.section; }
+
+    runHandwriting(el);
+    if(p && p.layout === 'pdfSection') loadPdfSection(el);
+    if(p && p.layout === 'anthemStanza') runAnthemLines(el);
+  });
+
+  if(sectionText){ document.getElementById('liveSection').textContent = sectionText; }
+
+  if(opts.fadeHint !== false){
+    document.getElementById('navHint').classList.add('fade');
+  }
 }
 
 function runHandwriting(el){
@@ -752,15 +770,13 @@ function runHandwriting(el){
   });
 }
 
-function runAnthem(el){
-  const stanza = el.querySelector('.anthem-stanza[data-stanza="0"]');
-  if(!stanza) return;
-  const lines = stanza.querySelectorAll('[data-hw3]');
+function runAnthemLines(el){
+  const lines = el.querySelectorAll('[data-hw3]');
   let cumulative = 0;
   lines.forEach((node) => {
     const text = node.dataset.hw3;
     setTimeout(() => { node.innerHTML = makeHandwriting(text); }, cumulative);
-    cumulative += text.length*16 + 260;
+    cumulative += text.length*16 + 220;
   });
 }
 
@@ -829,6 +845,9 @@ function tryImageFallback(host, msg){
 ============================================================ */
 window.addEventListener('keydown', (e) => {
   if(!pageFlip) return;
+  // the very first keypress only dismisses the start screen; don't
+  // also flip a page on that same press
+  if(!startScreen.classList.contains('hidden')) return;
   if(e.key === 'ArrowRight') pageFlip.flipNext();
   if(e.key === 'ArrowLeft') pageFlip.flipPrev();
 });
