@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fahmid Nursery and Primary School — Graduation Ceremony</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@300;400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+
+<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+  :root{
+    --navy:#0a1a33;
+    --deep-blue:#0d2456;
+    --ink:#050d1e;
+    --blue-mist:#2c4d8c;
+    --blue-soft:#4a6fb5;
+    --paper:#f6f8fc;
+    --white:#ffffff;
+    --line:rgba(255,255,255,0.14);
+    --line-dark:rgba(10,26,51,0.12);
+    --ease:cubic-bezier(.22,.68,.16,1);
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:100%;height:100%;
+    background:var(--ink);
+    overflow:hidden;
+    font-family:'Inter',sans-serif;
+    color:var(--white);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.serif{font-family:'Playfair Display',serif;}
+
+  /* ---------- ambient background ---------- */
+  #ambient{
+    position:fixed;inset:0;z-index:0;
+    background:
+      radial-gradient(ellipse at 20% 15%, rgba(44,77,140,0.35), transparent 55%),
+      radial-gradient(ellipse at 85% 80%, rgba(13,36,86,0.55), transparent 60%),
+      linear-gradient(160deg, var(--ink) 0%, var(--navy) 55%, var(--deep-blue) 100%);
+  }
+  #particles{position:fixed;inset:0;z-index:1;pointer-events:none;}
+  .particle{
+    position:absolute;border-radius:50%;
+    background:rgba(255,255,255,0.5);
+    filter:blur(0.5px);
+    animation:drift linear infinite;
+  }
+  @keyframes drift{
+    0%{transform:translateY(0) translateX(0);opacity:0;}
+    10%{opacity:.6;}
+    90%{opacity:.4;}
+    100%{transform:translateY(-110vh) translateX(20px);opacity:0;}
+  }
+
+  /* ---------- start overlay ---------- */
+  #startScreen{
+    position:fixed;inset:0;z-index:100;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--ink);
+    cursor:pointer;
+    transition:opacity 1s var(--ease), visibility 1s;
+  }
+  #startScreen.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+  #startScreen img{width:120px;height:120px;object-fit:contain;margin-bottom:28px;opacity:0;animation:fadeUp 1s var(--ease) .2s forwards;}
+  #startScreen h1{font-size:clamp(28px,4vw,46px);font-weight:600;letter-spacing:.5px;opacity:0;animation:fadeUp 1s var(--ease) .5s forwards;text-align:center;padding:0 20px;}
+  #startScreen p{margin-top:18px;font-size:15px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);opacity:0;animation:fadeUp 1s var(--ease) .8s forwards;}
+  #startScreen .enter-btn{
+    margin-top:44px;padding:16px 44px;border:1px solid var(--line);border-radius:2px;
+    font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--white);
+    opacity:0;animation:fadeUp 1s var(--ease) 1.1s forwards;
+    transition:background .4s var(--ease), border-color .4s var(--ease);
+  }
+  #startScreen:hover .enter-btn{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.4);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- header ---------- */
+  #headerBar{
+    position:fixed;top:0;left:0;right:0;z-index:40;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 40px;
+    pointer-events:none;
+  }
+  #headerBar .brand-left{display:flex;align-items:center;gap:14px;}
+  #headerBar img{height:46px;width:46px;object-fit:contain;}
+  #headerBar .brand-right{
+    font-family:'Playfair Display',serif;font-weight:600;
+    font-size:clamp(14px,1.6vw,19px);letter-spacing:.5px;text-align:right;
+  }
+  #headerBar .brand-right span{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--blue-soft);margin-top:3px;}
+  .hairline{position:fixed;top:88px;left:40px;right:40px;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);z-index:39;}
+
+  /* ---------- book ---------- */
+  #bookWrap{
+    position:fixed;inset:0;z-index:10;
+    display:flex;align-items:center;justify-content:center;
+    padding:110px 40px 70px;
+  }
+  #book{width:100%;height:100%;}
+  .page{
+    background:linear-gradient(155deg, var(--deep-blue) 0%, var(--navy) 100%);
+    display:flex;flex-direction:column;
+    overflow:hidden;position:relative;
+    box-shadow:inset 0 0 0 1px var(--line);
+  }
+  .page-inner{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:60px 70px;position:relative;text-align:center;
+  }
+  .page-tag{
+    position:absolute;top:28px;left:36px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);
+  }
+  .page-num{position:absolute;bottom:22px;right:30px;font-size:11px;color:var(--blue-soft);letter-spacing:1px;}
+
+  .eyebrow{font-size:12px;letter-spacing:4px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:18px;}
+  .title-lg{font-size:clamp(30px,4.4vw,56px);font-weight:600;line-height:1.15;margin-bottom:16px;}
+  .title-md{font-size:clamp(22px,3vw,34px);font-weight:600;margin-bottom:14px;}
+  .subtitle{font-size:clamp(14px,1.5vw,18px);color:rgba(255,255,255,0.72);max-width:640px;line-height:1.6;font-weight:300;}
+  .accent-line{width:56px;height:2px;background:var(--blue-soft);margin:22px auto;}
+
+  /* reveal-on-enter utility, triggered by JS when a page becomes active */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease), transform .9s var(--ease);}
+  .page.active .reveal{opacity:1;transform:translateY(0);}
+  .page.active .reveal.d1{transition-delay:.15s;}
+  .page.active .reveal.d2{transition-delay:.32s;}
+  .page.active .reveal.d3{transition-delay:.5s;}
+  .page.active .reveal.d4{transition-delay:.68s;}
+  .zoom-in{opacity:0;transform:scale(.9);transition:opacity 1s var(--ease), transform 1s var(--ease);}
+  .page.active .zoom-in{opacity:1;transform:scale(1);}
+
+  /* ---------- handwriting reveal ---------- */
+  .hw-line{display:block;}
+  .hw-char{display:inline-block;opacity:0;filter:blur(2px);animation:hwIn .5s var(--ease) forwards;}
+  @keyframes hwIn{to{opacity:1;filter:blur(0);}}
+  .arabic{font-family:'Amiri',serif;direction:rtl;font-size:clamp(26px,3.6vw,46px);line-height:2;color:var(--white);}
+  .translation{font-style:italic;font-weight:300;color:rgba(255,255,255,0.75);font-size:clamp(14px,1.6vw,19px);max-width:640px;margin-top:26px;line-height:1.7;opacity:0;transition:opacity 1.2s var(--ease);}
+  .translation.show{opacity:1;}
+  .verse-ref{margin-top:20px;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);}
+
+  /* ---------- ticker ---------- */
+  #ticker{
+    position:fixed;bottom:0;left:0;right:0;height:52px;z-index:50;
+    background:rgba(5,13,30,0.92);border-top:1px solid var(--line);
+    display:flex;align-items:stretch;backdrop-filter:blur(6px);
+  }
+  #ticker .news-label{
+    display:flex;align-items:center;padding:0 22px;background:var(--blue-mist);
+    font-size:12px;letter-spacing:3px;font-weight:700;white-space:nowrap;
+  }
+  #ticker .ticker-track-wrap{flex:1;overflow:hidden;display:flex;align-items:center;}
+  #ticker .ticker-track{display:flex;white-space:nowrap;animation:tickerScroll 38s linear infinite;}
+  #ticker .ticker-item{padding:0 46px;font-size:13.5px;font-weight:300;letter-spacing:.3px;color:rgba(255,255,255,0.88);position:relative;}
+  #ticker .ticker-item::after{content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:var(--blue-soft);}
+  @keyframes tickerScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  #ticker .clock{
+    display:flex;align-items:center;padding:0 24px;font-variant-numeric:tabular-nums;
+    font-size:14px;letter-spacing:1px;border-left:1px solid var(--line);white-space:nowrap;
+  }
+
+  /* ---------- nav hint ---------- */
+  #navHint{
+    position:fixed;bottom:64px;left:50%;transform:translateX(-50%);z-index:41;
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);
+    display:flex;gap:10px;align-items:center;transition:opacity 1s var(--ease);
+  }
+  #navHint.fade{opacity:0;}
+
+  /* ---------- medical slides ---------- */
+  .med-icon{width:96px;height:96px;border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:26px;}
+  .med-icon i{font-size:42px;color:var(--white);}
+
+  /* ---------- coding robot ---------- */
+  .robot-stage{position:relative;width:260px;height:300px;margin:0 auto 30px;}
+  .robot{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:150px;animation:robotBob 2.4s ease-in-out infinite;}
+  @keyframes robotBob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-8px);}}
+  .r-head{width:96px;height:80px;background:var(--white);border-radius:18px;margin:0 auto;position:relative;transform-origin:50% 100%;animation:robotHead 4.5s ease-in-out infinite;}
+  @keyframes robotHead{0%,80%,100%{transform:rotate(0);}85%{transform:rotate(-8deg);}92%{transform:rotate(8deg);}}
+  .r-eye{position:absolute;top:30px;width:14px;height:14px;border-radius:50%;background:var(--navy);animation:robotBlink 3.6s infinite;}
+  .r-eye.l{left:22px;} .r-eye.r{right:22px;}
+  @keyframes robotBlink{0%,92%,100%{transform:scaleY(1);}94%,97%{transform:scaleY(.1);}}
+  .r-antenna{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:4px;height:16px;background:var(--blue-soft);}
+  .r-antenna::after{content:"";position:absolute;top:-6px;left:-3px;width:10px;height:10px;border-radius:50%;background:var(--blue-soft);}
+  .r-body{width:120px;height:110px;background:var(--white);border-radius:22px;margin:6px auto 0;position:relative;}
+  .r-screen{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:70px;height:40px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;color:#7fd0ff;}
+  .r-arm{position:absolute;top:14px;width:14px;height:56px;background:var(--white);border-radius:10px;transform-origin:top center;}
+  .r-arm.left{left:-10px;animation:armWave 2.4s ease-in-out infinite;}
+  .r-arm.right{right:-10px;}
+  @keyframes armWave{0%,60%,100%{transform:rotate(0);}70%{transform:rotate(-35deg);}80%{transform:rotate(-15deg);}90%{transform:rotate(-35deg);}}
+  .r-leg{position:absolute;bottom:-40px;width:16px;height:40px;background:var(--white);border-radius:6px;}
+  .r-leg.left{left:24px;} .r-leg.right{right:24px;}
+
+  /* ---------- debate split ---------- */
+  .debate-wrap{display:flex;width:100%;height:100%;}
+  .debate-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
+  .debate-side.garri{background:linear-gradient(180deg, rgba(44,77,140,0.25), transparent);}
+  .debate-side.rice{background:linear-gradient(180deg, rgba(13,36,86,0.4), transparent);}
+  .debate-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:var(--ink);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:15px;}
+  .debate-divider{width:1px;background:var(--line);}
+
+  /* ---------- program list ---------- */
+  .prog-list{list-style:none;text-align:left;max-width:520px;width:100%;}
+  .prog-list li{display:flex;align-items:baseline;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;font-weight:300;}
+  .prog-list li span.n{font-family:'Playfair Display',serif;color:var(--blue-soft);font-size:13px;min-width:22px;}
+
+  /* pdf canvas */
+  .pdf-canvas{max-width:100%;max-height:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+  img.slide-img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
+
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+
+<div id="ambient"></div>
+<div id="particles"></div>
+
+<div id="startScreen">
+  <img src="IMG_4629.png" alt="School logo">
+  <h1 class="serif">Fahmid Nursery and Primary School</h1>
+  <p>Graduation &amp; Prize Giving Ceremony</p>
+  <div class="enter-btn">Tap to Begin</div>
+</div>
+
+<div id="headerBar">
+  <div class="brand-left">
+    <img src="IMG_4629.png" alt="Fahmid logo">
+  </div>
+  <div class="brand-right serif">
+    Fahmid Nursery and Primary School
+    <span id="liveSection">Graduation Ceremony</span>
+  </div>
+</div>
+<div class="hairline"></div>
+
+<div id="bookWrap">
+  <div id="book"></div>
+</div>
+
+<div id="navHint"><i class="ph ph-caret-left"></i> use arrow keys or swipe <i class="ph ph-caret-right"></i></div>
+
+<div id="ticker">
+  <div class="news-label">NEWS</div>
+  <div class="ticker-track-wrap">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+  <div class="clock" id="clock">--:--</div>
+</div>
+
+<script>
+/* ============================================================
+   0. PARTICLES
+============================================================ */
+(function particles(){
+  const box = document.getElementById('particles');
+  const count = 34;
+  for(let i=0;i<count;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*2.4+1;
+    p.style.width = size+'px';
+    p.style.height = size+'px';
+    p.style.left = Math.random()*100+'vw';
+    p.style.bottom = (-10 - Math.random()*20)+'vh';
+    p.style.animationDuration = (14 + Math.random()*16)+'s';
+    p.style.animationDelay = (Math.random()*16)+'s';
+    box.appendChild(p);
+  }
+})();
+
+/* ============================================================
+   1. TICKER + CLOCK
+============================================================ */
+const newsItems = [
+  "Welcome to the Fahmid Nursery and Primary School Graduation and Prize Giving Ceremony",
+  "Congratulations to our graduating class, we are proud of every one of you",
+  "Registration for the new academic session opens next month, visit the school office for details",
+  "A big thank you to all parents and guardians for your continued support and partnership",
+  "Fahmid Nursery and Primary School, Alagbado, Ifako Ijaiye, Lagos",
+  "Photography and refreshment stands are open at the rear of the hall throughout the event"
+];
+function buildTicker(){
+  const track = document.getElementById('tickerTrack');
+  const loopItems = newsItems.concat(newsItems); // duplicate for seamless loop
+  track.innerHTML = loopItems.map(t => `<div class="ticker-item">${t}</div>`).join('');
+}
+buildTicker();
+
+function updateClock(){
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if(h === 0) h = 12;
+  document.getElementById('clock').textContent = `${h}:${m} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+/* ============================================================
+   2. START SCREEN / FULLSCREEN
+============================================================ */
+const startScreen = document.getElementById('startScreen');
+function enterPresentation(){
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if(req){ try{ req.call(el); }catch(e){} }
+  startScreen.classList.add('hidden');
+  startScreen.removeEventListener('click', enterPresentation);
+  window.removeEventListener('keydown', keyStart);
+}
+function keyStart(e){ enterPresentation(); }
+startScreen.addEventListener('click', enterPresentation);
+window.addEventListener('keydown', keyStart, { once:true });
+
+/* ============================================================
+   3. PAGE DATA
+   layout options: cover, verse, anthem, program, medical, robot, debate, split
+============================================================ */
+const pages = [];
+
+pages.push({ layout:'cover' });
+
+pages.push({
+  layout:'simple', tag:'01 · Opening', section:'Opening Prayer',
+  eyebrow:'We Begin', title:'In God\u2019s Name',
+  subtitle:'Every gathering finds its strength at the very start, so we bow our heads together and ask for a ceremony filled with peace, gratitude and joy.'
+});
+
+pages.push({
+  layout:'verseQuran',
+  tag:'02 · Holy Book', section:'Recitation of the Holy Book',
+  arabic: 'وَإِذْ قَالَ لُقْمَـٰنُ لِٱبْنِهِۦ وَهُوَ يَعِظُهُۥ يَـٰبُنَىَّ لَا تُشْرِكْ بِٱللَّهِ ۖ إِنَّ ٱلشِّرْكَ لَظُلْمٌ عَظِيمٌ',
+  translation:'"And [mention, O Muhammad], when Luqman said to his son while he was instructing him, O my son, do not associate anything with Allah. Indeed, association [with Him] is great injustice."',
+  ref:'Surah Luqman · 31:17 (context verse for the counsel that follows)'
+});
+
+pages.push({
+  layout:'verseBible',
+  tag:'02 · Holy Book', section:'Recitation of the Holy Book',
+  verses:[
+    { text:'Unless the LORD builds the house, the builders labor in vain.', ref:'Psalm 127:1' },
+    { text:'The LORD bless you and keep you; the LORD make his face shine on you and be gracious to you; the LORD turn his face toward you and give you peace.', ref:'Numbers 6:24–26' }
+  ]
+});
+
+pages.push({
+  layout:'anthem', tag:'03 · National Anthem', section:'National Anthem',
+  stanzas:[
+    { title:'First Stanza', lines:[
+      'Arise, O compatriots, Nigeria\u2019s call obey',
+      'To serve our fatherland',
+      'With love and strength and faith',
+      'The labour of our heroes past',
+      'Shall never be in vain',
+      'To serve with heart and might',
+      'One nation bound in freedom, peace and unity'
+    ]},
+    { title:'Second Stanza', lines:[
+      'O God of creation, direct our noble cause',
+      'Guide our leaders right',
+      'Help our youth the truth to know',
+      'In love and honesty to grow',
+      'And living just and true',
+      'Great lofty heights attain',
+      'To build a nation where peace and justice shall reign'
+    ]}
+  ]
+});
+
+pages.push({ layout:'program', tag:'04 · Opening', section:'Welcome Dance', eyebrow:'Rhythm & Colour', title:'Welcome Dance', subtitle:'Our pupils open the celebration in motion, a burst of colour and rhythm to welcome every guest into the hall.' });
+
+pages.push({ layout:'guests', tag:'05 · Ceremony', section:'Introduction of Guests' });
+
+pages.push({ layout:'pdfSection', tag:'06 · Presentation', section:'Knowing Nigeria' });
+
+pages.push({ layout:'medicalIntro' });
+// individual medical slides are appended programmatically below
+
+pages.push({ layout:'program', tag:'08 · Language', section:'French Presentation', eyebrow:'Bonjour', title:'French Presentation', subtitle:'A short and lively presentation in French, prepared to show off new vocabulary, confident pronunciation and a growing love for language.' });
+
+pages.push({ layout:'program', tag:'09 · Culture', section:'Suru Lere Presentation', eyebrow:'Patience & Grace', title:'Suru Lere Presentation', subtitle:'A cultural piece celebrating patience and calm, performed with the warmth and grace it deserves.' });
+
+pages.push({ layout:'robot', tag:'10 · Technology', section:'Coding Presentation' });
+
+pages.push({ layout:'speech', tag:'11 · Address', section:'Proprietress\u2019 Speech' });
+
+pages.push({ layout:'program', tag:'12 · Dance', section:'Gbegbe Dance Presentation', eyebrow:'Traditional Rhythm', title:'Gbegbe Dance', subtitle:'A spirited traditional dance performed with drums, energy and pride in our heritage.' });
+
+pages.push({ layout:'program', tag:'13 · Performance', section:'Bata / Ewi', eyebrow:'Voice & Verse', title:'Bata / Ewi', subtitle:'Talking drums and spoken word come together in a performance rooted in Yoruba oral tradition.' });
+
+pages.push({ layout:'program', tag:'14 · Interaction', section:'Parents\u2019 Game', eyebrow:'Just for Fun', title:'Parents\u2019 Game', subtitle:'A light and playful segment inviting our parents onto the floor, because today belongs to families, not only pupils.' });
+
+pages.push({ layout:'program', tag:'15 · Drama', section:'Dialogue Segment', eyebrow:'A Short Scene', title:'Dialogue Segment', subtitle:'A short scripted exchange performed by our pupils, blending humour with a gentle life lesson.' });
+
+pages.push({ layout:'program', tag:'16 · Dance', section:'Choreography', eyebrow:'In Formation', title:'Choreography', subtitle:'A carefully rehearsed routine, every step and formation timed to the music.' });
+
+pages.push({ layout:'program', tag:'17 · Dance', section:'Afrom Dance', eyebrow:'Afrobeats', title:'Afrom Dance', subtitle:'Modern Afrobeats energy on the stage, a favourite the whole hall will move to.' });
+
+pages.push({ layout:'debate', tag:'18 · Debate', section:'Debate: Garri vs Rice' });
+
+pages.push({ layout:'program', tag:'19 · Tribute', section:'Nigerian Mothers', eyebrow:'A Tribute', title:'Nigerian Mothers', subtitle:'A heartfelt tribute honouring the strength, sacrifice and love of Nigerian mothers everywhere.' });
+
+pages.push({ layout:'program', tag:'20 · Graduation', section:'Primary 6 Presentation', eyebrow:'Graduation Programme', title:'Primary 6 Presentation', subtitle:'Our senior pupils take the stage one final time before graduation, a presentation years in the making.' });
+pages.push({ layout:'program', tag:'20 · Graduation', section:'KG Presentation & Certificates', eyebrow:'Graduation Programme', title:'KG Presentation &amp; Certificate Programme', subtitle:'Our kindergarten pupils are called forward to be celebrated, each certificate marking the first of many milestones.' });
+pages.push({ layout:'program', tag:'20 · Graduation', section:'Farewell', eyebrow:'Graduation Programme', title:'Farewell', subtitle:'A quiet, tender moment as we say goodbye to the pupils moving on from Fahmid.' });
+pages.push({ layout:'graduationEvent', tag:'20 · Graduation', section:'Primary 6 Graduation Event' });
+
+pages.push({ layout:'program', tag:'21 · Gratitude', section:'Vote of Thanks', eyebrow:'With Gratitude', title:'Vote of Thanks', subtitle:'On behalf of the entire school, our sincere thanks to every parent, teacher, guest and pupil who made today possible.' });
+
+pages.push({ layout:'simple', tag:'22 · Closing', section:'Closing Prayer', eyebrow:'We Close', title:'Closing Prayer', subtitle:'As the evening draws to an end, we give thanks once more and ask for safe journeys home.' });
+
+pages.push({ layout:'end' });
+
+/* ---- expand medical professions into individual pages, inserted after the intro ---- */
+const medicalData = [
+  { name:'Pulmonologist', icon:'ph-wind', desc:'The doctor who looks after your lungs and helps you breathe easily.' },
+  { name:'Orthopaedic Surgeon', icon:'ph-bone', desc:'The doctor who cares for bones, joints and muscles when they are injured.' },
+  { name:'Neurologist', icon:'ph-brain', desc:'The doctor who studies the brain and nerves that control the whole body.' },
+  { name:'Endocrinologist', icon:'ph-flask', desc:'The doctor who looks after hormones and how the body grows and changes.' },
+  { name:'Cardiologist', icon:'ph-heartbeat', desc:'The doctor who takes care of the heart and keeps it beating strong.' },
+  { name:'Haematologist', icon:'ph-drop', desc:'The doctor who studies the blood and keeps it healthy.' },
+  { name:'Dermatologist', icon:'ph-hand-heart', desc:'The doctor who cares for the skin, hair and nails.' },
+  { name:'Psychiatrist', icon:'ph-chat-circle-dots', desc:'The doctor who cares for the mind and helps people feel well inside.' },
+  { name:'Infectious Disease Specialist', icon:'ph-virus', desc:'The doctor who finds and treats illnesses caused by germs.' },
+  { name:'Paediatrician', icon:'ph-baby', desc:'The doctor who specialises in caring for babies and children.' },
+  { name:'Gynaecologist', icon:'ph-person', desc:'The doctor who cares for women\u2019s health at every stage of life.' },
+  { name:'Gastroenterologist', icon:'ph-cookie', desc:'The doctor who cares for the stomach and helps the body digest food.' }
+];
+const introIndex = pages.findIndex(p => p.layout === 'medicalIntro');
+const medicalPages = medicalData.map((m,i) => ({
+  layout:'medical', tag:'07 · Medical Profession', section:'Medical Profession',
+  index:i+1, total:medicalData.length, name:m.name, icon:m.icon, desc:m.desc
+}));
+pages.splice(introIndex+1, 0, ...medicalPages);
+
+/* ============================================================
+   4. RENDER TEMPLATES
+============================================================ */
+function esc(s){ return (s===undefined||s===null) ? '' : s; }
+
+function tplCover(){
+  return `
+  <div class="page-inner">
+    <div class="eyebrow reveal">Fahmid Nursery and Primary School</div>
+    <h1 class="title-lg serif zoom-in">Graduation &amp; Prize Giving Ceremony</h1>
+    <div class="accent-line reveal d1"></div>
+    <p class="subtitle reveal d2">A celebration of growth, discipline and achievement. Please turn the page to begin.</p>
+  </div>`;
+}
+
+function tplSimple(p){
+  return `
+  <div class="page-tag">${esc(p.tag)}</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">${esc(p.eyebrow)}</div>
+    <h2 class="title-lg serif reveal d1">${esc(p.title)}</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">${esc(p.subtitle)}</p>
+  </div>`;
+}
+
+function tplProgram(p){
+  return `
+  <div class="page-tag">${esc(p.tag)}</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">${esc(p.eyebrow)}</div>
+    <h2 class="title-md serif reveal d1">${p.title}</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">${esc(p.subtitle)}</p>
+  </div>`;
+}
+
+function makeHandwriting(text, cls){
+  let out = '';
+  let idx = 0;
+  for(const ch of text){
+    if(ch === ' '){ out += ' '; continue; }
+    const delay = (idx*0.028).toFixed(3);
+    out += `<span class="hw-char ${cls||''}" style="animation-delay:${delay}s">${ch}</span>`;
+    idx++;
+  }
+  return out;
+}
+
+function tplVerseQuran(p){
+  return `
+  <div class="page-tag">${esc(p.tag)}</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">${esc(p.section)}</div>
+    <p class="arabic hw-line" data-hw="${encodeURIComponent(p.arabic)}"></p>
+    <p class="translation" data-tr="${esc(p.translation)}"></p>
+    <div class="verse-ref reveal d3">${esc(p.ref)}</div>
+  </div>`;
+}
+
+function tplVerseBible(p){
+  const blocks = p.verses.map((v,i) => `
+    <p class="arabic" style="font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(18px,2.2vw,26px);direction:ltr;margin-top:${i? '34px':'0'};" data-hw2="${esc(v.text)}"></p>
+    <div class="verse-ref">${esc(v.ref)}</div>
+  `).join('');
+  return `
+  <div class="page-tag">${esc(p.tag)}</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">Bible Reading</div>
+    <div class="hw-multi">${blocks}</div>
+  </div>`;
+}
+
+function tplAnthem(p){
+  const stanzas = p.stanzas.map((s,i) => `
+    <div class="anthem-stanza" style="display:${i===0?'block':'none'}" data-stanza="${i}">
+      <div class="eyebrow reveal">${s.title}</div>
+      ${s.lines.map((l,li) => `<p class="hw-line" style="font-family:'Playfair Display',serif;font-size:clamp(17px,2vw,25px);line-height:1.7;font-weight:500;" data-hw3="${esc(l)}" data-order="${li}"></p>`).join('')}
+    </div>
+  `).join('');
+  return `
+  <div class="page-tag">${esc(p.tag)}</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal" style="margin-bottom:4px;">National Anthem</div>
+    ${stanzas}
+  </div>`;
+}
+
+function tplGuests(){
+  return `
+  <div class="page-tag">05 · Ceremony</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">A Warm Welcome</div>
+    <h2 class="title-lg serif reveal d1">Introduction of Guests</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">We are honoured by the presence of our special guests, dignitaries and friends of the school. Please join us in welcoming them.</p>
+  </div>`;
+}
+
+function tplPdfSection(){
+  return `
+  <div class="page-tag">06 · Presentation</div>
+  <div class="page-inner" style="padding:40px;">
+    <div class="eyebrow reveal">Nursery Presentation</div>
+    <h2 class="title-md serif reveal d1">Knowing Nigeria</h2>
+    <div id="pdfHost" style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;margin-top:18px;min-height:0;">
+      <p class="subtitle" id="pdfFallbackMsg">Preparing slides…</p>
+    </div>
+  </div>`;
+}
+
+function tplMedicalIntro(){
+  return `
+  <div class="page-tag">07 · Medical Profession</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">Primary 1 Presentation</div>
+    <h2 class="title-lg serif reveal d1">The Medical Profession</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">Twelve young pupils, twelve remarkable careers in medicine. Turn the page to meet each one.</p>
+  </div>`;
+}
+
+function tplMedical(p){
+  return `
+  <div class="page-tag">07 · Medical Profession &nbsp;·&nbsp; ${p.index} / ${p.total}</div>
+  <div class="page-inner">
+    <div class="med-icon zoom-in"><i class="ph-bold ${esc(p.icon)}"></i></div>
+    <h2 class="title-md serif reveal d1">${esc(p.name)}</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">${esc(p.desc)}</p>
+  </div>`;
+}
+
+function tplRobot(){
+  return `
+  <div class="page-tag">10 · Technology</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">Coding Presentation</div>
+    <div class="robot-stage reveal d1">
+      <div class="robot">
+        <div class="r-head">
+          <div class="r-antenna"></div>
+          <div class="r-eye l"></div>
+          <div class="r-eye r"></div>
+        </div>
+        <div class="r-body">
+          <div class="r-arm left"></div>
+          <div class="r-arm right"></div>
+          <div class="r-screen">&lt;/&gt;</div>
+          <div class="r-leg left"></div>
+          <div class="r-leg right"></div>
+        </div>
+      </div>
+    </div>
+    <h2 class="title-md serif reveal d2">Say Hello to Our Robot</h2>
+    <p class="subtitle reveal d3">Built entirely by our pupils' imagination, brought to life with code. Please welcome our young programmers to the stage.</p>
+  </div>`;
+}
+
+function tplSpeech(){
+  return `
+  <div class="page-tag">11 · Address</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">A Word From the Proprietress</div>
+    <h2 class="title-lg serif reveal d1">Proprietress\u2019 Speech</h2>
+    <div class="accent-line reveal d2"></div>
+    <p class="subtitle reveal d3">A moment to reflect on the year gone by, and to look ahead with hope and ambition for every child at Fahmid.</p>
+  </div>`;
+}
+
+function tplDebate(){
+  return `
+  <div class="debate-wrap">
+    <div class="debate-side garri">
+      <div class="eyebrow reveal">Team One</div>
+      <h2 class="title-lg serif reveal d1">Garri</h2>
+    </div>
+    <div class="debate-divider"></div>
+    <div class="debate-side rice">
+      <div class="eyebrow reveal">Team Two</div>
+      <h2 class="title-lg serif reveal d1">Rice</h2>
+    </div>
+    <div class="debate-vs zoom-in">VS</div>
+  </div>
+  <div class="page-tag">18 · Debate</div>`;
+}
+
+function tplGraduationEvent(){
+  return `
+  <div class="page-tag">20 · Graduation</div>
+  <div class="page-inner">
+    <div class="eyebrow reveal">Graduation Programme</div>
+    <h2 class="title-lg serif reveal d1">Primary 6 Graduation Event</h2>
+    <div class="accent-line reveal d2"></div>
+    <ul class="prog-list reveal d3">
+      <li><span class="n">01</span> Calling of graduating names</li>
+      <li><span class="n">02</span> Presentation of certificates</li>
+      <li><span class="n">03</span> Graduation photographs</li>
+      <li><span class="n">04</span> Closing remarks to the graduating class</li>
+    </ul>
+  </div>`;
+}
+
+function tplEnd(){
+  return `
+  <div class="page-inner">
+    <div class="eyebrow reveal">Thank You</div>
+    <h1 class="title-lg serif zoom-in">Fahmid Nursery and Primary School</h1>
+    <div class="accent-line reveal d1"></div>
+    <p class="subtitle reveal d2">Thank you for celebrating with us this evening. See you next session.</p>
+  </div>`;
+}
+
+function renderPage(p){
+  switch(p.layout){
+    case 'cover': return tplCover();
+    case 'simple': return tplSimple(p);
+    case 'program': return tplProgram(p);
+    case 'verseQuran': return tplVerseQuran(p);
+    case 'verseBible': return tplVerseBible(p);
+    case 'anthem': return tplAnthem(p);
+    case 'guests': return tplGuests();
+    case 'pdfSection': return tplPdfSection();
+    case 'medicalIntro': return tplMedicalIntro();
+    case 'medical': return tplMedical(p);
+    case 'robot': return tplRobot();
+    case 'speech': return tplSpeech();
+    case 'debate': return tplDebate();
+    case 'graduationEvent': return tplGraduationEvent();
+    case 'end': return tplEnd();
+    default: return '';
+  }
+}
+
+/* ============================================================
+   5. BUILD PAGE ELEMENTS
+============================================================ */
+const bookEl = document.getElementById('book');
+pages.forEach((p, i) => {
+  const div = document.createElement('div');
+  div.className = 'page';
+  div.dataset.index = i;
+  div.dataset.layout = p.layout;
+  div.innerHTML = renderPage(p) + `<div class="page-num">${i+1} / ${pages.length}</div>`;
+  bookEl.appendChild(div);
+});
+
+/* ============================================================
+   6. INITIALISE STPAGEFLIP
+============================================================ */
+let pageFlip;
+function initFlip(){
+  pageFlip = new St.PageFlip(bookEl, {
+    width: 900,
+    height: 600,
+    size: 'stretch',
+    minWidth: 320,
+    maxWidth: 2400,
+    minHeight: 300,
+    maxHeight: 1600,
+    maxShadowOpacity: 0.5,
+    showCover: false,
+    mobileScrollSupport: false,
+    useMouseEvents: true,
+    flippingTime: 900
+  });
+  pageFlip.loadFromHTML(document.querySelectorAll('.page'));
+
+  pageFlip.on('flip', (e) => {
+    activatePage(e.data);
+  });
+
+  activatePage(0);
+}
+
+function activatePage(idx){
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  const el = document.querySelector(`.page[data-index="${idx}"]`);
+  if(!el) return;
+  // restart CSS animations by forcing reflow
+  void el.offsetWidth;
+  el.classList.add('active');
+
+  const p = pages[idx];
+  if(p && p.section){ document.getElementById('liveSection').textContent = p.section; }
+
+  runHandwriting(el);
+  if(p && p.layout === 'pdfSection') loadPdfSection(el);
+  if(p && p.layout === 'anthem') runAnthem(el);
+
+  document.getElementById('navHint').classList.add('fade');
+}
+
+function runHandwriting(el){
+  const quran = el.querySelector('[data-hw]');
+  if(quran){
+    const text = decodeURIComponent(quran.dataset.hw);
+    quran.innerHTML = makeHandwriting(text);
+    const dur = text.length*28 + 500;
+    const trEl = el.querySelector('[data-tr]');
+    if(trEl){
+      trEl.textContent = trEl.dataset.tr;
+      setTimeout(() => trEl.classList.add('show'), dur);
+    }
+  }
+  el.querySelectorAll('[data-hw2]').forEach((node) => {
+    const text = node.dataset.hw2;
+    node.innerHTML = makeHandwriting(text);
+  });
+}
+
+function runAnthem(el){
+  const stanza = el.querySelector('.anthem-stanza[data-stanza="0"]');
+  if(!stanza) return;
+  const lines = stanza.querySelectorAll('[data-hw3]');
+  let cumulative = 0;
+  lines.forEach((node) => {
+    const text = node.dataset.hw3;
+    setTimeout(() => { node.innerHTML = makeHandwriting(text); }, cumulative);
+    cumulative += text.length*16 + 260;
+  });
+}
+
+/* ============================================================
+   7. PDF / IMAGE FALLBACK LOADER for "Knowing Nigeria"
+============================================================ */
+let pdfSectionLoaded = false;
+async function loadPdfSection(pageEl){
+  if(pdfSectionLoaded) return;
+  pdfSectionLoaded = true;
+  const host = pageEl.querySelector('#pdfHost');
+  const msg = pageEl.querySelector('#pdfFallbackMsg');
+
+  try{
+    if(window['pdfjsLib']){
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const loadingTask = pdfjsLib.getDocument('party/nurserypresentationslides.pdf');
+      const pdf = await loadingTask.promise;
+      host.innerHTML = '';
+      const canvas = document.createElement('canvas');
+      canvas.className = 'pdf-canvas';
+      host.appendChild(canvas);
+      let current = 1;
+      async function renderPdfPage(n){
+        const page = await pdf.getPage(n);
+        const viewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(host.clientWidth/viewport.width, host.clientHeight/viewport.height);
+        const scaledViewport = page.getViewport({ scale });
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+      }
+      await renderPdfPage(current);
+      host.tabIndex = 0;
+      host.style.cursor = pdf.numPages > 1 ? 'pointer' : 'default';
+      host.addEventListener('click', async () => {
+        if(pdf.numPages <= 1) return;
+        current = current >= pdf.numPages ? 1 : current+1;
+        await renderPdfPage(current);
+      });
+      return;
+    }
+    throw new Error('pdfjs not available');
+  }catch(err){
+    tryImageFallback(host, msg);
+  }
+}
+
+function tryImageFallback(host, msg){
+  const img = new Image();
+  let n = 1;
+  img.onload = () => {
+    host.innerHTML = '';
+    host.appendChild(img);
+    img.className = 'slide-img';
+  };
+  img.onerror = () => {
+    if(msg) msg.textContent = 'Add slide images to the party/ folder named nursery-1.png, nursery-2.png and so on, or add nurserypresentationslides.pdf.';
+  };
+  img.src = `party/nursery-${n}.png`;
+}
+
+/* ============================================================
+   8. KEYBOARD + INIT
+============================================================ */
+window.addEventListener('keydown', (e) => {
+  if(!pageFlip) return;
+  if(e.key === 'ArrowRight') pageFlip.flipNext();
+  if(e.key === 'ArrowLeft') pageFlip.flipPrev();
+});
+
+window.addEventListener('load', () => {
+  if(window['St'] && St.PageFlip){
+    initFlip();
+  }else{
+    // library still loading, retry shortly
+    const retry = setInterval(() => {
+      if(window['St'] && St.PageFlip){
+        clearInterval(retry);
+        initFlip();
+      }
+    }, 150);
+  }
+});
+</script>
+</body>
+</html>
