@@ -12,7 +12,6 @@
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
 
 <script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
   :root{
@@ -215,10 +214,6 @@
   .prog-list li{display:flex;align-items:baseline;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;font-weight:300;}
   .prog-list li span.n{font-family:'Playfair Display',serif;color:var(--blue-soft);font-size:13px;min-width:22px;}
 
-  /* pdf canvas */
-  .pdf-canvas{max-width:100%;max-height:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
-  img.slide-img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,0.5);}
-
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -383,7 +378,7 @@ pages.push({ layout:'program', tag:'04 · Opening', section:'Welcome Dance', eye
 
 pages.push({ layout:'guests', tag:'05 · Ceremony', section:'Introduction of Guests' });
 
-pages.push({ layout:'pdfSection', tag:'06 · Presentation', section:'Knowing Nigeria' });
+pages.push({ layout:'program', tag:'06 · Presentation', section:'Knowing Nigeria', eyebrow:'Nursery Presentation', title:'Knowing Nigeria', subtitle:'Our nursery pupils share what they have learned about our country. This segment will be shown on the hall\u2019s main projector.' });
 
 pages.push({ layout:'medicalIntro' });
 // individual medical slides are appended programmatically below
@@ -540,18 +535,6 @@ function tplGuests(){
   </div>`;
 }
 
-function tplPdfSection(){
-  return `
-  <div class="page-tag">06 · Presentation</div>
-  <div class="page-inner" style="padding:40px;">
-    <div class="eyebrow reveal">Nursery Presentation</div>
-    <h2 class="title-md serif reveal d1">Knowing Nigeria</h2>
-    <div id="pdfHost" style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;margin-top:18px;min-height:0;">
-      <p class="subtitle" id="pdfFallbackMsg">Preparing slides…</p>
-    </div>
-  </div>`;
-}
-
 function tplMedicalIntro(){
   return `
   <div class="page-tag">07 · Medical Profession</div>
@@ -663,7 +646,6 @@ function renderPage(p){
     case 'verseBible': return tplVerseBible(p);
     case 'anthemStanza': return tplAnthemStanza(p);
     case 'guests': return tplGuests();
-    case 'pdfSection': return tplPdfSection();
     case 'medicalIntro': return tplMedicalIntro();
     case 'medical': return tplMedical(p);
     case 'robot': return tplRobot();
@@ -728,9 +710,14 @@ function applyFocus(){
     const p = pages[idx];
     if(p && p.section && idx === focusIndex){ sectionText = p.section; }
 
-    runHandwriting(el);
-    if(p && p.layout === 'pdfSection') loadPdfSection(el);
-    if(p && p.layout === 'anthemStanza') runAnthemLines(el);
+    // render each page's dynamic content only once, ever — not on
+    // every focus change, so timers (like the translation reveal)
+    // never get reset mid-flight
+    if(!el.dataset.rendered){
+      el.dataset.rendered = '1';
+      runHandwriting(el);
+      if(p && p.layout === 'anthemStanza') runAnthemLines(el);
+    }
   });
 
   if(sectionText){ document.getElementById('liveSection').textContent = sectionText; }
@@ -803,11 +790,10 @@ function runHandwriting(el){
   if(quran){
     const text = decodeURIComponent(quran.dataset.hw);
     quran.innerHTML = makeHandwriting(text);
-    const dur = text.length*28 + 500;
     const trEl = el.querySelector('[data-tr]');
     if(trEl){
       trEl.textContent = trEl.dataset.tr;
-      setTimeout(() => trEl.classList.add('show'), dur);
+      setTimeout(() => trEl.classList.add('show'), 1400);
     }
   }
   el.querySelectorAll('[data-hw2]').forEach((node) => {
@@ -827,67 +813,7 @@ function runAnthemLines(el){
 }
 
 /* ============================================================
-   7. PDF / IMAGE FALLBACK LOADER for "Knowing Nigeria"
-============================================================ */
-let pdfSectionLoaded = false;
-async function loadPdfSection(pageEl){
-  if(pdfSectionLoaded) return;
-  pdfSectionLoaded = true;
-  const host = pageEl.querySelector('#pdfHost');
-  const msg = pageEl.querySelector('#pdfFallbackMsg');
-
-  try{
-    if(window['pdfjsLib']){
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const loadingTask = pdfjsLib.getDocument('nurserypresentationslides.pdf');
-      const pdf = await loadingTask.promise;
-      host.innerHTML = '';
-      const canvas = document.createElement('canvas');
-      canvas.className = 'pdf-canvas';
-      host.appendChild(canvas);
-      let current = 1;
-      async function renderPdfPage(n){
-        const page = await pdf.getPage(n);
-        const viewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(host.clientWidth/viewport.width, host.clientHeight/viewport.height);
-        const scaledViewport = page.getViewport({ scale });
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-      }
-      await renderPdfPage(current);
-      host.tabIndex = 0;
-      host.style.cursor = pdf.numPages > 1 ? 'pointer' : 'default';
-      host.addEventListener('click', async () => {
-        if(pdf.numPages <= 1) return;
-        current = current >= pdf.numPages ? 1 : current+1;
-        await renderPdfPage(current);
-      });
-      return;
-    }
-    throw new Error('pdfjs not available');
-  }catch(err){
-    tryImageFallback(host, msg);
-  }
-}
-
-function tryImageFallback(host, msg){
-  const img = new Image();
-  let n = 1;
-  img.onload = () => {
-    host.innerHTML = '';
-    host.appendChild(img);
-    img.className = 'slide-img';
-  };
-  img.onerror = () => {
-    if(msg) msg.textContent = 'Add slide images to the party/ folder named nursery-1.png, nursery-2.png and so on, or add nurserypresentationslides.pdf.';
-  };
-  img.src = `nursery-${n}.png`;
-}
-
-/* ============================================================
-   8. KEYBOARD + INIT
+   7. KEYBOARD + INIT
 ============================================================ */
 window.addEventListener('keydown', (e) => {
   if(!pageFlip) return;
