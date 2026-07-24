@@ -837,6 +837,24 @@ window.addEventListener('load', () => {
     }, 150);
   }
 });
+
+/* ============================================================
+   8. RESIZE / DISPLAY-CHANGE HANDLING
+============================================================ */
+let resizeDebounce;
+function handleDisplayChange(){
+  clearTimeout(resizeDebounce);
+  resizeDebounce = setTimeout(() => {
+    if(pageFlip){
+      try{ pageFlip.update(); }catch(e){}
+    }
+  }, 200);
+}
+window.addEventListener('resize', handleDisplayChange);
+window.addEventListener('orientationchange', handleDisplayChange);
+if(screen.orientation && screen.orientation.addEventListener){
+  screen.orientation.addEventListener('change', handleDisplayChange);
+}
 </script>
 </body>
 </html>
