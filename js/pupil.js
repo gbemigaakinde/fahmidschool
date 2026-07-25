@@ -1278,7 +1278,7 @@ async function loadSessionResults() {
                     </p>
                     <p style="margin:0; font-size:12.5px; color:#94a3b8;">
                         ${selectedSession === 'current'
-                            ? 'Your teachers will upload and admin will approve scores soon.'
+                            ? 'Your teacher will upload your scores soon.'
                             : 'No approved results available for this historical session.'}
                     </p>
                 </div>`;
