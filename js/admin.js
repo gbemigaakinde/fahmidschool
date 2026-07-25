@@ -8899,7 +8899,7 @@ window.filterTeachers = filterTeachers;
 window.renderTeachersTable = renderTeachersTable;
 
 /**
- * Generate a printable PDF of pupil login credentials (admission number + password)
+ * Generate a printable PDF of pupil login credentials (admission number + password + email)
  * Password format: surname + year of birth (e.g. ogunwale2015)
  */
 async function generatePupilCredentialsPDF() {
@@ -8972,7 +8972,8 @@ async function generatePupilCredentialsPDF() {
       pupilsByClass[className].push({
         name: data.name || 'Unknown',
         admissionNo: data.admissionNo,
-        password
+        password,
+        email: data.email || '—'
       });
     });
 
@@ -9063,7 +9064,8 @@ async function generatePupilCredentialsPDF() {
       doc.text(nameLines, x + cardWidth / 2, y + 13, { align: 'center' });
 
       const nameBlockHeight = nameLines.length * 4.5;
-      let cursorY = y + 13 + nameBlockHeight + 2;
+      // Slightly tightened gap (was +2) to free up room for the new email line below
+      let cursorY = y + 13 + nameBlockHeight + 1;
 
       // Admission number
       doc.setFontSize(8);
@@ -9074,7 +9076,8 @@ async function generatePupilCredentialsPDF() {
       doc.setTextColor(15, 23, 42);
       doc.text(pupil.admissionNo, x + cardWidth - 5, cursorY, { align: 'right' });
 
-      cursorY += 6;
+      // Slightly tightened gap (was 6) to free up room for the new email line below
+      cursorY += 5;
 
       // Password
       doc.setFontSize(8);
@@ -9084,6 +9087,24 @@ async function generatePupilCredentialsPDF() {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 118, 110);
       doc.text(pupil.password, x + cardWidth - 5, cursorY, { align: 'right' });
+
+      // Email — tiny line, fits in the space freed up above, card size unchanged
+      cursorY += 3.8;
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Email:', x + 5, cursorY);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      // Shrink the email text itself if it's too long to fit the remaining width
+      const emailMaxWidth = cardWidth - 5 - (x + 5 - x) - 16; // width available right of "Email:" label
+      let emailFontSize = 6;
+      doc.setFontSize(emailFontSize);
+      while (doc.getTextWidth(pupil.email) > emailMaxWidth && emailFontSize > 4.5) {
+        emailFontSize -= 0.5;
+        doc.setFontSize(emailFontSize);
+      }
+      doc.text(pupil.email, x + cardWidth - 5, cursorY, { align: 'right' });
 
       // Footer separator 
       const footerLineY = y + cardHeight - 9;
