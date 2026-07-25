@@ -1614,6 +1614,9 @@ function loadSectionData(sectionId) {
   }
 }
 
+let _pupilEditToken = 0;
+let _teacherEditToken = 0;
+
 /* ======================================== 
    PROMOTION REQUESTS MANAGEMENT
 ======================================== */
@@ -8099,15 +8102,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         await db.collection('teachers').doc(teacherId).update(teacherData);
 
-        // Update email in users doc if changed
-        const userDoc = await db.collection('users').doc(teacherId).get();
-        if (userDoc.exists && userDoc.data().email !== email) {
-          await db.collection('users').doc(teacherId).update({
-            email,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-
         window.showToast?.(`✓ Teacher "${name}" updated successfully`, 'success');
 
       } else {
@@ -8290,10 +8284,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     try {
       // Get current session settings (needed for admissionTerm/admissionSession defaults)
-    const settings = await window.getCurrentSettings();
+      const settings = await window.getCurrentSettings();
 
-    // Get class details
-    const classDoc = await db.collection('classes').doc(classId).get();
+      // Get class details
+      const classDoc = await db.collection('classes').doc(classId).get();
       
       if (!classDoc.exists) {
         throw new Error('Selected class not found');
@@ -8320,54 +8314,43 @@ document.addEventListener('DOMContentLoaded', () => {
         : rawClassSubjects;
       
       // Build pupil data
-const pupilData = {
-    admissionNo,
-    name,
-    firstName,
-    middleName,
-    lastName,
-    dob: document.getElementById('pupil-dob')?.value || '',
-    gender: document.getElementById('pupil-gender')?.value || '',
-    religion: religion,
-    parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
-    parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
-    contact: document.getElementById('pupil-contact')?.value.trim() || '',
-    address: document.getElementById('pupil-address')?.value.trim() || '',
-    class: {
-        id: classId,
-        name: classData.name || 'Unknown Class'
-    },
-    subjects: filteredSubjects,
-    assignedTeacher: {
-        id: teacherId,
-        name: teacherName
-    },
+      const pupilData = {
+          admissionNo,
+          name,
+          firstName,
+          middleName,
+          lastName,
+          dob: document.getElementById('pupil-dob')?.value || '',
+          gender: document.getElementById('pupil-gender')?.value || '',
+          religion: religion,
+          parentName: document.getElementById('pupil-parent-name')?.value.trim() || '',
+          parentEmail: document.getElementById('pupil-parent-email')?.value.trim() || '',
+          contact: document.getElementById('pupil-contact')?.value.trim() || '',
+          address: document.getElementById('pupil-address')?.value.trim() || '',
+          class: {
+              id: classId,
+              name: classData.name || 'Unknown Class'
+          },
+          subjects: filteredSubjects,
+          assignedTeacher: {
+              id: teacherId,
+              name: teacherName
+          },
 
-    admissionTerm: document.getElementById('pupil-admission-term')?.value || settings.term || 'First Term',
-    admissionSession: settings.session || null,
-    exitTerm: document.getElementById('pupil-exit-term')?.value || 'Third Term',
-    feeAdjustmentPercent: parseFloat(document.getElementById('pupil-fee-adjustment-percent')?.value) || 0,
-    feeAdjustmentAmount: parseFloat(document.getElementById('pupil-fee-adjustment-amount')?.value) || 0,
+          admissionTerm: document.getElementById('pupil-admission-term')?.value || settings.term || 'First Term',
+          admissionSession: settings.session || null,
+          exitTerm: document.getElementById('pupil-exit-term')?.value || 'Third Term',
+          feeAdjustmentPercent: parseFloat(document.getElementById('pupil-fee-adjustment-percent')?.value) || 0,
+          feeAdjustmentAmount: parseFloat(document.getElementById('pupil-fee-adjustment-amount')?.value) || 0,
 
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-};
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
       
       if (pupilId) {
         // UPDATE EXISTING PUPIL
         console.log(`📝 Updating pupil: ${pupilId}`);
         
         await db.collection('pupils').doc(pupilId).update(pupilData);
-        
-        // Update email if changed
-        if (email) {
-          const userDoc = await db.collection('users').doc(pupilId).get();
-          if (userDoc.exists && userDoc.data().email !== email) {
-            await db.collection('users').doc(pupilId).update({
-              email,
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-        }
         
         console.log('✓ Pupil updated');
         window.showToast?.(`✓ Pupil "${name}" updated successfully`, 'success');
@@ -8412,76 +8395,76 @@ const pupilData = {
         console.log('✓ User document created');
         
         // Create pupil profile
-pupilData.email = email;
-pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        pupilData.email = email;
+        pupilData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
 
-await db.collection('pupils').doc(uid).set(pupilData);
+        await db.collection('pupils').doc(uid).set(pupilData);
 
-console.log('✓ Pupil profile created');
+        console.log('✓ Pupil profile created');
 
-// Auto-create payment record using permanent fee structure ID
-try {
-  const settings = await window.getCurrentSettings();
-  const session = settings.session;
-  const term = settings.term;
-  
-  // Use permanent class-based fee structure ID (not session-based)
-  const feeDocId = `fee_${classId}`;
-  const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
-  
-  if (feeDoc.exists) {
-    const feeData = feeDoc.data();
-    const baseFee = Number(feeData.total) || 0;
-    
-    // Calculate adjusted fee for this specific pupil
-    const amountDue = window.calculateAdjustedFee
-      ? window.calculateAdjustedFee(pupilData, baseFee, term)
-      : baseFee;
-    
-    if (amountDue === 0 && baseFee > 0) {
-      console.log(`ℹ️ Pupil not enrolled for ${term}, skipping payment record`);
-    } else {
-      console.log(`✓ Found fee structure for ${classData.name}: ₦${baseFee.toLocaleString()}`);
-      
-      // Calculate arrears from previous session
-      const previousSession = getPreviousSessionName(session);
-      let arrears = 0;
-      if (previousSession && typeof window.calculateCompleteArrears === 'function') {
-        arrears = await window.calculateCompleteArrears(uid, session, term);
-      }
-      
-      const encodedSession = session.replace(/\//g, '-');
-      const paymentDocId = `${uid}_${encodedSession}_${term}`;
-      
-      await db.collection('payments').doc(paymentDocId).set({
-        pupilId: uid,
-        pupilName: name,
-        classId: classId,
-        className: classData.name,
-        session: session,
-        term: term,
-        baseFee: baseFee,
-        adjustedFee: amountDue,
-        amountDue: amountDue,
-        arrears: arrears,
-        totalDue: amountDue + arrears,
-        totalPaid: 0,
-        balance: amountDue + arrears,
-        status: arrears > 0 ? 'owing_with_arrears' : 'owing',
-        lastPaymentDate: null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      console.log(`✓ Auto-created payment record: ₦${amountDue.toLocaleString()} (arrears: ₦${arrears.toLocaleString()})`);
-    }
-  } else {
-    console.log(`ℹ️ No fee structure configured for ${classData.name} yet`);
-  }
-} catch (paymentError) {
-  console.error('⚠️ Failed to auto-create payment record:', paymentError);
-  // Do not throw — pupil was created successfully
-}
+        // Auto-create payment record using permanent fee structure ID
+        try {
+          const settings = await window.getCurrentSettings();
+          const session = settings.session;
+          const term = settings.term;
+          
+          // Use permanent class-based fee structure ID (not session-based)
+          const feeDocId = `fee_${classId}`;
+          const feeDoc = await db.collection('fee_structures').doc(feeDocId).get();
+          
+          if (feeDoc.exists) {
+            const feeData = feeDoc.data();
+            const baseFee = Number(feeData.total) || 0;
+            
+            // Calculate adjusted fee for this specific pupil
+            const amountDue = window.calculateAdjustedFee
+              ? window.calculateAdjustedFee(pupilData, baseFee, term)
+              : baseFee;
+            
+            if (amountDue === 0 && baseFee > 0) {
+              console.log(`ℹ️ Pupil not enrolled for ${term}, skipping payment record`);
+            } else {
+              console.log(`✓ Found fee structure for ${classData.name}: ₦${baseFee.toLocaleString()}`);
+              
+              // Calculate arrears from previous session
+              const previousSession = getPreviousSessionName(session);
+              let arrears = 0;
+              if (previousSession && typeof window.calculateCompleteArrears === 'function') {
+                arrears = await window.calculateCompleteArrears(uid, session, term);
+              }
+              
+              const encodedSession = session.replace(/\//g, '-');
+              const paymentDocId = `${uid}_${encodedSession}_${term}`;
+              
+              await db.collection('payments').doc(paymentDocId).set({
+                pupilId: uid,
+                pupilName: name,
+                classId: classId,
+                className: classData.name,
+                session: session,
+                term: term,
+                baseFee: baseFee,
+                adjustedFee: amountDue,
+                amountDue: amountDue,
+                arrears: arrears,
+                totalDue: amountDue + arrears,
+                totalPaid: 0,
+                balance: amountDue + arrears,
+                status: arrears > 0 ? 'owing_with_arrears' : 'owing',
+                lastPaymentDate: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              
+              console.log(`✓ Auto-created payment record: ₦${amountDue.toLocaleString()} (arrears: ₦${arrears.toLocaleString()})`);
+            }
+          } else {
+            console.log(`ℹ️ No fee structure configured for ${classData.name} yet`);
+          }
+        } catch (paymentError) {
+          console.error('⚠️ Failed to auto-create payment record:', paymentError);
+          // Do not throw — pupil was created successfully
+        }
         
         window.showToast?.(
           `✓ Pupil "${name}" added successfully!\n\nPassword reset email sent to ${email}`,
@@ -8681,11 +8664,13 @@ async function toggleDirectPublish(teacherId, currentValue) {
 window.toggleDirectPublish = toggleDirectPublish;
 
 async function editTeacher(uid) {
+  const myToken = ++_teacherEditToken;
   try {
     console.log(`📝 Loading teacher for edit: ${uid}`);
 
     const doc = await db.collection('teachers').doc(uid).get();
     if (!doc.exists) throw new Error('Teacher not found');
+    if (myToken !== _teacherEditToken) return; // a newer edit click superseded this one
 
     const data = doc.data();
 
@@ -10123,11 +10108,13 @@ window.bulkDeletePupils = bulkDeletePupils;
 console.log('✅ Bulk operations module loaded and exposed globally');
 
 async function editPupil(uid) {
+  const myToken = ++_pupilEditToken;
   try {
     console.log(`📝 Loading pupil for edit: ${uid}`);
 
     const doc = await db.collection('pupils').doc(uid).get();
     if (!doc.exists) throw new Error('Pupil not found');
+    if (myToken !== _pupilEditToken) return; // a newer edit click superseded this one
 
     const data = doc.data();
 
@@ -10162,12 +10149,18 @@ async function editPupil(uid) {
       emailField.removeAttribute('required');
     }
 
+    if (myToken !== _pupilEditToken) return; // check again before touching the shared form
+
     // Now call showPupilForm with isEditing=true so it won't reset credentials
     await showPupilForm(true);
+
+    if (myToken !== _pupilEditToken) return;
 
     // Populate all other fields after form is shown
     const classId = getClassIdFromPupilData(data.class);
     await populateClassDropdown(classId);
+
+    if (myToken !== _pupilEditToken) return;
 
     document.getElementById('pupil-id').value = uid;
 
@@ -10217,6 +10210,8 @@ async function editPupil(uid) {
       const classesSnapshot = await db.collection('classes')
         .where('name', '==', className)
         .get();
+
+      if (myToken !== _pupilEditToken) return;
 
       if (classesSnapshot.empty) {
         window.showToast?.(
