@@ -11,8 +11,6 @@
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
 
-<script src="https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-
 <style>
   :root{
     --navy:#0a1a33;
@@ -20,13 +18,14 @@
     --ink:#050d1e;
     --blue-mist:#2c4d8c;
     --blue-soft:#4a6fb5;
-    --paper:#f6f8fc;
     --white:#ffffff;
     --line:rgba(255,255,255,0.14);
-    --line-dark:rgba(10,26,51,0.12);
     --ease:cubic-bezier(.22,.68,.16,1);
-    --ticker-h:52px;
-    --header-h:88px;
+    --header-h:64px;
+    --ticker-h:46px;
+    --progress-h:3px;
+    --sidebar-w:clamp(200px,18vw,260px);
+    --slide-scale:1;
   }
 
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -37,8 +36,10 @@
     font-family:'Inter',sans-serif;
     color:var(--white);
     -webkit-font-smoothing:antialiased;
+    touch-action:none;
   }
   h1,h2,h3,.serif{font-family:'Playfair Display',serif;}
+  button{font-family:inherit;cursor:pointer;}
 
   /* ---------- ambient background ---------- */
   #ambient{
@@ -64,7 +65,7 @@
 
   /* ---------- start overlay ---------- */
   #startScreen{
-    position:fixed;inset:0;z-index:100;
+    position:fixed;inset:0;z-index:200;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     background:var(--ink);
     cursor:pointer;
@@ -78,6 +79,7 @@
   #startScreen .enter-btn{
     margin-top:36px;padding:14px 34px;border:1px solid var(--line);border-radius:2px;
     font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--white);
+    background:transparent;
     opacity:0;animation:fadeUp 1s var(--ease) 1.1s forwards;
     transition:background .4s var(--ease), border-color .4s var(--ease);
   }
@@ -88,116 +90,103 @@
   #headerBar{
     position:fixed;top:0;left:0;right:0;z-index:40;
     display:flex;align-items:center;justify-content:space-between;
-    padding:clamp(10px,2vh,22px) clamp(14px,4vw,40px);
-    pointer-events:none;
+    padding:0 clamp(14px,3vw,32px);
     height:var(--header-h);
   }
-  #headerBar .brand-left{display:flex;align-items:center;gap:14px;}
-  #headerBar img{height:clamp(30px,5vh,46px);width:clamp(30px,5vh,46px);object-fit:contain;}
+  #headerBar .brand-left{display:flex;align-items:center;gap:12px;}
+  #headerBar img{height:clamp(28px,4.5vh,40px);width:clamp(28px,4.5vh,40px);object-fit:contain;}
   #headerBar .brand-right{
     font-family:'Playfair Display',serif;font-weight:600;
-    font-size:clamp(12px,1.6vw,19px);letter-spacing:.5px;text-align:right;
+    font-size:clamp(12px,1.5vw,18px);letter-spacing:.5px;text-align:right;
   }
-  #headerBar .brand-right span{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue-soft);margin-top:3px;}
-  .hairline{position:fixed;top:var(--header-h);left:clamp(14px,4vw,40px);right:clamp(14px,4vw,40px);height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);z-index:39;}
+  #headerBar .brand-right span{display:block;font-family:'Inter',sans-serif;font-weight:400;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--blue-soft);margin-top:2px;}
 
-  /* ---------- book ---------- */
-  #bookWrap{
+  #progressTrack{position:fixed;top:var(--header-h);left:0;right:0;height:var(--progress-h);background:rgba(255,255,255,0.08);z-index:39;}
+  #progressFill{height:100%;width:0%;background:var(--blue-soft);transition:width .45s var(--ease);}
+
+  /* ---------- main layout ---------- */
+  #main{
     position:fixed;
-    top:var(--header-h);
+    top:calc(var(--header-h) + var(--progress-h));
     bottom:var(--ticker-h);
     left:0;right:0;
+    display:flex;
     z-index:10;
+  }
+  #stage{
+    flex:1;
+    min-width:0;
+    position:relative;
     display:flex;align-items:center;justify-content:center;
-    padding:clamp(10px,2.5vh,28px) clamp(12px,3vw,40px);
+    padding:clamp(10px,2.2vh,24px);
+  }
+  #stageBox{
+    position:relative;
+    width:100%;height:100%;
+    max-width:100%;max-height:100%;
+    border-radius:6px;
     overflow:hidden;
-  }
-  #book{width:100%;height:100%;max-width:1400px;}
-  .page{
+    box-shadow:0 30px 70px rgba(0,0,0,0.5), inset 0 0 0 1px var(--line);
     background:linear-gradient(155deg, var(--deep-blue) 0%, var(--navy) 100%);
-    display:flex;flex-direction:column;
-    overflow:hidden;position:relative;
-    box-shadow:inset 0 0 0 1px var(--line);
-    opacity:1;
-    transition:opacity .6s var(--ease);
   }
-  .page.dimmed{opacity:0.14;}
-  .page.focused{opacity:1;}
-  .page-inner{
+
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;
+    opacity:0;transform:translateX(0);
+    transition:opacity .48s var(--ease), transform .48s var(--ease);
+  }
+  .slide.slide-from-right{transform:translateX(4%);opacity:0;}
+  .slide.slide-from-left{transform:translateX(-4%);opacity:0;}
+  .slide.slide-to-left{transform:translateX(-4%)!important;opacity:0!important;}
+  .slide.slide-to-right{transform:translateX(4%)!important;opacity:0!important;}
+  .slide.active{opacity:1;transform:translateX(0);}
+
+  .slide-inner{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:clamp(34px,7vh,60px) clamp(18px,6vw,70px);
+    padding:calc(var(--slide-scale)*46px) calc(var(--slide-scale)*60px);
     position:relative;text-align:center;
     overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
-    min-height:0;
-    gap:2px;
+    min-height:0;gap:2px;
   }
-  .page-tag{
-    position:absolute;top:clamp(12px,3vh,28px);left:clamp(14px,3vw,36px);
-    font-size:clamp(9px,1.1vw,11px);letter-spacing:2.5px;text-transform:uppercase;color:var(--blue-soft);
-    max-width:70%;line-height:1.4;
+  .slide-inner::-webkit-scrollbar{display:none;}
+
+  .slide-tag{
+    position:absolute;top:calc(var(--slide-scale)*22px);left:calc(var(--slide-scale)*30px);
+    font-size:clamp(8px,calc(var(--slide-scale)*11px),13px);letter-spacing:2.5px;text-transform:uppercase;color:var(--blue-soft);
+    max-width:60%;line-height:1.4;text-align:left;
   }
-  .page-num{position:absolute;bottom:clamp(10px,2vh,22px);right:clamp(12px,2.5vw,30px);font-size:clamp(9px,1.1vw,11px);color:var(--blue-soft);letter-spacing:1px;}
+  .slide-num{
+    position:absolute;bottom:calc(var(--slide-scale)*18px);right:calc(var(--slide-scale)*24px);
+    font-size:clamp(8px,calc(var(--slide-scale)*11px),13px);color:var(--blue-soft);letter-spacing:1px;
+  }
 
-  .eyebrow{font-size:clamp(10px,1.3vw,12px);letter-spacing:3.5px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:clamp(10px,2vh,18px);}
-  .title-lg{font-size:clamp(22px,4.4vw,56px);font-weight:600;line-height:1.15;margin-bottom:14px;}
-  .title-md{font-size:clamp(18px,3vw,34px);font-weight:600;margin-bottom:12px;}
-  .subtitle{font-size:clamp(12.5px,1.5vw,18px);color:rgba(255,255,255,0.72);max-width:640px;line-height:1.6;font-weight:300;}
-  .accent-line{width:48px;height:2px;background:var(--blue-soft);margin:clamp(14px,2.5vh,22px) auto;flex-shrink:0;}
+  .eyebrow{font-size:clamp(9px,calc(var(--slide-scale)*13px),16px);letter-spacing:3.5px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:calc(var(--slide-scale)*16px);}
+  .title-lg{font-size:clamp(19px,calc(var(--slide-scale)*50px),58px);font-weight:600;line-height:1.15;margin-bottom:calc(var(--slide-scale)*12px);}
+  .title-md{font-size:clamp(16px,calc(var(--slide-scale)*30px),36px);font-weight:600;margin-bottom:calc(var(--slide-scale)*10px);}
+  .subtitle{font-size:clamp(11.5px,calc(var(--slide-scale)*17px),19px);color:rgba(255,255,255,0.72);max-width:80%;line-height:1.6;font-weight:300;}
+  .accent-line{width:calc(var(--slide-scale)*48px);height:2px;background:var(--blue-soft);margin:calc(var(--slide-scale)*18px) auto;flex-shrink:0;}
 
-  /* reveal-on-enter utility, triggered by JS when a page becomes active */
-  .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease), transform .9s var(--ease);}
-  .page.active .reveal{opacity:1;transform:translateY(0);}
-  .page.active .reveal.d1{transition-delay:.15s;}
-  .page.active .reveal.d2{transition-delay:.32s;}
-  .page.active .reveal.d3{transition-delay:.5s;}
-  .page.active .reveal.d4{transition-delay:.68s;}
-  .zoom-in{opacity:0;transform:scale(.9);transition:opacity 1s var(--ease), transform 1s var(--ease);}
-  .page.active .zoom-in{opacity:1;transform:scale(1);}
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .8s var(--ease), transform .8s var(--ease);}
+  .slide.active .reveal{opacity:1;transform:translateY(0);}
+  .slide.active .reveal.d1{transition-delay:.12s;}
+  .slide.active .reveal.d2{transition-delay:.26s;}
+  .slide.active .reveal.d3{transition-delay:.4s;}
+  .zoom-in{opacity:0;transform:scale(.9);transition:opacity .9s var(--ease), transform .9s var(--ease);}
+  .slide.active .zoom-in{opacity:1;transform:scale(1);}
 
-  /* ---------- handwriting reveal ---------- */
   .hw-line{display:block;}
   .hw-char{display:inline-block;opacity:0;filter:blur(2px);animation:hwIn .5s var(--ease) forwards;}
   @keyframes hwIn{to{opacity:1;filter:blur(0);}}
-  .arabic{font-family:'Amiri',serif;direction:rtl;font-size:clamp(16px,2.6vw,32px);line-height:1.75;color:var(--white);}
-  .translation{font-style:italic;font-weight:300;color:rgba(255,255,255,0.75);font-size:clamp(12px,1.4vw,17px);max-width:640px;margin-top:14px;line-height:1.6;opacity:0;transition:opacity 1.2s var(--ease);}
+  .arabic{font-family:'Amiri',serif;direction:rtl;font-size:clamp(14px,calc(var(--slide-scale)*30px),34px);line-height:1.75;color:var(--white);}
+  .translation{font-style:italic;font-weight:300;color:rgba(255,255,255,0.75);font-size:clamp(11px,calc(var(--slide-scale)*16px),18px);max-width:80%;margin-top:calc(var(--slide-scale)*14px);line-height:1.6;opacity:0;transition:opacity 1.2s var(--ease);}
   .translation.show{opacity:1;}
-  .verse-ref{margin-top:10px;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);}
+  .verse-ref{margin-top:calc(var(--slide-scale)*10px);font-size:clamp(9px,calc(var(--slide-scale)*11px),12px);letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);}
 
-  /* ---------- ticker ---------- */
-  #ticker{
-    position:fixed;bottom:0;left:0;right:0;height:var(--ticker-h);z-index:50;
-    background:rgba(5,13,30,0.92);border-top:1px solid var(--line);
-    display:flex;align-items:stretch;backdrop-filter:blur(6px);
-  }
-  #ticker .news-label{
-    display:flex;align-items:center;padding:0 clamp(12px,2.5vw,22px);background:var(--blue-mist);
-    font-size:11px;letter-spacing:3px;font-weight:700;white-space:nowrap;
-  }
-  #ticker .ticker-track-wrap{flex:1;overflow:hidden;display:flex;align-items:center;}
-  #ticker .ticker-track{display:flex;white-space:nowrap;animation:tickerScroll 110s linear infinite;}
-  #ticker .ticker-item{padding:0 clamp(20px,3.5vw,46px);font-size:clamp(11px,1.3vw,13.5px);font-weight:300;letter-spacing:.3px;color:rgba(255,255,255,0.88);position:relative;}
-  #ticker .ticker-item::after{content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:var(--blue-soft);}
-  @keyframes tickerScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
-  #ticker .clock{
-    display:flex;align-items:center;padding:0 clamp(12px,2vw,24px);font-variant-numeric:tabular-nums;
-    font-size:clamp(11px,1.3vw,14px);letter-spacing:1px;border-left:1px solid var(--line);white-space:nowrap;
-  }
+  .med-icon{width:calc(var(--slide-scale)*90px);height:calc(var(--slide-scale)*90px);border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:calc(var(--slide-scale)*22px);flex-shrink:0;}
+  .med-icon i{font-size:calc(var(--slide-scale)*38px);color:var(--white);}
 
-  /* ---------- nav hint ---------- */
-  #navHint{
-    position:fixed;bottom:calc(var(--ticker-h) + 12px);left:50%;transform:translateX(-50%);z-index:41;
-    font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);
-    display:flex;gap:10px;align-items:center;transition:opacity 1s var(--ease);
-    white-space:nowrap;
-  }
-  #navHint.fade{opacity:0;}
-
-  /* ---------- medical slides ---------- */
-  .med-icon{width:clamp(58px,10vw,96px);height:clamp(58px,10vw,96px);border:1px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:clamp(14px,2.5vh,26px);flex-shrink:0;}
-  .med-icon i{font-size:clamp(26px,4.5vw,42px);color:var(--white);}
-
-  /* ---------- coding robot ---------- */
-  .robot-stage{position:relative;width:clamp(150px,22vw,260px);height:clamp(175px,25vw,300px);margin:0 auto clamp(14px,2.5vh,30px);flex-shrink:0;}
+  .robot-stage{position:relative;width:calc(var(--slide-scale)*210px);height:calc(var(--slide-scale)*240px);margin:0 auto calc(var(--slide-scale)*20px);flex-shrink:0;}
   .robot{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:150px;animation:robotBob 2.4s ease-in-out infinite;}
   @keyframes robotBob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-8px);}}
   .r-head{width:64%;height:53%;background:var(--white);border-radius:18px;margin:0 auto;position:relative;transform-origin:50% 100%;animation:robotHead 4.5s ease-in-out infinite;}
@@ -208,7 +197,7 @@
   .r-antenna{position:absolute;top:-16px;left:50%;transform:translateX(-50%);width:4px;height:16px;background:var(--blue-soft);}
   .r-antenna::after{content:"";position:absolute;top:-6px;left:-3px;width:10px;height:10px;border-radius:50%;background:var(--blue-soft);}
   .r-body{width:80%;height:73%;background:var(--white);border-radius:22px;margin:6px auto 0;position:relative;}
-  .r-screen{position:absolute;top:18%;left:50%;transform:translateX(-50%);width:58%;height:36%;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:clamp(9px,1.5vw,11px);color:#7fd0ff;}
+  .r-screen{position:absolute;top:18%;left:50%;transform:translateX(-50%);width:58%;height:36%;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:clamp(8px,calc(var(--slide-scale)*11px),12px);color:#7fd0ff;}
   .r-arm{position:absolute;top:13%;width:12%;height:50%;background:var(--white);border-radius:10px;transform-origin:top center;}
   .r-arm.left{left:-8%;animation:armWave 2.4s ease-in-out infinite;}
   .r-arm.right{right:-8%;}
@@ -216,47 +205,104 @@
   .r-leg{position:absolute;bottom:-13%;width:13%;height:14%;background:var(--white);border-radius:6px;}
   .r-leg.left{left:20%;} .r-leg.right{right:20%;}
 
-  /* ---------- debate split ---------- */
   .debate-wrap{display:flex;width:100%;height:100%;}
   .debate-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:16px;}
   .debate-side.garri{background:linear-gradient(180deg, rgba(44,77,140,0.25), transparent);}
   .debate-side.rice{background:linear-gradient(180deg, rgba(13,36,86,0.4), transparent);}
-  .debate-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(44px,7vw,64px);height:clamp(44px,7vw,64px);border-radius:50%;background:var(--ink);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(12px,1.6vw,15px);z-index:2;}
+  .debate-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(var(--slide-scale)*58px);height:calc(var(--slide-scale)*58px);border-radius:50%;background:var(--ink);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(10px,calc(var(--slide-scale)*15px),16px);z-index:2;}
   .debate-divider{width:1px;background:var(--line);}
 
-  /* ---------- program list ---------- */
-  .prog-list{list-style:none;text-align:left;max-width:520px;width:100%;}
-  .prog-list li{display:flex;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);font-size:clamp(12px,1.4vw,14px);font-weight:300;}
+  .prog-list{list-style:none;text-align:left;max-width:80%;width:100%;}
+  .prog-list li{display:flex;align-items:baseline;gap:14px;padding:calc(var(--slide-scale)*8px) 0;border-bottom:1px solid var(--line);font-size:clamp(10px,calc(var(--slide-scale)*14px),15px);font-weight:300;}
   .prog-list li span.n{font-family:'Playfair Display',serif;color:var(--blue-soft);font-size:12px;min-width:20px;flex-shrink:0;}
 
-  ::-webkit-scrollbar{display:none;}
+  /* ---------- nav buttons ---------- */
+  .navBtn{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(5,13,30,0.55);border:1px solid var(--line);color:var(--white);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;opacity:.55;
+    transition:opacity .3s var(--ease), background .3s var(--ease);
+    z-index:20;
+  }
+  .navBtn:hover{opacity:1;background:rgba(5,13,30,0.85);}
+  .navBtn:disabled{opacity:.15;pointer-events:none;}
+  #prevBtn{left:14px;}
+  #nextBtn{right:14px;}
 
-  /* ---------- short-viewport (projectors, landscape phones) ---------- */
-  @media (max-height: 640px){
-    :root{ --header-h:56px; --ticker-h:40px; }
-    #headerBar .brand-right span{display:none;}
-    .eyebrow{margin-bottom:6px;}
-    .accent-line{margin:8px auto;}
-    .page-inner{padding-top:clamp(20px,5vh,34px);padding-bottom:clamp(20px,5vh,34px);}
-    #navHint{display:none;}
-    .robot-stage{height:clamp(120px,20vh,200px);margin-bottom:8px;}
+  /* ---------- sidebar ---------- */
+  #sidebar{
+    width:var(--sidebar-w);flex-shrink:0;
+    display:flex;flex-direction:column;
+    padding:18px 14px 14px;
+    border-left:1px solid var(--line);
+    overflow:hidden;
+  }
+  #sidebar .sb-heading{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:12px;padding:0 4px;}
+  #sidebarList{display:flex;flex-direction:column;gap:8px;overflow:hidden;}
+  .upnext-card{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 10px;border-radius:5px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,0.02);
+    text-align:left;
+    transition:background .25s var(--ease), border-color .25s var(--ease), transform .25s var(--ease);
+  }
+  .upnext-card:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.3);transform:translateX(-2px);}
+  .upnext-card .un-n{font-family:'Playfair Display',serif;color:var(--blue-soft);font-size:12px;min-width:18px;flex-shrink:0;}
+  .upnext-card .un-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-soft);margin-bottom:2px;}
+  .upnext-card .un-title{font-size:12px;line-height:1.35;color:rgba(255,255,255,0.85);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .upnext-card.next-up{border-color:rgba(255,255,255,0.35);background:rgba(255,255,255,0.05);}
+  #sidebarEnd{margin-top:auto;padding:10px 4px 0;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.3);}
+
+  /* ---------- ticker ---------- */
+  #ticker{
+    position:fixed;bottom:0;left:0;right:0;height:var(--ticker-h);z-index:50;
+    background:rgba(5,13,30,0.92);border-top:1px solid var(--line);
+    display:flex;align-items:stretch;backdrop-filter:blur(6px);
+  }
+  #ticker .news-label{
+    display:flex;align-items:center;padding:0 clamp(12px,2.5vw,20px);background:var(--blue-mist);
+    font-size:10.5px;letter-spacing:3px;font-weight:700;white-space:nowrap;
+  }
+  #ticker .ticker-track-wrap{flex:1;overflow:hidden;display:flex;align-items:center;}
+  #ticker .ticker-track{display:flex;white-space:nowrap;animation:tickerScroll 110s linear infinite;}
+  #ticker .ticker-item{padding:0 clamp(18px,3vw,40px);font-size:clamp(10.5px,1.2vw,13px);font-weight:300;letter-spacing:.3px;color:rgba(255,255,255,0.88);position:relative;}
+  #ticker .ticker-item::after{content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:var(--blue-soft);}
+  @keyframes tickerScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  #ticker .clock{
+    display:flex;align-items:center;padding:0 clamp(12px,2vw,22px);font-variant-numeric:tabular-nums;
+    font-size:clamp(10.5px,1.2vw,13px);letter-spacing:1px;border-left:1px solid var(--line);white-space:nowrap;
   }
 
-  /* ---------- narrow viewports (phones, iPads in portrait) ---------- */
-  @media (max-width: 760px){
+  #navHint{
+    position:fixed;top:calc(var(--header-h) + 14px);left:50%;transform:translateX(-50%);z-index:41;
+    font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);
+    display:flex;gap:8px;align-items:center;transition:opacity .8s var(--ease);
+    white-space:nowrap;pointer-events:none;
+  }
+  #navHint.fade{opacity:0;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px){
+    #sidebar{display:none;}
+  }
+  @media (max-width: 640px){
+    :root{ --header-h:52px; --ticker-h:38px; }
     #headerBar .brand-right span{display:none;}
     #headerBar .brand-right{font-size:12px;}
+    .navBtn{width:36px;height:36px;font-size:15px;}
+    #navHint{font-size:9px;top:calc(var(--header-h) + 10px);}
     .debate-wrap{flex-direction:column;}
     .debate-divider{width:100%;height:1px;}
-    .debate-vs{position:absolute;}
-    #ticker .news-label{font-size:10px;}
-    #navHint{display:none;}
+    #ticker .news-label{font-size:9px;padding:0 10px;}
   }
-
-  @media (max-width: 480px){
-    .title-lg{font-size:clamp(20px,7vw,32px);}
-    .title-md{font-size:clamp(16px,6vw,24px);}
-    .page-inner{padding-left:16px;padding-right:16px;}
+  @media (max-height: 480px){
+    :root{ --header-h:44px; --ticker-h:0px; }
+    #ticker{display:none;}
+    #navHint{display:none;}
   }
 </style>
 </head>
@@ -281,13 +327,22 @@
     <span id="liveSection">Graduation Ceremony</span>
   </div>
 </div>
-<div class="hairline"></div>
+<div id="progressTrack"><div id="progressFill"></div></div>
 
-<div id="bookWrap">
-  <div id="book"></div>
+<div id="navHint"><i class="ph ph-caret-left"></i> arrow keys or swipe to move <i class="ph ph-caret-right"></i></div>
+
+<div id="main">
+  <div id="stage">
+    <button id="prevBtn" class="navBtn" aria-label="Previous slide"><i class="ph-bold ph-caret-left"></i></button>
+    <div id="stageBox"></div>
+    <button id="nextBtn" class="navBtn" aria-label="Next slide"><i class="ph-bold ph-caret-right"></i></button>
+  </div>
+  <div id="sidebar">
+    <div class="sb-heading">Up Next</div>
+    <div id="sidebarList"></div>
+    <div id="sidebarEnd"></div>
+  </div>
 </div>
-
-<div id="navHint"><i class="ph ph-caret-left"></i> use arrow keys or swipe <i class="ph ph-caret-right"></i></div>
 
 <div id="ticker">
   <div class="news-label">NEWS</div>
@@ -303,7 +358,7 @@
 ============================================================ */
 (function particles(){
   const box = document.getElementById('particles');
-  const count = 34;
+  const count = 30;
   for(let i=0;i<count;i++){
     const p = document.createElement('div');
     p.className = 'particle';
@@ -329,12 +384,11 @@ const newsItems = [
   "Fahmid Nursery and Primary School, Alagbado, Ifako Ijaiye, Lagos",
   "Photography and refreshments are available at the rear of the hall"
 ];
-function buildTicker(){
+(function buildTicker(){
   const track = document.getElementById('tickerTrack');
-  const loopItems = newsItems.concat(newsItems); // duplicate for seamless loop
+  const loopItems = newsItems.concat(newsItems);
   track.innerHTML = loopItems.map(t => `<div class="ticker-item">${t}</div>`).join('');
-}
-buildTicker();
+})();
 
 function updateClock(){
   const now = new Date();
@@ -358,28 +412,30 @@ function enterPresentation(){
   startScreen.classList.add('hidden');
   startScreen.removeEventListener('click', enterPresentation);
   window.removeEventListener('keydown', keyStart);
-  setTimeout(handleDisplayChange, 250);
+  setTimeout(fitStage, 250);
 }
-function keyStart(e){ enterPresentation(); }
+function keyStart(){ enterPresentation(); }
 startScreen.addEventListener('click', enterPresentation);
 window.addEventListener('keydown', keyStart, { once:true });
 
 /* ============================================================
    3. PAGE DATA
-   layout options: cover, verse, anthemStanza, program, medical, robot, debate, split
+   layout options: cover, simple, program, verseQuran, verseBible,
+   anthemStanza, guests, medicalIntro, medical, robot, speech,
+   debate, graduationEvent, end
 ============================================================ */
 const pages = [];
 
-pages.push({ layout:'cover' });
+pages.push({ layout:'cover', navLabel:'Cover' });
 
 pages.push({
-  layout:'simple', tag:'01 · Opening', section:'Opening Prayer',
+  layout:'simple', tag:'01 · Opening', section:'Opening Prayer', navLabel:'Opening Prayer',
   eyebrow:'We Begin', title:'In God\u2019s Name',
   subtitle:'We start the way we always do — with a prayer, and a hope that the evening goes well for everyone here.'
 });
 
 pages.push({
-  layout:'verseQuran',
+  layout:'verseQuran', navLabel:'Qur\u2019an Recitation',
   tag:'02 · Holy Book', section:'Recitation of the Holy Book',
   arabic: 'يَا بُنَيَّ أَقِمِ الصَّلَاةَ وَأْمُرْ بِالْمَعْرُوفِ وَانْهَ عَنِ الْمُنكَرِ وَاصْبِرْ عَلَىٰ مَا أَصَابَكَ ۖ إِنَّ ذَٰلِكَ مِنْ عَزْمِ الْأُمُورِ',
   translation:'"O my son, establish prayer, enjoin what is right, forbid what is wrong, and be patient over whatever befalls you. Indeed, that is of the matters requiring determination."',
@@ -387,7 +443,7 @@ pages.push({
 });
 
 pages.push({
-  layout:'verseBible',
+  layout:'verseBible', navLabel:'Bible Reading',
   tag:'02 · Holy Book', section:'Recitation of the Holy Book',
   verses:[
     { text:'Unless the LORD builds the house, the builders labor in vain.', ref:'Psalm 127:1' },
@@ -396,7 +452,8 @@ pages.push({
 });
 
 pages.push({
-  layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'First Stanza',
+  layout:'anthemStanza', navLabel:'Anthem — First Stanza',
+  tag:'03 · National Anthem', section:'National Anthem', title:'First Stanza',
   lines:[
     'Nigeria, we hail thee,',
     'Our own dear native land,',
@@ -407,7 +464,8 @@ pages.push({
   ]
 });
 pages.push({
-  layout:'anthemStanza', tag:'03 · National Anthem', section:'National Anthem', title:'Second Stanza',
+  layout:'anthemStanza', navLabel:'Anthem — Second Stanza',
+  tag:'03 · National Anthem', section:'National Anthem', title:'Second Stanza',
   lines:[
     'Our flag shall be a symbol',
     'That truth and justice reign,',
@@ -418,51 +476,50 @@ pages.push({
   ]
 });
 
-pages.push({ layout:'program', tag:'04 · Opening', section:'Welcome Dance', eyebrow:'Rhythm & Colour', title:'Welcome Dance', subtitle:'Our pupils open the show with colour and rhythm.' });
+pages.push({ layout:'program', navLabel:'Welcome Dance', tag:'04 · Opening', section:'Welcome Dance', eyebrow:'Rhythm & Colour', title:'Welcome Dance', subtitle:'Our pupils open the show with colour and rhythm.' });
 
-pages.push({ layout:'guests', tag:'05 · Ceremony', section:'Introduction of Guests' });
+pages.push({ layout:'guests', navLabel:'Introduction of Guests', tag:'05 · Ceremony', section:'Introduction of Guests' });
 
-pages.push({ layout:'program', tag:'06 · Presentation', section:'Knowing Nigeria', eyebrow:'Nursery Presentation', title:'Knowing Nigeria', subtitle:'Our nursery pupils show what they\u2019ve learned about Nigeria. Shown on the hall\u2019s main projector.' });
+pages.push({ layout:'program', navLabel:'Knowing Nigeria', tag:'06 · Presentation', section:'Knowing Nigeria', eyebrow:'Nursery Presentation', title:'Knowing Nigeria', subtitle:'Our nursery pupils show what they\u2019ve learned about Nigeria. Shown on the hall\u2019s main projector.' });
 
-pages.push({ layout:'medicalIntro' });
-// individual medical slides are appended programmatically below
+pages.push({ layout:'medicalIntro', navLabel:'The Medical Profession' });
 
-pages.push({ layout:'program', tag:'08 · Language', section:'French Presentation', eyebrow:'Bonjour', title:'French Presentation', subtitle:'A short piece in French — new words, and pronunciation the pupils have been practising for weeks.' });
+pages.push({ layout:'program', navLabel:'French Presentation', tag:'08 · Language', section:'French Presentation', eyebrow:'Bonjour', title:'French Presentation', subtitle:'A short piece in French — new words, and pronunciation the pupils have been practising for weeks.' });
 
-pages.push({ layout:'program', tag:'09 · Culture', section:'Suru Lere Presentation', eyebrow:'Patience & Grace', title:'Suru Lere Presentation', subtitle:'A short cultural piece on patience, performed by our pupils.' });
+pages.push({ layout:'program', navLabel:'Suru Lere Presentation', tag:'09 · Culture', section:'Suru Lere Presentation', eyebrow:'Patience & Grace', title:'Suru Lere Presentation', subtitle:'A short cultural piece on patience, performed by our pupils.' });
 
-pages.push({ layout:'robot', tag:'10 · Technology', section:'Coding Presentation' });
+pages.push({ layout:'robot', navLabel:'Coding Presentation', tag:'10 · Technology', section:'Coding Presentation' });
 
-pages.push({ layout:'speech', tag:'11 · Address', section:'Proprietress\u2019 Speech' });
+pages.push({ layout:'speech', navLabel:'Proprietress\u2019 Speech', tag:'11 · Address', section:'Proprietress\u2019 Speech' });
 
-pages.push({ layout:'program', tag:'12 · Dance', section:'Gbegbe Dance Presentation', eyebrow:'Traditional Rhythm', title:'Gbegbe Dance', subtitle:'Drums, energy, and a traditional dance our pupils have rehearsed for weeks.' });
+pages.push({ layout:'program', navLabel:'Gbegbe Dance', tag:'12 · Dance', section:'Gbegbe Dance Presentation', eyebrow:'Traditional Rhythm', title:'Gbegbe Dance', subtitle:'Drums, energy, and a traditional dance our pupils have rehearsed for weeks.' });
 
-pages.push({ layout:'program', tag:'13 · Performance', section:'Bata / Ewi', eyebrow:'Voice & Verse', title:'Bata / Ewi', subtitle:'Talking drums and spoken word, rooted in Yoruba tradition.' });
+pages.push({ layout:'program', navLabel:'Bata / Ewi', tag:'13 · Performance', section:'Bata / Ewi', eyebrow:'Voice & Verse', title:'Bata / Ewi', subtitle:'Talking drums and spoken word, rooted in Yoruba tradition.' });
 
-pages.push({ layout:'program', tag:'14 · Interaction', section:'Parents\u2019 Game', eyebrow:'Just for Fun', title:'Parents\u2019 Game', subtitle:'A quick game for our parents — today isn\u2019t only for the pupils.' });
+pages.push({ layout:'program', navLabel:'Parents\u2019 Game', tag:'14 · Interaction', section:'Parents\u2019 Game', eyebrow:'Just for Fun', title:'Parents\u2019 Game', subtitle:'A quick game for our parents — today isn\u2019t only for the pupils.' });
 
-pages.push({ layout:'program', tag:'15 · Drama', section:'Dialogue Segment', eyebrow:'A Short Scene', title:'Dialogue Segment', subtitle:'A short scripted scene, a bit of humour and a small lesson.' });
+pages.push({ layout:'program', navLabel:'Dialogue Segment', tag:'15 · Drama', section:'Dialogue Segment', eyebrow:'A Short Scene', title:'Dialogue Segment', subtitle:'A short scripted scene, a bit of humour and a small lesson.' });
 
-pages.push({ layout:'program', tag:'16 · Dance', section:'Choreography', eyebrow:'In Formation', title:'Choreography', subtitle:'A rehearsed routine, timed to the music.' });
+pages.push({ layout:'program', navLabel:'Choreography', tag:'16 · Dance', section:'Choreography', eyebrow:'In Formation', title:'Choreography', subtitle:'A rehearsed routine, timed to the music.' });
 
-pages.push({ layout:'program', tag:'17 · Dance', section:'African Dance', eyebrow:'Afrodance', title:'African Dance', subtitle:'Upbeat, modern, and one the whole hall usually moves to.' });
+pages.push({ layout:'program', navLabel:'African Dance', tag:'17 · Dance', section:'African Dance', eyebrow:'Afrodance', title:'African Dance', subtitle:'Upbeat, modern, and one the whole hall usually moves to.' });
 
-pages.push({ layout:'debate', tag:'18 · Debate', section:'Debate: Garri vs Rice' });
+pages.push({ layout:'debate', navLabel:'Debate: Garri vs Rice', tag:'18 · Debate', section:'Debate: Garri vs Rice' });
 
-pages.push({ layout:'program', tag:'19 · Tribute', section:'Nigerian Mothers', eyebrow:'A Tribute', title:'Nigerian Mothers', subtitle:'A short tribute to Nigerian mothers.' });
+pages.push({ layout:'program', navLabel:'Nigerian Mothers', tag:'19 · Tribute', section:'Nigerian Mothers', eyebrow:'A Tribute', title:'Nigerian Mothers', subtitle:'A short tribute to Nigerian mothers.' });
 
-pages.push({ layout:'program', tag:'20 · Graduation', section:'Primary 6 Presentation', eyebrow:'Graduation Programme', title:'Primary 6 Presentation', subtitle:'Our senior pupils, one last time before graduation.' });
-pages.push({ layout:'program', tag:'20 · Graduation', section:'KG Presentation & Certificates', eyebrow:'Graduation Programme', title:'KG Presentation &amp; Certificate Programme', subtitle:'Our kindergarten pupils come forward for their certificates.' });
-pages.push({ layout:'program', tag:'20 · Graduation', section:'Farewell', eyebrow:'Graduation Programme', title:'Farewell', subtitle:'We say goodbye to the pupils leaving Fahmid this year.' });
-pages.push({ layout:'graduationEvent', tag:'20 · Graduation', section:'Primary 6 Graduation Event' });
+pages.push({ layout:'program', navLabel:'Primary 6 Presentation', tag:'20 · Graduation', section:'Primary 6 Presentation', eyebrow:'Graduation Programme', title:'Primary 6 Presentation', subtitle:'Our senior pupils, one last time before graduation.' });
+pages.push({ layout:'program', navLabel:'KG Presentation & Certificates', tag:'20 · Graduation', section:'KG Presentation & Certificates', eyebrow:'Graduation Programme', title:'KG Presentation &amp; Certificate Programme', subtitle:'Our kindergarten pupils come forward for their certificates.' });
+pages.push({ layout:'program', navLabel:'Farewell', tag:'20 · Graduation', section:'Farewell', eyebrow:'Graduation Programme', title:'Farewell', subtitle:'We say goodbye to the pupils leaving Fahmid this year.' });
+pages.push({ layout:'graduationEvent', navLabel:'Primary 6 Graduation Event', tag:'20 · Graduation', section:'Primary 6 Graduation Event' });
 
-pages.push({ layout:'program', tag:'21 · Gratitude', section:'Vote of Thanks', eyebrow:'With Gratitude', title:'Vote of Thanks', subtitle:'Thank you to every parent, teacher, guest and pupil who made today happen.' });
+pages.push({ layout:'program', navLabel:'Vote of Thanks', tag:'21 · Gratitude', section:'Vote of Thanks', eyebrow:'With Gratitude', title:'Vote of Thanks', subtitle:'Thank you to every parent, teacher, guest and pupil who made today happen.' });
 
-pages.push({ layout:'simple', tag:'22 · Closing', section:'Closing Prayer', eyebrow:'We Close', title:'Closing Prayer', subtitle:'One last prayer as the evening winds down, and safe travels home.' });
+pages.push({ layout:'simple', navLabel:'Closing Prayer', tag:'22 · Closing', section:'Closing Prayer', eyebrow:'We Close', title:'Closing Prayer', subtitle:'One last prayer as the evening winds down, and safe travels home.' });
 
-pages.push({ layout:'end' });
+pages.push({ layout:'end', navLabel:'Thank You' });
 
-/* ---- expand medical professions into individual pages, inserted after the intro ---- */
+/* ---- expand medical professions into individual slides, inserted after the intro ---- */
 const medicalData = [
   { name:'Pulmonologist', icon:'ph-wind', desc:'Looks after your lungs and helps you breathe easily.' },
   { name:'Orthopaedic Surgeon', icon:'ph-bone', desc:'Cares for bones, joints and muscles when they\u2019re injured.' },
@@ -479,7 +536,8 @@ const medicalData = [
 ];
 const introIndex = pages.findIndex(p => p.layout === 'medicalIntro');
 const medicalPages = medicalData.map((m,i) => ({
-  layout:'medical', tag:'07 · Medical Profession', section:'Medical Profession',
+  layout:'medical', navLabel:m.name,
+  tag:'07 · Medical Profession', section:'Medical Profession',
   index:i+1, total:medicalData.length, name:m.name, icon:m.icon, desc:m.desc
 }));
 pages.splice(introIndex+1, 0, ...medicalPages);
@@ -491,120 +549,110 @@ function esc(s){ return (s===undefined||s===null) ? '' : s; }
 
 function tplCover(){
   return `
-  <div class="page-inner">
+  <div class="slide-inner">
     <div class="eyebrow reveal">Fahmid Nursery and Primary School</div>
     <h1 class="title-lg serif zoom-in">End of Session &amp; Graduation Ceremony</h1>
     <div class="accent-line reveal d1"></div>
-    <p class="subtitle reveal d2">Please turn the page to begin.</p>
+    <p class="subtitle reveal d2">Please move to the next slide to begin.</p>
   </div>`;
 }
-
 function tplSimple(p){
   return `
-  <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner">
+  <div class="slide-tag">${esc(p.tag)}</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">${esc(p.eyebrow)}</div>
     <h2 class="title-lg serif reveal d1">${esc(p.title)}</h2>
     <div class="accent-line reveal d2"></div>
     <p class="subtitle reveal d3">${esc(p.subtitle)}</p>
   </div>`;
 }
-
 function tplProgram(p){
   return `
-  <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner">
+  <div class="slide-tag">${esc(p.tag)}</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">${esc(p.eyebrow)}</div>
     <h2 class="title-md serif reveal d1">${p.title}</h2>
     <div class="accent-line reveal d2"></div>
     <p class="subtitle reveal d3">${esc(p.subtitle)}</p>
   </div>`;
 }
-
-function makeHandwriting(text, cls){
+function makeHandwriting(text){
   let out = '';
   let idx = 0;
   for(const ch of text){
     if(ch === ' '){ out += ' '; continue; }
     const delay = (idx*0.028).toFixed(3);
-    out += `<span class="hw-char ${cls||''}" style="animation-delay:${delay}s">${ch}</span>`;
+    out += `<span class="hw-char" style="animation-delay:${delay}s">${ch}</span>`;
     idx++;
   }
   return out;
 }
-
 function tplVerseQuran(p){
   return `
-  <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner" style="justify-content:flex-start;padding-top:clamp(40px,10vh,64px);">
+  <div class="slide-tag">${esc(p.tag)}</div>
+  <div class="slide-inner" style="justify-content:flex-start;padding-top:calc(var(--slide-scale)*54px);">
     <div class="eyebrow reveal">${esc(p.section)}</div>
     <p class="arabic hw-line" data-hw="${encodeURIComponent(p.arabic)}"></p>
     <p class="translation" data-tr="${esc(p.translation)}"></p>
     <div class="verse-ref reveal d3">${esc(p.ref)}</div>
   </div>`;
 }
-
 function tplVerseBible(p){
   const blocks = p.verses.map((v,i) => `
-    <p class="arabic" style="font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(14px,1.8vw,21px);direction:ltr;line-height:1.6;margin-top:${i? '20px':'0'};" data-hw2="${esc(v.text)}"></p>
+    <p class="arabic" style="font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(12px,calc(var(--slide-scale)*19px),21px);direction:ltr;line-height:1.6;margin-top:${i? '18px':'0'};" data-hw2="${esc(v.text)}"></p>
     <div class="verse-ref">${esc(v.ref)}</div>
   `).join('');
   return `
-  <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner" style="justify-content:flex-start;padding-top:clamp(40px,10vh,64px);">
+  <div class="slide-tag">${esc(p.tag)}</div>
+  <div class="slide-inner" style="justify-content:flex-start;padding-top:calc(var(--slide-scale)*54px);">
     <div class="eyebrow reveal">Bible Reading</div>
     <div class="hw-multi">${blocks}</div>
   </div>`;
 }
-
 function tplAnthemStanza(p){
-  const lines = p.lines.map((l) => `<p class="hw-line" style="font-family:'Playfair Display',serif;font-size:clamp(14px,1.7vw,21px);line-height:1.6;font-weight:500;" data-hw3="${esc(l)}"></p>`).join('');
+  const lines = p.lines.map((l) => `<p class="hw-line" style="font-family:'Playfair Display',serif;font-size:clamp(12px,calc(var(--slide-scale)*18px),21px);line-height:1.6;font-weight:500;" data-hw3="${esc(l)}"></p>`).join('');
   return `
-  <div class="page-tag">${esc(p.tag)}</div>
-  <div class="page-inner" style="justify-content:flex-start;padding-top:clamp(40px,10vh,64px);">
+  <div class="slide-tag">${esc(p.tag)}</div>
+  <div class="slide-inner" style="justify-content:flex-start;padding-top:calc(var(--slide-scale)*54px);">
     <div class="eyebrow reveal">${esc(p.title)}</div>
     <div class="accent-line reveal d1"></div>
     ${lines}
   </div>`;
 }
-
 function tplGuests(){
   return `
-  <div class="page-tag">05 · Ceremony</div>
-  <div class="page-inner">
+  <div class="slide-tag">05 · Ceremony</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">A Warm Welcome</div>
     <h2 class="title-lg serif reveal d1">Introduction of Guests</h2>
     <div class="accent-line reveal d2"></div>
     <p class="subtitle reveal d3">Please join us in welcoming our special guests and dignitaries.</p>
   </div>`;
 }
-
 function tplMedicalIntro(){
   return `
-  <div class="page-tag">07 · Medical Profession</div>
-  <div class="page-inner">
+  <div class="slide-tag">07 · Medical Profession</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">Primary 1 Presentation</div>
     <h2 class="title-lg serif reveal d1">The Medical Profession</h2>
     <div class="accent-line reveal d2"></div>
-    <p class="subtitle reveal d3">Twelve pupils, twelve careers in medicine. Turn the page to meet each one.</p>
+    <p class="subtitle reveal d3">Twelve pupils, twelve careers in medicine. Next up, one by one.</p>
   </div>`;
 }
-
 function tplMedical(p){
   return `
-  <div class="page-tag">07 · Medical Profession &nbsp;·&nbsp; ${p.index} / ${p.total}</div>
-  <div class="page-inner">
+  <div class="slide-tag">07 · Medical Profession &nbsp;·&nbsp; ${p.index} / ${p.total}</div>
+  <div class="slide-inner">
     <div class="med-icon zoom-in"><i class="ph-bold ${esc(p.icon)}"></i></div>
     <h2 class="title-md serif reveal d1">${esc(p.name)}</h2>
     <div class="accent-line reveal d2"></div>
     <p class="subtitle reveal d3">${esc(p.desc)}</p>
   </div>`;
 }
-
 function tplRobot(){
   return `
-  <div class="page-tag">10 · Technology</div>
-  <div class="page-inner">
+  <div class="slide-tag">10 · Technology</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">Coding Presentation</div>
     <div class="robot-stage reveal d1">
       <div class="robot">
@@ -626,18 +674,16 @@ function tplRobot(){
     <p class="subtitle reveal d3">Built by our pupils, brought to life with code. Please welcome our young programmers to the stage.</p>
   </div>`;
 }
-
 function tplSpeech(){
   return `
-  <div class="page-tag">11 · Address</div>
-  <div class="page-inner">
+  <div class="slide-tag">11 · Address</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">A Word From the Proprietress</div>
     <h2 class="title-lg serif reveal d1">Proprietress\u2019 Speech</h2>
     <div class="accent-line reveal d2"></div>
     <p class="subtitle reveal d3">A look back at the year, and ahead to the next one.</p>
   </div>`;
 }
-
 function tplDebate(){
   return `
   <div class="debate-wrap">
@@ -652,13 +698,12 @@ function tplDebate(){
     </div>
     <div class="debate-vs zoom-in">VS</div>
   </div>
-  <div class="page-tag">18 · Debate</div>`;
+  <div class="slide-tag">18 · Debate</div>`;
 }
-
 function tplGraduationEvent(){
   return `
-  <div class="page-tag">20 · Graduation</div>
-  <div class="page-inner">
+  <div class="slide-tag">20 · Graduation</div>
+  <div class="slide-inner">
     <div class="eyebrow reveal">Graduation Programme</div>
     <h2 class="title-lg serif reveal d1">Primary 6 Graduation Event</h2>
     <div class="accent-line reveal d2"></div>
@@ -670,17 +715,15 @@ function tplGraduationEvent(){
     </ul>
   </div>`;
 }
-
 function tplEnd(){
   return `
-  <div class="page-inner">
+  <div class="slide-inner">
     <div class="eyebrow reveal">Thank You</div>
     <h1 class="title-lg serif zoom-in">Fahmid Nursery and Primary School</h1>
     <div class="accent-line reveal d1"></div>
     <p class="subtitle reveal d2">Thanks for being here tonight. See you next session.</p>
   </div>`;
 }
-
 function renderPage(p){
   switch(p.layout){
     case 'cover': return tplCover();
@@ -702,126 +745,8 @@ function renderPage(p){
 }
 
 /* ============================================================
-   5. BUILD PAGE ELEMENTS
+   5. DYNAMIC TEXT ANIMATIONS
 ============================================================ */
-const bookEl = document.getElementById('book');
-pages.forEach((p, i) => {
-  const div = document.createElement('div');
-  div.className = 'page';
-  div.dataset.index = i;
-  div.dataset.layout = p.layout;
-  div.innerHTML = renderPage(p) + `<div class="page-num">${i+1} / ${pages.length}</div>`;
-  bookEl.appendChild(div);
-});
-
-/* ============================================================
-   6. INITIALISE STPAGEFLIP + ONE-SLIDE-AT-A-TIME FOCUS SYSTEM
-============================================================ */
-let pageFlip;
-
-let focusIndex = 0;
-let pendingDirection = null;
-
-function pairOf(idx){
-  const start = idx - (idx % 2);
-  const partner = (start + 1 < pages.length) ? start + 1 : null;
-  return { start, partner };
-}
-
-function fadeNavHint(){
-  document.getElementById('navHint').classList.add('fade');
-}
-
-function applyFocus(){
-  const { start, partner } = pairOf(focusIndex);
-  const indices = partner !== null ? [start, partner] : [start];
-
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active','focused','dimmed'));
-
-  let sectionText = null;
-
-  indices.forEach((idx) => {
-    const el = document.querySelector(`.page[data-index="${idx}"]`);
-    if(!el) return;
-    void el.offsetWidth;
-    el.classList.add('active');
-    el.classList.add(idx === focusIndex ? 'focused' : 'dimmed');
-
-    const p = pages[idx];
-    if(p && p.section && idx === focusIndex){ sectionText = p.section; }
-
-    if(!el.dataset.rendered){
-      el.dataset.rendered = '1';
-      runHandwriting(el);
-      if(p && p.layout === 'anthemStanza') runAnthemLines(el);
-    }
-  });
-
-  if(sectionText){ document.getElementById('liveSection').textContent = sectionText; }
-}
-
-function goNext(){
-  if(!pageFlip) return;
-  const { start, partner } = pairOf(focusIndex);
-  if(focusIndex === start && partner !== null){
-    focusIndex = partner;
-    applyFocus();
-  }else{
-    pendingDirection = 'next';
-    pageFlip.flipNext();
-  }
-  fadeNavHint();
-}
-
-function goPrev(){
-  if(!pageFlip) return;
-  const { start, partner } = pairOf(focusIndex);
-  if(partner !== null && focusIndex === partner){
-    focusIndex = start;
-    applyFocus();
-  }else{
-    pendingDirection = 'prev';
-    pageFlip.flipPrev();
-  }
-  fadeNavHint();
-}
-
-function initFlip(){
-  const wrap = document.getElementById('bookWrap');
-  const w = Math.max(wrap.clientWidth, 320);
-  const h = Math.max(wrap.clientHeight, 300);
-
-  pageFlip = new St.PageFlip(bookEl, {
-    width: w,
-    height: h,
-    size: 'stretch',
-    minWidth: 280,
-    maxWidth: 2400,
-    minHeight: 260,
-    maxHeight: 1600,
-    maxShadowOpacity: 0.5,
-    showCover: false,
-    mobileScrollSupport: false,
-    useMouseEvents: true,
-    flippingTime: 900
-  });
-  pageFlip.loadFromHTML(document.querySelectorAll('.page'));
-
-  pageFlip.on('flip', (e) => {
-    const { start, partner } = pairOf(e.data);
-    if(pendingDirection === 'prev' && partner !== null){
-      focusIndex = partner;
-    }else{
-      focusIndex = start;
-    }
-    pendingDirection = null;
-    applyFocus();
-  });
-
-  focusIndex = 0;
-  applyFocus();
-}
-
 function runHandwriting(el){
   const quran = el.querySelector('[data-hw]');
   if(quran){
@@ -830,69 +755,175 @@ function runHandwriting(el){
     const trEl = el.querySelector('[data-tr]');
     if(trEl){
       trEl.textContent = trEl.dataset.tr;
-      setTimeout(() => trEl.classList.add('show'), 1400);
+      setTimeout(() => trEl.classList.add('show'), 1300);
     }
   }
   el.querySelectorAll('[data-hw2]').forEach((node) => {
-    const text = node.dataset.hw2;
-    node.innerHTML = makeHandwriting(text);
+    node.innerHTML = makeHandwriting(node.dataset.hw2);
   });
 }
-
 function runAnthemLines(el){
   const lines = el.querySelectorAll('[data-hw3]');
   let cumulative = 0;
   lines.forEach((node) => {
     const text = node.dataset.hw3;
     setTimeout(() => { node.innerHTML = makeHandwriting(text); }, cumulative);
-    cumulative += text.length*16 + 220;
+    cumulative += text.length*16 + 200;
   });
 }
 
 /* ============================================================
-   7. KEYBOARD + INIT
+   6. SLIDE ENGINE (single slide at a time, cross-fade transition)
+============================================================ */
+const stageBoxEl = document.getElementById('stageBox');
+const sidebarListEl = document.getElementById('sidebarList');
+const sidebarEndEl = document.getElementById('sidebarEnd');
+const progressFillEl = document.getElementById('progressFill');
+const liveSectionEl = document.getElementById('liveSection');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const navHintEl = document.getElementById('navHint');
+
+let current = 0;
+let animating = false;
+const TRANS_MS = 480;
+
+function buildSlideNode(index){
+  const p = pages[index];
+  const div = document.createElement('div');
+  div.className = 'slide';
+  div.innerHTML = renderPage(p) + `<div class="slide-num">${index+1} / ${pages.length}</div>`;
+  return div;
+}
+
+function showSlide(newIndex, opts){
+  newIndex = Math.max(0, Math.min(pages.length-1, newIndex));
+  if(newIndex === current && stageBoxEl.children.length) return;
+  const direction = newIndex > current ? 1 : -1;
+  const old = stageBoxEl.querySelector('.slide.active') || stageBoxEl.querySelector('.slide');
+
+  const fresh = !opts || !opts.instant;
+  const newNode = buildSlideNode(newIndex);
+  if(fresh){
+    newNode.classList.add(direction > 0 ? 'slide-from-right' : 'slide-from-left');
+  }
+  stageBoxEl.appendChild(newNode);
+  void newNode.offsetWidth;
+
+  if(old && fresh){
+    old.classList.add(direction > 0 ? 'slide-to-left' : 'slide-to-right');
+    setTimeout(() => { if(old.parentNode) old.remove(); }, TRANS_MS + 40);
+  }else if(old){
+    old.remove();
+  }
+
+  requestAnimationFrame(() => {
+    newNode.classList.remove('slide-from-right','slide-from-left');
+    newNode.classList.add('active');
+  });
+
+  current = newIndex;
+  const p = pages[current];
+  runHandwriting(newNode);
+  if(p.layout === 'anthemStanza') runAnthemLines(newNode);
+  if(p.section) liveSectionEl.textContent = p.section;
+
+  progressFillEl.style.width = ((current+1)/pages.length*100).toFixed(2)+'%';
+  prevBtn.disabled = current === 0;
+  nextBtn.disabled = current === pages.length-1;
+  renderSidebar();
+  fadeNavHint();
+}
+
+function renderSidebar(){
+  const upcoming = [];
+  for(let i=current+1; i<pages.length && upcoming.length<5; i++){ upcoming.push(i); }
+  sidebarListEl.innerHTML = upcoming.map((idx,pos) => `
+    <button class="upnext-card ${pos===0?'next-up':''}" data-index="${idx}">
+      <span class="un-n">${idx+1}</span>
+      <span class="un-text">
+        <span class="un-tag">${esc((pages[idx].tag||'').split('·')[0].trim())}</span>
+        <span class="un-title">${esc(pages[idx].navLabel)}</span>
+      </span>
+    </button>
+  `).join('');
+  sidebarEndEl.textContent = upcoming.length ? '' : 'Final slide';
+  sidebarListEl.querySelectorAll('.upnext-card').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      if(animating) return;
+      showSlide(parseInt(btn.dataset.index,10));
+    });
+  });
+}
+
+function fadeNavHint(){
+  navHintEl.classList.add('fade');
+}
+
+function goNext(){ showSlide(current+1); }
+function goPrev(){ showSlide(current-1); }
+
+prevBtn.addEventListener('click', goPrev);
+nextBtn.addEventListener('click', goNext);
+
+/* ============================================================
+   7. STAGE FIT — keeps every slide at a fixed 16:9 shape,
+      scaled to whatever screen/projector it's shown on.
+============================================================ */
+const stageEl = document.getElementById('stage');
+function fitStage(){
+  const pad = 0;
+  let availW = stageEl.clientWidth - pad;
+  let availH = stageEl.clientHeight - pad;
+  if(availW < 40) availW = 40;
+  if(availH < 40) availH = 40;
+  const ratio = 16/9;
+  let w = availW, h = w/ratio;
+  if(h > availH){ h = availH; w = h*ratio; }
+  stageBoxEl.style.width = w+'px';
+  stageBoxEl.style.height = h+'px';
+  const scale = h/540;
+  document.documentElement.style.setProperty('--slide-scale', scale.toFixed(4));
+}
+
+if('ResizeObserver' in window){
+  new ResizeObserver(fitStage).observe(stageEl);
+}
+window.addEventListener('resize', fitStage);
+window.addEventListener('orientationchange', () => setTimeout(fitStage,150));
+document.addEventListener('fullscreenchange', () => setTimeout(fitStage,150));
+
+/* ============================================================
+   8. KEYBOARD + SWIPE
 ============================================================ */
 window.addEventListener('keydown', (e) => {
-  if(!pageFlip) return;
   if(!startScreen.classList.contains('hidden')) return;
-  if(e.key === 'ArrowRight') goNext();
+  if(e.key === 'ArrowRight' || e.key === ' ') goNext();
   if(e.key === 'ArrowLeft') goPrev();
 });
 
-window.addEventListener('load', () => {
-  if(window['St'] && St.PageFlip){
-    initFlip();
-  }else{
-    const retry = setInterval(() => {
-      if(window['St'] && St.PageFlip){
-        clearInterval(retry);
-        initFlip();
-      }
-    }, 150);
+let touchStartX = null, touchStartY = null;
+stageEl.addEventListener('touchstart', (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, {passive:true});
+stageEl.addEventListener('touchend', (e) => {
+  if(touchStartX === null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if(Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)*1.4){
+    dx < 0 ? goNext() : goPrev();
   }
-});
+  touchStartX = null; touchStartY = null;
+}, {passive:true});
 
 /* ============================================================
-   8. RESIZE / DISPLAY-CHANGE HANDLING
+   9. INIT
 ============================================================ */
-let resizeDebounce;
-function handleDisplayChange(){
-  clearTimeout(resizeDebounce);
-  resizeDebounce = setTimeout(() => {
-    if(pageFlip){
-      try{ pageFlip.update(); }catch(e){}
-    }
-  }, 200);
-}
-window.addEventListener('resize', handleDisplayChange);
-window.addEventListener('orientationchange', handleDisplayChange);
-if(screen.orientation && screen.orientation.addEventListener){
-  screen.orientation.addEventListener('change', handleDisplayChange);
-}
-// catches the moment a projector/second display actually connects and the OS resizes the window
-if('matchMedia' in window){
-  window.matchMedia('(resolution: 1dppx)').addEventListener?.('change', handleDisplayChange);
-}
+window.addEventListener('load', () => {
+  fitStage();
+  showSlide(0, {instant:true});
+});
 </script>
 </body>
 </html>
