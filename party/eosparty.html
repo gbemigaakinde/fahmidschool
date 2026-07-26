@@ -256,9 +256,7 @@
   .photo-frame.img-missing .img-placeholder{display:flex;}
   .graduand-bio{flex:1;min-width:0;text-align:left;}
   .graduand-bio .accent-line{margin-left:0;}
-  .bio-list{list-style:none;margin:calc(var(--slide-scale)*14px) 0;display:flex;flex-direction:column;gap:calc(var(--slide-scale)*8px);}
-  .bio-list li{font-size:clamp(11px,calc(var(--slide-scale)*15px),16px);font-weight:300;color:rgba(255,255,255,0.85);}
-  .bio-list li span{display:inline-block;min-width:150px;text-transform:uppercase;letter-spacing:1.5px;font-size:10px;color:var(--blue-soft);margin-right:8px;}
+  .graduand-bio .subtitle{max-width:100%;}
 
   .prog-list{list-style:none;text-align:left;max-width:80%;width:100%;}
   .prog-list li{display:flex;align-items:baseline;gap:14px;padding:calc(var(--slide-scale)*8px) 0;border-bottom:1px solid var(--line);font-size:clamp(10px,calc(var(--slide-scale)*14px),15px);font-weight:300;}
@@ -349,8 +347,7 @@
     .graduand-wrap{flex-direction:column;text-align:center;padding:14px;gap:14px;}
     .photo-frame{width:110px;height:140px;}
     .graduand-bio{text-align:center;}
-    .bio-list{align-items:center;}
-    .bio-list li span{display:block;min-width:0;margin-right:0;}
+    .graduand-bio .accent-line{margin:calc(var(--slide-scale)*18px) auto;}
   }
   @media (max-height: 480px){
     :root{ --header-h:44px; --ticker-h:0px; }
@@ -582,8 +579,114 @@ pages.push({ layout:'program', navLabel:'Nigerian Mothers', tag:'19 · Tribute',
 
 pages.push({ layout:'program', navLabel:'Primary 6 Presentation', tag:'20 · Graduation', section:'Primary 6 Presentation', eyebrow:'Graduation Programme', title:'Primary 6 Presentation', subtitle:'Our senior pupils, one last time before graduation.' });
 pages.push({ layout:'program', navLabel:'KG Presentation & Certificates', tag:'20 · Graduation', section:'KG Presentation & Certificates', eyebrow:'Graduation Programme', title:'KG Presentation &amp; Certificate Programme', subtitle:'Our kindergarten pupils come forward for their certificates.' });
+
+/* ============================================================
+   KG GRADUANDS — ONE BLOCK PER PUPIL
+   To edit a pupil: find their block below (e.g. "KG Pupil 3"),
+   then change the text between quotes after "name:" and "bio:".
+   Leave everything else in the block exactly as it is.
+   Each pupil's photo comes from party/kg1.png, party/kg2.png,
+   and so on, matching the number in the block.
+============================================================ */
+pages.push({ layout:'graduand', category:'KG', index:1, total:7, img:'kg1.png',
+  name:'Akinlade Anuoluwapo Darasimi',
+  bio:'Akinlade Anuoluwapo Darasimi, who was born on 18th March, 2020, hails from Osun State. In school, Akinlade enjoys reading and writing, and noodles with egg is a favourite meal. One day, Akinlade hopes to serve the nation as a soldier.' });
+
+pages.push({ layout:'graduand', category:'KG', index:2, total:7, img:'kg2.png',
+  name:'Emmanuel Alebiosu Oluwasegun',
+  bio:'Hailing from Ogun State, Emmanuel Alebiosu Oluwasegun was born on 16th June, 2020. He enjoys spending his time reading in school and likes eating yam and egg. Emmanuel’s ambition is to become a skilled cabinet maker in the future.' });
+
+pages.push({ layout:'graduand', category:'KG', index:3, total:7, img:'kg3.png',
+  name:'Ella Isidola Arikunayomi',
+  bio:'A native of Ondo State, Ella Isidola Arikunayomi was born on 3rd March, 2020. She enjoys learning and writing while in school, and plantain with egg is her favourite meal. Ella dreams of becoming a doctor when she grows up.' });
+
+pages.push({ layout:'graduand', category:'KG', index:4, total:7, img:'kg4.png',
+  name:'Aishat Olaogun Oladuni',
+  bio:'A native of Ogun State, Aishat Olaogun Oladuni was born on 11th August, 2020. Reading is one of the activities she enjoys most in school, while spaghetti and stew remain her favourite meal. She looks forward to becoming a lawyer in the future.' });
+
+pages.push({ layout:'graduand', category:'KG', index:5, total:7, img:'kg5.png',
+  name:'Ameerah Opebi Arike',
+  bio:'Born on 18th September, 2020, Ameerah Opebi Arike is a native of Ogun State. She enjoys reading during school activities and especially loves eating rice and egg. As she grows older, Ameerah hopes to fulfil her dream of becoming a doctor.' });
+
+pages.push({ layout:'graduand', category:'KG', index:6, total:7, img:'kg6.png',
+  name:'Abdullahi Ahmed Akorede',
+  bio:'Born on 21st April, 2019, Abdullahi Ahmed Akorede is from Niger State. Reading and writing are the school activities he enjoys most, while rice and stew top the list of his favourite foods. His ambition is to become a soldier and proudly serve his country.' });
+
+pages.push({ layout:'graduand', category:'KG', index:7, total:7, img:'kg7.png',
+  name:'Yesirat Adeleye Ayinke',
+  bio:'Yesirat Adeleye Ayinke was born on 1st November, 2020, and comes from Ogun State. She enjoys reading at school and loves eating rice and stew. Her greatest aspiration is to become a caring and dedicated nurse.' });
+
 pages.push({ layout:'program', navLabel:'Farewell', tag:'20 · Graduation', section:'Farewell', eyebrow:'Graduation Programme', title:'Farewell', subtitle:'We say goodbye to the pupils leaving Fahmid this year.' });
 pages.push({ layout:'graduationEvent', navLabel:'Primary 6 Graduation Event', tag:'20 · Graduation', section:'Primary 6 Graduation Event' });
+
+/* ============================================================
+   PRIMARY 6 GRADUANDS — ONE BLOCK PER PUPIL
+   Same idea as above. Photos come from party/p1.png, party/p2.png,
+   and so on, matching the number in each block.
+============================================================ */
+pages.push({ layout:'graduand', category:'Primary 6', index:1, total:16, img:'p1.png',
+  name:'Bankole Roheemo Anike',
+  bio:'Born on 19th March, 2015, Bankole Roheemo Anike looks forward to becoming a doctor in the future. She enjoys reading and says she will miss everyone she met during her time in primary school. She sincerely appreciates her parents and family for their constant love and encouragement.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:2, total:16, img:'p2.png',
+  name:'Ogunyemi Samuel Basit',
+  bio:'Ogunyemi Samuel Basit, who was born on 6th February, 2014, aspires to become an engineer. Reading is one of his favourite activities, and he says he will miss everyone dearly. He is especially grateful to his parents and teachers for helping him achieve this important milestone.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:3, total:16, img:'p3.png',
+  name:'Saubana Abdullahi Ayomide',
+  bio:'Saubana Abdullahi Ayomide was born on 29th March, 2015, and hopes to become a doctor. Reading and playing are among the activities he enjoys most in school. He says he will always love his classmates and teachers and cherish the memories they shared together.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:4, total:16, img:'p4.png',
+  name:'Shiyanbola Azeenat Abeke',
+  bio:'Born on 15th January, 2016, Shiyanbola Azeenat Abeke dreams of becoming a doctor. She enjoys dancing and acting and says she loves everyone. As she celebrates her graduation, she expresses her sincere appreciation to Mrs Jayesimi and Miss Waseelah.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:5, total:16, img:'p5.png',
+  name:'Adenike Joseph Victoria',
+  bio:'Adenike Joseph Victoria was born on 6th October, 2012, and dreams of becoming a soldier. She enjoys reading and coordinating activities. She says she will never forget her teachers and everyone she met in school. She is deeply grateful to Mrs Jayesimi, Mrs Endurance, and all the teachers for their support.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:6, total:16, img:'p6.png',
+  name:'Ismaheel Faheezah',
+  bio:'Ismaheel Faizah, born on 26th November, 2015, dreams of becoming a doctor. She enjoys writing and reading and says she loves all her classmates and teachers. As she graduates, she extends her heartfelt thanks to Mrs Shoroye and Mrs Alausa.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:7, total:16, img:'p7.png',
+  name:'Ismaheel Fareedah',
+  bio:'Born on 26th November, 2015, Ismaheel Fareedah hopes to become a doctor in the future. She enjoys reading and playing and wishes all her classmates and teachers success in life. She expresses her appreciation to Mrs Alausa for her care and support.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:8, total:16, img:'p8.png',
+  name:'Sobayo Zainab Omolola',
+  bio:'A native learner with a passion for learning and reading, Sobayo Zainab Omolola was born on 29th March, 2015. She hopes to become a lawyer when she grows up. She says she loves her classmates and would like to thank Mrs Alausa and Mr Emmanuel for supporting her throughout her primary school journey.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:9, total:16, img:'p9.png',
+  name:'Saka Nimotallahi Teniola',
+  bio:'Saka Nimotallahi Teniola was born on 23rd August, 2015, and dreams of becoming a doctor. Reading and playing are among the activities she enjoys most. As she leaves primary school, she says she will never forget her classmates and teachers and extends her gratitude to Mrs Alausa and all the teachers.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:10, total:16, img:'p10.png',
+  name:'Primary Pupil 10 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:11, total:16, img:'p11.png',
+  name:'Primary Pupil 11 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:12, total:16, img:'p12.png',
+  name:'Primary Pupil 12 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:13, total:16, img:'p13.png',
+  name:'Primary Pupil 13 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:14, total:16, img:'p14.png',
+  name:'Primary Pupil 14 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:15, total:16, img:'p15.png',
+  name:'Primary Pupil 15 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
+
+pages.push({ layout:'graduand', category:'Primary 6', index:16, total:16, img:'p16.png',
+  name:'Primary Pupil 16 — Full Name',
+  bio:'Placeholder bio data. Replace this paragraph with the pupil\u2019s actual details.' });
 
 pages.push({ layout:'program', navLabel:'Vote of Thanks', tag:'21 · Gratitude', section:'Vote of Thanks', eyebrow:'With Gratitude', title:'Vote of Thanks', subtitle:'Thank you to every parent, teacher, guest and pupil who made today happen.' });
 
@@ -614,51 +717,16 @@ const medicalPages = medicalData.map((m,i) => ({
 }));
 pages.splice(introIndex+1, 0, ...medicalPages);
 
-/* ---- expand graduands into individual bio slides ----
-   Images are expected at party/kg1.png, party/kg2.png ... for KG
-   and party/p1.png, party/p2.png ... for Primary, relative to the
-   page. If an image is missing, the frame falls back to a plain
-   initial placeholder instead of a broken image icon.
-   Replace the placeholder bio fields below with the real details. */
-const kgGraduands = Array.from({ length:7 }, (_, i) => ({
-  layout:'graduand',
-  navLabel:`KG Graduand ${i+1}`,
-  tag:'20 · Graduation',
-  section:`KG Graduand ${i+1}`,
-  category:'KG',
-  index:i+1,
-  total:7,
-  img:`kg${i+1}.png`,
-  name:`KG Graduand ${i+1} — Full Name`,
-  age:'—',
-  hobby:'—',
-  ambition:'—',
-  subject:'—',
-  quote:'A short placeholder note about the pupil goes here.'
-}));
-
-const primaryGraduands = Array.from({ length:16 }, (_, i) => ({
-  layout:'graduand',
-  navLabel:`Primary Graduand ${i+1}`,
-  tag:'20 · Graduation',
-  section:`Primary Graduand ${i+1}`,
-  category:'Primary 6',
-  index:i+1,
-  total:16,
-  img:`p${i+1}.png`,
-  name:`Primary Graduand ${i+1} — Full Name`,
-  age:'—',
-  hobby:'—',
-  ambition:'—',
-  subject:'—',
-  quote:'A short placeholder note about the pupil goes here.'
-}));
-
-const kgCertIndex = pages.findIndex(p => p.navLabel === 'KG Presentation & Certificates');
-pages.splice(kgCertIndex + 1, 0, ...kgGraduands);
-
-const graduationEventIndex = pages.findIndex(p => p.layout === 'graduationEvent');
-pages.splice(graduationEventIndex + 1, 0, ...primaryGraduands);
+/* ---- fill in navLabel / tag / section for every graduand slide,
+   so the sidebar and header always show something sensible even
+   though those weren't typed out by hand above ---- */
+pages.forEach(p => {
+  if(p.layout === 'graduand'){
+    p.navLabel = p.name;
+    p.tag = '20 · Graduation';
+    p.section = p.name;
+  }
+});
 
 /* ============================================================
    4. RENDER TEMPLATES
@@ -855,13 +923,7 @@ function tplGraduand(p){
       <div class="eyebrow reveal">${esc(p.category)} Graduand</div>
       <h2 class="title-md serif reveal d1">${esc(p.name)}</h2>
       <div class="accent-line reveal d2"></div>
-      <ul class="bio-list reveal d3">
-        <li><span>Age</span>${esc(p.age)}</li>
-        <li><span>Hobby</span>${esc(p.hobby)}</li>
-        <li><span>Ambition</span>${esc(p.ambition)}</li>
-        <li><span>Favourite Subject</span>${esc(p.subject)}</li>
-      </ul>
-      <p class="subtitle reveal d3" style="max-width:100%;">${esc(p.quote)}</p>
+      <p class="subtitle reveal d3">${esc(p.bio)}</p>
     </div>
   </div>
   <div class="slide-tag">20 · Graduation &nbsp;·&nbsp; ${esc(p.category)} ${p.index} / ${p.total}</div>`;
