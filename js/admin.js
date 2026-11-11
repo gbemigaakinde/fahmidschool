@@ -2101,6 +2101,10 @@ async function executePromotion(promotionId, promotedPupils, heldBackPupils, man
   }
   
   const data = promotionDoc.data();
+
+  if (data.status !== 'pending') {
+    throw new Error(`Promotion request is already ${data.status || 'processed'} and cannot be executed again`);
+  }
   
   if (!data.toClass || !data.toClass.id) {
     throw new Error('Invalid promotion data: missing target class');
@@ -2205,7 +2209,7 @@ for (const pupilId of promotedPupils) {
         fromClass: data.fromClass.name,
         toClass: data.toClass.name,
         promoted: true,
-        date: firebase.firestore.FieldValue.serverTimestamp()
+        date: firebase.firestore.Timestamp.now()
       }),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -2237,7 +2241,7 @@ for (const pupilId of heldBackPupils) {
       toClass: data.fromClass.name,
       promoted: false,
       reason: 'Held back by admin/teacher decision',
-      date: firebase.firestore.FieldValue.serverTimestamp()
+      date: firebase.firestore.Timestamp.now()
     }),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -2313,7 +2317,7 @@ for (const override of manualOverrides) {
           toClass: overrideClassData.name,
           promoted: true,
           manualOverride: true,
-          date: firebase.firestore.FieldValue.serverTimestamp()
+          date: firebase.firestore.Timestamp.now()
         }),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
