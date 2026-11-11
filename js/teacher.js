@@ -16,6 +16,58 @@
 const db = window.db;
 const auth = window.auth;
 
+/* ========================================
+   TOAST FALLBACK
+   teacher.html does not load script.js, so window.showToast was undefined and
+   every `window.showToast?.()` call (save success, errors, submit feedback)
+   silently did nothing. Define a self-contained version here.
+======================================== */
+if (typeof window.showToast !== 'function') {
+  window.showToast = function (message, type = 'info', duration = 4000) {
+    const render = () => {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+      }
+      // Always position inline so it works regardless of which stylesheet loaded
+      container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:99999;display:flex;flex-direction:column;gap:10px;max-width:min(420px,calc(100vw - 32px));pointer-events:none;';
+
+      const colors = {
+        success: ['#f1f8f4', '#4caf50', '#2e7d32', '✓'],
+        danger:  ['#fef2f2', '#f44336', '#c62828', '✕'],
+        warning: ['#fff9f0', '#ff9800', '#e65100', '⚠'],
+        info:    ['#f0f8ff', '#2196F3', '#1565c0', 'ℹ']
+      };
+      const [bg, border, fg, icon] = colors[type] || colors.info;
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type} show`;
+      toast.setAttribute('role', 'alert');
+      toast.style.cssText = `display:flex;gap:10px;align-items:flex-start;background:${bg};color:${fg};` +
+        `border-left:4px solid ${border};border-radius:8px;padding:12px 16px;font-size:14px;line-height:1.4;` +
+        'box-shadow:0 6px 20px rgba(0,0,0,.15);pointer-events:auto;white-space:pre-line;opacity:1;transform:none;';
+
+      const ic = document.createElement('span');
+      ic.textContent = icon;
+      ic.style.cssText = 'font-weight:700;flex-shrink:0;';
+      const msg = document.createElement('span');
+      msg.textContent = message;
+      toast.appendChild(ic);
+      toast.appendChild(msg);
+      toast.addEventListener('click', () => toast.remove());
+      container.appendChild(toast);
+
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; }, Math.max(500, duration - 300));
+      setTimeout(() => toast.remove(), duration);
+    };
+    if (document.body) render();
+    else document.addEventListener('DOMContentLoaded', render, { once: true });
+  };
+}
+
 let currentUser = null;
 let teacherName = null;
 let assignedClasses = [];
@@ -1507,6 +1559,8 @@ function enableResultInputs() {
 /**
  * ✅ FIXED: Encode session for document ID, use original for data
  */
+let isSubmittingResults = false;
+
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
     const subject = document.getElementById('result-subject')?.value;
@@ -1537,7 +1591,11 @@ async function submitResultsForApproval() {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnText; }
     };
 
-    if (submitBtn && submitBtn.disabled) return; // already working
+    // NOTE: do NOT test submitBtn.disabled here. button-loader.js disables the
+    // button *before* calling this function, which made it return immediately
+    // ("nothing happens"). Use our own in-flight flag instead.
+    if (isSubmittingResults) return;
+    isSubmittingResults = true;
 
     try {
         const currentUser = firebase.auth().currentUser;
@@ -1729,6 +1787,7 @@ async function submitResultsForApproval() {
         }
         window.showToast?.(msg, 'danger', 10000);
     } finally {
+        isSubmittingResults = false;
         resetBtn();
     }
 }
