@@ -1282,9 +1282,11 @@ async function checkResultLockStatus() {
                 // Rejected - teacher can edit and resubmit
                 if (window.showToast) {
                     window.showToast(
-                        'Your previous submission was rejected. You can now edit and resubmit.',
+                        'Your previous submission was sent back by the admin.' +
+                        (submissionData.rejectionReason ? '\n\nReason: ' + submissionData.rejectionReason : '') +
+                        '\n\nYou can now edit and submit again.',
                         'warning',
-                        6000
+                        12000
                     );
                 }
                 showSubmissionControls(term, subject, className);
@@ -1508,26 +1510,22 @@ function enableResultInputs() {
 async function submitResultsForApproval() {
     const term = document.getElementById('result-term')?.value;
     const subject = document.getElementById('result-subject')?.value;
-    
+
     if (!term || !subject || assignedClasses.length === 0) {
-        if (window.showToast) {
-            window.showToast('Please select term and subject', 'error');
-        }
+        window.showToast?.('Please choose a term and a subject first.', 'warning');
         return;
     }
 
-    const classSelect = document.getElementById('result-class');
-    const selectedClassId = classSelect?.value;
-
+    const selectedClassId = document.getElementById('result-class')?.value;
     if (!selectedClassId) {
-      window.showToast?.('Please select a class before submitting.', 'warning');
-      return;
+        window.showToast?.('Please select a class before submitting.', 'warning');
+        return;
     }
 
     const selectedClass = assignedClasses.find(c => c.id === selectedClassId);
     if (!selectedClass) {
-      window.showToast?.('Selected class not found. Please refresh and try again.', 'danger');
-      return;
+        window.showToast?.('Selected class not found. Please refresh the page and try again.', 'danger');
+        return;
     }
 
     const classId = selectedClass.id;
@@ -1535,226 +1533,203 @@ async function submitResultsForApproval() {
 
     const submitBtn = document.getElementById('submit-results-btn');
     const originalBtnText = submitBtn?.innerHTML || 'Submit for Approval';
+    const resetBtn = () => {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnText; }
+    };
+
+    if (submitBtn && submitBtn.disabled) return; // already working
 
     try {
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking permissions...';
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) {
+            window.showToast?.('You are signed out. Please log in again and retry.', 'danger', 7000);
+            return;
         }
 
-        // ── Check if this teacher has direct-publish permission ──────────────
-        const teacherDoc = await db.collection('teachers').doc(firebase.auth().currentUser.uid).get();
-        const canDirectPublish = teacherDoc.exists && teacherDoc.data().canDirectPublish === true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        }
+
+        // Teacher profile (if it cannot be read, carry on with normal approval)
+        let teacherData = null;
+        try {
+            const teacherDoc = await db.collection('teachers').doc(currentUser.uid).get();
+            if (teacherDoc.exists) teacherData = teacherDoc.data();
+        } catch (e) {
+            console.warn('Could not read teacher profile, using normal approval path:', e);
+        }
+        const canDirectPublish = teacherData?.canDirectPublish === true;
+        const teacherName = teacherData?.fullName || teacherData?.name || currentUser.displayName || 'Unknown Teacher';
 
         const settings = await window.getCurrentSettings();
         const session = settings.session;
+        if (!session) {
+            window.showToast?.('The school session has not been set up by the admin yet, so results cannot be submitted.', 'warning', 8000);
+            return;
+        }
         const encodedSession = session.replace(/\//g, '-');
 
-        const currentUser = firebase.auth().currentUser;
-        if (!currentUser) throw new Error('Not authenticated');
+        // ── 1. Save anything typed but not yet saved (this was the main bug:
+        //       teachers submitted without saving, so the admin saw "no draft") ──
+        const hasUnsaved = Object.values(resultsEditBuffer || {}).some(
+            s => s && (Number(s.assignment) || Number(s.midterm) || Number(s.project) || Number(s.exam))
+        );
+        if (hasUnsaved) {
+            if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving scores...';
+            const saved = await saveAllResults({ silent: true });
+            if (!saved) {
+                window.showToast?.('Your scores could not be saved, so nothing was submitted. Please click "Save" and fix any message you see, then submit again.', 'warning', 8000);
+                return;
+            }
+        }
 
-        const teacherName = teacherDoc.exists
-          ? teacherDoc.data().fullName || teacherDoc.data().name
-          : currentUser.displayName || 'Unknown Teacher';
+        // ── 2. Find saved scores that actually have marks in them ──
+        const draftsSnap = await db.collection('results_draft')
+            .where('classId', '==', classId)
+            .where('term', '==', term)
+            .where('subject', '==', subject)
+            .get();
 
-        if (canDirectPublish) {
-            // ════════════════════════════════════════════════════════════════
-            // DIRECT PUBLISH PATH — bypass approval, write straight to results
-            // ════════════════════════════════════════════════════════════════
+        const validDrafts = [];
+        draftsSnap.forEach(doc => {
+            const d = doc.data();
+            if (d.session !== session || !d.pupilId) return;
+            if ((Number(d.caScore) || 0) > 0 || (Number(d.examScore) || 0) > 0) validDrafts.push(doc);
+        });
 
-            const confirmed = confirm(
-                `Publish results directly to pupils?\n\n` +
-                `Class: ${className}\n` +
-                `Subject: ${subject}\n` +
-                `Term: ${term}\n\n` +
-                `Results will be IMMEDIATELY visible to pupils.\n` +
-                `(Direct publishing is enabled on your account)`
+        if (validDrafts.length === 0) {
+            window.showToast?.(
+                'Nothing to submit yet.\n\nNo scores have been saved for ' + subject + ' (' + term + ', ' + className + ').\n' +
+                'Enter the scores, click "Save", then submit.',
+                'warning',
+                9000
             );
+            return;
+        }
 
-            if (!confirmed) {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
+        const makeDirectRecord = (pupilDoc) => ({
+            ...pupilDoc.data(),
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedBy: currentUser.uid,
+            approvedByName: teacherName,
+            publishedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            directPublish: true
+        });
+
+        const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
+        const baseSubmission = {
+            classId, className, term, subject, session, encodedSession,
+            teacherUid: currentUser.uid, teacherName,
+            pupilCount: validDrafts.length
+        };
+
+        let useDirect = canDirectPublish;
+
+        // ════════ DIRECT PUBLISH ════════
+        if (useDirect) {
+            const ok = confirm(
+                `Publish results directly to pupils?\n\n` +
+                `Class: ${className}\nSubject: ${subject}\nTerm: ${term}\n` +
+                `Pupils with scores: ${validDrafts.length}\n\n` +
+                `Results will be visible to pupils IMMEDIATELY.`
+            );
+            if (!ok) return;
+
+            if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+
+            try {
+                const CHUNK = 400;
+                for (let i = 0; i < validDrafts.length; i += CHUNK) {
+                    const batch = db.batch();
+                    validDrafts.slice(i, i + CHUNK).forEach(draftDoc => {
+                        const pupilId = draftDoc.data().pupilId;
+                        batch.set(
+                            db.collection('results').doc(`${pupilId}_${encodedSession}_${term}_${subject}`),
+                            makeDirectRecord(draftDoc)
+                        );
+                    });
+                    await batch.commit();
                 }
-                return;
-            }
 
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-            }
-
-            // Get draft results for this class/term/subject/session
-            const draftsSnap = await db.collection('results_draft')
-                .where('classId', '==', classId)
-                .where('term', '==', term)
-                .where('subject', '==', subject)
-                .get();
-
-            const validDrafts = [];
-            draftsSnap.forEach(doc => {
-                if (doc.data().session === session) {
-                    validDrafts.push(doc);
-                }
-            });
-
-            if (validDrafts.length === 0) {
-                window.showToast?.(
-                    '⚠️ No saved results found. Please save your scores first before publishing.',
-                    'warning',
-                    6000
-                );
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
-                }
-                return;
-            }
-
-            // Write directly to the results collection (approved immediately)
-            const batch = db.batch();
-            let publishedCount = 0;
-
-            validDrafts.forEach(draftDoc => {
-                const draftData = draftDoc.data();
-                const pupilId = draftData.pupilId;
-                const finalDocId = `${pupilId}_${encodedSession}_${term}_${subject}`;
-                const finalRef = db.collection('results').doc(finalDocId);
-
-                batch.set(finalRef, {
-                    ...draftData,
+                await db.collection('result_submissions').doc(submissionId).set({
+                    ...baseSubmission,
                     status: 'approved',
+                    directPublish: true,
+                    submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     approvedBy: currentUser.uid,
-                    approvedByName: teacherName,
-                    publishedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    directPublish: true   // flag so admin can identify direct-published results
-                });
-                publishedCount++;
-            });
+                    resultsPublished: validDrafts.length,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
 
-            // Also create a result_submissions record marked as approved
-            // so the admin can see it in the Approved Results tab
-            const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
-            const submissionRef = db.collection('result_submissions').doc(submissionId);
-            batch.set(submissionRef, {
-                classId,
-                className,
-                term,
-                subject,
-                session,
-                encodedSession,
-                teacherUid: currentUser.uid,
-                teacherName,
-                status: 'approved',
-                directPublish: true,
-                submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                approvedBy: currentUser.uid,
-                resultsPublished: publishedCount,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-
-            await batch.commit();
-
-            console.log(`✅ Direct publish: ${publishedCount} results published for ${className} - ${term} - ${subject}`);
-
-            window.showToast?.(
-                `✅ Results published directly!\n\n` +
-                `${publishedCount} pupil result(s) are now VISIBLE to pupils immediately.`,
-                'success',
-                6000
-            );
-
-            await checkResultLockStatus();
-            await loadResultsTable();
-
-        } else {
-            // ════════════════════════════════════════════════════════════════
-            // NORMAL APPROVAL PATH — same as before
-            // ════════════════════════════════════════════════════════════════
-
-            const confirmed = confirm(
-                `Submit results for approval?\n\n` +
-                `Class: ${className}\n` +
-                `Subject: ${subject}\n` +
-                `Term: ${term}\n\n` +
-                `Once submitted, you cannot edit until admin reviews.`
-            );
-
-            if (!confirmed) {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
-                }
+                window.showToast?.(
+                    `✅ Results published!\n\n${validDrafts.length} pupil result(s) are now visible to pupils.`,
+                    'success', 7000
+                );
+                await checkResultLockStatus();
+                await loadResultsTable();
                 return;
+
+            } catch (directErr) {
+                if (directErr.code === 'permission-denied') {
+                    // Not the teacher's fault — send for admin approval instead
+                    console.warn('Direct publish blocked by permissions, falling back to approval:', directErr);
+                    window.showToast?.(
+                        'Your account is not allowed to publish directly right now, so your results are being sent to the admin for approval instead.',
+                        'info', 8000
+                    );
+                    useDirect = false;
+                } else {
+                    throw directErr;
+                }
+            }
+        }
+
+        // ════════ SUBMIT FOR ADMIN APPROVAL ════════
+        if (!useDirect) {
+            if (!canDirectPublish) {
+                const ok = confirm(
+                    `Submit results for approval?\n\n` +
+                    `Class: ${className}\nSubject: ${subject}\nTerm: ${term}\n` +
+                    `Pupils with scores: ${validDrafts.length}\n\n` +
+                    `Once submitted, you cannot edit until the admin reviews.`
+                );
+                if (!ok) return;
             }
 
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-            }
+            if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
-            const submissionId = `${classId}_${encodedSession}_${term}_${subject}`;
-
-            const submissionData = {
-                classId,
-                className,
-                term,
-                subject,
-                session,
-                encodedSession,
-                teacherUid: currentUser.uid,
-                teacherName,
+            await db.collection('result_submissions').doc(submissionId).set({
+                ...baseSubmission,
                 status: 'pending',
                 submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-
-            // Count pupils with draft results
-            const draftsSnap = await db.collection('results_draft')
-                .where('classId', '==', classId)
-                .where('term', '==', term)
-                .where('subject', '==', subject)
-                .where('session', '==', session)
-                .get();
-
-            const uniquePupils = new Set();
-            draftsSnap.forEach(doc => {
-                const pupilId = doc.data().pupilId;
-                if (pupilId) uniquePupils.add(pupilId);
-            });
-
-            submissionData.pupilCount = uniquePupils.size;
-
-            await db.collection('result_submissions')
-                .doc(submissionId)
-                .set(submissionData, { merge: true });
-
-            console.log('✅ Results submitted for approval:', submissionId);
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                rejectionReason: firebase.firestore.FieldValue.delete()
+            }, { merge: true });
 
             window.showToast?.(
-                'Results submitted for admin approval successfully!',
-                'success',
-                5000
+                `Results submitted for admin approval.\n\n${validDrafts.length} pupil(s) included. Pupils will see them once the admin approves.`,
+                'success', 7000
             );
-
             await checkResultLockStatus();
             await loadResultsTable();
         }
 
     } catch (error) {
         console.error('Error in submitResultsForApproval:', error);
-
-        const errorMessage = error.code === 'permission-denied'
-            ? 'Permission denied. Please contact your administrator.'
-            : error.message || 'Failed to submit results. Please try again.';
-
-        window.showToast?.(errorMessage, 'error', 6000);
-
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnText;
+        let msg;
+        if (error.code === 'permission-denied') {
+            msg = 'The system did not allow this action for your account. Your saved scores are safe. Please tell the school admin: "My teacher account cannot submit results" so they can fix your permissions.';
+        } else if (error.code === 'unavailable' || /network|offline/i.test(error.message || '')) {
+            msg = 'No internet connection. Your scores are safe on this device. Please check your connection and try again.';
+        } else {
+            msg = 'Something went wrong while submitting: ' + (error.message || 'unknown error') + '. Your saved scores are safe — please try again.';
         }
+        window.showToast?.(msg, 'danger', 10000);
+    } finally {
+        resetBtn();
     }
 }
 
@@ -1768,10 +1743,11 @@ window.submitResultsForApproval = submitResultsForApproval;
 // Add flag to prevent simultaneous saves
 let isSavingResults = false;
 
-async function saveAllResults() {
+async function saveAllResults(opts) {
+  const silent = !!(opts && opts.silent === true);
   if (isSavingResults) {
     console.log('Save already in progress, ignoring click');
-    return;
+    return false;
   }
 
   const term       = document.getElementById('result-term')?.value;
@@ -1781,17 +1757,17 @@ async function saveAllResults() {
 
   if (!term || !subject) {
     window.showToast?.('Select term and subject first', 'warning');
-    return;
+    return false;
   }
   if (!selectedClassId) {
     window.showToast?.('Please select a class first', 'warning');
-    return;
+    return false;
   }
 
   const selectedClass = assignedClasses.find(c => c.id === selectedClassId);
   if (!selectedClass) {
     window.showToast?.('Selected class not found. Please refresh.', 'danger');
-    return;
+    return false;
   }
 
   // Saves come from the working copy now, which covers every page the
@@ -1800,7 +1776,7 @@ async function saveAllResults() {
 
   if (bufferEntries.length === 0) {
     window.showToast?.('No scores have been entered', 'warning');
-    return;
+    return false;
   }
 
   const maxMap = { assignment: 10, midterm: 20, project: 10, exam: 60 };
@@ -1826,14 +1802,14 @@ async function saveAllResults() {
     });
     saveResultsBufferToStorage();
     window.showToast?.('Some scores were out of range and have been corrected. Please review and save again.', 'warning', 5000);
-    return;
+    return false;
   }
 
   let hasChanges = false;
   Object.values(pupilResults).forEach(scores => {
     if (scores.assignment || scores.midterm || scores.project || scores.exam) hasChanges = true;
   });
-  if (!hasChanges) { window.showToast?.('No scores have been entered', 'warning'); return; }
+  if (!hasChanges) { window.showToast?.('No scores have been entered', 'warning'); return false; }
 
   isSavingResults = true;
 
@@ -1897,14 +1873,21 @@ async function saveAllResults() {
     // longer needed for this class/term/subject
     clearResultsBufferStorage();
 
-    window.showToast?.(
-      '✓ Results saved to your workspace\n\nℹ️ Not visible to pupils yet — submit for approval when ready.',
-      'success', 6000
-    );
+    if (!silent) {
+      window.showToast?.(
+        '✓ Results saved to your workspace\n\nℹ️ Not visible to pupils yet — submit for approval when ready.',
+        'success', 6000
+      );
+    }
+    return true;
 
   } catch (err) {
     console.error('Error saving results:', err);
-    window.showToast?.(`Failed to save results: ${err.message || 'Unknown error'}`, 'danger', 6000);
+    const why = err.code === 'permission-denied'
+      ? 'Your account is not allowed to save results right now. Please tell the school admin.'
+      : (err.message || 'Unknown error');
+    window.showToast?.(`Failed to save results: ${why}`, 'danger', 8000);
+    return false;
   } finally {
     const finalSaveBtn = document.getElementById('save-results-btn');
     if (finalSaveBtn) {

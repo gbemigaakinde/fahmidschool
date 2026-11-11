@@ -2819,7 +2819,7 @@ async function _loadPendingResults() {
               ✗ Reject (No Data)
             </button>
             <span style="font-size:0.75rem; color:#dc3545; display:block; margin-top:4px;">
-              ⚠️ No draft results found
+              ⚠️ Teacher submitted without saved scores. Reject to send it back.
             </span>
           `}
         </td>
@@ -3102,6 +3102,27 @@ console.log('   • Approved tab: view all approved results + 🔓 Unlock button
 console.log('   • unlockApprovedResult(): reverts results to draft, submission to rejected');
 
 /**
+ * If a teacher submitted with no saved scores, send it back to them with a
+ * plain-English reason (instead of leaving it stuck as "pending" forever).
+ */
+async function _sendBackEmptySubmission(submissionRef, whatHappened) {
+    const reason = whatHappened + ' Please enter your scores, click "Save", then submit again.';
+    await submissionRef.update({
+        status: 'rejected',
+        rejectedBy: auth.currentUser.uid,
+        rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        rejectionReason: reason,
+        approvingBy: firebase.firestore.FieldValue.delete(),
+        approvingStartedAt: firebase.firestore.FieldValue.delete()
+    });
+    window.showToast?.(
+        '⚠️ This submission had no saved scores, so it was sent back to the teacher with an explanation.',
+        'warning',
+        8000
+    );
+}
+
+/**
  * Approve results 
  */
 async function approveResultSubmission(submissionId) {
@@ -3135,7 +3156,10 @@ async function approveResultSubmission(submissionId) {
                     throw new Error('ALREADY_APPROVED');
                 }
 
-                if (data.status !== 'pending') {
+                const stuckApproving = data.status === 'approving' &&
+                    data.approvingStartedAt && data.approvingStartedAt.toMillis &&
+                    (Date.now() - data.approvingStartedAt.toMillis()) > 120000;
+                if (data.status !== 'pending' && !stuckApproving) {
                     throw new Error(`INVALID_STATUS:${data.status}`);
                 }
 
@@ -3182,14 +3206,8 @@ async function approveResultSubmission(submissionId) {
             .get();
 
         if (draftsSnap.empty) {
-            // Roll back to 'pending' so admin can try again after teacher saves results
-            await submissionRef.update({ status: 'pending' });
-            window.showToast?.(
-                '⚠️ No draft results found for this submission.\n\n' +
-                'The teacher may not have saved any results yet.',
-                'warning',
-                8000
-            );
+            await _sendBackEmptySubmission(submissionRef, 'No saved scores were found for this subject.');
+            await loadResultApprovals();
             return;
         }
 
@@ -3205,15 +3223,8 @@ async function approveResultSubmission(submissionId) {
         });
 
         if (validDrafts.length === 0) {
-            // Roll back to 'pending'
-            await submissionRef.update({ status: 'pending' });
-            window.showToast?.(
-                '⚠️ Draft results found but session mismatch.\n\n' +
-                `Expected: ${session}\n` +
-                'Contact support if this persists.',
-                'warning',
-                8000
-            );
+            await _sendBackEmptySubmission(submissionRef, 'The saved scores belong to a different school session (' + session + ' scores were not found).');
+            await loadResultApprovals();
             return;
         }
 
@@ -13006,7 +13017,10 @@ async function _approveSubmissionSilently(submissionId, submissionDataHint) {
 
       if (data.status === 'approved') throw new Error('ALREADY_APPROVED');
 
-      if (data.status !== 'pending') throw new Error(`INVALID_STATUS:${data.status}`);
+      const stuckApproving = data.status === 'approving' &&
+        data.approvingStartedAt && data.approvingStartedAt.toMillis &&
+        (Date.now() - data.approvingStartedAt.toMillis()) > 120000;
+      if (data.status !== 'pending' && !stuckApproving) throw new Error(`INVALID_STATUS:${data.status}`);
 
       transaction.update(submissionRef, {
         status: 'approving',
@@ -13033,9 +13047,8 @@ async function _approveSubmissionSilently(submissionId, submissionDataHint) {
     .get();
 
   if (draftsSnap.empty) {
-    // Roll back before throwing
-    await submissionRef.update({ status: 'pending' });
-    throw new Error(`No draft results found for submission ${submissionId}`);
+    await _sendBackEmptySubmission(submissionRef, 'No saved scores were found for this subject.');
+    throw new Error(`No saved scores for ${submissionData.className || ''} ${subject} — sent back to the teacher`);
   }
 
   const validDrafts = [];
@@ -13044,8 +13057,8 @@ async function _approveSubmissionSilently(submissionId, submissionDataHint) {
   });
 
   if (validDrafts.length === 0) {
-    await submissionRef.update({ status: 'pending' });
-    throw new Error(`Session mismatch for submission ${submissionId}`);
+    await _sendBackEmptySubmission(submissionRef, 'The saved scores belong to a different school session.');
+    throw new Error(`Session mismatch for ${submissionData.className || ''} ${subject} — sent back to the teacher`);
   }
 
   const batch = db.batch();
