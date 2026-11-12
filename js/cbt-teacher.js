@@ -226,17 +226,9 @@ function cbtCollectFormState() {
 
     const questions = [];
     document.querySelectorAll('.cbt-question-builder').forEach(block => {
-        const n = block.id.replace('cbt-q-', '');
-        questions.push({
-            existingId:    block.dataset.qid || null,
-            questionText:  document.getElementById(`cbt-q${n}-text`)?.value || '',
-            optionA:       document.getElementById(`cbt-q${n}-optA`)?.value || '',
-            optionB:       document.getElementById(`cbt-q${n}-optB`)?.value || '',
-            optionC:       document.getElementById(`cbt-q${n}-optC`)?.value || '',
-            optionD:       document.getElementById(`cbt-q${n}-optD`)?.value || '',
-            correctAnswer: document.querySelector(`input[name="cbt-q${n}-correct"]:checked`)?.value || ''
-        });
+        questions.push(cbtReadQuestionBlock(block));
     });
+    const passages = cbtReadPassages();
 
     return {
         savedAt:       Date.now(),
@@ -250,6 +242,7 @@ function cbtCollectFormState() {
         scheduledDate: document.getElementById('cbt-schedule')?.value || '',
         expiryDate:    document.getElementById('cbt-expiry')?.value || '',
         instructions:  document.getElementById('cbt-instructions')?.value || '',
+        passages,
         questions
     };
 }
@@ -414,14 +407,10 @@ async function cbtCheckForAutosave(existingData, existingQs) {
         expiryDate:    saved.expiryDate || ''
     };
 
-    const restoredQs = (saved.questions || []).map(q => ({
+    restoredData.passages = saved.passages || [];
+    const restoredQs = (saved.questions || []).map(q => Object.assign({}, q, {
         id:            q.existingId || '',
-        questionText:  q.questionText || '',
-        optionA:       q.optionA || '',
-        optionB:       q.optionB || '',
-        optionC:       q.optionC || '',
-        optionD:       q.optionD || '',
-        correctAnswer: q.correctAnswer || ''
+        qType:         q.qType || 'mcq'
     }));
 
     window.showToast?.('Restored your unsaved changes.', 'success', 4000);
@@ -580,11 +569,24 @@ async function showCbtCreateForm(testId = null) {
             </div>
         </div>
 
+        <!-- Passages / reading materials -->
+        <div class="form-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:10px;flex-wrap:wrap;">
+                <h3 style="margin:0;">Passages &amp; Materials <span style="font-size:12px;font-weight:600;color:#94a3b8;">(optional)</span></h3>
+                <button type="button" class="btn btn-secondary" onclick="addCbtPassage()" style="padding:8px 16px;font-size:13px;color:#475569;">
+                    <i data-lucide="book-open" style="width:14px;height:14px;"></i>
+                    Add Passage
+                </button>
+            </div>
+            <p style="font-size:12.5px;color:#64748b;margin:0 0 12px;">Add a passage, poem, dialogue, data table or picture once, then attach it to as many questions as you like. Pupils see it above each attached question, and those questions always stay together.</p>
+            <div id="cbt-passages-container"></div>
+        </div>
+
         <!-- Question Builder -->
         <div class="form-section">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                 <h3 style="margin:0;">Questions</h3>
-                <button class="btn tp-btn-primary" onclick="addCbtQuestion()" style="padding:8px 18px;font-size:13px;">
+                <button class="btn tp-btn-primary" onclick="addCbtQuestion()" style="padding:8px 18px;font-size:13px;" id="cbt-add-q-btn">
                     <i data-lucide="plus" style="width:14px;height:14px;"></i>
                     Add Question
                 </button>
@@ -623,7 +625,10 @@ async function showCbtCreateForm(testId = null) {
         populateCbtSubjectsForClass(this.value, '');
     });
 
-    // Pre-load existing questions (from Firestore or a restored draft)
+    // Pre-load passages, then questions (from Firestore or a restored draft)
+    cbtPassageCounter = 0;
+    (existingData?.passages || []).forEach(pp => addCbtPassage(pp));
+
     if (existingQs.length > 0) {
         existingQs.forEach(q => addCbtQuestion(q));
     }
@@ -633,6 +638,164 @@ async function showCbtCreateForm(testId = null) {
 }
 
 // ── Add question block ─────────────────────────────────────────────────────
+// ── Passages & theory question builder ─────────────────────────────────────
+let cbtPassageCounter = 0;
+
+const CBT_PASSAGE_TYPES = [
+    ['text',     'Reading passage (comprehension)'],
+    ['cloze',    'Cloze passage (numbered blanks)'],
+    ['poem',     'Poem'],
+    ['dialogue', 'Dialogue / play script'],
+    ['table',    'Data table'],
+    ['image',    'Picture or diagram (image link)']
+];
+
+const CBT_QUESTION_TYPES = [
+    ['mcq',   'Multiple choice'],
+    ['short', 'Short answer (type a word or phrase)'],
+    ['essay', 'Essay / long answer'],
+    ['gap',   'Fill in the gap'],
+    ['parts', 'Multi-part question (a, b, c)']
+];
+
+const CBT_PASSAGE_HINTS = {
+    text:     'Paste the passage. Line breaks are kept.',
+    cloze:    'Write the passage and number the blanks, for example: The boy (1) ____ to school every day. Then attach it to the questions for blanks 1, 2, 3.',
+    poem:     'Type the poem, one line per row.',
+    dialogue: 'One line per speaker, like  Ada: Good morning!  Speaker names are shown in bold.',
+    table:    'One row per line, columns separated by | . The first line is the header. Example:  Item | Price | Qty',
+    image:    'Paste a link to the picture (starts with https://). You can add a caption or note below it.'
+};
+
+function cbtOptsHtml(list, val) {
+    return list.map(([v, l]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${escHtml(l)}</option>`).join('');
+}
+
+function addCbtPassage(existing = null) {
+    const container = document.getElementById('cbt-passages-container');
+    if (!container) return;
+    let id = existing?.id;
+    if (!id) { cbtPassageCounter++; id = 'p' + cbtPassageCounter; }
+    else { const num = parseInt(String(id).replace(/\D/g, ''), 10); if (num > cbtPassageCounter) cbtPassageCounter = num; }
+    const type = existing?.type || 'text';
+
+    const div = document.createElement('div');
+    div.className = 'cbt-passage-builder';
+    div.dataset.pid = id;
+    div.innerHTML = `
+        <button type="button" class="cbt-remove-q-btn" title="Remove passage" onclick="removeCbtPassage('${id}')">
+            <i data-lucide="x" style="width:14px;height:14px;"></i>
+        </button>
+        <div class="cbt-question-builder__num cbt-p-num">Passage</div>
+        <div class="cbt-builder-row">
+            <div class="form-group" style="margin:0;">
+                <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Type</label>
+                <select class="cbt-p-type" onchange="cbtPassageTypeChanged(this)">${cbtOptsHtml(CBT_PASSAGE_TYPES, type)}</select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Title</label>
+                <input type="text" class="cbt-p-title" placeholder="e.g. Read the passage and answer questions 1 to 5" value="${escHtml(existing?.title || '')}">
+            </div>
+        </div>
+        <div class="form-group cbt-p-imgrow" style="margin:10px 0 0;${type === 'image' ? '' : 'display:none;'}">
+            <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Picture link</label>
+            <input type="url" class="cbt-p-img" placeholder="https://…" value="${escHtml(existing?.imageUrl || '')}">
+        </div>
+        <div class="form-group" style="margin:10px 0 0;">
+            <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;"><span class="cbt-p-textlabel">${type === 'image' ? 'Caption or note (optional)' : 'Text'}</span></label>
+            <textarea class="cbt-p-text" rows="6" style="resize:vertical;" placeholder="">${escHtml(existing?.text || '')}</textarea>
+            <div class="cbt-p-hint">${escHtml(CBT_PASSAGE_HINTS[type])}</div>
+        </div>`;
+    container.appendChild(div);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    cbtRefreshPassageSelects();
+    if (existing === null) cbtScheduleAutosave();
+}
+
+function cbtPassageTypeChanged(sel) {
+    const block = sel.closest('.cbt-passage-builder');
+    const type = sel.value;
+    block.querySelector('.cbt-p-imgrow').style.display = type === 'image' ? '' : 'none';
+    block.querySelector('.cbt-p-textlabel').textContent = type === 'image' ? 'Caption or note (optional)' : 'Text';
+    block.querySelector('.cbt-p-hint').textContent = CBT_PASSAGE_HINTS[type] || '';
+    cbtRefreshPassageSelects();
+}
+
+function removeCbtPassage(id) {
+    const el = document.querySelector(`.cbt-passage-builder[data-pid="${id}"]`);
+    if (!el) return;
+    const used = Array.from(document.querySelectorAll('.cbt-q-passage')).filter(sel => sel.value === id).length;
+    if (used && !confirm(`This passage is attached to ${used} question(s). They will be detached (nothing else is deleted). Remove it?`)) return;
+    el.remove();
+    cbtRefreshPassageSelects();
+    cbtScheduleAutosave();
+}
+
+function cbtReadPassages() {
+    return Array.from(document.querySelectorAll('.cbt-passage-builder')).map(b => ({
+        id:       b.dataset.pid,
+        type:     b.querySelector('.cbt-p-type')?.value || 'text',
+        title:    b.querySelector('.cbt-p-title')?.value.trim() || '',
+        text:     b.querySelector('.cbt-p-text')?.value || '',
+        imageUrl: b.querySelector('.cbt-p-img')?.value.trim() || ''
+    }));
+}
+
+// Keeps every question's "Attach passage" dropdown in step with the passages above.
+function cbtRefreshPassageSelects() {
+    const passages = cbtReadPassages();
+    document.querySelectorAll('#cbt-passages-container .cbt-passage-builder').forEach((b, i) => {
+        const lbl = b.querySelector('.cbt-p-num');
+        if (lbl) lbl.textContent = `Passage ${i + 1}`;
+    });
+    document.querySelectorAll('.cbt-q-passage').forEach(sel => {
+        const keep = sel.value || sel.dataset.want || '';
+        sel.innerHTML = '<option value="">No passage</option>' + passages.map((p, i) => {
+            const typeLabel = (CBT_PASSAGE_TYPES.find(t => t[0] === p.type) || [,''])[1].split(' (')[0];
+            const label = `Passage ${i + 1}: ${p.title || typeLabel}`;
+            return `<option value="${escHtml(p.id)}">${escHtml(label.length > 70 ? label.slice(0, 67) + '…' : label)}</option>`;
+        }).join('');
+        sel.value = passages.some(p => p.id === keep) ? keep : '';
+        sel.dataset.want = '';
+    });
+}
+
+// Gap helpers: the teacher writes [[answer]] or [[answer|other accepted answer]].
+function cbtParseGapSource(src) {
+    const answers = [];
+    const template = String(src || '').replace(/\[\[([^\]]*?)\]\]/g, (m, inner) => {
+        const list = inner.split('|').map(x => x.trim()).filter(Boolean);
+        answers.push({ answers: list });
+        return `{{${answers.length - 1}}}`;
+    });
+    return { template, answers };
+}
+function cbtGapSourceFromDoc(template, gapAnswers) {
+    return String(template || '').replace(/\{\{(\d+)\}\}/g, (m, i) => `[[${((gapAnswers || [])[Number(i)]?.answers || []).join('|')}]]`);
+}
+
+// Converts a Firestore question document into the flat model the form uses.
+function cbtDocToModel(d) {
+    if (!d) return { qType: 'mcq' };
+    if (d.qType) return d;
+    const type = d.type === 'theory' ? (d.theoryType || 'short') : 'mcq';
+    return {
+        id: d.id || '',
+        qType: type,
+        questionText: d.questionText || '',
+        passageId: d.passageId || '',
+        marks: d.marks || 1,
+        optionA: d.optionA || '', optionB: d.optionB || '', optionC: d.optionC || '', optionD: d.optionD || '',
+        correctAnswer: d.correctAnswer || '',
+        acceptedText: (d.acceptedAnswers || []).join('\n'),
+        guide: d.modelAnswer || '',
+        gapSource: cbtGapSourceFromDoc(d.gapTemplate, d.gapAnswers),
+        gapMarks: d.gapMarks || 1,
+        wordBank: d.wordBank || '',
+        parts: (d.parts || []).map(pt => ({ prompt: pt.prompt || '', marks: pt.marks || 1, accepted: (pt.accepted || []).join(', ') }))
+    };
+}
+
 function addCbtQuestion(existing = null) {
     const container = document.getElementById('cbt-questions-container');
     const noMsg     = document.getElementById('cbt-no-q-msg');
@@ -642,23 +805,24 @@ function addCbtQuestion(existing = null) {
 
     cbtQuestionCount++;
     const n = cbtQuestionCount;
+    const m = cbtDocToModel(existing);
+    const qType = m.qType || 'mcq';
 
     const div = document.createElement('div');
     div.className   = 'cbt-question-builder';
     div.id          = `cbt-q-${n}`;
-    div.dataset.qid = existing?.id || '';
+    div.dataset.qid = m.id || existing?.id || '';
 
     const opts = ['A','B','C','D'];
     let optionsHTML = '';
     opts.forEach(letter => {
-        const key = 'option' + letter;
-        const val = existing ? (existing[key] || '') : '';
-        const isCorrect = existing?.correctAnswer === letter;
+        const val = m['option' + letter] || '';
+        const isCorrect = m.correctAnswer === letter;
         optionsHTML += `
             <div class="cbt-option-input-row">
                 <span class="cbt-option-letter-badge">${letter}</span>
                 <input type="text" placeholder="Option ${letter}" value="${escHtml(val)}"
-                       id="cbt-q${n}-opt${letter}" style="flex:1;">
+                       id="cbt-q${n}-opt${letter}" style="flex:1;min-width:0;">
                 <input type="radio" name="cbt-q${n}-correct" value="${letter}"
                        id="cbt-q${n}-correct${letter}" class="cbt-correct-radio"
                        ${isCorrect ? 'checked' : ''}>
@@ -666,33 +830,226 @@ function addCbtQuestion(existing = null) {
             </div>`;
     });
 
+    const labelStyle = 'font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;';
     div.innerHTML = `
-        <button class="cbt-remove-q-btn" onclick="removeCbtQuestion(${n})" title="Remove question">
+        <button type="button" class="cbt-remove-q-btn" onclick="removeCbtQuestion(${n})" title="Remove question">
             <i data-lucide="x" style="width:14px;height:14px;"></i>
         </button>
         <div class="cbt-question-builder__num">Question ${n}</div>
-        <div class="form-group" style="margin-bottom:12px;">
-            <label for="cbt-q${n}-text" style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Question Text <span class="required">*</span></label>
-            <textarea id="cbt-q${n}-text" rows="2" style="resize:vertical;" placeholder="Type the question here…">${escHtml(existing?.questionText || '')}</textarea>
+
+        <div class="cbt-builder-row">
+            <div class="form-group" style="margin:0;">
+                <label for="cbt-q${n}-type" style="${labelStyle}">Question type</label>
+                <select id="cbt-q${n}-type" onchange="cbtSwitchQType(${n})">${cbtOptsHtml(CBT_QUESTION_TYPES, qType)}</select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label for="cbt-q${n}-passage" style="${labelStyle}">Attach passage</label>
+                <select id="cbt-q${n}-passage" class="cbt-q-passage" data-want="${escHtml(m.passageId || '')}"><option value="">No passage</option></select>
+            </div>
         </div>
-        <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;">
-            Options &nbsp;·&nbsp; <span style="color:#16a34a;">Select the correct answer</span>
+
+        <div class="form-group" style="margin:12px 0;">
+            <label for="cbt-q${n}-text" style="${labelStyle}"><span id="cbt-q${n}-textlabel">Question Text</span> <span class="required">*</span></label>
+            <textarea id="cbt-q${n}-text" rows="2" style="resize:vertical;" placeholder="Type the question here…">${escHtml(m.questionText || '')}</textarea>
         </div>
-        ${optionsHTML}
+
+        <div class="cbt-qpanel" data-for="mcq">
+            <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;">
+                Options &nbsp;·&nbsp; <span style="color:#16a34a;">Select the correct answer</span>
+            </div>
+            ${optionsHTML}
+        </div>
+
+        <div class="cbt-qpanel" data-for="short">
+            <label for="cbt-q${n}-accepted" style="${labelStyle}">Accepted answers (optional, one per line)</label>
+            <textarea id="cbt-q${n}-accepted" rows="2" style="resize:vertical;" placeholder="Leave empty to mark by hand. Add answers to mark automatically (spelling must match, capital letters ignored).">${escHtml(m.acceptedText || '')}</textarea>
+        </div>
+
+        <div class="cbt-qpanel" data-for="essay">
+            <label for="cbt-q${n}-guide" style="${labelStyle}">Marking guide / model answer (optional)</label>
+            <textarea id="cbt-q${n}-guide" rows="3" style="resize:vertical;" placeholder="Shown to you when marking, and to the pupil after they submit.">${escHtml(m.guide || '')}</textarea>
+        </div>
+
+        <div class="cbt-qpanel" data-for="gap">
+            <label for="cbt-q${n}-gap" style="${labelStyle}">Sentence with gaps</label>
+            <textarea id="cbt-q${n}-gap" rows="3" style="resize:vertical;" oninput="cbtUpdateGapCount(${n})" placeholder="The [[cat]] sat on the [[mat|rug]]. (put each correct answer in [[double brackets]]; separate other accepted answers with | )">${escHtml(m.gapSource || '')}</textarea>
+            <div class="cbt-p-hint" id="cbt-q${n}-gapcount"></div>
+            <label for="cbt-q${n}-bank" style="${labelStyle};margin-top:10px;display:block;">Word bank (optional, separate words with commas)</label>
+            <input type="text" id="cbt-q${n}-bank" placeholder="cat, mat, dog, rug" value="${escHtml(m.wordBank || '')}">
+        </div>
+
+        <div class="cbt-qpanel" data-for="parts">
+            <div style="${labelStyle}">Parts</div>
+            <div id="cbt-q${n}-parts"></div>
+            <button type="button" class="btn btn-secondary" onclick="cbtAddPart(${n})" style="padding:6px 14px;font-size:12.5px;color:#475569;margin-top:6px;">
+                <i data-lucide="plus" style="width:13px;height:13px;"></i> Add part
+            </button>
+        </div>
+
+        <div class="cbt-marks-row" id="cbt-q${n}-marksrow">
+            <label for="cbt-q${n}-marks" id="cbt-q${n}-markslabel" style="${labelStyle};margin:0;">Marks</label>
+            <input type="number" id="cbt-q${n}-marks" min="1" max="100" step="1" value="${Number(m.marks) || 1}">
+        </div>
     `;
 
     container.appendChild(div);
+
+    // Gap marks live in the same input slot as marks (marks per gap)
+    const marksInput = div.querySelector(`#cbt-q${n}-marks`);
+    if (qType === 'gap') marksInput.value = Number(m.gapMarks) || 1;
+
+    (m.parts && m.parts.length ? m.parts : (qType === 'parts' ? [{}, {}] : [])).forEach(pt => cbtAddPart(n, pt, true));
+
+    cbtRefreshPassageSelects();
+    cbtSwitchQType(n, true);
+    cbtUpdateGapCount(n);
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // Relabel every question block ("Question 1", "Question 2"...) based on
-    // its actual position on screen. The internal id `n` above is just an
-    // ever-increasing unique key for element IDs/radio groups — it is NOT
-    // the same thing as the number the teacher sees.
     cbtRenumberQuestions();
-
-    // A question was added — persist immediately (typing inside it will
-    // continue to autosave via the delegated input/change listeners).
     cbtScheduleAutosave();
+}
+
+function cbtSwitchQType(n, silent) {
+    const block = document.getElementById(`cbt-q-${n}`);
+    if (!block) return;
+    const type = document.getElementById(`cbt-q${n}-type`).value;
+    block.querySelectorAll('.cbt-qpanel').forEach(p => { p.style.display = p.dataset.for === type ? '' : 'none'; });
+    const marksRow = document.getElementById(`cbt-q${n}-marksrow`);
+    marksRow.style.display = (type === 'mcq' || type === 'parts') ? 'none' : '';
+    document.getElementById(`cbt-q${n}-markslabel`).textContent = type === 'gap' ? 'Marks per gap' : 'Marks';
+    const tl = document.getElementById(`cbt-q${n}-textlabel`);
+    tl.textContent = type === 'gap' ? 'Instruction (for example: Fill in the gaps)' : type === 'parts' ? 'Question stem' : 'Question Text';
+    if (type === 'parts' && !block.querySelector('.cbt-part-row')) { cbtAddPart(n, {}, true); cbtAddPart(n, {}, true); }
+    if (!silent) cbtScheduleAutosave();
+}
+
+function cbtUpdateGapCount(n) {
+    const el = document.getElementById(`cbt-q${n}-gapcount`);
+    const src = document.getElementById(`cbt-q${n}-gap`)?.value || '';
+    if (!el) return;
+    const count = cbtParseGapSource(src).answers.length;
+    el.textContent = count ? `${count} gap${count === 1 ? '' : 's'} found. Pupils will see an empty box for each one.` : 'No gaps yet. Wrap each correct answer in [[double brackets]].';
+}
+
+function cbtAddPart(n, pt = {}, silent) {
+    const host = document.getElementById(`cbt-q${n}-parts`);
+    if (!host) return;
+    const row = document.createElement('div');
+    row.className = 'cbt-part-row';
+    row.innerHTML = `
+        <span class="cbt-part-letter"></span>
+        <div class="cbt-part-fields">
+            <input type="text" class="cbt-part-prompt" placeholder="Part question" value="${escHtml(pt.prompt || '')}">
+            <div class="cbt-part-sub">
+                <input type="number" class="cbt-part-marks" min="1" max="100" value="${Number(pt.marks) || 1}" title="Marks" aria-label="Marks">
+                <input type="text" class="cbt-part-acc" placeholder="Accepted answers, comma separated (optional)" value="${escHtml(pt.accepted || '')}">
+            </div>
+        </div>
+        <button type="button" class="cbt-part-del" title="Remove part" onclick="this.closest('.cbt-part-row').remove();cbtRelabelParts(${n});cbtScheduleAutosave();">&times;</button>`;
+    host.appendChild(row);
+    cbtRelabelParts(n);
+    if (!silent) cbtScheduleAutosave();
+}
+function cbtRelabelParts(n) {
+    document.querySelectorAll(`#cbt-q${n}-parts .cbt-part-row`).forEach((r, i) => {
+        r.querySelector('.cbt-part-letter').textContent = `(${String.fromCharCode(97 + i)})`;
+    });
+}
+
+// Reads one question block into the flat model (used for autosave AND for saving).
+function cbtReadQuestionBlock(block) {
+    const n = block.id.replace('cbt-q-', '');
+    const g = id => document.getElementById(`cbt-q${n}-${id}`);
+    const qType = g('type')?.value || 'mcq';
+    return {
+        existingId:    block.dataset.qid || null,
+        qType,
+        questionText:  g('text')?.value || '',
+        passageId:     g('passage')?.value || '',
+        optionA:       g('optA')?.value || '',
+        optionB:       g('optB')?.value || '',
+        optionC:       g('optC')?.value || '',
+        optionD:       g('optD')?.value || '',
+        correctAnswer: document.querySelector(`input[name="cbt-q${n}-correct"]:checked`)?.value || '',
+        acceptedText:  g('accepted')?.value || '',
+        guide:         g('guide')?.value || '',
+        gapSource:     g('gap')?.value || '',
+        wordBank:      g('bank')?.value || '',
+        marks:         parseInt(g('marks')?.value, 10) || 1,
+        gapMarks:      qType === 'gap' ? (parseInt(g('marks')?.value, 10) || 1) : 1,
+        parts:         Array.from(block.querySelectorAll('.cbt-part-row')).map(r => ({
+            prompt:   r.querySelector('.cbt-part-prompt')?.value || '',
+            marks:    parseInt(r.querySelector('.cbt-part-marks')?.value, 10) || 1,
+            accepted: r.querySelector('.cbt-part-acc')?.value || ''
+        }))
+    };
+}
+
+function cbtValidateQuestion(m) {
+    const text = (m.questionText || '').trim();
+    if (!text) return 'Please enter the question text.';
+    if (m.qType === 'mcq') {
+        if (!m.optionA.trim() || !m.optionB.trim()) return 'Options A and B are required.';
+        if (!m.correctAnswer) return 'Please select the correct answer.';
+        if (!m['option' + m.correctAnswer].trim()) return 'The option marked correct is empty.';
+    }
+    if (m.qType === 'gap') {
+        if (!cbtParseGapSource(m.gapSource).answers.length) return 'Add at least one gap by wrapping the answer in [[double brackets]].';
+        if (cbtParseGapSource(m.gapSource).answers.some(a => !a.answers.length)) return 'One of the gaps has no answer inside its [[ ]].';
+    }
+    if (m.qType === 'parts') {
+        const filled = (m.parts || []).filter(p => p.prompt.trim());
+        if (!filled.length) return 'Add at least one part with a question.';
+    }
+    return null;
+}
+
+// Flat model -> the Firestore question document (every field always present).
+function cbtModelToDoc(m, order, passageIds) {
+    const isMcq = m.qType === 'mcq';
+    const doc = {
+        existingId: m.existingId || null,
+        questionText: (m.questionText || '').trim(),
+        type: isMcq ? 'mcq' : 'theory',
+        theoryType: isMcq ? null : m.qType,
+        passageId: m.passageId && passageIds.has(m.passageId) ? m.passageId : null,
+        order,
+        optionA: isMcq ? (m.optionA.trim() || null) : null,
+        optionB: isMcq ? (m.optionB.trim() || null) : null,
+        optionC: isMcq ? (m.optionC.trim() || null) : null,
+        optionD: isMcq ? (m.optionD.trim() || null) : null,
+        correctAnswer: isMcq ? (m.correctAnswer || null) : null,
+        marks: 1,
+        acceptedAnswers: null,
+        modelAnswer: null,
+        gapTemplate: null,
+        gapAnswers: null,
+        gapMarks: null,
+        wordBank: null,
+        parts: null
+    };
+    if (m.qType === 'short') {
+        doc.marks = Math.max(1, m.marks || 1);
+        doc.acceptedAnswers = (m.acceptedText || '').split('\n').map(x => x.trim()).filter(Boolean);
+    } else if (m.qType === 'essay') {
+        doc.marks = Math.max(1, m.marks || 1);
+        doc.modelAnswer = (m.guide || '').trim() || null;
+    } else if (m.qType === 'gap') {
+        const parsed = cbtParseGapSource(m.gapSource);
+        doc.gapTemplate = parsed.template;
+        doc.gapAnswers  = parsed.answers;
+        doc.gapMarks    = Math.max(1, m.gapMarks || 1);
+        doc.marks       = parsed.answers.length * doc.gapMarks;
+        doc.wordBank    = (m.wordBank || '').trim() || null;
+    } else if (m.qType === 'parts') {
+        doc.parts = (m.parts || []).filter(p => p.prompt.trim()).map(p => ({
+            prompt: p.prompt.trim(),
+            marks: Math.max(1, p.marks || 1),
+            accepted: (p.accepted || '').split(',').map(x => x.trim()).filter(Boolean)
+        }));
+        doc.marks = doc.parts.reduce((t, p) => t + p.marks, 0) || 1;
+    }
+    return doc;
 }
 
 // ── Remove question ────────────────────────────────────────────────────────
@@ -752,36 +1109,29 @@ async function saveCbtTest(publish = false) {
         window.showToast?.('Please add at least one question before publishing.', 'warning'); return;
     }
 
+    const passages = cbtReadPassages();
+    if (publish) {
+        for (let i = 0; i < passages.length; i++) {
+            const pp = passages[i];
+            if (!pp.text.trim() && !(pp.type === 'image' && pp.imageUrl)) {
+                window.showToast?.(`Passage ${i + 1} is empty. Add its text (or picture link) or remove it.`, 'warning'); return;
+            }
+            if (pp.type === 'image' && pp.imageUrl && !/^https?:\/\//i.test(pp.imageUrl)) {
+                window.showToast?.(`Passage ${i + 1}: the picture link must start with http:// or https://`, 'warning'); return;
+            }
+        }
+    }
+    const passageIds = new Set(passages.map(x => x.id));
+
     const questions = [];
     let hasError = false;
 
     questionBlocks.forEach((block, idx) => {
-        const n            = block.id.replace('cbt-q-', '');
-        const questionText = document.getElementById(`cbt-q${n}-text`)?.value.trim() || '';
-        const optA         = document.getElementById(`cbt-q${n}-optA`)?.value.trim() || '';
-        const optB         = document.getElementById(`cbt-q${n}-optB`)?.value.trim() || '';
-        const optC         = document.getElementById(`cbt-q${n}-optC`)?.value.trim() || '';
-        const optD         = document.getElementById(`cbt-q${n}-optD`)?.value.trim() || '';
-        const correctRadio = document.querySelector(`input[name="cbt-q${n}-correct"]:checked`);
-
-        // Full validation of each question only applies when publishing.
-        // When saving a draft, whatever has been typed so far is kept as-is.
-        if (publish) {
-            if (!questionText) { window.showToast?.(`Question ${idx+1}: Please enter the question text.`, 'warning'); hasError = true; return; }
-            if (!optA || !optB) { window.showToast?.(`Question ${idx+1}: Options A and B are required.`, 'warning'); hasError = true; return; }
-            if (!correctRadio)   { window.showToast?.(`Question ${idx+1}: Please select the correct answer.`, 'warning'); hasError = true; return; }
-        }
-
-        questions.push({
-            questionText,
-            optionA: optA,
-            optionB: optB,
-            optionC: optC || null,
-            optionD: optD || null,
-            correctAnswer: correctRadio ? correctRadio.value : null,
-            order: idx,
-            existingId: block.dataset.qid || null
-        });
+        if (hasError) return;
+        const m = cbtReadQuestionBlock(block);
+        const err = publish ? cbtValidateQuestion(m) : null;
+        if (err) { window.showToast?.(`Question ${idx + 1}: ${err}`, 'warning'); hasError = true; return; }
+        questions.push(cbtModelToDoc(m, idx, passageIds));
     });
 
     if (hasError) return;
@@ -799,6 +1149,9 @@ async function saveCbtTest(publish = false) {
         timerMinutes: timer,
         instructions,
         published:   publish,
+        passages,
+        totalMarks:  questions.reduce((t, q) => t + (Number(q.marks) || 1), 0),
+        hasTheory:   questions.some(q => q.type === 'theory'),
         teacherId:   window.currentUser.uid,
         session:     settings.session,
         updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
@@ -843,16 +1196,8 @@ async function saveCbtTest(publish = false) {
                 ? db.collection('cbt_questions').doc(q.existingId)
                 : db.collection('cbt_questions').doc();
 
-            batch.set(ref, {
-                testId: testDocId,
-                questionText:   q.questionText,
-                optionA:        q.optionA,
-                optionB:        q.optionB,
-                optionC:        q.optionC,
-                optionD:        q.optionD,
-                correctAnswer:  q.correctAnswer,
-                order:          q.order
-            }, { merge: true });
+            const { existingId, ...fields } = q;
+            batch.set(ref, Object.assign({ testId: testDocId }, fields), { merge: true });
         });
 
         await batch.commit();
@@ -1136,6 +1481,7 @@ function renderCbtResultsTable(content) {
                                font-size:13.5px;color:#1a56db;text-decoration:underline;text-underline-offset:2px;">
                         ${r.score}/${r.total}
                     </button>
+                    ${r.pendingReview ? '<div style="font-size:10.5px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:9999px;padding:2px 8px;margin-top:4px;display:inline-block;">Awaiting marking</div>' : ''}
                 </td>
                 <td data-label="Percentage" style="text-align:center;font-weight:700;color:${r.percentage >= 50 ? '#16a34a' : '#dc2626'};">${r.percentage}%</td>
                 <td data-label="Grade" style="text-align:center;" class="grade-${r.grade}">${r.grade}</td>
@@ -1388,11 +1734,47 @@ async function viewPupilAttempt(resultId, scrollToFlagged) {
                     return;
                 }
 
-                const reviewData = reviewSnap.docs[0].data().answers || [];
+                const reviewDoc  = reviewSnap.docs[0];
+                const reviewData = reviewDoc.data().answers || [];
                 const letters = ['A','B','C','D'];
                 const keys    = ['optionA','optionB','optionC','optionD'];
+                const hasTheory = reviewData.some(it => it.type === 'theory');
 
                 bodyEl.innerHTML = reviewData.map((item, i) => {
+                    const isFlagged = !!item.flagged;
+                    const wrapStart = `
+                        <div class="${isFlagged ? 'cbt-attempt-flagged' : ''}"
+                             style="border:1px solid ${isFlagged ? '#fde68a' : '#e2e8f0'};background:${isFlagged ? '#fffbeb' : '#ffffff'};border-radius:12px;padding:16px;margin-bottom:14px;">`;
+                    const flagBadge = isFlagged ? '<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#fef3c7;color:#92400e;"><i data-lucide="flag" style="width:10px;height:10px;vertical-align:-1px;"></i> Flagged</span>' : '';
+
+                    if (item.type === 'theory') {
+                        const itemsHtml = (item.items || []).map((it, ii) => `
+                            <div style="border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#f8fafc;">
+                                ${it.label ? `<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">${escHtml(it.label)}</div>` : ''}
+                                <div style="font-size:13.5px;color:#0f172a;white-space:pre-wrap;word-break:break-word;">${it.answer ? escHtml(it.answer) : '<em style="color:#94a3b8;">No answer</em>'}</div>
+                                ${(it.accepted || []).length ? `<div style="font-size:11.5px;color:#16a34a;margin-top:4px;">Accepted: ${escHtml(it.accepted.join(' / '))}</div>` : ''}
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                                    <label style="font-size:12px;font-weight:700;color:#475569;">Marks</label>
+                                    <input type="number" class="cbt-mark-input" data-qi="${i}" data-ii="${ii}" min="0" max="${it.max}" step="0.5"
+                                           value="${it.pending ? '' : it.earned}" placeholder="–"
+                                           style="width:70px;padding:6px 8px;border:1.5px solid ${it.pending ? '#f59e0b' : '#cbd5e1'};border-radius:8px;font-size:13px;">
+                                    <span style="font-size:12px;color:#64748b;">out of ${it.max}</span>
+                                    <span style="font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:9999px;${it.pending ? 'background:#fef3c7;color:#92400e;' : it.auto ? 'background:#dbeafe;color:#1e40af;' : 'background:#dcfce7;color:#14532d;'}">${it.pending ? 'Needs marking' : it.auto ? 'Auto-marked' : 'Marked'}</span>
+                                </div>
+                            </div>`).join('');
+                        return `${wrapStart}
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                                <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Question ${i + 1}</span>
+                                <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#ede9fe;color:#5b21b6;">Written · ${item.marks} mark${item.marks === 1 ? '' : 's'}</span>
+                                ${flagBadge}
+                            </div>
+                            <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:10px;line-height:1.5;">${escHtml(item.questionText)}</div>
+                            ${item.gapTemplate ? `<div style="font-size:12.5px;color:#475569;margin-bottom:10px;">${escHtml(String(item.gapTemplate).replace(/\{\{(\d+)\}\}/g, (m, g) => '(' + (Number(g) + 1) + ') ____'))}</div>` : ''}
+                            ${itemsHtml}
+                            ${item.modelAnswer ? `<div style="font-size:12.5px;color:#0f766e;background:#f0fdfa;border-radius:8px;padding:8px 10px;margin-top:4px;"><strong>Marking guide:</strong> ${escHtml(item.modelAnswer)}</div>` : ''}
+                        </div>`;
+                    }
+
                     let optionsHTML = '';
                     keys.forEach((key, ki) => {
                         if (!item[key]) return;
@@ -1413,21 +1795,26 @@ async function viewPupilAttempt(resultId, scrollToFlagged) {
 
                     const statusLabel = item.isCorrect ? 'Correct' : item.pupilAnswer ? 'Incorrect' : 'Skipped';
                     const statusColor = item.isCorrect ? '#16a34a' : item.pupilAnswer ? '#dc2626' : '#94a3b8';
-                    const isFlagged   = !!item.flagged;
 
-                    return `
-                        <div class="${isFlagged ? 'cbt-attempt-flagged' : ''}"
-                             style="border:1px solid ${isFlagged ? '#fde68a' : '#e2e8f0'};background:${isFlagged ? '#fffbeb' : '#ffffff'};border-radius:12px;padding:16px;margin-bottom:14px;">
+                    return `${wrapStart}
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
                                 <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Question ${i + 1}</span>
                                 <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:${statusColor}1a;color:${statusColor};">${statusLabel}</span>
-                                ${isFlagged ? '<span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:9999px;background:#fef3c7;color:#92400e;"><i data-lucide="flag" style="width:10px;height:10px;vertical-align:-1px;"></i> Flagged</span>' : ''}
+                                ${flagBadge}
                             </div>
                             <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:12px;line-height:1.5;">${escHtml(item.questionText)}</div>
                             ${optionsHTML}
                         </div>`;
                 }).join('');
 
+                if (hasTheory) {
+                    const bar = document.createElement('div');
+                    bar.style.cssText = 'position:sticky;bottom:-28px;background:#fff;padding:12px 0 4px;border-top:1px solid #e2e8f0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+                    bar.innerHTML = `<button type="button" id="cbt-save-marks" class="btn tp-btn-primary" style="padding:9px 18px;font-size:13px;">Save marks</button>
+                                     <span style="font-size:12px;color:#64748b;">Leave a box empty to keep that answer waiting. Auto-marked boxes can be overridden.</span>`;
+                    bodyEl.appendChild(bar);
+                    bar.querySelector('#cbt-save-marks').addEventListener('click', () => cbtSaveTheoryMarks(reviewDoc, resultId, resultMeta, bodyEl, close));
+                }
             } catch (err) {
                 console.error('Error loading pupil attempt:', err);
                 bodyEl.innerHTML = `<p style="text-align:center;color:#dc2626;padding:20px;">Failed to load this attempt.</p>`;
@@ -1442,6 +1829,81 @@ async function viewPupilAttempt(resultId, scrollToFlagged) {
     if (scrollToFlagged) {
         const firstFlagged = bodyEl.querySelector('.cbt-attempt-flagged');
         if (firstFlagged) firstFlagged.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+// ── Theory marking ─────────────────────────────────────────────────────────
+function cbtGradeFromPct(pct) {
+    if (pct >= 75) return 'A1';
+    if (pct >= 70) return 'B2';
+    if (pct >= 65) return 'B3';
+    if (pct >= 60) return 'C4';
+    if (pct >= 55) return 'C5';
+    if (pct >= 50) return 'C6';
+    if (pct >= 45) return 'D7';
+    if (pct >= 40) return 'D8';
+    return 'F9';
+}
+
+async function cbtSaveTheoryMarks(reviewDoc, resultId, resultMeta, bodyEl, closeFn) {
+    const btn = bodyEl.querySelector('#cbt-save-marks');
+    const answers = JSON.parse(JSON.stringify(reviewDoc.data().answers || []));
+    let invalid = false;
+
+    bodyEl.querySelectorAll('.cbt-mark-input').forEach(inp => {
+        const it  = answers[Number(inp.dataset.qi)]?.items?.[Number(inp.dataset.ii)];
+        const raw = inp.value.trim();
+        if (!it || raw === '') return;
+        const v = Number(raw);
+        if (!isFinite(v) || v < 0 || v > it.max) { invalid = true; inp.style.borderColor = '#dc2626'; return; }
+        it.earned  = v;
+        it.pending = false;
+    });
+    if (invalid) { window.showToast?.('Some marks are outside the allowed range.', 'warning'); return; }
+
+    let score = 0, total = 0, pendingMarks = 0;
+    answers.forEach(q => {
+        if (q.type === 'theory') {
+            const items = q.items || [];
+            q.earned  = items.reduce((t, it) => t + (it.pending ? 0 : it.earned), 0);
+            q.pending = items.some(it => it.pending);
+            q.isCorrect = q.pending ? null : q.earned === q.marks;
+            score += q.earned;
+            total += q.marks;
+            items.forEach(it => { if (it.pending) pendingMarks += it.max; });
+        } else {
+            total += q.marks ?? 1;
+            score += q.earned ?? (q.isCorrect ? 1 : 0);
+        }
+    });
+    const pct = total ? Math.round((score / total) * 100) : 0;
+    const grade = cbtGradeFromPct(pct);
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+        await reviewDoc.ref.update({ answers });
+        await db.collection('cbt_results').doc(resultId).update({
+            score, total, percentage: pct, grade,
+            pendingReview: pendingMarks > 0,
+            pendingMarks,
+            markedBy: window.currentUser.uid,
+            markedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        try {
+            const at = await db.collection('cbt_attempts')
+                .where('testId', '==', resultMeta.testId)
+                .where('pupilId', '==', resultMeta.pupilId)
+                .where('status', '==', 'completed').limit(1).get();
+            if (!at.empty) await at.docs[0].ref.update({ score, total, percentage: pct });
+        } catch (e) { console.warn('Attempt mirror not updated:', e); }
+
+        window.showToast?.(pendingMarks > 0 ? 'Marks saved. Some answers are still waiting.' : 'Marks saved. Result is final.', 'success', 5000);
+        closeFn();
+        await viewCbtResults(resultMeta.testId, resultMeta.testTitle);
+    } catch (err) {
+        console.error('Error saving marks:', err);
+        window.showToast?.('Failed to save marks: ' + err.message, 'danger', 8000);
+        if (btn) { btn.disabled = false; btn.textContent = 'Save marks'; }
     }
 }
 

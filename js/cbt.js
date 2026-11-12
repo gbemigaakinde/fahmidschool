@@ -68,7 +68,23 @@ function seededShuffle(array, seedStr) {
     return arr;
 }
 
+// Shuffles questions but keeps every passage group together and in its written order.
+// Groups and stand-alone questions are shuffled as units. With no passages this gives the
+// exact same order as a plain seeded shuffle, so attempts in progress keep their order.
+function groupedSeededShuffle(list, seedStr) {
+    const units = [];
+    const byId  = {};
+    list.forEach(q => {
+        const id = q && q.passageId;
+        if (!id) { units.push([q]); return; }
+        if (!byId[id]) { byId[id] = []; units.push(byId[id]); }
+        byId[id].push(q);
+    });
+    return seededShuffle(units, seedStr).reduce((a, u) => a.concat(u), []);
+}
+
 function shuffleQuestionOptions(q, seedStr) {
+    if (q.type === 'theory') return q;
     const letters = ['A', 'B', 'C', 'D'];
     const keys    = ['optionA', 'optionB', 'optionC', 'optionD'];
 
@@ -90,6 +106,18 @@ function shuffleQuestionOptions(q, seedStr) {
     }
 
     return newQ;
+}
+
+function hasAnswer(i) {
+    const v = answers[i];
+    if (v === undefined || v === null) return false;
+    if (typeof v === 'object') return Object.keys(v).length > 0;
+    return String(v).trim() !== '';
+}
+function answeredCount() {
+    let n = 0;
+    for (let i = 0; i < questions.length; i++) if (hasAnswer(i)) n++;
+    return n;
 }
 
 async function loadTestData() {
@@ -123,7 +151,7 @@ async function loadTestData() {
 
         if (questions.length === 0) { showError('This test has no questions yet.'); return; }
 
-        questions = seededShuffle(questions, currentUser.uid + '_' + testId + '_qorder');
+        questions = groupedSeededShuffle(questions, currentUser.uid + '_' + testId + '_qorder');
 
         questions = questions.map(q =>
             shuffleQuestionOptions(q, currentUser.uid + '_' + testId + '_' + q.id)
@@ -360,8 +388,11 @@ function renderQuestion(index) {
     currentQ = index;
     const q  = questions[index];
 
-    document.getElementById('q-number').textContent = 'Question ' + (index + 1) + ' of ' + questions.length;
+    const isTheory = q.type === 'theory';
+    document.getElementById('q-number').textContent = 'Question ' + (index + 1) + ' of ' + questions.length +
+        (isTheory ? ' · ' + (q.marks || 1) + (Number(q.marks || 1) === 1 ? ' mark' : ' marks') : '');
     document.getElementById('q-text').textContent   = q.questionText;
+    renderPassageFor(q, index);
 
     const flagBtn = document.getElementById('flag-btn');
     if (flagged.has(index)) {
@@ -374,11 +405,13 @@ function renderQuestion(index) {
 
     const optionsEl = document.getElementById('q-options');
     optionsEl.innerHTML = '';
+    optionsEl.style.display = isTheory ? 'none' : '';
+    renderTheoryFor(q, index);
     const optionLetters = ['A', 'B', 'C', 'D'];
     const optionKeys    = ['optionA', 'optionB', 'optionC', 'optionD'];
 
     optionKeys.forEach((key, i) => {
-        if (!q[key]) return;
+        if (isTheory || !q[key]) return;
         const letter = optionLetters[i];
         const btn    = document.createElement('button');
         btn.className = 'cbt-option' + (answers[index] === letter ? ' cbt-option--selected' : '');
@@ -403,16 +436,247 @@ function renderQuestion(index) {
         nextBtn.onclick   = nextQuestion;
     }
 
-    const answered = Object.keys(answers).length;
-    document.getElementById('q-progress').textContent = answered + ' of ' + questions.length + ' answered';
+    refreshProgress();
+    lucide.createIcons();
 
+    scheduleProgressSave();
+}
+
+function refreshProgress() {
+    document.getElementById('q-progress').textContent = answeredCount() + ' of ' + questions.length + ' answered';
     updatePalette();
     updateProgressStats();
     updateNavToggleCount();
     updateProgressBar();
-    lucide.createIcons();
+}
 
+// ── Passages (several question types share one passage) ─────────────────────
+const PASSAGE_META = {
+    text:     { label: 'Reading passage', icon: 'book-open' },
+    cloze:    { label: 'Cloze passage',   icon: 'type' },
+    poem:     { label: 'Poem',            icon: 'feather' },
+    dialogue: { label: 'Dialogue',        icon: 'messages-square' },
+    table:    { label: 'Data table',      icon: 'table' },
+    image:    { label: 'Picture',         icon: 'image' }
+};
+
+function cbtEsc(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function getPassage(id) {
+    return (testData && Array.isArray(testData.passages) ? testData.passages : []).find(p => p.id === id) || null;
+}
+
+function passageBodyHtml(p) {
+    const text = p.text || '';
+    if (p.type === 'table') {
+        const rows = text.split('\n').map(r => r.trim()).filter(Boolean).map(r => r.split('|').map(c => c.trim()));
+        if (rows.length) {
+            const head = rows[0].map(c => '<th>' + cbtEsc(c) + '</th>').join('');
+            const body = rows.slice(1).map(r => '<tr>' + r.map(c => '<td>' + cbtEsc(c) + '</td>').join('') + '</tr>').join('');
+            return '<div class="cbt-passage__tablewrap"><table class="cbt-passage__table"><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+        }
+    }
+    if (p.type === 'image') {
+        const url = /^https?:\/\//i.test(p.imageUrl || '') ? p.imageUrl : '';
+        return (url ? '<img class="cbt-passage__img" src="' + cbtEsc(url) + '" alt="' + cbtEsc(p.title || 'Passage picture') + '">' : '') +
+               (text ? '<div class="cbt-passage__text">' + cbtEsc(text) + '</div>' : '');
+    }
+    if (p.type === 'dialogue') {
+        return '<div class="cbt-passage__text cbt-passage__text--dialogue">' + text.split('\n').filter(l => l.trim()).map(line => {
+            const m = line.match(/^([^:]{1,30}):\s*(.*)$/);
+            return m ? '<p><strong>' + cbtEsc(m[1]) + ':</strong> ' + cbtEsc(m[2]) + '</p>' : '<p>' + cbtEsc(line) + '</p>';
+        }).join('') + '</div>';
+    }
+    return '<div class="cbt-passage__text cbt-passage__text--' + cbtEsc(p.type || 'text') + '">' + cbtEsc(text) + '</div>';
+}
+
+function syncPassageMore(body) {
+    const wrap = body.parentNode;
+    const more = body.scrollHeight - body.clientHeight - body.scrollTop > 12;
+    wrap.classList.toggle('has-more', more);
+}
+
+function renderPassageFor(q, index) {
+    let host = document.getElementById('q-passage');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'q-passage';
+        const qt = document.getElementById('q-text');
+        qt.parentNode.insertBefore(host, qt);
+    }
+    const p = q.passageId ? getPassage(q.passageId) : null;
+    if (!p) { host.innerHTML = ''; host.dataset.pid = ''; return; }
+
+    let pos = 0, tot = 0;
+    questions.forEach((x, i) => { if (x.passageId === q.passageId) { tot++; if (i <= index) pos++; } });
+
+    if (host.dataset.pid === p.id) {
+        // Same passage as the previous question: keep it (and the reader's scroll position) as is.
+        const c = host.querySelector('.cbt-passage__count');
+        if (c) { c.textContent = 'Q ' + pos + ' of ' + tot; c.style.display = tot > 1 ? '' : 'none'; }
+        return;
+    }
+    host.dataset.pid = p.id;
+    const meta = PASSAGE_META[p.type] || PASSAGE_META.text;
+    host.innerHTML =
+        '<section class="cbt-passage">' +
+          '<div class="cbt-passage__head">' +
+            '<span class="cbt-passage__icon"><i data-lucide="' + meta.icon + '" style="width:14px;height:14px;"></i></span>' +
+            '<span class="cbt-passage__title">' + cbtEsc(p.title || meta.label) + '</span>' +
+            '<span class="cbt-passage__count" style="' + (tot > 1 ? '' : 'display:none;') + '">Q ' + pos + ' of ' + tot + '</span>' +
+          '</div>' +
+          '<div class="cbt-passage__wrap">' +
+            '<div class="cbt-passage__body" tabindex="0">' + passageBodyHtml(p) + '</div>' +
+            '<div class="cbt-passage__more" aria-hidden="true"><span>Scroll to read more</span></div>' +
+          '</div>' +
+        '</section>';
+    const body = host.querySelector('.cbt-passage__body');
+    body.addEventListener('scroll', () => syncPassageMore(body), { passive: true });
+    requestAnimationFrame(() => syncPassageMore(body));
+    setTimeout(() => syncPassageMore(body), 300);
+}
+
+// ── Theory questions ────────────────────────────────────────────────────────
+function normAns(s) {
+    return String(s == null ? '' : s).toLowerCase()
+        .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+        .replace(/\s+/g, ' ').trim().replace(/[.,;:!?]+$/, '').trim();
+}
+function matchesAccepted(value, accepted) {
+    const v = normAns(value);
+    if (!v) return false;
+    return (accepted || []).some(a => normAns(a) === v);
+}
+
+function renderTheoryFor(q, index) {
+    let host = document.getElementById('q-theory');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'q-theory';
+        const opts = document.getElementById('q-options');
+        opts.parentNode.insertBefore(host, opts.nextSibling);
+        host.addEventListener('input', onTheoryInput);
+        host.addEventListener('click', onTheoryClick);
+    }
+    if (q.type !== 'theory') { host.innerHTML = ''; return; }
+
+    const a = answers[index];
+    let html = '';
+
+    if (q.theoryType === 'short') {
+        html = '<input type="text" class="cbt-theory-input" data-sub="" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your answer here" value="' + cbtEsc(typeof a === 'string' ? a : '') + '">';
+    } else if (q.theoryType === 'essay') {
+        const val = typeof a === 'string' ? a : '';
+        html = '<textarea class="cbt-theory-input cbt-theory-input--essay" data-sub="" rows="9" placeholder="Write your answer here…">' + cbtEsc(val) + '</textarea>' +
+               '<div class="cbt-theory-wc" id="q-wordcount">' + countWords(val) + ' words</div>';
+    } else if (q.theoryType === 'gap') {
+        const vals = (a && typeof a === 'object') ? a : {};
+        const answersList = q.gapAnswers || [];
+        const parts = String(q.gapTemplate || '').split(/\{\{(\d+)\}\}/);
+        let body = '';
+        parts.forEach((seg, i) => {
+            if (i % 2 === 0) { body += cbtEsc(seg); return; }
+            const gi = Number(seg);
+            const longest = Math.max(4, ...((answersList[gi] && answersList[gi].answers) || ['abcd']).map(x => String(x).length));
+            body += '<input type="text" class="cbt-gap-input" data-sub="' + gi + '" aria-label="Gap ' + (gi + 1) + '" autocomplete="off" autocapitalize="off" spellcheck="false" ' +
+                    'style="width:' + Math.min(Math.max(longest + 3, 7), 28) + 'ch;" placeholder="(' + (gi + 1) + ')" value="' + cbtEsc(vals[gi] || '') + '">';
+        });
+        const bank = String(q.wordBank || '').split(',').map(x => x.trim()).filter(Boolean);
+        html = (bank.length ? '<div class="cbt-wordbank"><span class="cbt-wordbank__label">Word bank</span>' +
+                    bank.map(w => '<button type="button" class="cbt-wordbank__chip" data-word="' + cbtEsc(w) + '">' + cbtEsc(w) + '</button>').join('') + '</div>' : '') +
+               '<div class="cbt-gap-text">' + body + '</div>';
+    } else if (q.theoryType === 'parts') {
+        const vals = (a && typeof a === 'object') ? a : {};
+        html = (q.parts || []).map((pt, i) =>
+            '<div class="cbt-part">' +
+              '<div class="cbt-part__head"><span class="cbt-part__label">(' + String.fromCharCode(97 + i) + ')</span>' +
+              '<span class="cbt-part__prompt">' + cbtEsc(pt.prompt) + '</span>' +
+              '<span class="cbt-part__marks">' + (pt.marks || 1) + (Number(pt.marks || 1) === 1 ? ' mark' : ' marks') + '</span></div>' +
+              '<textarea class="cbt-theory-input" data-sub="' + i + '" rows="3" placeholder="Your answer to part (' + String.fromCharCode(97 + i) + ')">' + cbtEsc(vals[i] || '') + '</textarea>' +
+            '</div>').join('');
+    }
+    host.innerHTML = '<div class="cbt-theory cbt-theory--' + cbtEsc(q.theoryType || 'short') + '">' + html + '</div>';
+}
+
+function countWords(t) { const m = String(t || '').trim().match(/\S+/g); return m ? m.length : 0; }
+
+function setTheoryAnswer(index, sub, value) {
+    if (sub === '' || sub === null) {
+        if (String(value).trim() === '') delete answers[index]; else answers[index] = value;
+    } else {
+        const o = (answers[index] && typeof answers[index] === 'object') ? answers[index] : {};
+        if (String(value).trim() === '') delete o[sub]; else o[sub] = value;
+        if (Object.keys(o).length) answers[index] = o; else delete answers[index];
+    }
+    refreshProgress();
     scheduleProgressSave();
+}
+
+function onTheoryInput(e) {
+    const el = e.target;
+    if (!el.matches || !el.matches('[data-sub]')) return;
+    setTheoryAnswer(currentQ, el.getAttribute('data-sub'), el.value);
+    const wc = document.getElementById('q-wordcount');
+    if (wc && el.classList.contains('cbt-theory-input--essay')) wc.textContent = countWords(el.value) + ' words';
+}
+
+let _lastGapInput = null;
+document.addEventListener('focusin', e => {
+    if (e.target && e.target.classList && e.target.classList.contains('cbt-gap-input')) _lastGapInput = e.target;
+});
+
+function onTheoryClick(e) {
+    const chip = e.target.closest && e.target.closest('.cbt-wordbank__chip');
+    if (!chip) return;
+    const host = document.getElementById('q-theory');
+    const inputs = Array.from(host.querySelectorAll('.cbt-gap-input'));
+    let target = (_lastGapInput && host.contains(_lastGapInput) && !_lastGapInput.value) ? _lastGapInput : inputs.find(i => !i.value);
+    if (!target) target = _lastGapInput && host.contains(_lastGapInput) ? _lastGapInput : inputs[0];
+    if (!target) return;
+    target.value = chip.getAttribute('data-word');
+    setTheoryAnswer(currentQ, target.getAttribute('data-sub'), target.value);
+    const next = inputs.find(i => !i.value);
+    (next || target).focus();
+}
+
+// Marks one question. Auto-markable parts are marked here; the rest wait for the teacher.
+function gradeTheory(q, a) {
+    const items = [];
+    const marks = Number(q.marks) || 1;
+    if (q.theoryType === 'short') {
+        const accepted = (q.acceptedAnswers || []).filter(x => String(x).trim());
+        const ans = typeof a === 'string' ? a : '';
+        const auto = accepted.length > 0;
+        items.push({ label: '', answer: ans, accepted, max: marks, auto, pending: !auto,
+                     earned: auto && matchesAccepted(ans, accepted) ? marks : 0 });
+    } else if (q.theoryType === 'essay') {
+        items.push({ label: '', answer: typeof a === 'string' ? a : '', accepted: [], max: marks, auto: false, pending: true, earned: 0 });
+    } else if (q.theoryType === 'gap') {
+        const per = Number(q.gapMarks) || 1;
+        (q.gapAnswers || []).forEach((g, i) => {
+            const ans = a && typeof a === 'object' ? (a[i] || '') : '';
+            const accepted = (g && g.answers) || [];
+            items.push({ label: 'Gap ' + (i + 1), answer: ans, accepted, max: per, auto: true, pending: false,
+                         earned: matchesAccepted(ans, accepted) ? per : 0 });
+        });
+    } else if (q.theoryType === 'parts') {
+        (q.parts || []).forEach((pt, i) => {
+            const ans = a && typeof a === 'object' ? (a[i] || '') : '';
+            const accepted = (pt.accepted || []).filter(x => String(x).trim());
+            const pm = Number(pt.marks) || 1;
+            const auto = accepted.length > 0;
+            items.push({ label: '(' + String.fromCharCode(97 + i) + ') ' + (pt.prompt || ''), answer: ans, accepted, max: pm, auto, pending: !auto,
+                         earned: auto && matchesAccepted(ans, accepted) ? pm : 0 });
+        });
+    }
+    const max = items.reduce((t, it) => t + it.max, 0);
+    const earned = items.reduce((t, it) => t + (it.pending ? 0 : it.earned), 0);
+    const pending = items.some(it => it.pending);
+    return { items, max, earned, pending };
 }
 
 function selectAnswer(qIndex, letter) {
@@ -457,13 +721,13 @@ function updatePalette() {
         btn.classList.remove('cbt-palette-btn--answered', 'cbt-palette-btn--flagged', 'cbt-palette-btn--current');
         if (i === currentQ)         btn.classList.add('cbt-palette-btn--current');
         else if (flagged.has(i))    btn.classList.add('cbt-palette-btn--flagged');
-        else if (answers[i])        btn.classList.add('cbt-palette-btn--answered');
+        else if (hasAnswer(i))      btn.classList.add('cbt-palette-btn--answered');
     });
 }
 
 function updateProgressStats() {
     const total    = questions.length;
-    const answered = Object.keys(answers).length;
+    const answered = answeredCount();
     const fl       = flagged.size;
     const unanswered = total - answered;
     document.getElementById('progress-stats').innerHTML = `
@@ -476,13 +740,13 @@ function updateProgressStats() {
 function updateNavToggleCount() {
     const el = document.getElementById('nav-toggle-count');
     if (!el) return;
-    el.textContent = Object.keys(answers).length + '/' + questions.length;
+    el.textContent = answeredCount() + '/' + questions.length;
 }
 
 function updateProgressBar() {
     const fill = document.getElementById('progress-bar-fill');
     if (!fill || !questions.length) return;
-    const pct = Math.round((Object.keys(answers).length / questions.length) * 100);
+    const pct = Math.round((answeredCount() / questions.length) * 100);
     fill.style.width = pct + '%';
 }
 
@@ -564,29 +828,67 @@ async function submitTest() {
 
     showSubmittingOverlay();
 
-    let correct = 0;
+    let correct = 0;      // questions fully correct
+    let wrong   = 0;
+    let skipped = 0;
+    let earnedMarks = 0;
+    let totalMarks  = 0;
+    let pendingMarks = 0;
     const reviewData = [];
 
     questions.forEach((q, i) => {
+        const answered = hasAnswer(i);
+        if (!answered) skipped++;
+
+        if (q.type === 'theory') {
+            const g = gradeTheory(q, answers[i]);
+            totalMarks  += g.max;
+            earnedMarks += g.earned;
+            g.items.forEach(it => { if (it.pending) pendingMarks += it.max; });
+            const full = !g.pending && g.earned === g.max;
+            if (full) correct++; else if (answered && !g.pending) wrong++;
+            reviewData.push({
+                type: 'theory',
+                theoryType: q.theoryType || 'short',
+                questionText: q.questionText,
+                passageId: q.passageId || null,
+                marks: g.max,
+                earned: g.earned,
+                pending: g.pending,
+                items: g.items,
+                modelAnswer: q.modelAnswer || null,
+                gapTemplate: q.theoryType === 'gap' ? (q.gapTemplate || null) : null,
+                isCorrect: g.pending ? null : full,
+                pupilAnswer: answered ? 'answered' : null,
+                flagged: flagged.has(i)
+            });
+            return;
+        }
+
         const pupilAnswer   = answers[i] || null;
         const correctAnswer = q.correctAnswer;
         const isCorrect     = pupilAnswer === correctAnswer;
-        if (isCorrect) correct++;
+        totalMarks += 1;
+        if (isCorrect) { correct++; earnedMarks += 1; }
+        else if (pupilAnswer) wrong++;
         reviewData.push({
+            type: 'mcq',
+            marks: 1,
+            earned: isCorrect ? 1 : 0,
+            passageId: q.passageId || null,
             questionText:  q.questionText,
-            optionA: q.optionA, optionB: q.optionB,
-            optionC: q.optionC, optionD: q.optionD,
-            correctAnswer,
+            optionA: q.optionA ?? null, optionB: q.optionB ?? null,
+            optionC: q.optionC ?? null, optionD: q.optionD ?? null,
+            correctAnswer: correctAnswer ?? null,
             pupilAnswer,
             isCorrect,
             flagged: flagged.has(i)
         });
     });
 
-    const total     = questions.length;
-    const wrong     = Object.keys(answers).filter(i => answers[i] !== questions[i].correctAnswer).length;
-    const skipped   = total - Object.keys(answers).length;
-    const pct       = Math.round((correct / total) * 100);
+    const total     = totalMarks;
+    const pendingReview = pendingMarks > 0;
+    const pct       = total ? Math.round((earnedMarks / total) * 100) : 0;
     const grade     = getGradeFromPct(pct);
     const timeTaken = testData.timerMinutes
         ? (testData.timerMinutes * 60) - secondsLeft
@@ -604,10 +906,13 @@ async function submitTest() {
             session:     testData.session,
             className:   testData.className,
             pupilId:     currentUser.uid,
-            score:       correct,
+            score:       earnedMarks,
             total,
             percentage:  pct,
             grade,
+            pendingReview,
+            pendingMarks,
+            hasTheory:   questions.some(q => q.type === 'theory'),
             timeTakenSec: timeTaken,
             tabSwitches: tabSwitchCount,
             flaggedCount: flagged.size,
@@ -637,7 +942,7 @@ async function submitTest() {
         if (attemptRefToUpdate) {
             batch.update(attemptRefToUpdate, {
                 status: 'completed',
-                score:  correct,
+                score:  earnedMarks,
                 total,
                 percentage: pct,
                 completedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -647,36 +952,40 @@ async function submitTest() {
 
         await batch.commit();
         hideSubmittingOverlay();
-        showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData });
+        showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData, earnedMarks, pendingMarks });
 
     } catch (err) {
         hideSubmittingOverlay();
-        showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData });
+        showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData, earnedMarks, pendingMarks });
         window.showToast?.('Your score was calculated but could not be saved. Please contact your teacher.', 'warning', 8000);
     }
 }
 
-function showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData }) {
+function showResultScreen({ correct, wrong, skipped, total, pct, grade, reviewData, earnedMarks, pendingMarks }) {
     document.getElementById('test-screen').style.display   = 'none';
     document.getElementById('result-screen').style.display = 'block';
 
     document.getElementById('score-pct').textContent   = pct + '%';
 
     const titleEl = document.getElementById('result-title');
-    if (pct >= 50) {
+    if (pendingMarks > 0) {
+        titleEl.innerHTML = '<i data-lucide="clock" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;color:#d97706;"></i>Test Submitted';
+    } else if (pct >= 50) {
         titleEl.innerHTML = '<i data-lucide="check-circle" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px;color:#16a34a;"></i>Well done';
     } else {
         titleEl.textContent = 'Test Complete';
     }
 
-    document.getElementById('result-subtitle').textContent = `You scored ${correct} out of ${total} (${grade})`;
+    document.getElementById('result-subtitle').textContent = pendingMarks > 0
+        ? `You have ${earnedMarks} out of ${total} marks so far. ${pendingMarks} mark${pendingMarks === 1 ? '' : 's'} of written answers will be marked by your teacher, so your final score may go up.`
+        : `You scored ${earnedMarks} out of ${total} (${grade})`;
     document.getElementById('r-correct').textContent  = correct;
     document.getElementById('r-wrong').textContent    = wrong;
     document.getElementById('r-skipped').textContent  = skipped;
 
     const ring = document.getElementById('score-ring');
     ring.classList.remove('cbt-score-ring--pass', 'cbt-score-ring--fail');
-    ring.classList.add(pct >= 50 ? 'cbt-score-ring--pass' : 'cbt-score-ring--fail');
+    ring.classList.add(pendingMarks > 0 ? 'cbt-score-ring--pass' : (pct >= 50 ? 'cbt-score-ring--pass' : 'cbt-score-ring--fail'));
 
     window._cbtReviewData = reviewData;
 
@@ -696,6 +1005,28 @@ function showReview() {
     data.forEach((item, i) => {
         const div = document.createElement('div');
         div.className = 'review-item';
+
+        if (item.type === 'theory') {
+            const pTitle = item.passageId && getPassage(item.passageId) ? (getPassage(item.passageId).title || PASSAGE_META[getPassage(item.passageId).type]?.label || 'Passage') : '';
+            const badge = item.pending
+                ? '<span class="cbt-rv-badge cbt-rv-badge--pending">Awaiting marking</span>'
+                : '<span class="cbt-rv-badge ' + (item.earned === item.marks ? 'cbt-rv-badge--ok' : item.earned > 0 ? 'cbt-rv-badge--part' : 'cbt-rv-badge--bad') + '">' + item.earned + '/' + item.marks + ' marks</span>';
+            const itemsHtml = (item.items || []).map(it =>
+                '<div class="cbt-rv-item">' +
+                  (it.label ? '<div class="cbt-rv-item__label">' + cbtEsc(it.label) + '</div>' : '') +
+                  '<div class="cbt-rv-item__ans">' + (it.answer ? cbtEsc(it.answer) : '<em>No answer</em>') + '</div>' +
+                  (it.auto && it.earned < it.max && (it.accepted || []).length ? '<div class="cbt-rv-item__acc">Correct answer: ' + cbtEsc(it.accepted[0]) + '</div>' : '') +
+                  (it.pending ? '<div class="cbt-rv-item__acc">Waiting for your teacher</div>' : '<div class="cbt-rv-item__acc">' + it.earned + '/' + it.max + '</div>') +
+                '</div>').join('');
+            div.innerHTML =
+                '<div class="review-item__q-num">Question ' + (i + 1) + ' ' + badge +
+                (item.flagged ? '<span style="margin-left:6px;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:700;background:#fef3c7;color:#92400e;">Flagged</span>' : '') + '</div>' +
+                (pTitle ? '<div class="cbt-rv-passage">Passage: ' + cbtEsc(pTitle) + '</div>' : '') +
+                '<div class="review-item__q">' + cbtEsc(item.questionText) + '</div>' + itemsHtml +
+                (item.modelAnswer ? '<div class="cbt-rv-model"><strong>Marking guide:</strong> ' + cbtEsc(item.modelAnswer) + '</div>' : '');
+            list.appendChild(div);
+            return;
+        }
 
         let optionsHTML = '';
         keys.forEach((key, ki) => {
